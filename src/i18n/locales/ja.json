@@ -21,7 +21,8 @@
     "refresh": "更新",
     "rewind": "巻き戻し",
     "enable": "有効にする",
-    "disable": "無効にする"
+    "disable": "無効にする",
+    "legacyPluginDataMigrated": "旧 Codian プラグインから設定を移行しました。Codian を使う前に旧プラグイン「codian」を無効にしてください。"
   },
   "chat": {
     "drop": {

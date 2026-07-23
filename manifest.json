@@ -1,7 +1,7 @@
 {
-  "id": "codian",
+  "id": "codianz",
   "name": "Codian",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minAppVersion": "1.11.4",
   "description": "Embeds Codex, Claude Code, and other coding agents as AI collaborators in your vault. Your vault becomes their working directory, giving them capabilities for file reads and writes, search, bash commands, and multi-step workflows.",
   "author": "BCS",

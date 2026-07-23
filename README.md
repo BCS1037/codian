@@ -32,7 +32,7 @@ Authentication, API keys, proxies, base URLs, and provider usage charges remain 
 
 ## Install
 
-Codian `1.0.0` currently has no GitHub Release. Build it from source:
+Download the latest release, or build from source:
 
 ```bash
 git clone https://github.com/BCS1037/codian.git
@@ -41,7 +41,13 @@ npm ci
 npm run build
 ```
 
-Copy `main.js`, `manifest.json`, and `styles.css` to `<vault>/.obsidian/plugins/codian/`, then enable **Codian** in Obsidian's Community plugins settings.
+Copy `main.js`, `manifest.json`, and `styles.css` to `<vault>/.obsidian/plugins/codianz/`, then enable **Codian** in Obsidian's Community plugins settings.
+
+### Upgrade from plugin ID `codian`
+
+Codian `1.0.1` uses the Community plugins ID `codianz` while keeping the displayed name **Codian**. On first launch, it copies legacy plugin tab state from `<vault>/.obsidian/plugins/codian/data.json` only when `codianz` has no data yet. It never deletes or overwrites legacy plugin data, and vault-level `.codian/` settings and conversation metadata remain in place.
+
+Do not run both plugin IDs at once. After confirming the new **Codian** plugin opens normally, disable the legacy `codian` plugin.
 
 ## Safety and privacy
 

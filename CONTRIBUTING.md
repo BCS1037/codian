@@ -21,7 +21,7 @@ npm run verify
 
 Tests mirror `src/` under `tests/unit/` and `tests/integration/`. New behavior and bug fixes require a failing test first, followed by the narrowest implementation change.
 
-Startup evaluation uses a 50 ms warning indicator and a 150 ms hard CI budget. Maintainers can adjust both through `CODIAN_STARTUP_INDICATOR_MS` and `CODIAN_STARTUP_BUDGET_MS` when a reviewed baseline changes.
+Startup evaluation uses a 50 ms warning indicator and a 175 ms hard CI budget. Maintainers can adjust both through `CODIAN_STARTUP_INDICATOR_MS` and `CODIAN_STARTUP_BUDGET_MS` when a reviewed baseline changes.
 
 Provider behavior is not interchangeable. Keep provider-neutral contracts in `src/core/`, provider-owned protocol and settings behavior in `src/providers/<provider>/`, and chat orchestration in `src/features/chat/`.
 

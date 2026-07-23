@@ -21,7 +21,8 @@
     "refresh": "Обновить",
     "rewind": "Откатить",
     "enable": "Включить",
-    "disable": "Отключить"
+    "disable": "Отключить",
+    "legacyPluginDataMigrated": "Настройки перенесены из старого плагина Codian. Перед использованием Codian отключите старый плагин \"codian\"."
   },
   "chat": {
     "drop": {

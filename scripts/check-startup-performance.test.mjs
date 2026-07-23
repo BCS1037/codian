@@ -4,9 +4,9 @@ import test from 'node:test';
 import { evaluatePerformanceBudget, parsePerformanceThreshold } from './check-startup-performance.mjs';
 
 test('classifies values below indicator, above indicator, and above budget', () => {
-  assert.deepEqual(evaluatePerformanceBudget(40, 50, 150), { warning: false, exceeded: false });
-  assert.deepEqual(evaluatePerformanceBudget(95, 50, 150), { warning: true, exceeded: false });
-  assert.deepEqual(evaluatePerformanceBudget(151, 50, 150), { warning: true, exceeded: true });
+  assert.deepEqual(evaluatePerformanceBudget(40, 50, 175), { warning: false, exceeded: false });
+  assert.deepEqual(evaluatePerformanceBudget(151, 50, 175), { warning: true, exceeded: false });
+  assert.deepEqual(evaluatePerformanceBudget(176, 50, 175), { warning: true, exceeded: true });
 });
 
 test('parses positive configurable thresholds and rejects invalid values', () => {

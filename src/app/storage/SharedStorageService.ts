@@ -13,6 +13,9 @@ import type { AppTabManagerState } from '../../core/providers/types';
 import { VaultFileAdapter } from '../../core/storage/VaultFileAdapter';
 import { ClaudianSettingsStorage, type StoredClaudianSettings } from '../settings/ClaudianSettingsStorage';
 
+const LEGACY_PLUGIN_ID = 'codian';
+const CURRENT_PLUGIN_ID = 'codianz';
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
@@ -31,10 +34,14 @@ export class SharedStorageService implements SharedAppStorage {
     this.sessions = new SessionStorage(this.adapter);
   }
 
-  async initialize(): Promise<{ claudian: Record<string, unknown> }> {
+  async initialize(): Promise<{
+    claudian: Record<string, unknown>;
+    migratedLegacyPluginData: boolean;
+  }> {
+    const migratedLegacyPluginData = await this.migrateLegacyPluginData();
     await this.migrateLegacyClaudianStorage();
     const claudian = await this.claudianSettings.load();
-    return { claudian };
+    return { claudian, migratedLegacyPluginData };
   }
 
   async saveClaudianSettings(settings: Record<string, unknown>): Promise<void> {
@@ -80,6 +87,31 @@ export class SharedStorageService implements SharedAppStorage {
         continue;
       }
       await this.adapter.write(targetPath, await this.adapter.read(legacyPath));
+    }
+  }
+
+  private async migrateLegacyPluginData(): Promise<boolean> {
+    if (this.plugin.manifest.id !== CURRENT_PLUGIN_ID) {
+      return false;
+    }
+
+    try {
+      const currentData = await this.plugin.loadData();
+      if (currentData !== null && currentData !== undefined) {
+        return false;
+      }
+
+      const legacyDataPath = `.obsidian/plugins/${LEGACY_PLUGIN_ID}/data.json`;
+      if (!(await this.adapter.exists(legacyDataPath))) {
+        return false;
+      }
+
+      const legacyData = JSON.parse(await this.adapter.read(legacyDataPath));
+      await this.plugin.saveData(legacyData);
+      return true;
+    } catch {
+      // Keep startup available when old plugin data cannot be migrated.
+      return false;
     }
   }
 

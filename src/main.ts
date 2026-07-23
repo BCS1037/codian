@@ -59,6 +59,7 @@ import type { ConversationBrowserEnhancement } from './features/chat/conversatio
 import { registerFileMenu } from './features/chat/fileMenu';
 import { type InlineEditContext, InlineEditModal } from './features/inline-edit/ui/InlineEditModal';
 import { ClaudianSettingTab } from './features/settings/ClaudianSettings';
+import { t } from './i18n/i18n';
 import { syncLocaleWithObsidian } from './i18n/obsidianLocale';
 import { OPENCODE_PLAN_MODE_ID, OPENCODE_SAFE_MODE_ID } from './providers/opencode/modes';
 import { buildCursorContext } from './utils/editor';
@@ -381,7 +382,7 @@ export default class ClaudianPlugin extends Plugin {
   async loadSettings(options: { deferNonRestoredSessionMetadata?: boolean } = {}) {
     this.hasLoadedAllSessionMetadata = false;
     this.storage = new SharedStorageService(this);
-    const { claudian } = await this.storage.initialize();
+    const { claudian, migratedLegacyPluginData } = await this.storage.initialize();
     this.lastKnownTabManagerState = await this.storage.getTabManagerState();
 
     this.settings = {
@@ -462,6 +463,9 @@ export default class ClaudianPlugin extends Plugin {
       (a, b) => (b.lastResponseAt ?? b.updatedAt) - (a.lastResponseAt ?? a.updatedAt)
     ));
     syncLocaleWithObsidian();
+    if (migratedLegacyPluginData) {
+      new Notice(t('common.legacyPluginDataMigrated'));
+    }
 
     const backfilledConversations = this.conversationRepository.backfillResponseTimestamps();
 
