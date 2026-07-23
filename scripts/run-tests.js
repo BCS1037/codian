@@ -25,5 +25,11 @@ run([
 run([
   '--test',
   path.join(__dirname, 'check-architecture-boundaries.test.mjs'),
+  path.join(__dirname, 'check-production-licenses.test.mjs'),
+  path.join(__dirname, 'check-provider-inventory.test.mjs'),
   path.join(__dirname, 'check-release-version.test.mjs'),
+  path.join(__dirname, 'check-secrets.test.mjs'),
+  path.join(__dirname, 'check-startup-performance.test.mjs'),
+  path.join(__dirname, 'runtime-evidence.test.mjs'),
+  path.join(__dirname, 'upstream-audit.test.mjs'),
 ]);

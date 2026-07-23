@@ -1,24 +1,53 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - '*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact SemVer release version without a v prefix
+        required: true
+        type: string
+      runtime_evidence_sha256:
+        description: SHA-256 of reviewed L5 runtime evidence JSON
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
-      artifact-metadata: write
+    environment: release
 
     steps:
-      - name: Checkout code
+      - name: Checkout protected main
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          fetch-depth: 0  # Full history for changelog generation
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify release source
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          git fetch origin main --tags
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+          if git rev-parse --verify --quiet "refs/tags/$VERSION"; then
+            echo "Release tag already exists: $VERSION" >&2
+            exit 1
+          fi
+          if [[ ! "${{ inputs.runtime_evidence_sha256 }}" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "Runtime evidence SHA-256 must contain 64 lowercase hexadecimal characters." >&2
+            exit 1
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -29,49 +58,59 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate release version
-        run: node scripts/check-release-version.mjs "${{ github.ref_name }}"
+      - name: Validate release metadata
+        run: node scripts/check-release-version.mjs "${{ inputs.version }}"
 
-      - name: Build
-        run: npm run build
+      - name: Audit production dependencies
+        run: npm run security:audit
+
+      - name: Check production licenses
+        run: npm run licenses:check
+
+      - name: Scan tracked files and Git history for secrets
+        run: npm run security:secrets
+
+      - name: Run full verification
+        run: npm run verify
+
+      - name: Generate artifact checksums
+        run: sha256sum main.js manifest.json styles.css > SHA256SUMS.txt
+
+      - name: Bind release notes to runtime evidence
+        env:
+          RUNTIME_EVIDENCE_SHA256: ${{ inputs.runtime_evidence_sha256 }}
+        run: |
+          cp CHANGELOG.md RELEASE_NOTES.md
+          {
+            echo
+            echo "## Verification"
+            echo
+            echo "- Commit: $(git rev-parse HEAD)"
+            echo "- Runtime evidence SHA-256: $RUNTIME_EVIDENCE_SHA256"
+            echo
+            echo '```text'
+            cat SHA256SUMS.txt
+            echo '```'
+          } >> RELEASE_NOTES.md
 
       - name: Generate artifact attestations
-        if: github.event.repository.private == false
         uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
         with:
           subject-path: |
             main.js
             manifest.json
             styles.css
-
-      - name: Get previous tag
-        id: prev_tag
-        run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          echo "tag=$PREV_TAG" >> $GITHUB_OUTPUT
-
-      - name: Generate changelog
-        id: changelog
-        run: |
-          if [ -n "${{ steps.prev_tag.outputs.tag }}" ]; then
-            CHANGELOG=$(git log ${{ steps.prev_tag.outputs.tag }}..HEAD --pretty=format:"- %s" --no-merges | grep -v "^- ${{ github.ref_name }}$" || true)
-          else
-            CHANGELOG=$(git log --pretty=format:"- %s" --no-merges | head -20)
-          fi
-          # Handle multiline output
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+            SHA256SUMS.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
-          body: |
-            ## What's Changed
-            ${{ steps.changelog.outputs.notes }}
-
-            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.prev_tag.outputs.tag }}...${{ github.ref_name }}
+          tag_name: ${{ inputs.version }}
+          target_commitish: main
+          body_path: RELEASE_NOTES.md
+          prerelease: ${{ contains(inputs.version, '-') }}
           files: |
             main.js
             manifest.json
             styles.css
+            SHA256SUMS.txt

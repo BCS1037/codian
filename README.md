@@ -63,10 +63,7 @@ Codian has no telemetry service. Network activity comes from provider CLIs, conf
 
 ```bash
 npm ci
-npm run typecheck
-npm run lint
-npm run test
-npm run build
+npm run verify
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Report vulnerabilities through [GitHub private vulnerability reporting](SECURITY.md), not a public issue.

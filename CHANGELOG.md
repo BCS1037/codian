@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0 — Unreleased
+## 1.0.0 — 2026-07-23
 
 First public source version of Codian.
 
@@ -11,5 +11,3 @@ First public source version of Codian.
 - Conversation history, resume, fork, rewind, search, and multi-tab workflows.
 - Skills, slash commands, MCP, subagents, tool approval, and Plan modes.
 - MIT-licensed Codian source with retained Claudian attribution.
-
-No GitHub Release or binary artifact has been published for `1.0.0`.

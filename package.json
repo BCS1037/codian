@@ -11,6 +11,7 @@
     "build:css": "node scripts/build-css.mjs",
     "dev": "npm run build:css && node esbuild.config.mjs",
     "build": "node scripts/build.mjs production",
+    "check:providers": "node scripts/check-provider-inventory.mjs",
     "check:performance": "node scripts/check-startup-performance.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"{src,tests}/**/*.ts\"",
@@ -18,9 +19,15 @@
     "lint:fix": "npm run lint -- --fix",
     "test": "node scripts/run-tests.js",
     "test:unit": "node scripts/run-jest.js",
+    "test:integration": "node scripts/run-jest.js --selectProjects integration",
     "test:architecture": "node --test scripts/check-architecture-boundaries.test.mjs",
     "test:watch": "node scripts/run-jest.js --watch",
     "test:coverage": "node scripts/run-jest.js --coverage",
+    "security:audit": "npm audit --omit=dev --audit-level=high",
+    "security:secrets": "node scripts/check-secrets.mjs",
+    "licenses:check": "node scripts/check-production-licenses.mjs",
+    "check:diff": "git diff --check",
+    "verify": "npm run typecheck && npm run lint && npm run check:providers && npm run test && npm run build && npm run check:performance && npm run licenses:check && npm run security:secrets && npm run check:diff",
     "version": "node scripts/sync-version.js && git add manifest.json"
   },
   "keywords": [
