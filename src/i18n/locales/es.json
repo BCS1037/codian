@@ -1,0 +1,710 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Agregar",
+    "remove": "Eliminar",
+    "clear": "Limpiar",
+    "clearAll": "Limpiar todo",
+    "loading": "Cargando",
+    "error": "Error",
+    "success": "Éxito",
+    "warning": "Advertencia",
+    "confirm": "Confirmar",
+    "settings": "Configuración",
+    "advanced": "Avanzado",
+    "enabled": "Habilitado",
+    "disabled": "Deshabilitado",
+    "platform": "Plataforma",
+    "refresh": "Actualizar",
+    "rewind": "Rebobinar",
+    "enable": "Habilitar",
+    "disable": "Deshabilitar"
+  },
+  "chat": {
+    "drop": {
+      "context": "Suelta para añadir contexto",
+      "invalid": "No se encontraron notas ni carpetas compatibles en la bóveda.",
+      "removedUnavailable": "Contexto no disponible eliminado: {path}"
+    },
+    "historySearch": {
+      "placeholder": "Buscar conversaciones",
+      "noMatches": "No hay conversaciones coincidentes",
+      "clear": "Borrar búsqueda"
+    },
+    "rewind": {
+      "confirmMessage": "¿Rebobinar a este punto? Los cambios de archivos posteriores a este mensaje podrían sobrescribirse o eliminarse. Esta acción no se puede deshacer.",
+      "confirmMessageConflicts": "¿Rebobinar a este punto? Se sobrescribirán {count} archivo(s) modificados fuera del agente:\n{files}",
+      "confirmMessageConversationOnly": "¿Rebobinar la conversación hasta este punto? Se conservarán los cambios de archivos.",
+      "confirmButton": "Rebobinar",
+      "inProgress": "Espera a que termine el rebobinado actual.",
+      "ariaLabel": "Rebobinar hasta aquí",
+      "menuConversationOnly": "Rebobinar solo conversación",
+      "menuCodeAndConversation": "Rebobinar código + conversación",
+      "notice": "Rebobinado: {count} archivo(s) revertido(s)",
+      "noticeConversationOnly": "Conversación rebobinada; cambios de archivos conservados",
+      "noticeSaveFailed": "Rebobinado: {count} archivo(s) revertido(s), pero no se pudo guardar el estado: {error}",
+      "noticeConversationOnlySaveFailed": "Conversación rebobinada, pero no se pudo guardar el estado: {error}",
+      "failed": "Error al rebobinar: {error}",
+      "cannot": "No se puede rebobinar: {error}",
+      "unavailableStreaming": "No se puede rebobinar durante la transmisión",
+      "unavailableNoUuid": "No se puede rebobinar: faltan identificadores de mensaje"
+    },
+    "fork": {
+      "ariaLabel": "Bifurcar conversación",
+      "chooseTarget": "Bifurcar conversación",
+      "targetNewTab": "Nueva pestaña",
+      "targetCurrentTab": "Pestaña actual",
+      "maxTabsReached": "No se puede bifurcar: máximo de {count} pestañas alcanzado",
+      "notice": "Bifurcado a nueva pestaña",
+      "noticeCurrentTab": "Bifurcado en pestaña actual",
+      "failed": "Error al bifurcar: {error}",
+      "unavailableStreaming": "No se puede bifurcar durante la transmisión",
+      "unavailableNoUuid": "No se puede bifurcar: faltan identificadores de mensaje",
+      "unavailableNoResponse": "No se puede bifurcar: no hay respuesta para bifurcar",
+      "errorMessageNotFound": "Mensaje no encontrado",
+      "errorNoSession": "No hay ningún ID de sesión disponible",
+      "errorNoActiveTab": "No hay ninguna pestaña activa",
+      "commandNoMessages": "No se puede bifurcar: no hay mensajes en la conversación",
+      "commandNoAssistantUuid": "No se puede bifurcar: no hay respuesta del asistente con identificadores"
+    },
+    "bangBash": {
+      "placeholder": "> Ejecuta un comando bash...",
+      "commandPanel": "Panel de comandos",
+      "copyAriaLabel": "Copiar la salida del comando más reciente",
+      "clearAriaLabel": "Limpiar la salida de bash",
+      "commandLabel": "{command}",
+      "statusLabel": "Estado: {status}",
+      "collapseOutput": "Contraer la salida del comando",
+      "expandOutput": "Expandir la salida del comando",
+      "running": "Ejecutando...",
+      "copyFailed": "No se pudo copiar al portapapeles"
+    },
+    "fileMenu": {
+      "add": "Añadir a Codian",
+      "notReady": "El chat de Codian no está listo.",
+      "failed": "No se pudo añadir el archivo a Codian."
+    }
+  },
+  "settings": {
+    "title": "Configuración de Claudian",
+    "tabs": {
+      "general": "General",
+      "claude": "Claude",
+      "codex": "Codex",
+      "providers": "Proveedores",
+      "workspace": "Espacio de trabajo",
+      "environment": "Entorno",
+      "pro": "Pro"
+    },
+    "display": "Pantalla",
+    "conversations": "Conversaciones",
+    "content": "Contenido",
+    "input": "Entrada",
+    "setup": "Conexión",
+    "models": "Modelos",
+    "experimental": "Experimental",
+    "userName": {
+      "name": "¿Cómo debería Claudian llamarte?",
+      "desc": "Tu nombre para saludos personalizados (dejar vacío para saludos genéricos)"
+    },
+    "excludedTags": {
+      "name": "Etiquetas excluidas",
+      "desc": "Las notas con estas etiquetas no se cargarán automáticamente como contexto (una por línea, sin #)"
+    },
+    "mediaFolder": {
+      "name": "Carpeta de medios",
+      "desc": "Carpeta que contiene archivos adjuntos/imagenes. Cuando las notas usan ![[image.jpg]], Claude buscará aquí. Dejar vacío para la raíz del depósito."
+    },
+    "systemPrompt": {
+      "name": "Prompt de sistema personalizado",
+      "desc": "Instrucciones adicionales añadidas al prompt de sistema por defecto"
+    },
+    "autoTitle": {
+      "name": "Generar automáticamente títulos de conversación",
+      "desc": "Genera automáticamente títulos de conversación después del primer mensaje del usuario."
+    },
+    "titleModel": {
+      "name": "Modelo de generación de títulos",
+      "desc": "Modelo utilizado para generar automáticamente títulos de conversación.",
+      "auto": "Automático (Haiku)"
+    },
+    "navMappings": {
+      "name": "Mapeos de navegación estilo Vim",
+      "desc": "Un mapeo por línea. Formato: \"map <tecla> <acción>\" (acciones: scrollUp, scrollDown, focusInput)."
+    },
+    "requireCommandOrControlEnterToSend": {
+      "name": "Requerir Command/Ctrl+Enter para enviar",
+      "desc": "Cuando está activado, Enter inserta un salto de línea. Command+Enter envía en macOS; Ctrl+Enter envía en Windows y Linux."
+    },
+    "hotkeys": "Atajos de teclado",
+    "inlineEditHotkey": {
+      "name": "Edición en línea",
+      "descWithKey": "Atajo actual: {hotkey}",
+      "descNoKey": "Sin atajo configurado",
+      "btnChange": "Cambiar",
+      "btnSet": "Configurar"
+    },
+    "openChatHotkey": {
+      "name": "Abrir chat",
+      "descWithKey": "Atajo actual: {hotkey}",
+      "descNoKey": "Sin atajo configurado",
+      "btnChange": "Cambiar",
+      "btnSet": "Configurar"
+    },
+    "newSessionHotkey": {
+      "name": "Nueva sesión",
+      "descWithKey": "Atajo actual: {hotkey}",
+      "descNoKey": "Sin atajo configurado",
+      "btnChange": "Cambiar",
+      "btnSet": "Configurar"
+    },
+    "newTabHotkey": {
+      "name": "Nueva pestaña",
+      "descWithKey": "Atajo actual: {hotkey}",
+      "descNoKey": "Sin atajo configurado",
+      "btnChange": "Cambiar",
+      "btnSet": "Configurar"
+    },
+    "closeTabHotkey": {
+      "name": "Cerrar pestaña",
+      "descWithKey": "Atajo actual: {hotkey}",
+      "descNoKey": "Sin atajo configurado",
+      "btnChange": "Cambiar",
+      "btnSet": "Configurar"
+    },
+    "slashCommands": {
+      "name": "Comandos y habilidades",
+      "desc": "Administra comandos y habilidades a nivel de vault almacenados en .claude/commands/ y .claude/skills/. Activados por /nombre."
+    },
+    "hiddenSlashCommands": {
+      "name": "Comandos y habilidades ocultos",
+      "desc": "Oculta comandos y habilidades específicos del menú desplegable. Útil para ocultar entradas de Claude Code que no son relevantes para Claudian. Ingresa los nombres sin la barra inicial, uno por línea.",
+      "placeholder": "commit\nbuild\ntest"
+    },
+    "mcpServers": {
+      "name": "Servidores MCP",
+      "desc": "Administra configuraciones de servidores MCP a nivel de vault almacenadas en .claude/mcp.json. Los servidores con modo de guardado de contexto requieren @mention para activarse."
+    },
+    "plugins": {
+      "name": "Plugins de Claude Code",
+      "desc": "Administra plugins de Claude Code descubiertos desde ~/.claude/plugins. Los plugins habilitados se almacenan por vault en .claude/settings.json.",
+      "manager": {
+        "label": "Extensiones de Claude Code",
+        "empty": "No se encontraron extensiones de Claude Code. Actívalas con la CLI de Claude.",
+        "project": "Extensiones del proyecto",
+        "user": "Extensiones del usuario",
+        "restartFailed": "La extensión cambió, pero algunas pestañas no se reiniciaron.",
+        "toggled": "Extensión \"{id}\" {state}",
+        "rollbackFailed": "No se pudo revertir el cambio de extensión: {message}",
+        "toggleFailed": "No se pudo cambiar la extensión: {message}",
+        "refreshed": "Lista de extensiones actualizada",
+        "refreshFailed": "No se pudieron actualizar las extensiones: {message}",
+        "unknownError": "Error desconocido"
+      }
+    },
+    "subagents": {
+      "name": "Subagentes",
+      "desc": "Administra subagentes a nivel de vault almacenados en .claude/agents/. Cada archivo Markdown define un agente personalizado.",
+      "noAgents": "No hay subagentes configurados. Haz clic en + para crear uno.",
+      "deleteConfirm": "¿Eliminar el subagente \"{name}\"?",
+      "saveFailed": "No se pudo guardar el subagente: {message}",
+      "refreshFailed": "No se pudieron actualizar los subagentes: {message}",
+      "deleteFailed": "No se pudo eliminar el subagente: {message}",
+      "renameCleanupFailed": "Advertencia: no se pudo eliminar el archivo anterior de \"{name}\"",
+      "created": "Se creó el subagente \"{name}\"",
+      "updated": "Se actualizó el subagente \"{name}\"",
+      "deleted": "Se eliminó el subagente \"{name}\"",
+      "duplicateName": "Ya existe un agente con el nombre \"{name}\"",
+      "descriptionRequired": "La descripción es obligatoria",
+      "promptRequired": "El prompt del sistema es obligatorio",
+      "modal": {
+        "titleEdit": "Editar subagente",
+        "titleAdd": "Agregar subagente",
+        "name": "Nombre",
+        "nameDesc": "Solo letras minúsculas, números y guiones",
+        "namePlaceholder": "code-reviewer",
+        "description": "Descripción",
+        "descriptionDesc": "Descripción breve de este agente",
+        "descriptionPlaceholder": "Revisa código en busca de errores y estilo",
+        "advancedOptions": "Opciones avanzadas",
+        "model": "Modelo",
+        "modelDesc": "Modelo alternativo para este agente",
+        "tools": "Herramientas",
+        "toolsDesc": "Lista separada por comas de las herramientas permitidas (vacío = todas)",
+        "disallowedTools": "Herramientas no permitidas",
+        "disallowedToolsDesc": "Lista separada por comas de herramientas no permitidas",
+        "skills": "Habilidades",
+        "skillsDesc": "Lista separada por comas de habilidades",
+        "prompt": "Prompt del sistema",
+        "promptDesc": "Instrucciones para el agente",
+        "promptPlaceholder": "Eres un revisor de código. Analiza el código proporcionado para..."
+      }
+    },
+    "safety": "Acceso y aislamiento",
+    "loadUserSettings": {
+      "name": "Cargar configuración de usuario Claude",
+      "desc": "Carga ~/.claude/settings.json. Cuando está habilitado, las reglas de permisos del usuario pueden eludir el modo seguro."
+    },
+    "claudeSafeMode": {
+      "name": "Permisos de ejecución predeterminados",
+      "desc": "Permisos de ejecución predeterminados cuando Seguro está activo.",
+      "acceptEdits": "Aceptar automáticamente ediciones de archivos",
+      "auto": "Modo automático de Claude",
+      "default": "Permisos predeterminados de Claude"
+    },
+    "codexSafeMode": {
+      "name": "Alcance de acceso a archivos",
+      "desc": "Modo de sandbox usado cuando el interruptor Seguro está activo."
+    },
+    "environment": "Entorno",
+    "customVariables": {
+      "name": "Variables personalizadas",
+      "desc": "Variables de entorno para Claude SDK (formato KEY=VALUE, una por línea). Prefijo export soportado."
+    },
+    "envSnippets": {
+      "name": "Fragmentos",
+      "addBtn": "Añadir fragmento",
+      "noSnippets": "No hay fragmentos de entorno guardados. Haga clic en + para guardar su configuración actual.",
+      "nameRequired": "Por favor ingrese un nombre para el fragmento",
+      "modal": {
+        "titleEdit": "Editar fragmento",
+        "titleSave": "Guardar fragmento",
+        "name": "Nombre",
+        "namePlaceholder": "Un nombre descriptivo para esta configuración",
+        "description": "Descripción",
+        "descPlaceholder": "Descripción opcional",
+        "envVars": "Variables de entorno",
+        "envVarsPlaceholder": "Formato KEY=VALUE, una por línea (prefijo export soportado)",
+        "save": "Guardar",
+        "update": "Actualizar",
+        "cancel": "Cancelar"
+      }
+    },
+    "customModelOverrides": {
+      "name": "Anulaciones de modelos personalizados",
+      "desc": "Configure alias en el selector de modelos y tamaños de ventana de contexto para modelos personalizados."
+    },
+    "customModelAliases": {
+      "placeholder": "Alias"
+    },
+    "customContextLimits": {
+      "name": "Límites de contexto personalizados",
+      "desc": "Establezca tamaños de ventana de contexto para sus modelos personalizados. Deje vacío para usar el valor predeterminado (200k tokens).",
+      "invalid": "Formato inválido. Use: 256k, 1m o número exacto (1000-10000000)."
+    },
+    "customModels": {
+      "name": "Modelos personalizados",
+      "desc": "Añade IDs de modelos de Claude al selector, uno por línea. Las sobrescrituras de modelo desde el entorno siguen reemplazando el selector.",
+      "placeholder": "claude-opus-4-6\nclaude-opus-4-5-20251101"
+    },
+    "enableChrome": {
+      "name": "Habilitar extensión de Chrome",
+      "desc": "Permitir que Claude interactúe con Chrome a través de la extensión claude-in-chrome. Requiere que la extensión esté instalada. Requiere reinicio de sesión."
+    },
+    "enableBangBash": {
+      "name": "Habilitar modo bash (!)",
+      "desc": "Escribe ! en una entrada vacía para entrar en modo bash. Ejecuta comandos directamente mediante Node.js child_process. Requiere volver a abrir la vista.",
+      "validation": {
+        "noNode": "Node.js no se encontró en PATH. Instala Node.js o revisa tu configuración de PATH."
+      }
+    },
+    "maxTabs": {
+      "name": "Máximo de pestañas de chat",
+      "desc": "Número máximo de pestañas de chat simultáneas (3-10). Cada pestaña usa una sesión de Claude separada.",
+      "warning": "Más de 5 pestañas puede afectar el rendimiento y el uso de memoria."
+    },
+    "enableAutoScroll": {
+      "name": "Desplazamiento automático durante streaming",
+      "desc": "Desplazarse automáticamente hacia abajo mientras Claude transmite respuestas. Desactivar para quedarse arriba y leer desde el principio."
+    },
+    "deferMathRenderingDuringStreaming": {
+      "name": "Diferir renderizado matemático durante streaming",
+      "desc": "Mostrar LaTeX sin procesar mientras se transmite la respuesta y renderizar las fórmulas una vez al completar cada bloque de texto."
+    },
+    "expandFileEditsByDefault": {
+      "name": "Expandir ediciones de archivo por defecto",
+      "desc": "Mostrar los diffs de Write y Edit expandidos cuando aparecen por primera vez."
+    },
+    "chatViewPlacement": {
+      "name": "Abrir Claudian en",
+      "desc": "Elige dónde se abre el panel de chat cuando se crea",
+      "rightSidebar": "Barra lateral derecha",
+      "leftSidebar": "Barra lateral izquierda",
+      "mainTab": "Pestaña del editor principal"
+    },
+    "cliPath": {
+      "name": "Ruta CLI Claude",
+      "desc": "Ruta personalizada a Claude Code CLI. Dejar vacío para detección automática.",
+      "descWindows": "Para el instalador nativo, use claude.exe. Para instalaciones con npm/pnpm/yarn u otros gestores de paquetes, use la ruta cli-wrapper.cjs (no claude.cmd).",
+      "descUnix": "Pegue la salida de \"which claude\" — funciona tanto para instalaciones nativas como npm/pnpm/yarn.",
+      "validation": {
+        "notExist": "La ruta no existe",
+        "isDirectory": "La ruta es un directorio, no un archivo"
+      }
+    },
+    "language": {
+      "name": "Idioma",
+      "desc": "Cambiar el idioma de visualización de la interfaz del plugin"
+    },
+    "providerEnablement": {
+      "name": "Activar {provider}",
+      "desc": "Hacer que los modelos de {provider} activados estén disponibles para conversaciones nuevas. Las sesiones existentes se conservan al desactivar el proveedor.",
+      "atLeastOne": "Debe permanecer activado al menos un proveedor."
+    },
+    "codex": {
+      "installationMethod": {
+        "name": "Método de instalación",
+        "desc": "Cómo debe iniciar Claudian Codex en Windows. Windows nativo usa una ruta de ejecutable de Windows. WSL inicia la CLI de Linux dentro de una distribución seleccionada.",
+        "nativeWindows": "Windows nativo",
+        "wsl": "WSL"
+      },
+      "cliPath": {
+        "name": "Ruta de la CLI de Codex",
+        "descUnix": "Ruta personalizada a la CLI local de Codex. Déjala vacía para preferir instalaciones conocidas de Codex y luego PATH.",
+        "descWindows": "Ruta personalizada a la CLI local de Codex. Déjala vacía para autodetectar desde PATH. Usa la ruta del ejecutable nativo de Windows, normalmente `codex.exe`.",
+        "descWsl": "Comando de Codex del lado Linux o ruta absoluta para ejecutar dentro de WSL. Déjala vacía para buscar en PATH dentro de la distribución seleccionada.",
+        "validation": {
+          "wslWindowsPath": "El modo WSL espera un comando Linux o una ruta absoluta de Linux, no una ruta de ejecutable de Windows."
+        }
+      },
+      "wslDistroOverride": {
+        "name": "Sobrescritura de distribución WSL",
+        "desc": "Sobrescritura avanzada opcional. Déjala vacía para inferir la distribución desde una ruta de espacio de trabajo WSL cuando sea posible; si no, se usa la distribución WSL predeterminada."
+      },
+      "safeMode": {
+        "workspaceWrite": "Escritura en espacio de trabajo",
+        "readOnly": "Solo lectura"
+      },
+      "customModels": {
+        "name": "Modelos personalizados",
+        "desc": "Añade IDs de modelos Codex al selector, uno por línea. `OPENAI_MODEL` sigue teniendo prioridad cuando está definido.",
+        "placeholder": "gpt-5.4\ngpt-5.3-codex-spark"
+      },
+      "reasoningSummary": {
+        "name": "Resumen de razonamiento",
+        "desc": "Muestra un resumen del proceso de razonamiento del modelo en el bloque de pensamiento.",
+        "auto": "Auto",
+        "concise": "Conciso",
+        "detailed": "Detallado",
+        "off": "Desactivado"
+      },
+      "skills": {
+        "name": "Habilidades de Codex",
+        "desc": "Gestiona habilidades Codex de nivel vault guardadas en .codex/skills/ o .agents/skills/. Las habilidades de nivel home se excluyen aquí.",
+        "hiddenName": "Habilidades ocultas",
+        "hiddenDesc": "Oculta habilidades Codex específicas del desplegable. Introduce nombres de habilidad sin el $ inicial, uno por línea.",
+        "hiddenPlaceholder": "analyze\nexplain\nfix"
+      },
+      "subagents": {
+        "name": "Subagentes de Codex",
+        "desc": "Gestiona subagentes Codex de nivel vault guardados en .codex/agents/. Cada archivo TOML define un agente personalizado."
+      },
+      "mcp": {
+        "descBeforeCommand": "Codex gestiona servidores MCP mediante su propia CLI. Configúralos con ",
+        "descAfterCommand": " y estarán disponibles en Claudian. ",
+        "learnMore": "Más información"
+      },
+      "environment": {
+        "name": "Entorno de Codex",
+        "desc": "Solo variables de ejecución propiedad de Codex. Úsalo para ajustes OPENAI_* y CODEX_*. Si la autodetección de Codex necesita ayuda, añade su directorio de instalación al PATH compartido en lugar de esta sección del proveedor."
+      },
+      "enableProvider": {
+        "name": "Activar proveedor Codex",
+        "desc": "Cuando está activado, los modelos Codex aparecen en el selector de modelos para nuevas conversaciones. Las sesiones Codex existentes se conservan."
+      }
+    },
+    "agentSkills": {
+      "sectionTitle": "Skills",
+      "header": "Shared skills",
+      "fixedRoot": "Managed in .agents/skills",
+      "sharedExpectation": "Manage skills shared across all enabled providers in .agents/skills/.",
+      "noSkills": "No shared skills configured. Click + to create one.",
+      "skillBadge": "skill",
+      "diagnosticsTitle": "Skills needing attention",
+      "loadFailed": "Could not load shared skills.",
+      "savedRefreshFailed": "Saved, but provider refresh failed.",
+      "validationFailed": "Invalid skill: {message}",
+      "collisionFailed": "A skill named \"{name}\" already exists.",
+      "saveFailed": "Failed to save shared skill: {message}",
+      "deleteFailed": "Failed to move shared skill to trash: {message}",
+      "staleConflict": "This skill changed elsewhere; refresh before saving.",
+      "created": "Shared skill \"{name}\" created.",
+      "updated": "Shared skill \"{name}\" updated.",
+      "deleted": "Shared skill \"{name}\" moved to trash.",
+      "modal": {
+        "titleEdit": "Edit Shared Skill",
+        "titleAdd": "Add Shared Skill",
+        "name": "Skill name",
+        "nameDesc": "Lowercase letters and numbers separated by single hyphens",
+        "namePlaceholder": "code-reviewer",
+        "description": "Description",
+        "descriptionDesc": "Required portable description used by providers to select the skill",
+        "descriptionPlaceholder": "Reviews code for correctness and maintainability",
+        "instructions": "Instructions",
+        "instructionsDesc": "Required SKILL.md instructions",
+        "instructionsPlaceholder": "Review the supplied code and report actionable findings..."
+      },
+      "delete": {
+        "title": "Delete Shared Skill",
+        "description": "The entire skill folder, including scripts, references, and assets, will be moved to trash.",
+        "confirm": "Move to trash"
+      }
+    },
+    "codexSkills": {
+      "modal": {
+        "titleEdit": "Editar habilidad de Codex",
+        "titleAdd": "Añadir habilidad de Codex",
+        "directory": "Directorio",
+        "directoryDesc": "Dónde guardar la habilidad",
+        "skillName": "Nombre de habilidad",
+        "skillNameDesc": "El nombre usado después de $ (por ejemplo, \"analyze\" para $analyze)",
+        "description": "Descripción",
+        "descriptionDesc": "Descripción opcional mostrada en el desplegable",
+        "instructions": "Instrucciones",
+        "instructionsDesc": "Instrucciones de la habilidad (contenido de SKILL.md)",
+        "instructionsPlaceholder": "Analyze the code for..."
+      },
+      "instructionsRequired": "Las instrucciones son obligatorias",
+      "saveFailed": "No se pudo guardar la habilidad de Codex",
+      "header": "Habilidades de Codex",
+      "noSkills": "No hay habilidades Codex en el vault. Haz clic en + para crear una.",
+      "skillBadge": "habilidad",
+      "deleted": "Habilidad de Codex \"{name}\" eliminada",
+      "deleteFailed": "No se pudo eliminar la habilidad de Codex",
+      "created": "Habilidad de Codex \"{name}\" creada",
+      "updated": "Habilidad de Codex \"{name}\" actualizada"
+    },
+    "codexSubagents": {
+      "modal": {
+        "titleEdit": "Editar subagente de Codex",
+        "titleAdd": "Añadir subagente de Codex",
+        "nameDesc": "Nombre de agente que Codex usa al generarlo (minúsculas, guiones y guiones bajos)",
+        "descriptionDesc": "Cuándo debería usar Codex este agente",
+        "modelDesc": "Sobrescritura de modelo (vacío = heredar)",
+        "namePlaceholder": "code_reviewer"
+      },
+      "reasoningEffort": {
+        "name": "Esfuerzo de razonamiento",
+        "desc": "Nivel de esfuerzo de razonamiento del modelo",
+        "inherit": "Heredar",
+        "low": "Bajo",
+        "medium": "Medio",
+        "high": "Alto",
+        "xhigh": "Muy alto"
+      },
+      "sandboxMode": {
+        "name": "Modo sandbox",
+        "desc": "Restricción de sandbox para este agente",
+        "inherit": "Heredar",
+        "readOnly": "Solo lectura",
+        "dangerFullAccess": "Acceso total",
+        "workspaceWrite": "Escritura en espacio de trabajo"
+      },
+      "nicknameCandidates": {
+        "name": "Candidatos de apodo",
+        "desc": "Apodos visibles separados por comas (p. ej., atlas, delta, echo)"
+      },
+      "developerInstructions": {
+        "name": "Instrucciones de desarrollador",
+        "desc": "Instrucciones centrales que definen el comportamiento del agente",
+        "placeholder": "Review code like an owner.\nPrioritize correctness, security, and missing test coverage.",
+        "required": "Las instrucciones de desarrollador son obligatorias"
+      },
+      "validation": {
+        "nameRequired": "El nombre del subagente es obligatorio",
+        "nameTooLong": "El nombre del subagente debe tener {count} caracteres o menos",
+        "nameInvalid": "El nombre del subagente solo puede contener letras minúsculas, números, guiones y guiones bajos",
+        "nicknameInvalid": "Los candidatos de apodo solo pueden contener letras ASCII, números, espacios, guiones y guiones bajos",
+        "nicknameDuplicate": "Los candidatos de apodo deben ser únicos"
+      },
+      "header": "Subagentes de Codex",
+      "noAgents": "No hay subagentes Codex en el vault. Haz clic en + para crear uno."
+    },
+    "settingsHub": {
+      "providersDesc": "Conecta proveedores y administra modelos, seguridad y opciones específicas.",
+      "workspaceTitle": "Capacidades del espacio de trabajo",
+      "workspaceDesc": "Administra skills, subagentes, MCP y comandos conservando los archivos nativos como fuente de verdad.",
+      "environmentDesc": "Administra variables de entorno compartidas y específicas del proveedor en un solo lugar.",
+      "providerEnabled": "Activado",
+      "providerDisabled": "Desactivado",
+      "visibleModels": "{count} modelos",
+      "cliUnavailable": "CLI no detectada",
+      "defaultBadge": "Predeterminado",
+      "defaultProvider": "Proveedor predeterminado",
+      "cliManagedModels": "Modelos administrados por la CLI",
+      "providerDetails": "Ajustes de {provider}",
+      "unsupported": "Este proveedor no admite esta categoría de ajustes.",
+      "allScopes": "Todos",
+      "sharedScope": "Compartido",
+      "sharedEnvironment": "Entorno compartido",
+      "sharedEnvironmentDesc": "Variables neutrales para PATH, proxies, certificados y directorios temporales.",
+      "resourceDesc": "Administración unificada. Los cambios permanecen en archivos nativos; sin copias silenciosas.",
+      "searchResources": "Buscar nombre o ruta",
+      "newResource": "Nuevo",
+      "manageResources": "Administrar {section}",
+      "loadingResources": "Cargando recursos…",
+      "noResources": "No hay recursos coincidentes.",
+      "resourceColumns": {
+        "name": "Nombre",
+        "provider": "Proveedor",
+        "source": "Fuente de verdad",
+        "status": "Estado"
+      },
+      "resourceStatus": {
+        "available": "Disponible",
+        "connected": "Conectado",
+        "disabled": "Desactivado",
+        "readonly": "Solo lectura"
+      },
+      "workspaceSections": {
+        "skills": "Skills",
+        "agents": "Subagentes",
+        "mcp": "MCP",
+        "commands": "Comandos"
+      }
+    },
+    "pro": {
+      "freeBadge": "Free Build",
+      "fullBadge": "Full Build",
+      "title": "Codian Pro",
+      "freeDescription": "Actualiza para desbloquear la búsqueda de conversaciones, la vista previa en vivo y arrastrar desde la bóveda.",
+      "enabled": "Habilitado",
+      "featuresTitle": "Funciones incluidas",
+      "conversationSearch": "Búsqueda de conversaciones",
+      "livePreview": "Editor con vista previa en vivo",
+      "vaultDrop": "Arrastrar archivos y carpetas"
+    },
+    "defaultChatProvider": {
+      "name": "Proveedor predeterminado para chats nuevos",
+      "desc": "Se usa para cada pestaña vacía nueva. Las conversaciones existentes conservan su proveedor.",
+      "followModel": "Seguir el modelo seleccionado"
+    },
+    "nativeAcp": {
+      "cliPathName": "Ruta CLI de {provider}",
+      "cliPathDesc": "Ruta ejecutable opcional para este equipo. Déjala vacía para usar {command} desde PATH.",
+      "environmentName": "Entorno de {provider}",
+      "environmentDesc": "Variables de entorno enviadas solo a {provider}.",
+      "environmentPlaceholder": "KEY=value",
+      "modelManagementName": "Administración de modelos",
+      "modelManagementDesc": "{provider} elige el modelo mediante la CLI. Codian no reemplaza esa selección.",
+      "permissionHandlingName": "Administración de permisos",
+      "permissionHandlingDesc": "{provider} gestiona las solicitudes mediante la sesión CLI. Codian no ofrece un ajuste persistente."
+    },
+    "providerModels": {
+      "browse": "Explorar modelos",
+      "searchPlaceholder": "Filtrar por modelo, proveedor o ID...",
+      "discover": "Descubrir",
+      "loadingModels": "Cargando modelos...",
+      "available": "{count} disponibles",
+      "noneDiscovered": "Aún no se descubrieron modelos",
+      "loading": "Cargando...",
+      "refresh": "Actualizar",
+      "selected": "Seleccionados ({count})",
+      "clearAll": "Borrar todo",
+      "clearAllAria": "Borrar todos los modelos de {provider} seleccionados",
+      "aliasAria": "Alias de {model}",
+      "aliasTitle": "Nombre personalizado mostrado en el selector. Déjalo vacío para usar el predeterminado.",
+      "removeAria": "Quitar {model}",
+      "allProviders": "Todos los proveedores ({count})",
+      "noMatches": "Ningún modelo coincide con el filtro.",
+      "defaultBadge": "Predeterminado",
+      "selectedModel": "Modelo seleccionado",
+      "notReported": "{provider} no informa actualmente de este modelo"
+    },
+    "providerCliPath": {
+      "name": "Ruta CLI",
+      "desc": "Ruta ejecutable opcional de {provider} en este equipo. Déjala vacía para usar {command} desde PATH.",
+      "notExist": "La ruta no existe",
+      "isDirectory": "La ruta debe apuntar a un archivo"
+    },
+    "providerCatalog": {
+      "empty": "Aún no se descubrieron modelos de {provider}. Selecciona Descubrir.",
+      "failed": "No se pudo cargar el catálogo de {provider}. Comprueba la ruta CLI y el inicio de sesión.",
+      "loading": "Cargando el catálogo de {provider}...",
+      "discoveryFailed": "Error al descubrir modelos de {provider}: {message}"
+    },
+    "providerPermissions": {
+      "name": "Gestión de permisos",
+      "cliManagedDesc": "La CLI de {provider} gestiona las solicitudes de permisos durante la sesión. Codian no reemplaza ni guarda su ajuste de acceso.",
+      "opencodeDesc": "El control de permisos del chat se asigna a un modo de OpenCode y guarda la selección actual. Esta página no tiene un ajuste predeterminado separado.",
+      "piDesc": "El control de permisos del chat alterna entre herramientas de solo lectura y todas las herramientas, y guarda la selección. Esta página no tiene un ajuste predeterminado separado."
+    },
+    "kimi": {
+      "permissionDesc": "The chat toolbar controls Safe, Auto, and Plan behavior for Kimi Code. This settings page has no duplicate enable or permission preset.",
+      "sessionSetupRequired": "Kimi Code could not create a session. Run `kimi`, complete `/login`, and confirm a model is configured."
+    },
+    "opencode": {
+      "commandsAndSkills": "Comandos y habilidades",
+      "commandsAndSkillsDesc": "OpenCode detecta comandos del vault en .claude/commands/ y habilidades en .claude/skills/, .codex/skills/ y .agents/skills/. Adminístralos en Claude o Codex; aquí solo se ocultan del menú de OpenCode.",
+      "hiddenCommandsAndSkills": "Comandos y habilidades ocultos",
+      "hiddenCommandsAndSkillsDesc": "Oculta comandos y habilidades de OpenCode. Escribe un nombre por línea, sin la barra inicial.",
+      "subagents": "Subagentes",
+      "subagentsDesc": "Administra subagentes del vault en .opencode/agent/ y la ruta antigua .opencode/agents/. Los nuevos elementos aparecen en el menú de @menciones.",
+      "environmentVariables": "Variables de entorno",
+      "environmentVariablesDesc": "Variables de entorno adicionales para OpenCode. `OPENCODE_ENABLE_EXA=1` está activado de forma predeterminada."
+    },
+    "pi": {
+      "environmentVariables": "Variables de entorno de Pi",
+      "environmentVariablesDesc": "Variables de entorno enviadas solo a Pi."
+    },
+    "livePreviewComposer": {
+      "name": "Vista previa en el editor",
+      "desc": "Renderiza Markdown compatible y referencias del almacén mientras escribes. Desactívalo para usar texto sin formato. Se aplica al volver a abrir la vista de chat."
+    },
+    "claude": {
+      "authenticationRequired": "Claude requiere una clave de API explícita o una autenticación en la nube compatible.",
+      "enableProvider": {
+        "name": "Activar proveedor Claude",
+        "desc": "Cuando está activado, los modelos Claude aparecen en el selector de modelos para nuevas conversaciones. Las sesiones Claude existentes se conservan."
+      }
+    },
+    "claudeServices": {
+      "heading": "Third-party model services",
+      "description": "Connect Anthropic-compatible services through Claude. Enabled services appear in the chat model picker.",
+      "empty": "No third-party services configured.",
+      "add": "Add model service",
+      "enable": "Enable",
+      "disable": "Disable",
+      "test": "Test connection",
+      "testing": "Testing connection. This sends a minimal paid request.",
+      "testSuccess": "Connection succeeded in {latency} ms.",
+      "testFailed": "Connection failed: {error}",
+      "setDefault": "Set as default",
+      "defaultActive": "Default service",
+      "deleteReferenced": "This service is used by saved conversations. Disable it instead.",
+      "deleteConfirm": "Delete this model service? Its SecretStorage entry will be kept.",
+      "costNotice": "Connection tests send one minimal request and may incur provider charges.",
+      "modal": {
+        "add": "Add model service",
+        "edit": "Edit model service"
+      },
+      "fields": {
+        "preset": "Service template",
+        "name": "Service name",
+        "url": "Base URL",
+        "urlDesc": "Anthropic-compatible endpoint. HTTPS required except localhost.",
+        "auth": "Authentication",
+        "secret": "API key",
+        "secretDesc": "Select or create a key in Obsidian SecretStorage.",
+        "defaultModel": "Default model ID",
+        "lightModel": "Lightweight model ID",
+        "lightModelDesc": "Used for title generation and Haiku-class tasks."
+      },
+      "auth": {
+        "bearer": "Bearer token",
+        "apiKey": "API key header"
+      },
+      "validation": {
+        "name": "Service name is required.",
+        "url": "Valid Base URL is required.",
+        "https": "Use HTTPS, or HTTP only for localhost.",
+        "secret": "Select or create an API key in SecretStorage.",
+        "defaultModel": "Default model ID is required.",
+        "lightModel": "Lightweight model ID is required."
+      }
+    }
+  }
+}

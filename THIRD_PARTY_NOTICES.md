@@ -1,0 +1,27 @@
+# Third-party notices
+
+Codian source is distributed under the MIT License, except for third-party components governed by their own licenses and terms.
+
+## Claude Agent SDK
+
+Codian depends on `@anthropic-ai/claude-agent-sdk` to integrate Claude.
+
+- Copyright: Anthropic PBC. All rights reserved.
+- Package license: `SEE LICENSE IN README.md` / `SEE LICENSE IN LICENSE.md`.
+- Terms: <https://code.claude.com/docs/en/legal-and-compliance>
+- SDK repository: <https://github.com/anthropics/claude-agent-sdk-typescript>
+
+The Claude Agent SDK is not relicensed under Codian's MIT License. Use of the SDK is subject to Anthropic's applicable legal agreements. Before publishing binary artifacts, maintainers must confirm that the planned SDK version and distribution method permit redistribution and must include all required notices.
+
+## Other direct runtime dependencies
+
+| Package | License |
+| --- | --- |
+| `@codemirror/commands` | MIT |
+| `@codemirror/state` | MIT |
+| `@codemirror/view` | MIT |
+| `@modelcontextprotocol/sdk` | MIT |
+| `smol-toml` | BSD-3-Clause |
+| `tslib` | 0BSD |
+
+`package-lock.json` is the authoritative dependency snapshot. Transitive dependencies retain their own notices and license terms. Binary release preparation must generate and review a complete production dependency license inventory.

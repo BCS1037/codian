@@ -1,0 +1,20 @@
+.claudian-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+  font-family: var(--font-text);
+}
+
+.claudian-provider-icon-variant--dark {
+  display: none;
+}
+
+body.theme-dark .claudian-provider-icon-variant--light {
+  display: none;
+}
+
+body.theme-dark .claudian-provider-icon-variant--dark {
+  display: inline;
+}

@@ -1,0 +1,324 @@
+/* Input area */
+.claudian-input-container {
+  position: relative;
+  padding: 12px 0 0 0;
+}
+
+.claudian-input-footer {
+  position: relative;
+  flex-shrink: 0;
+  padding: 6px 0 0 0;
+}
+
+.claudian-active-input-slot > .claudian-input-composer > .claudian-input-container {
+  padding-top: 0;
+}
+
+/* Input wrapper (border container) - flex column so textarea expands when no chips */
+.claudian-input-wrapper {
+  --claudian-input-wrapper-border-color: var(--background-modifier-border);
+  --claudian-input-wrapper-box-shadow: none;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 140px;
+  border: 1px solid var(--claudian-input-wrapper-border-color);
+  border-radius: 6px;
+  background: var(--background-primary);
+  box-shadow: var(--claudian-input-wrapper-box-shadow);
+}
+
+/* Nav row (tab badges start, action icons end) - above input wrapper */
+.claudian-input-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 6px 0;
+  min-height: 0;
+}
+
+.claudian-input-nav-row:empty {
+  display: none;
+}
+
+.claudian-input-nav-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+}
+
+.claudian-input-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  margin-inline-start: auto;
+}
+
+.claudian-input-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-faint);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.claudian-input-nav-btn:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.claudian-input-nav-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.claudian-new-tab-btn svg {
+  width: 16.8px;
+  height: 16.8px;
+}
+
+.claudian-input-wrapper textarea.claudian-input {
+  width: 100%;
+  flex: 1 1 0;
+  min-height: var(--claudian-textarea-min-height, 60px);
+  max-height: var(--claudian-textarea-max-height, none);
+  resize: none;
+  padding: 8px 10px 10px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-normal);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  box-shadow: none;
+  overflow-y: auto;
+  unicode-bidi: plaintext; /* Proper BiDi text handling for mixed RTL/LTR */
+}
+
+.claudian-input-wrapper textarea.claudian-input:hover,
+.claudian-input-wrapper textarea.claudian-input:focus {
+  outline: none;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.claudian-input-wrapper textarea.claudian-input::placeholder {
+  color: var(--text-muted);
+}
+
+.claudian-input-wrapper textarea.claudian-input.claudian-live-preview-source {
+  display: none;
+}
+
+.claudian-live-preview-host {
+  display: flex;
+  flex: 1 1 0;
+  min-height: var(--claudian-textarea-min-height, 60px);
+  max-height: var(--claudian-textarea-max-height, 50vh);
+  min-width: 0;
+}
+
+.claudian-live-preview-composer.cm-editor {
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  color: var(--text-normal);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.claudian-live-preview-composer.cm-editor.cm-focused {
+  outline: none;
+}
+
+.claudian-live-preview-composer .cm-scroller {
+  overflow: auto;
+  font-family: inherit;
+}
+
+.claudian-live-preview-composer .cm-content {
+  min-height: 60px;
+  padding: 8px 10px 10px 10px;
+  caret-color: var(--text-normal);
+  unicode-bidi: plaintext;
+}
+
+.claudian-live-preview-composer .cm-line {
+  padding: 0;
+}
+
+.claudian-live-preview-composer .cm-placeholder {
+  color: var(--text-muted);
+  font-style: normal;
+}
+
+.claudian-live-preview-inline-code,
+.claudian-live-preview-reference {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--code-background);
+  color: var(--code-normal);
+  font-family: var(--font-monospace);
+  font-size: 0.92em;
+}
+
+.claudian-live-preview-reference--selected {
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.claudian-live-preview-reference {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  cursor: default;
+}
+
+.claudian-live-preview-reference-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.claudian-live-preview-reference-icon {
+  display: inline-flex;
+  color: var(--text-muted);
+  --icon-size: 12px;
+}
+
+.claudian-live-preview-link {
+  color: var(--link-color);
+  text-decoration: underline;
+  text-decoration-color: var(--link-color);
+  text-underline-offset: 2px;
+}
+
+.claudian-live-preview-unordered-marker,
+.claudian-live-preview-ordered-marker {
+  display: inline-block;
+  min-width: 1.4em;
+  color: var(--list-marker-color, var(--text-muted));
+  font-variant-numeric: tabular-nums;
+}
+
+/* Input toolbar */
+.claudian-input-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  row-gap: 12px;
+  padding: 4px 6px 6px 6px;
+}
+
+.claudian-input-toolbar--compact .claudian-thinking-label-text,
+.claudian-input-toolbar--compact .claudian-context-meter-percent {
+  display: none;
+}
+
+/* Composer queue status row (queued follow-up preview + steer action) */
+.claudian-input-queue-row {
+  display: none;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: normal;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px 8px 2px;
+}
+
+.claudian-queue-indicator-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.claudian-queue-indicator-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.claudian-queue-indicator-action {
+  flex: 0 0 auto;
+  padding: 1px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--interactive-accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.claudian-queue-indicator-action:hover {
+  text-decoration: underline;
+}
+
+.claudian-queue-indicator-action[disabled] {
+  color: var(--text-faint);
+  cursor: default;
+  text-decoration: none;
+}
+
+.claudian-queue-indicator-icon-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.claudian-queue-indicator-icon-action:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.claudian-queue-indicator-icon-action svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Light blue border when instruction mode is active */
+.claudian-input-wrapper.claudian-input-instruction-mode {
+  --claudian-input-wrapper-border-color: #60a5fa;
+  --claudian-input-wrapper-box-shadow: 0 0 0 1px #60a5fa;
+}
+
+/* Pink border when bash mode is active */
+.claudian-input-wrapper.claudian-input-bang-bash-mode {
+  --claudian-input-wrapper-border-color: #f472b6;
+  --claudian-input-wrapper-box-shadow: 0 0 0 1px #f472b6;
+}
+
+/* Monospace input while in bash mode */
+.claudian-input-wrapper.claudian-input-bang-bash-mode .claudian-input {
+  font-family: var(--font-monospace);
+}
+
+.claudian-input-wrapper.claudian-input-bang-bash-mode .claudian-live-preview-composer {
+  font-family: var(--font-monospace);
+}

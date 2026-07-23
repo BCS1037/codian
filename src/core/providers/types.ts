@@ -1,0 +1,718 @@
+import type { CursorContext } from '../../utils/editor';
+import type { SharedAppStorage } from '../bootstrap/storage';
+import type { McpServerManager } from '../mcp/McpServerManager';
+import type { ChatRuntime } from '../runtime/ChatRuntime';
+import type { HomeFileAdapter } from '../storage/HomeFileAdapter';
+import type { VaultFileAdapter } from '../storage/VaultFileAdapter';
+import type {
+  AgentDefinition,
+  Conversation,
+  InstructionRefineResult,
+  ManagedMcpServer,
+  PluginInfo,
+  SessionMetadata,
+  SlashCommand,
+  SubagentInfo,
+  ToolCallInfo,
+} from '../types';
+import type { ProviderId } from '../types/provider';
+import type { ProviderCommandCatalog } from './commands/ProviderCommandCatalog';
+import type { ProviderCommandDiscoveryResult } from './commands/ProviderCommandDiscoveryResult';
+import type { ProviderVaultEntryRepository } from './commands/ProviderVaultEntryRepository';
+import type { ProviderHost } from './ProviderHost';
+
+export type { ProviderId } from '../types/provider';
+
+export interface ProviderCapabilities {
+  providerId: ProviderId;
+  supportsPersistentRuntime: boolean;
+  supportsNativeHistory: boolean;
+  supportsPlanMode: boolean;
+  supportsRewind: boolean;
+  supportsFork: boolean;
+  supportsProviderCommands: boolean;
+  supportsImageAttachments: boolean;
+  supportsInstructionMode: boolean;
+  supportsMcpTools: boolean;
+  supportsTurnSteer?: boolean;
+  reasoningControl: 'effort' | 'token-budget' | 'none';
+  planPathPrefix?: string;
+}
+
+export const DEFAULT_CHAT_PROVIDER_ID = 'claude' as const satisfies ProviderId;
+
+export interface CreateChatRuntimeOptions {
+  plugin: ProviderHost;
+  providerId?: ProviderId;
+}
+
+/**
+ * Chat-facing provider registration.
+ *
+ * This is intentionally limited to chat-facing services.
+ * Shared bootstrap (defaults, storage) is in `src/core/bootstrap/`.
+ * Provider-owned workspace services (CLI resolution, commands, agents,
+ * MCP, settings tabs) live behind `src/providers/<id>/app/`.
+ */
+export interface ProviderRegistration {
+  displayName: string;
+  displayOrder: number;
+  isEnabled: (settings: Record<string, unknown>) => boolean;
+  setEnabled?: (settings: Record<string, unknown>, enabled: boolean) => void;
+  capabilities: ProviderCapabilities;
+  environmentKeyPatterns?: RegExp[];
+  chatUIConfig: ProviderChatUIConfig;
+  settingsReconciler: ProviderSettingsReconciler;
+  createRuntime: (options: Omit<CreateChatRuntimeOptions, 'providerId'>) => ChatRuntime;
+  createTitleGenerationService: (plugin: ProviderHost) => TitleGenerationService;
+  createInstructionRefineService: (plugin: ProviderHost) => InstructionRefineService;
+  createInlineEditService: (plugin: ProviderHost) => InlineEditService;
+  historyService: ProviderConversationHistoryService;
+  taskResultInterpreter: ProviderTaskResultInterpreter;
+  subagentAdapter?: ProviderSubagentAdapter;
+}
+
+export interface ProviderModule extends ProviderRegistration {
+  id: ProviderId;
+  blankTabOrder?: number;
+  settingsStorage: ProviderSettingsStorageAdapter;
+  workspace: ProviderWorkspaceRegistration;
+}
+
+export interface ProviderSettingsStorageAdapter {
+  hostScopedFields?: string[];
+  legacyTopLevelFields?: string[];
+  runtimeOnlyFields?: string[];
+  normalizeStored(
+    target: Record<string, unknown>,
+    stored: Record<string, unknown>,
+  ): boolean;
+}
+
+export type ProviderEnvironmentSessionPolicy = 'invalidate' | 'reload';
+
+export interface ProviderSettingsReconciler {
+  /** Defaults to `invalidate` for backward compatibility. */
+  environmentSessionPolicy?: ProviderEnvironmentSessionPolicy;
+
+  handleEnvironmentChange?(settings: Record<string, unknown>): boolean;
+
+  invalidateConversationSessions(conversations: Conversation[]): Conversation[];
+
+  reconcileModelWithEnvironment(
+    settings: Record<string, unknown>,
+    conversations: Conversation[],
+  ): { changed: boolean; invalidatedConversations: Conversation[] };
+
+  normalizeModelVariantSettings(settings: Record<string, unknown>): boolean;
+}
+
+// ---------------------------------------------------------------------------
+// App-level service interfaces
+// ---------------------------------------------------------------------------
+
+/** Tab manager state persisted across restarts. */
+export interface AppTabManagerState {
+  openTabs: Array<{ tabId: string; conversationId: string | null; draftModel?: string | null }>;
+  activeTabId: string | null;
+  expandedTitleTabIds?: string[];
+}
+
+/** Provider-neutral session metadata storage. */
+export interface SessionMetadataListOptions {
+  /** Receives successful reads incrementally. Batches may follow completion order. */
+  onBatch?: (metadata: SessionMetadata[]) => void;
+  batchSize?: number;
+}
+
+export interface SessionMetadataScanResult {
+  metadata: SessionMetadata[];
+  /** False when any metadata directory or listed metadata file could not be read. */
+  complete: boolean;
+  /** Files that were read successfully but did not contain valid session metadata. */
+  invalidMetadataCount: number;
+}
+
+export interface AppSessionStorage {
+  scanMetadata(options?: SessionMetadataListOptions): Promise<SessionMetadataScanResult>;
+  listMetadata(options?: SessionMetadataListOptions): Promise<SessionMetadata[]>;
+  loadMetadata(id: string): Promise<SessionMetadata | null>;
+  saveMetadata(meta: SessionMetadata): Promise<void>;
+  deleteMetadata(id: string): Promise<void>;
+  toSessionMetadata(conv: Conversation): SessionMetadata;
+}
+
+// ---------------------------------------------------------------------------
+// Provider-owned workspace sub-interfaces
+//
+// These remain here as standalone types so app-level settings/chat code can
+// depend on stable provider workspace contracts without importing concrete
+// provider implementations. They are NOT part of the shared bootstrap storage
+// contract (`SharedAppStorage`).
+// ---------------------------------------------------------------------------
+
+export interface AppMcpStorage {
+  load(): Promise<ManagedMcpServer[]>;
+  save(servers: ManagedMcpServer[]): Promise<void>;
+  tryParseClipboardConfig?(text: string): unknown;
+}
+
+export interface AppCommandStorage {
+  save(command: SlashCommand): Promise<void>;
+  delete(name: string): Promise<void>;
+}
+
+export interface AppSkillStorage {
+  save(skill: SlashCommand): Promise<void>;
+  delete(name: string): Promise<void>;
+}
+
+export interface AppAgentStorage {
+  load(agent: AgentDefinition): Promise<AgentDefinition | null>;
+  save(agent: AgentDefinition): Promise<void>;
+  delete(agent: AgentDefinition): Promise<void>;
+}
+
+export type AgentMentionSource = AgentDefinition['source'];
+
+export interface AgentMentionProvider {
+  ensureLoaded?(): Promise<void>;
+  isLoaded?(): boolean;
+  searchAgents(query: string): Array<{
+    id: string;
+    name: string;
+    description?: string;
+    source: AgentMentionSource;
+    filePath?: string;
+  }>;
+}
+
+/** Provider plugin manager interface consumed by the app layer. */
+export interface AppPluginManager {
+  loadPlugins(): Promise<void>;
+  getPlugins(): PluginInfo[];
+  hasPlugins(): boolean;
+  hasEnabledPlugins(): boolean;
+  getEnabledCount(): number;
+  getPluginsKey(): string;
+  togglePlugin(pluginId: string): Promise<void>;
+  enablePlugin(pluginId: string): Promise<void>;
+  disablePlugin(pluginId: string): Promise<void>;
+}
+
+/** Provider agent manager interface consumed by the app layer. */
+export interface AppAgentManager extends AgentMentionProvider {
+  loadAgents(): Promise<void>;
+  getAvailableAgents(): AgentDefinition[];
+  getAgentById(id: string): AgentDefinition | undefined;
+  searchAgents(query: string): AgentDefinition[];
+  setBuiltinAgentNames(names: string[]): void;
+}
+
+// ---------------------------------------------------------------------------
+// Provider-owned chat UI configuration
+// ---------------------------------------------------------------------------
+
+/** Option for model, reasoning, or other UI selectors. */
+export interface ProviderUIOption {
+  value: string;
+  label: string;
+  description?: string;
+  /** Optional group label for visual separators in dropdowns. */
+  group?: string;
+  /** Per-option icon override (e.g. when mixing providers in a single dropdown). */
+  providerIcon?: ProviderIconSvg;
+}
+
+export interface ProviderPathIconSvg {
+  kind?: 'path';
+  viewBox: string;
+  path: string;
+}
+
+export interface ProviderSvgPathChild {
+  tag: 'path';
+  attributes: Record<string, string>;
+}
+
+export interface ProviderSvgGroupChild {
+  tag: 'g';
+  attributes: Record<string, string>;
+  children: ProviderSvgPathChild[];
+}
+
+export type ProviderSvgChild = ProviderSvgGroupChild | ProviderSvgPathChild;
+
+export interface ProviderCompositeIconSvg {
+  kind: 'composite';
+  viewBox: string;
+  children: ProviderSvgChild[];
+}
+
+/** SVG icon descriptor for provider branding in selectors and headers. */
+export type ProviderIconSvg = ProviderPathIconSvg | ProviderCompositeIconSvg;
+
+/** Extended option with token count for budget-based reasoning controls. */
+export interface ProviderReasoningOption extends ProviderUIOption {
+  tokens?: number;
+}
+
+/** Compact permission-mode toggle descriptor for providers that expose the current toolbar control. */
+export interface ProviderPermissionModeToggleConfig {
+  inactiveValue: string;
+  inactiveLabel: string;
+  activeValue: string;
+  activeLabel: string;
+  planValue?: string;
+  planLabel?: string;
+}
+
+/** Compact service-tier toggle descriptor for providers that expose a fast/standard toolbar control. */
+export interface ProviderServiceTierToggleConfig {
+  inactiveValue: string;
+  inactiveLabel: string;
+  activeValue: string;
+  activeLabel: string;
+  description?: string;
+}
+
+export interface ProviderModeSelectorConfig {
+  activeValue?: string;
+  label: string;
+  options: ProviderUIOption[];
+  value: string;
+}
+
+/** Synchronous UI projection owned by the provider and backed by provider-owned metadata. */
+export interface ProviderChatUIConfig {
+  /** How settings should describe model ownership for this provider. */
+  modelManagement?: 'visible-models' | 'manual-models' | 'cli-managed';
+
+  /** Model options for the selector dropdown. Provider extracts what it needs from the settings bag. */
+  getModelOptions(settings: Record<string, unknown>): ProviderUIOption[];
+
+  /** Semantic default model, independent from selector display order. */
+  getDefaultModel?(settings: Record<string, unknown>): string | null;
+
+  /** Whether this provider owns the given model id. */
+  ownsModel(model: string, settings: Record<string, unknown>): boolean;
+
+  /** Whether the model uses adaptive reasoning (effort levels vs token budgets). */
+  isAdaptiveReasoningModel(model: string, settings: Record<string, unknown>): boolean;
+
+  /** Reasoning options for the current model (effort levels if adaptive, budgets otherwise). */
+  getReasoningOptions(model: string, settings: Record<string, unknown>): ProviderReasoningOption[];
+
+  /** Default reasoning value for the model. */
+  getDefaultReasoningValue(model: string, settings: Record<string, unknown>): string;
+
+  /** Context window size in tokens. */
+  getContextWindowSize(
+    model: string,
+    customLimits?: Record<string, number>,
+    settings?: Record<string, unknown>,
+  ): number;
+
+  /** Whether this is a built-in (default) model vs custom/env model. */
+  isDefaultModel(model: string): boolean;
+
+  /** Apply model change side effects to settings (defaults, tracking). */
+  applyModelDefaults(model: string, settings: unknown): void;
+
+  /** Track provider-owned metadata when the global title-generation model changes. */
+  applyTitleGenerationModelSelection?(model: string, settings: unknown): void;
+
+  /** Apply model-scoped defaults to an ephemeral conversation settings projection. */
+  applyModelProjectionDefaults?(model: string, settings: unknown): void;
+
+  /** Optional provider hook to discover model-scoped metadata after a model is selected. */
+  prepareModelMetadata?(
+    model: string,
+    settings: Record<string, unknown>,
+    context: { plugin: ProviderHost },
+  ): Promise<void>;
+
+  /** Optional hook when the toolbar changes a reasoning selection. */
+  applyReasoningSelection?(model: string, value: string, settings: unknown): void;
+
+  /** Normalize model variant based on visibility flags. Provider extracts what it needs from the settings bag. */
+  normalizeModelVariant(model: string, settings: Record<string, unknown>): string;
+
+  /** Extract custom model IDs from parsed environment variables. Used for per-model context limit UI. */
+  getCustomModelIds(envVars: Record<string, string>): Set<string>;
+
+  /** Optional permission-mode toggle descriptor. Return null when the provider exposes no permission toggle UI. */
+  getPermissionModeToggle?(): ProviderPermissionModeToggleConfig | null;
+
+  /** Optional provider-owned mapping back into the shared permission-mode contract. */
+  resolvePermissionMode?(settings: Record<string, unknown>): string | null;
+
+  /** Optional hook when the toolbar changes permission mode. */
+  applyPermissionMode?(value: string, settings: unknown): void;
+
+  /** Optional service-tier toggle descriptor. Return null when the provider exposes no fast/standard UI. */
+  getServiceTierToggle?(settings: Record<string, unknown>): ProviderServiceTierToggleConfig | null;
+
+  /** Optional provider-owned mode selector descriptor. */
+  getModeSelector?(settings: Record<string, unknown>): ProviderModeSelectorConfig | null;
+
+  /** Optional hook when the toolbar changes a provider-owned mode selection. */
+  applyModeSelection?(value: string, settings: unknown): void;
+
+  /** Whether the provider enables the shared bang-bash input mode. */
+  isBangBashEnabled?(settings: Record<string, unknown>): boolean;
+
+  /** SVG icon for the provider (shown next to model names in selectors). */
+  getProviderIcon?(): ProviderIconSvg | null;
+}
+
+// ---------------------------------------------------------------------------
+// Provider-owned boundary services
+// ---------------------------------------------------------------------------
+
+export interface ProviderTransitionOwnerContext {
+  providerTransitionOwner?: boolean;
+}
+
+export interface ProviderCliResolutionContext extends ProviderTransitionOwnerContext {
+  executionTarget?: unknown;
+}
+
+export interface ProviderCliResolver {
+  resolveFromSettings(
+    settings: Record<string, unknown>,
+    context?: ProviderCliResolutionContext,
+  ): string | null | Promise<string | null>;
+  reset(): void;
+}
+
+export interface ProviderRuntimeCommandLoaderContext {
+  // Shared command discovery may need a short-lived provider session; the tab
+  // manager decides when that is allowed for the active tab.
+  allowSessionCreation?: boolean;
+  conversation: Conversation | null;
+  externalContextPaths: string[];
+  plugin: ProviderHost;
+  runtime: ChatRuntime | null;
+}
+
+export interface ProviderRuntimeCommandLoader {
+  /**
+   * Returns a provider-owned, non-secret identity for inputs that affect command discovery.
+   * Raw settings, environment values, session state, and external paths must not be included.
+   */
+  getCacheFingerprint(settings: Record<string, unknown>): string;
+  isAvailable(settings: Record<string, unknown>): boolean;
+  loadCommands(
+    context: ProviderRuntimeCommandLoaderContext,
+  ): Promise<ProviderCommandDiscoveryResult<SlashCommand>>;
+}
+
+// `commands` warms provider-owned command discovery without fully priming the
+// bound tab runtime. `runtime` primes the real tab runtime itself.
+export type ProviderTabWarmupMode = 'none' | 'commands' | 'runtime';
+
+export type ProviderTabWarmupLifecycleState = 'blank' | 'bound_cold' | 'bound_active' | 'closing';
+
+export interface ProviderTabWarmupContext {
+  conversation: Conversation | null;
+  externalContextPaths: string[];
+  plugin: ProviderHost;
+  runtime: ChatRuntime | null;
+  tab: {
+    conversationId: string | null;
+    draftModel: string | null;
+    lifecycleState: ProviderTabWarmupLifecycleState;
+    providerId: ProviderId;
+  };
+}
+
+export interface ProviderTabWarmupPolicy {
+  resolveMode(context: ProviderTabWarmupContext): ProviderTabWarmupMode;
+}
+
+export interface ProviderEnvironmentTransition {
+  release(): Promise<void>;
+}
+
+export interface ProviderWorkspaceServices {
+  commandCatalog?: ProviderCommandCatalog | null;
+  vaultCommandRepository?: ProviderVaultEntryRepository | null;
+  agentMentionProvider?: AgentMentionProvider | null;
+  cliResolver?: ProviderCliResolver | null;
+  runtimeCommandLoader?: ProviderRuntimeCommandLoader | null;
+  tabWarmupPolicy?: ProviderTabWarmupPolicy | null;
+  mcpServerManager?: McpServerManager | null;
+  mcpSourcePath?: string | null;
+  settingsTabRenderer?: ProviderSettingsTabRenderer | null;
+  refreshAgentMentions?(context?: ProviderTransitionOwnerContext): Promise<void>;
+  refreshModelCatalog?(
+    context?: ProviderTransitionOwnerContext,
+  ): Promise<ProviderModelCatalogRefreshResult>;
+  beginAuxiliaryServicesEnvironmentChange?(): Promise<ProviderEnvironmentTransition>;
+  prepareSettings?(): Promise<void>;
+  dispose?(): Promise<void> | void;
+}
+
+export interface ProviderModelCatalogRefreshResult {
+  /** Whether runtime catalog or persisted selection state changed. */
+  changed: boolean;
+  diagnostics?: string;
+  /** Whether the provider-owned refresh persisted selection settings. */
+  persistedSettingsChanged?: boolean;
+}
+
+export interface ProviderSettingsTabRendererContext {
+  plugin: ProviderHost;
+  getConversationModelSelections?(): Promise<string[]>;
+  renderAgentSkillSettings?(
+    container: HTMLElement,
+    providerId: ProviderId,
+  ): void;
+  renderHiddenProviderCommandSetting(
+    container: HTMLElement,
+    providerId: ProviderId,
+    copy: { name: string; desc: string; placeholder: string },
+  ): void;
+  refreshModelSelectors(): void;
+  refreshTitleGenerationModelOptions(): void;
+  renderCustomContextLimits(container: HTMLElement, providerId: ProviderId): void;
+}
+
+export type ProviderSettingsSectionId =
+  | 'provider'
+  | 'skills'
+  | 'agents'
+  | 'mcp'
+  | 'commands';
+
+export interface ProviderSettingsTabRenderer {
+  sections: readonly ProviderSettingsSectionId[];
+  render(
+    container: HTMLElement,
+    context: ProviderSettingsTabRendererContext,
+    section?: ProviderSettingsSectionId,
+  ): void;
+}
+
+export interface ProviderWorkspaceInitContext {
+  plugin: ProviderHost;
+  storage: SharedAppStorage;
+  vaultAdapter: VaultFileAdapter;
+  homeAdapter: HomeFileAdapter;
+}
+
+export interface ProviderWorkspaceRegistration<
+  TServices extends ProviderWorkspaceServices = ProviderWorkspaceServices,
+> {
+  initialize(context: ProviderWorkspaceInitContext): Promise<TServices>;
+}
+
+export interface ProviderConversationHistoryService {
+  /**
+   * Reports whether the provider-native session needed to resume a persisted
+   * conversation is still available. Providers that cannot distinguish a
+   * missing session from an inaccessible history store should return unknown.
+   */
+  getConversationSessionAvailability?(
+    conversation: Conversation,
+    vaultPath: string | null,
+    pathContext?: ProviderHistoryPathContext,
+  ): Promise<ProviderConversationSessionAvailability>;
+  /** Clears stale resume state so relocated provider history can rebuild natively. */
+  prepareRelocatedConversationSession?(
+    conversation: Conversation,
+    vaultPath: string | null,
+    pathContext?: ProviderHistoryPathContext,
+  ): Promise<boolean>;
+  /** Decides whether a confirmed missing resume session makes the whole record disposable. */
+  resolveMissingConversationSession?(
+    conversation: Conversation,
+    vaultPath: string | null,
+    missingProviderSessionId?: string,
+    pathContext?: ProviderHistoryPathContext,
+  ): Promise<'delete' | 'reset' | 'preserve'>;
+  hydrateConversationHistory(
+    conversation: Conversation,
+    vaultPath: string | null,
+    pathContext?: ProviderHistoryPathContext,
+  ): Promise<void>;
+  deleteConversationSession(
+    conversation: Conversation,
+    vaultPath: string | null,
+    pathContext?: ProviderHistoryPathContext,
+  ): Promise<void>;
+  resolveSessionIdForConversation(conversation: Conversation | null): string | null;
+  isPendingForkConversation(conversation: Conversation): boolean;
+  /** Builds opaque provider state for a forked conversation. */
+  buildForkProviderState(
+    sourceSessionId: string,
+    resumeAt: string,
+    sourceProviderState?: Record<string, unknown>,
+  ): Record<string, unknown>;
+  /** Adds provider-owned persisted metadata to Conversation.providerState before session save. */
+  buildPersistedProviderState?(conversation: Conversation): Record<string, unknown> | undefined;
+}
+
+export interface ProviderHistoryPathContext {
+  environment: NodeJS.ProcessEnv;
+  hostPlatform?: NodeJS.Platform;
+  settings?: Record<string, unknown>;
+  vaultPath?: string | null;
+}
+
+export type ProviderConversationSessionAvailability =
+  | 'available'
+  | 'relocated'
+  | 'missing'
+  | 'unknown';
+
+export type ProviderTaskTerminalStatus = Extract<ToolCallInfo['status'], 'completed' | 'error'>;
+
+export interface ProviderTaskResultInterpreter {
+  hasAsyncLaunchMarker(toolUseResult: unknown): boolean;
+  extractAgentId(toolUseResult: unknown): string | null;
+  extractStructuredResult(toolUseResult: unknown): string | null;
+  resolveTerminalStatus(
+    toolUseResult: unknown,
+    fallbackStatus: ProviderTaskTerminalStatus,
+  ): ProviderTaskTerminalStatus;
+  extractTagValue(payload: string, tagName: string): string | null;
+}
+
+export interface ProviderSubagentLaunchResult {
+  agentId?: string;
+  nickname?: string;
+}
+
+export interface ProviderSubagentWaitStatus {
+  completed?: string;
+  error?: string;
+  failed?: string;
+}
+
+export interface ProviderSubagentWaitResult {
+  statuses: Record<string, ProviderSubagentWaitStatus>;
+  timedOut: boolean;
+}
+
+export interface ProviderManagedSubagentAdapter {
+  protocol: 'managed-agent';
+  isOutputTool(name: string): boolean;
+  isSpawnTool(name: string): boolean;
+}
+
+export interface ProviderSubagentLifecycleAdapter {
+  protocol: 'lifecycle';
+  isHiddenTool(name: string): boolean;
+  isToolCallFullyOwned(
+    toolCall: ToolCallInfo,
+    agentIdToSpawnId: ReadonlyMap<string, string>,
+  ): boolean;
+  isSpawnTool(name: string): boolean;
+  isWaitTool(name: string): boolean;
+  isCloseTool(name: string): boolean;
+  resolveSpawnToolIds(
+    waitToolCall: ToolCallInfo,
+    agentIdToSpawnId: ReadonlyMap<string, string>,
+  ): string[];
+  buildSubagentInfo(
+    spawnToolCall: ToolCallInfo,
+    siblingToolCalls?: ToolCallInfo[],
+  ): SubagentInfo;
+  extractSpawnResult(
+    raw: string | undefined,
+    toolCall?: ToolCallInfo,
+  ): ProviderSubagentLaunchResult;
+  extractWaitResult(
+    raw: string | undefined,
+    toolCall?: ToolCallInfo,
+  ): ProviderSubagentWaitResult;
+}
+
+export type ProviderSubagentAdapter =
+  | ProviderManagedSubagentAdapter
+  | ProviderSubagentLifecycleAdapter;
+
+// ---------------------------------------------------------------------------
+// Auxiliary service contracts
+// ---------------------------------------------------------------------------
+
+// -- Title generation --
+
+export type TitleGenerationResult =
+  | { success: true; title: string }
+  | { success: false; error: string };
+
+export type TitleGenerationCallback = (
+  conversationId: string,
+  result: TitleGenerationResult
+) => Promise<void>;
+
+export interface TitleGenerationService {
+  generateTitle(
+    conversationId: string,
+    userMessage: string,
+    callback: TitleGenerationCallback
+  ): Promise<void>;
+  cancel(): void;
+}
+
+// -- Instruction refinement --
+
+export type RefineProgressCallback = (update: InstructionRefineResult) => void;
+
+export interface InstructionRefineService {
+  setModelOverride?(model?: string): void;
+  resetConversation(): void;
+  refineInstruction(
+    rawInstruction: string,
+    existingInstructions: string,
+    onProgress?: RefineProgressCallback
+  ): Promise<InstructionRefineResult>;
+  continueConversation(
+    message: string,
+    onProgress?: RefineProgressCallback
+  ): Promise<InstructionRefineResult>;
+  cancel(): void;
+}
+
+// -- Inline edit --
+
+export type InlineEditMode = 'selection' | 'cursor';
+
+export interface InlineEditSelectionRequest {
+  mode: 'selection';
+  instruction: string;
+  notePath: string;
+  selectedText: string;
+  startLine?: number;
+  lineCount?: number;
+  contextFiles?: string[];
+}
+
+export interface InlineEditCursorRequest {
+  mode: 'cursor';
+  instruction: string;
+  notePath: string;
+  cursorContext: CursorContext;
+  contextFiles?: string[];
+}
+
+export type InlineEditRequest = InlineEditSelectionRequest | InlineEditCursorRequest;
+
+export interface InlineEditResult {
+  success: boolean;
+  editedText?: string;
+  insertedText?: string;
+  clarification?: string;
+  error?: string;
+}
+
+export interface InlineEditService {
+  setModelOverride?(model?: string): void;
+  resetConversation(): void;
+  editText(request: InlineEditRequest): Promise<InlineEditResult>;
+  continueConversation(message: string, contextFiles?: string[]): Promise<InlineEditResult>;
+  cancel(): void;
+}

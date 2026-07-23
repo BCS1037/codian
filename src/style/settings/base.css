@@ -1,0 +1,701 @@
+/* ── Settings tab navigation ── */
+
+.claudian-settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 16px;
+}
+
+.claudian-settings-tab {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  margin-bottom: -1px;
+}
+
+.claudian-settings .claudian-settings-tab {
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.claudian-settings-tab:hover {
+  color: var(--text-normal);
+}
+
+.claudian-settings-tab--active {
+  color: var(--text-normal);
+  border-bottom-color: var(--interactive-accent);
+}
+
+.claudian-settings-tab-content {
+  display: none;
+}
+
+.claudian-settings-tab-content--active {
+  display: block;
+}
+
+.claudian-settings-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.claudian-settings-provider-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  min-width: 0;
+  min-height: 92px;
+  height: auto;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  line-height: var(--line-height-normal);
+  text-align: left;
+  white-space: normal;
+  box-shadow: none;
+}
+
+.claudian-settings button.claudian-settings-provider-card {
+  height: auto;
+}
+
+.claudian-settings-provider-card:hover {
+  border-color: var(--background-modifier-border-hover);
+  background: var(--background-modifier-hover);
+}
+
+.claudian-settings-provider-card--active {
+  border-color: var(--interactive-accent);
+  background: var(--background-primary);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.claudian-settings-provider-card-header,
+.claudian-settings-provider-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.claudian-settings-provider-card-name {
+  overflow: hidden;
+  font-weight: var(--font-semibold);
+  font-size: var(--font-ui-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.claudian-settings-provider-card-identity {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+}
+
+.claudian-settings-provider-card-meta {
+  display: block;
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  line-height: 1.45;
+}
+
+.claudian-settings-provider-status,
+.claudian-settings-provider-default-badge {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.4;
+}
+
+.claudian-settings button.claudian-settings-provider-status {
+  height: auto;
+  min-height: 28px;
+  margin: 0;
+  padding: 3px 8px;
+  border: 0;
+  background: var(--background-modifier-hover);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.claudian-settings button.claudian-settings-provider-status:hover {
+  filter: brightness(0.96);
+}
+
+.claudian-settings button.claudian-settings-provider-status:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+.claudian-settings-provider-status::before {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  content: '';
+}
+
+.claudian-settings-provider-status.is-enabled {
+  background: color-mix(in srgb, var(--color-green) 16%, transparent);
+  color: var(--color-green);
+}
+
+.claudian-settings-provider-status.is-enabled::before {
+  background: var(--color-green);
+}
+
+.claudian-settings-provider-default-badge {
+  background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+  color: var(--interactive-accent);
+}
+
+.claudian-settings-default-provider {
+  align-items: center;
+  align-self: center;
+  gap: 8px;
+  min-width: 240px;
+  padding: 6px 8px 6px 12px;
+  border-radius: 999px;
+  background: var(--background-secondary);
+}
+
+.claudian-settings-default-provider .setting-item-info {
+  flex: 0 1 auto;
+}
+
+.claudian-settings-default-provider .setting-item-name {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+}
+
+.claudian-settings-default-provider .setting-item-description {
+  display: none;
+}
+
+.claudian-settings-default-provider .setting-item-control {
+  flex: 1 1 auto;
+}
+
+.claudian-settings-default-provider select {
+  width: 100%;
+  border: 0;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.claudian-settings-provider-details,
+.claudian-settings-workspace-details,
+.claudian-settings-environment-section {
+  padding: 16px 20px 20px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+
+.claudian-settings-provider-details > .setting-item,
+.claudian-settings-workspace-modal-content > .setting-item {
+  border-radius: 0;
+  background: transparent;
+}
+
+.claudian-settings-provider-details > .setting-item:not(.setting-item-heading),
+.claudian-settings-workspace-modal-content > .setting-item:not(.setting-item-heading) {
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.claudian-settings-segmented-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: 16px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+
+.claudian-settings-segmented-nav button {
+  padding: 5px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  font-size: var(--font-ui-small);
+}
+
+.claudian-settings-segmented-nav button:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.claudian-settings-segmented-nav button.is-active {
+  background: var(--background-primary);
+  color: var(--text-normal);
+  box-shadow: var(--shadow-s);
+}
+
+.claudian-settings-environment-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.claudian-settings-resource-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 28px 0 22px;
+}
+
+.claudian-settings-resource-copy {
+  min-width: 0;
+}
+
+.claudian-settings-resource-title {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+}
+
+.claudian-settings-resource-copy p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.claudian-settings-resource-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.claudian-settings-resource-search {
+  width: 240px;
+}
+
+.claudian-settings-resource-list {
+  display: grid;
+  gap: 10px;
+}
+
+.claudian-settings-resource-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.2fr) minmax(150px, 0.85fr) minmax(220px, 1.35fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-primary);
+}
+
+.claudian-settings-resource-row.is-header {
+  padding-top: 0;
+  padding-bottom: 2px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.claudian-settings-resource-name,
+.claudian-settings-resource-source {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.claudian-settings-resource-name {
+  font-family: var(--font-monospace);
+}
+
+.claudian-settings-resource-source {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-small);
+}
+
+.claudian-settings-resource-status {
+  justify-self: end;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+}
+
+.claudian-settings-resource-status.is-available,
+.claudian-settings-resource-status.is-connected {
+  background: color-mix(in srgb, var(--color-green) 14%, transparent);
+  color: var(--color-green);
+}
+
+.claudian-workspace-manager-modal {
+  width: min(900px, 90vw);
+  max-width: 90vw;
+}
+
+.claudian-workspace-manager-modal .modal-content {
+  width: auto;
+}
+
+.claudian-workspace-manager-modal .setting-item-control,
+.claudian-workspace-manager-modal textarea,
+.claudian-workspace-manager-modal input {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.claudian-settings-workspace-modal-content {
+  padding: 4px 16px 16px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-secondary);
+}
+
+.claudian-settings-empty-state {
+  padding: 28px 16px;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .claudian-settings-resource-row {
+    grid-template-columns: minmax(140px, 1fr) minmax(120px, 0.8fr) minmax(180px, 1.2fr) auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .claudian-settings-default-provider {
+    width: 100%;
+  }
+
+  .claudian-settings-provider-details,
+  .claudian-settings-workspace-details,
+  .claudian-settings-environment-section {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .claudian-settings-resource-toolbar,
+  .claudian-settings-resource-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .claudian-settings-resource-search {
+    width: 100%;
+  }
+
+  .claudian-settings-resource-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .claudian-settings-resource-row.is-header {
+    display: none;
+  }
+
+  .claudian-settings-resource-source {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 420px) {
+  .claudian-settings-provider-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Codex placeholder */
+.claudian-settings-codex-placeholder {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+/* Settings page - remove separator lines from setting items */
+.claudian-settings .setting-item {
+  border-top: none;
+}
+
+/* Settings section headings (via setHeading()) */
+.claudian-settings .setting-item-heading {
+  padding-top: 18px;
+  margin-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.claudian-settings .setting-item-heading:first-child {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: none;
+}
+
+.claudian-settings .setting-item-heading .setting-item-name {
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-semibold);
+  color: var(--text-normal);
+}
+
+/* Custom section descriptions - align with items */
+.claudian-sp-settings-desc,
+.claudian-mcp-settings-desc,
+.claudian-plugin-settings-desc,
+.claudian-approved-desc {
+  padding: 0 12px;
+}
+
+/* Unified icon action buttons for settings */
+.claudian-settings-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.claudian-settings-action-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.claudian-settings-action-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.claudian-settings-delete-btn:hover {
+  color: var(--text-error);
+}
+
+.claudian-setting-validation {
+  font-size: var(--font-ui-smaller);
+  margin-top: -0.5em;
+  margin-bottom: 0.5em;
+}
+
+.claudian-setting-validation-error {
+  color: var(--text-error);
+}
+
+.claudian-setting-validation-warning {
+  color: var(--text-warning);
+}
+
+.claudian-settings-cli-path-input {
+  width: 100%;
+}
+
+.claudian-settings-cli-path-input.claudian-input-error {
+  border-color: var(--text-error);
+}
+
+/* Hotkey grid - 3 columns */
+.claudian-hotkey-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px 12px;
+  padding: 4px 0;
+}
+
+.claudian-hotkey-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.claudian-hotkey-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.claudian-hotkey-name {
+  flex: 1;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+}
+
+.claudian-hotkey-badge {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  background: var(--background-modifier-hover);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--font-monospace);
+}
+
+/* Media folder input width */
+.claudian-settings-media-input {
+  width: 200px;
+}
+
+/* ── Shared settings panel layout (used by slash-settings + agent-settings) ── */
+
+.claudian-sp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 12px;
+}
+
+.claudian-sp-label {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  font-weight: var(--font-medium);
+}
+
+.claudian-sp-header-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.claudian-sp-empty-state {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+.claudian-sp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.claudian-sp-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+}
+
+.claudian-sp-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.claudian-sp-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.claudian-sp-item-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.claudian-sp-item-name {
+  font-weight: 600;
+  font-family: var(--font-monospace);
+  color: var(--text-normal);
+}
+
+.claudian-sp-item-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.claudian-sp-item-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: 16px;
+  flex-shrink: 0;
+}
+
+.claudian-sp-advanced-section {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 0 12px;
+  margin: 8px 0;
+}
+
+.claudian-sp-advanced-summary {
+  cursor: pointer;
+  padding: 8px 0;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  font-weight: var(--font-medium);
+}
+
+.claudian-sp-advanced-section[open] .claudian-sp-advanced-summary {
+  margin-bottom: 4px;
+}
+
+.claudian-sp-modal .modal-content {
+  max-width: 600px;
+  width: auto;
+}
+
+.claudian-sp-content-area {
+  width: 100%;
+  font-family: var(--font-monospace);
+  font-size: 13px;
+  padding: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  resize: vertical;
+  margin-top: 8px;
+}
+
+.claudian-sp-content-area:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+.claudian-sp-modal-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  justify-content: flex-end;
+}

@@ -1,0 +1,710 @@
+{
+  "common": {
+    "save": "저장",
+    "cancel": "취소",
+    "delete": "삭제",
+    "edit": "편집",
+    "add": "추가",
+    "remove": "제거",
+    "clear": "지우기",
+    "clearAll": "모두 지우기",
+    "loading": "로딩 중",
+    "error": "오류",
+    "success": "성공",
+    "warning": "경고",
+    "confirm": "확인",
+    "settings": "설정",
+    "advanced": "고급",
+    "enabled": "활성화",
+    "disabled": "비활성화",
+    "platform": "플랫폼",
+    "refresh": "새로고침",
+    "rewind": "되감기",
+    "enable": "활성화",
+    "disable": "비활성화"
+  },
+  "chat": {
+    "drop": {
+      "context": "놓아서 컨텍스트 추가",
+      "invalid": "지원되는 볼트 노트나 폴더를 찾을 수 없습니다.",
+      "removedUnavailable": "사용할 수 없는 컨텍스트를 제거했습니다: {path}"
+    },
+    "historySearch": {
+      "placeholder": "대화 검색",
+      "noMatches": "일치하는 대화가 없습니다",
+      "clear": "검색 지우기"
+    },
+    "rewind": {
+      "confirmMessage": "이 시점으로 되감으시겠습니까? 이 메시지 이후의 파일 변경 사항이 덮어쓰이거나 삭제될 수 있습니다. 이 작업은 실행 취소할 수 없습니다.",
+      "confirmMessageConflicts": "이 시점으로 되감으시겠습니까? 에이전트 외부에서 수정된 파일 {count}개를 덮어씁니다:\n{files}",
+      "confirmMessageConversationOnly": "대화를 이 시점으로 되감으시겠습니까? 파일 변경 사항은 유지됩니다.",
+      "confirmButton": "되감기",
+      "inProgress": "현재 되감기가 완료될 때까지 기다려 주세요.",
+      "ariaLabel": "여기로 되감기",
+      "menuConversationOnly": "대화만 되감기",
+      "menuCodeAndConversation": "코드 + 대화 되감기",
+      "notice": "되감기 완료: {count}개 파일 복원됨",
+      "noticeConversationOnly": "대화를 되감았습니다. 파일 변경 사항은 유지되었습니다",
+      "noticeSaveFailed": "되감기 완료: {count}개 파일 복원됨, 하지만 상태를 저장하지 못했습니다: {error}",
+      "noticeConversationOnlySaveFailed": "대화를 되감았지만 상태를 저장하지 못했습니다: {error}",
+      "failed": "되감기 실패: {error}",
+      "cannot": "되감기 불가: {error}",
+      "unavailableStreaming": "스트리밍 중에는 되감기할 수 없습니다",
+      "unavailableNoUuid": "되감기 불가: 메시지 식별자 누락"
+    },
+    "fork": {
+      "ariaLabel": "대화 분기",
+      "chooseTarget": "대화 분기",
+      "targetNewTab": "새 탭",
+      "targetCurrentTab": "현재 탭",
+      "maxTabsReached": "분기 불가: 최대 {count}개 탭에 도달했습니다",
+      "notice": "새 탭으로 분기됨",
+      "noticeCurrentTab": "현재 탭에서 분기됨",
+      "failed": "분기 실패: {error}",
+      "unavailableStreaming": "스트리밍 중에는 분기할 수 없습니다",
+      "unavailableNoUuid": "분기 불가: 메시지 식별자 누락",
+      "unavailableNoResponse": "분기 불가: 분기할 응답이 없습니다",
+      "errorMessageNotFound": "메시지를 찾을 수 없습니다",
+      "errorNoSession": "사용 가능한 세션 ID가 없습니다",
+      "errorNoActiveTab": "활성 탭이 없습니다",
+      "commandNoMessages": "포크할 수 없습니다: 대화에 메시지가 없습니다",
+      "commandNoAssistantUuid": "포크할 수 없습니다: 식별자가 있는 어시스턴트 응답이 없습니다"
+    },
+    "bangBash": {
+      "placeholder": "> bash 명령 실행...",
+      "commandPanel": "명령 패널",
+      "copyAriaLabel": "최신 명령 출력을 복사",
+      "clearAriaLabel": "bash 출력 지우기",
+      "commandLabel": "{command}",
+      "statusLabel": "상태: {status}",
+      "collapseOutput": "명령 출력 접기",
+      "expandOutput": "명령 출력 펼치기",
+      "running": "실행 중...",
+      "copyFailed": "클립보드에 복사하지 못했습니다"
+    },
+    "fileMenu": {
+      "add": "Codian에 추가",
+      "notReady": "Codian 채팅이 아직 준비되지 않았습니다.",
+      "failed": "파일을 Codian에 추가하지 못했습니다."
+    }
+  },
+  "settings": {
+    "title": "Claudian 설정",
+    "tabs": {
+      "general": "일반",
+      "claude": "Claude",
+      "codex": "Codex",
+      "providers": "제공자",
+      "workspace": "작업 공간",
+      "environment": "환경 변수",
+      "pro": "Pro"
+    },
+    "display": "표시",
+    "conversations": "대화",
+    "content": "콘텐츠",
+    "input": "입력",
+    "setup": "연결",
+    "models": "모델",
+    "experimental": "실험적 기능",
+    "userName": {
+      "name": "Claudian이 당신을 어떻게 불러야 합니까?",
+      "desc": "개인화된 인사에 사용할 이름 (비워두면 일반 인사)"
+    },
+    "excludedTags": {
+      "name": "제외 태그",
+      "desc": "이 태그가 포함된 노트는 자동으로 컨텍스트로 로드되지 않습니다 (한 줄에 하나, # 제외)"
+    },
+    "mediaFolder": {
+      "name": "미디어 폴더",
+      "desc": "첨부 파일/이미지를 저장할 폴더. 노트가 ![[image.jpg]]를 사용할 때 Claude가 여기서 찾습니다. 비워두면 저장소 루트 사용."
+    },
+    "systemPrompt": {
+      "name": "커스텀 시스템 프롬프트",
+      "desc": "기본 시스템 프롬프트에 추가되는 추가 지침"
+    },
+    "autoTitle": {
+      "name": "대화 제목 자동 생성",
+      "desc": "첫 번째 사용자 메시지 전송 후 자동으로 대화 제목을 생성합니다."
+    },
+    "titleModel": {
+      "name": "제목 생성 모델",
+      "desc": "대화 제목을 자동 생성하는 데 사용되는 모델.",
+      "auto": "자동 (Haiku)"
+    },
+    "navMappings": {
+      "name": "Vim 스타일 네비게이션 매핑",
+      "desc": "한 줄에 하나의 매핑. 형식: \"map <키> <동작>\" (동작: scrollUp, scrollDown, focusInput)."
+    },
+    "requireCommandOrControlEnterToSend": {
+      "name": "Command/Ctrl+Enter로 보내기 필수",
+      "desc": "활성화하면 Enter는 줄바꿈을 삽입합니다. macOS에서는 Command+Enter, Windows와 Linux에서는 Ctrl+Enter로 보냅니다."
+    },
+    "hotkeys": "단축키",
+    "inlineEditHotkey": {
+      "name": "인라인 편집",
+      "descWithKey": "현재 단축키: {hotkey}",
+      "descNoKey": "단축키 미설정",
+      "btnChange": "변경",
+      "btnSet": "단축키 설정"
+    },
+    "openChatHotkey": {
+      "name": "채팅 열기",
+      "descWithKey": "현재 단축키: {hotkey}",
+      "descNoKey": "단축키 미설정",
+      "btnChange": "변경",
+      "btnSet": "단축키 설정"
+    },
+    "newSessionHotkey": {
+      "name": "새 세션",
+      "descWithKey": "현재 단축키: {hotkey}",
+      "descNoKey": "단축키 미설정",
+      "btnChange": "변경",
+      "btnSet": "단축키 설정"
+    },
+    "newTabHotkey": {
+      "name": "새 탭",
+      "descWithKey": "현재 단축키: {hotkey}",
+      "descNoKey": "단축키 미설정",
+      "btnChange": "변경",
+      "btnSet": "단축키 설정"
+    },
+    "closeTabHotkey": {
+      "name": "탭 닫기",
+      "descWithKey": "현재 단축키: {hotkey}",
+      "descNoKey": "단축키 미설정",
+      "btnChange": "변경",
+      "btnSet": "단축키 설정"
+    },
+    "slashCommands": {
+      "name": "명령어와 스킬",
+      "desc": ".claude/commands/ 및 .claude/skills/에 저장된 Vault 수준의 명령어와 스킬을 관리합니다. /이름으로 트리거됩니다."
+    },
+    "hiddenSlashCommands": {
+      "name": "숨겨진 명령어와 스킬",
+      "desc": "드롭다운에서 특정 명령어와 스킬을 숨깁니다. Claudian과 관련 없는 Claude Code 항목을 숨기는 데 유용합니다. 앞의 슬래시 없이 이름을 한 줄에 하나씩 입력하세요.",
+      "placeholder": "commit\nbuild\ntest"
+    },
+    "mcpServers": {
+      "name": "MCP 서버",
+      "desc": ".claude/mcp.json에 저장된 Vault 수준의 MCP 서버 구성을 관리합니다. 컨텍스트 저장 모드 서버는 @mention으로 활성화해야 합니다."
+    },
+    "plugins": {
+      "name": "Claude Code 플러그인",
+      "desc": "~/.claude/plugins에서 발견된 Claude Code 플러그인을 관리합니다. 활성화된 플러그인은 .claude/settings.json에 Vault별로 저장됩니다.",
+      "manager": {
+        "label": "Claude Code 확장",
+        "empty": "Claude Code 확장을 찾지 못했습니다. Claude CLI에서 활성화하세요.",
+        "project": "프로젝트 확장",
+        "user": "사용자 확장",
+        "restartFailed": "확장이 변경되었지만 일부 탭을 다시 시작하지 못했습니다.",
+        "toggled": "확장 \"{id}\": {state}",
+        "rollbackFailed": "확장 변경을 되돌리지 못했습니다: {message}",
+        "toggleFailed": "확장을 변경하지 못했습니다: {message}",
+        "refreshed": "확장 목록을 새로 고쳤습니다",
+        "refreshFailed": "확장을 새로 고치지 못했습니다: {message}",
+        "unknownError": "알 수 없는 오류"
+      }
+    },
+    "subagents": {
+      "name": "서브에이전트",
+      "desc": ".claude/agents/에 저장된 Vault 수준의 서브에이전트를 관리합니다. 각 Markdown 파일이 하나의 커스텀 에이전트를 정의합니다.",
+      "noAgents": "구성된 서브에이전트가 없습니다. +를 클릭해 새로 만드세요.",
+      "deleteConfirm": "서브에이전트 \"{name}\"을 삭제하시겠습니까?",
+      "saveFailed": "서브에이전트를 저장하지 못했습니다: {message}",
+      "refreshFailed": "서브에이전트를 새로고침하지 못했습니다: {message}",
+      "deleteFailed": "서브에이전트를 삭제하지 못했습니다: {message}",
+      "renameCleanupFailed": "경고: \"{name}\"의 이전 파일을 제거하지 못했습니다",
+      "created": "서브에이전트 \"{name}\"를 생성했습니다",
+      "updated": "서브에이전트 \"{name}\"를 업데이트했습니다",
+      "deleted": "서브에이전트 \"{name}\"를 삭제했습니다",
+      "duplicateName": "\"{name}\"이라는 이름의 에이전트가 이미 있습니다",
+      "descriptionRequired": "설명은 필수입니다",
+      "promptRequired": "시스템 프롬프트는 필수입니다",
+      "modal": {
+        "titleEdit": "서브에이전트 편집",
+        "titleAdd": "서브에이전트 추가",
+        "name": "이름",
+        "nameDesc": "소문자, 숫자, 하이픈만 사용할 수 있습니다",
+        "namePlaceholder": "code-reviewer",
+        "description": "설명",
+        "descriptionDesc": "이 에이전트에 대한 간단한 설명",
+        "descriptionPlaceholder": "코드의 버그와 스타일을 검토합니다",
+        "advancedOptions": "고급 옵션",
+        "model": "모델",
+        "modelDesc": "이 에이전트에 사용할 모델 재정의",
+        "tools": "도구",
+        "toolsDesc": "허용할 도구를 쉼표로 구분해 입력하세요 (비워두면 모두 허용)",
+        "disallowedTools": "금지 도구",
+        "disallowedToolsDesc": "금지할 도구를 쉼표로 구분해 입력하세요",
+        "skills": "스킬",
+        "skillsDesc": "스킬 목록을 쉼표로 구분해 입력하세요",
+        "prompt": "시스템 프롬프트",
+        "promptDesc": "에이전트용 지침",
+        "promptPlaceholder": "당신은 코드 리뷰어입니다. 주어진 코드를 분석하여..."
+      }
+    },
+    "safety": "접근 및 격리",
+    "loadUserSettings": {
+      "name": "사용자 Claude 설정 로드",
+      "desc": "~/.claude/settings.json을 로드합니다. 활성화하면 사용자의 Claude Code 허용 규칙이 보안 모드를 우회할 수 있습니다."
+    },
+    "claudeSafeMode": {
+      "name": "기본 실행 권한",
+      "desc": "Safe가 활성화되었을 때의 기본 실행 권한입니다.",
+      "acceptEdits": "파일 편집 자동 허용",
+      "auto": "Claude 자동 모드",
+      "default": "Claude 기본 권한"
+    },
+    "codexSafeMode": {
+      "name": "파일 접근 범위",
+      "desc": "Safe 토글이 활성화되었을 때 사용하는 샌드박스 모드입니다."
+    },
+    "environment": "환경",
+    "customVariables": {
+      "name": "커스텀 변수",
+      "desc": "Claude SDK 환경 변수 (KEY=VALUE 형식, 한 줄에 하나). export 접두사 지원."
+    },
+    "envSnippets": {
+      "name": "스니펫",
+      "addBtn": "스니펫 추가",
+      "noSnippets": "저장된 환경 변수 스니펫이 없습니다. +를 클릭하여 현재 구성을 저장하세요.",
+      "nameRequired": "스니펫 이름을 입력하세요",
+      "modal": {
+        "titleEdit": "스니펫 편집",
+        "titleSave": "스니펫 저장",
+        "name": "이름",
+        "namePlaceholder": "이 구성에 대한 설명적인 이름",
+        "description": "설명",
+        "descPlaceholder": "선택적 설명",
+        "envVars": "환경 변수",
+        "envVarsPlaceholder": "KEY=VALUE 형식, 한 줄에 하나 (export 접두사 지원)",
+        "save": "저장",
+        "update": "업데이트",
+        "cancel": "취소"
+      }
+    },
+    "customModelOverrides": {
+      "name": "사용자 정의 모델 재정의",
+      "desc": "사용자 정의 모델의 모델 선택기 별칭과 컨텍스트 창 크기를 설정합니다."
+    },
+    "customModelAliases": {
+      "placeholder": "별칭"
+    },
+    "customContextLimits": {
+      "name": "사용자 정의 컨텍스트 제한",
+      "desc": "사용자 정의 모델의 컨텍스트 창 크기를 설정합니다. 기본값(200k 토큰)을 사용하려면 비워두세요.",
+      "invalid": "잘못된 형식입니다. 사용: 256k, 1m 또는 정확한 숫자(1000-10000000)."
+    },
+    "customModels": {
+      "name": "사용자 지정 모델",
+      "desc": "추가 Claude 모델 ID를 한 줄에 하나씩 선택기에 추가합니다. 환경 모델 재정의는 계속 선택기를 대체합니다.",
+      "placeholder": "claude-opus-4-6\nclaude-opus-4-5-20251101"
+    },
+    "enableChrome": {
+      "name": "Chrome 확장 프로그램 활성화",
+      "desc": "claude-in-chrome 확장 프로그램을 통해 Claude가 Chrome과 상호작용할 수 있도록 합니다. 확장 프로그램이 설치되어 있어야 합니다. 세션 재시작이 필요합니다."
+    },
+    "enableBangBash": {
+      "name": "bash 모드 (!) 활성화",
+      "desc": "입력창이 비어 있을 때 !를 입력하면 bash 모드로 들어갑니다. Node.js child_process를 통해 명령을 직접 실행합니다. 보기를 다시 열어야 합니다.",
+      "validation": {
+        "noNode": "PATH에서 Node.js를 찾을 수 없습니다. Node.js를 설치하거나 PATH 설정을 확인하세요."
+      }
+    },
+    "maxTabs": {
+      "name": "최대 채팅 탭 수",
+      "desc": "동시에 열 수 있는 최대 채팅 탭 수(3-10). 각 탭은 별도의 Claude 세션을 사용합니다.",
+      "warning": "5개 탭을 초과하면 성능 및 메모리 사용량에 영향을 줄 수 있습니다."
+    },
+    "enableAutoScroll": {
+      "name": "스트리밍 중 자동 스크롤",
+      "desc": "Claude가 응답을 스트리밍하는 동안 자동으로 아래로 스크롤합니다. 비활성화하면 상단에 머물러 처음부터 읽을 수 있습니다."
+    },
+    "deferMathRenderingDuringStreaming": {
+      "name": "스트리밍 중 수식 렌더링 지연",
+      "desc": "응답이 스트리밍되는 동안 원본 LaTeX를 표시하고 각 텍스트 블록이 완료되면 수식을 한 번 렌더링합니다."
+    },
+    "expandFileEditsByDefault": {
+      "name": "파일 편집을 기본적으로 펼치기",
+      "desc": "Write 및 Edit diff가 처음 표시될 때 펼친 상태로 보여줍니다."
+    },
+    "chatViewPlacement": {
+      "name": "Claudian 열 위치",
+      "desc": "채팅 패널이 생성될 때 열릴 위치를 선택합니다",
+      "rightSidebar": "오른쪽 사이드바",
+      "leftSidebar": "왼쪽 사이드바",
+      "mainTab": "메인 편집기 탭"
+    },
+    "cliPath": {
+      "name": "Claude CLI 경로",
+      "desc": "Claude Code CLI의 사용자 정의 경로. 비워두면 자동 감지 사용.",
+      "descWindows": "네이티브 설치 프로그램의 경우 claude.exe를 사용하세요. npm/pnpm/yarn 또는 기타 패키지 관리자 설치의 경우 cli-wrapper.cjs 경로를 사용하세요 (claude.cmd가 아님).",
+      "descUnix": "\"which claude\"의 출력을 붙여넣으세요 - 네이티브 및 npm/pnpm/yarn 설치 모두에서 작동합니다.",
+      "validation": {
+        "notExist": "경로가 존재하지 않습니다",
+        "isDirectory": "경로가 디렉토리입니다 파일이 아닙니다"
+      }
+    },
+    "language": {
+      "name": "언어",
+      "desc": "플러그인 인터페이스의 표시 언어 변경"
+    },
+    "providerEnablement": {
+      "name": "{provider} 활성화",
+      "desc": "활성화된 {provider} 모델을 새 대화에서 사용할 수 있게 합니다. 비활성화해도 기존 세션은 유지됩니다.",
+      "atLeastOne": "하나 이상의 공급자를 활성화 상태로 유지해야 합니다."
+    },
+    "codex": {
+      "installationMethod": {
+        "name": "설치 방식",
+        "desc": "Windows에서 Claudian이 Codex를 실행하는 방식입니다. 네이티브 Windows는 Windows 실행 파일 경로를 사용하고, WSL은 선택한 배포판 안에서 Linux CLI를 실행합니다.",
+        "nativeWindows": "네이티브 Windows",
+        "wsl": "WSL"
+      },
+      "cliPath": {
+        "name": "Codex CLI 경로",
+        "descUnix": "로컬 Codex CLI의 사용자 지정 경로입니다. 비워 두면 알려진 Codex 설치를 먼저 사용한 뒤 PATH를 찾습니다.",
+        "descWindows": "로컬 Codex CLI의 사용자 지정 경로입니다. 비워 두면 PATH에서 자동 감지합니다. 일반적으로 `codex.exe`인 네이티브 Windows 실행 파일 경로를 사용하세요.",
+        "descWsl": "WSL 안에서 실행할 Linux 측 Codex 명령 또는 절대 경로입니다. 비워 두면 선택한 배포판의 PATH에서 찾습니다.",
+        "validation": {
+          "wslWindowsPath": "WSL 모드에는 Windows 실행 파일 경로가 아니라 Linux 명령 또는 Linux 절대 경로가 필요합니다."
+        }
+      },
+      "wslDistroOverride": {
+        "name": "WSL 배포판 재정의",
+        "desc": "선택적 고급 재정의입니다. 비워 두면 가능한 경우 WSL 작업공간 경로에서 배포판을 추론하고, 그렇지 않으면 기본 WSL 배포판을 사용합니다."
+      },
+      "safeMode": {
+        "workspaceWrite": "작업공간 쓰기",
+        "readOnly": "읽기 전용"
+      },
+      "customModels": {
+        "name": "사용자 지정 모델",
+        "desc": "추가 Codex 모델 ID를 한 줄에 하나씩 선택기에 추가합니다. `OPENAI_MODEL`이 설정되어 있으면 계속 우선 적용됩니다.",
+        "placeholder": "gpt-5.4\ngpt-5.3-codex-spark"
+      },
+      "reasoningSummary": {
+        "name": "추론 요약",
+        "desc": "생각 블록에 모델의 추론 과정 요약을 표시합니다.",
+        "auto": "자동",
+        "concise": "간결",
+        "detailed": "상세",
+        "off": "끄기"
+      },
+      "skills": {
+        "name": "Codex 스킬",
+        "desc": ".codex/skills/ 또는 .agents/skills/에 저장된 vault 수준 Codex 스킬을 관리합니다. 홈 수준 스킬은 여기에서 제외됩니다.",
+        "hiddenName": "숨긴 스킬",
+        "hiddenDesc": "드롭다운에서 특정 Codex 스킬을 숨깁니다. 앞의 $ 없이 스킬 이름을 한 줄에 하나씩 입력하세요.",
+        "hiddenPlaceholder": "analyze\nexplain\nfix"
+      },
+      "subagents": {
+        "name": "Codex 하위 에이전트",
+        "desc": ".codex/agents/에 저장된 vault 수준 Codex 하위 에이전트를 관리합니다. 각 TOML 파일은 사용자 지정 에이전트 하나를 정의합니다."
+      },
+      "mcp": {
+        "descBeforeCommand": "Codex는 자체 CLI로 MCP 서버를 관리합니다. ",
+        "descAfterCommand": " 명령으로 구성하면 Claudian에서 사용할 수 있습니다. ",
+        "learnMore": "자세히 알아보기"
+      },
+      "environment": {
+        "name": "Codex 환경",
+        "desc": "Codex 전용 런타임 변수만 입력하세요. OPENAI_* 및 CODEX_* 설정에 사용합니다. Codex 자동 감지에 도움이 필요하면 이 공급자 섹션 대신 공유 PATH에 설치 디렉터리를 추가하세요."
+      },
+      "enableProvider": {
+        "name": "Codex 공급자 활성화",
+        "desc": "활성화하면 새 대화의 모델 선택기에 Codex 모델이 표시됩니다. 기존 Codex 세션은 유지됩니다."
+      }
+    },
+    "agentSkills": {
+      "sectionTitle": "Skills",
+      "header": "Shared skills",
+      "fixedRoot": "Managed in .agents/skills",
+      "sharedExpectation": "Manage skills shared across all enabled providers in .agents/skills/.",
+      "noSkills": "No shared skills configured. Click + to create one.",
+      "skillBadge": "skill",
+      "diagnosticsTitle": "Skills needing attention",
+      "loadFailed": "Could not load shared skills.",
+      "savedRefreshFailed": "Saved, but provider refresh failed.",
+      "validationFailed": "Invalid skill: {message}",
+      "collisionFailed": "A skill named \"{name}\" already exists.",
+      "saveFailed": "Failed to save shared skill: {message}",
+      "deleteFailed": "Failed to move shared skill to trash: {message}",
+      "staleConflict": "This skill changed elsewhere; refresh before saving.",
+      "created": "Shared skill \"{name}\" created.",
+      "updated": "Shared skill \"{name}\" updated.",
+      "deleted": "Shared skill \"{name}\" moved to trash.",
+      "modal": {
+        "titleEdit": "Edit Shared Skill",
+        "titleAdd": "Add Shared Skill",
+        "name": "Skill name",
+        "nameDesc": "Lowercase letters and numbers separated by single hyphens",
+        "namePlaceholder": "code-reviewer",
+        "description": "Description",
+        "descriptionDesc": "Required portable description used by providers to select the skill",
+        "descriptionPlaceholder": "Reviews code for correctness and maintainability",
+        "instructions": "Instructions",
+        "instructionsDesc": "Required SKILL.md instructions",
+        "instructionsPlaceholder": "Review the supplied code and report actionable findings..."
+      },
+      "delete": {
+        "title": "Delete Shared Skill",
+        "description": "The entire skill folder, including scripts, references, and assets, will be moved to trash.",
+        "confirm": "Move to trash"
+      }
+    },
+    "codexSkills": {
+      "modal": {
+        "titleEdit": "Codex 스킬 편집",
+        "titleAdd": "Codex 스킬 추가",
+        "directory": "디렉터리",
+        "directoryDesc": "스킬을 저장할 위치",
+        "skillName": "스킬 이름",
+        "skillNameDesc": "$ 뒤에 사용할 이름입니다(예: $analyze의 경우 \"analyze\")",
+        "description": "설명",
+        "descriptionDesc": "드롭다운에 표시할 선택적 설명",
+        "instructions": "지침",
+        "instructionsDesc": "스킬 지침(SKILL.md 내용)",
+        "instructionsPlaceholder": "Analyze the code for..."
+      },
+      "instructionsRequired": "지침은 필수입니다",
+      "saveFailed": "Codex 스킬 저장 실패",
+      "header": "Codex 스킬",
+      "noSkills": "Vault에 Codex 스킬이 없습니다. +를 클릭해 만드세요.",
+      "skillBadge": "스킬",
+      "deleted": "Codex 스킬 \"{name}\" 삭제됨",
+      "deleteFailed": "Codex 스킬 삭제 실패",
+      "created": "Codex 스킬 \"{name}\" 생성됨",
+      "updated": "Codex 스킬 \"{name}\" 업데이트됨"
+    },
+    "codexSubagents": {
+      "modal": {
+        "titleEdit": "Codex 하위 에이전트 편집",
+        "titleAdd": "Codex 하위 에이전트 추가",
+        "nameDesc": "Codex가 생성할 때 사용하는 에이전트 이름(소문자, 하이픈, 밑줄)",
+        "descriptionDesc": "Codex가 이 에이전트를 사용해야 하는 시점",
+        "modelDesc": "모델 재정의(비워 두면 상속)",
+        "namePlaceholder": "code_reviewer"
+      },
+      "reasoningEffort": {
+        "name": "추론 강도",
+        "desc": "모델 추론 강도 수준",
+        "inherit": "상속",
+        "low": "낮음",
+        "medium": "중간",
+        "high": "높음",
+        "xhigh": "매우 높음"
+      },
+      "sandboxMode": {
+        "name": "샌드박스 모드",
+        "desc": "이 에이전트의 샌드박스 제한",
+        "inherit": "상속",
+        "readOnly": "읽기 전용",
+        "dangerFullAccess": "전체 액세스",
+        "workspaceWrite": "작업공간 쓰기"
+      },
+      "nicknameCandidates": {
+        "name": "닉네임 후보",
+        "desc": "표시 닉네임을 쉼표로 구분합니다(예: atlas, delta, echo)"
+      },
+      "developerInstructions": {
+        "name": "개발자 지침",
+        "desc": "에이전트 동작을 정의하는 핵심 지침",
+        "placeholder": "Review code like an owner.\nPrioritize correctness, security, and missing test coverage.",
+        "required": "개발자 지침은 필수입니다"
+      },
+      "validation": {
+        "nameRequired": "하위 에이전트 이름은 필수입니다",
+        "nameTooLong": "하위 에이전트 이름은 {count}자 이하여야 합니다",
+        "nameInvalid": "하위 에이전트 이름은 소문자, 숫자, 하이픈, 밑줄만 포함할 수 있습니다",
+        "nicknameInvalid": "닉네임 후보는 ASCII 문자, 숫자, 공백, 하이픈, 밑줄만 포함할 수 있습니다",
+        "nicknameDuplicate": "닉네임 후보는 고유해야 합니다"
+      },
+      "header": "Codex 하위 에이전트",
+      "noAgents": "Vault에 Codex 하위 에이전트가 없습니다. +를 클릭해 만드세요."
+    },
+    "settingsHub": {
+      "providersDesc": "제공자를 연결하고 모델, 안전 설정 및 제공자별 옵션을 관리합니다.",
+      "workspaceTitle": "작업 공간 기능",
+      "workspaceDesc": "제공자 기본 파일을 기준으로 Skills, 하위 에이전트, MCP 및 명령을 관리합니다.",
+      "environmentDesc": "공유 및 제공자별 환경 변수를 한 곳에서 관리합니다.",
+      "providerEnabled": "활성화",
+      "providerDisabled": "비활성화",
+      "visibleModels": "모델 {count}개",
+      "cliUnavailable": "CLI 감지 안 됨",
+      "defaultBadge": "기본값",
+      "defaultProvider": "기본 제공자",
+      "cliManagedModels": "CLI에서 모델 관리",
+      "providerDetails": "{provider} 설정",
+      "unsupported": "이 제공자는 이 설정 범주를 지원하지 않습니다.",
+      "allScopes": "전체",
+      "sharedScope": "공유",
+      "sharedEnvironment": "공유 환경",
+      "sharedEnvironmentDesc": "PATH, 프록시, 인증서 및 임시 디렉터리를 위한 제공자 중립 변수입니다.",
+      "resourceDesc": "통합 관리 항목입니다. 변경 사항은 제공자 기본 파일에 저장되며 자동 복사하지 않습니다.",
+      "searchResources": "이름 또는 경로 검색",
+      "newResource": "새로 만들기",
+      "manageResources": "{section} 관리",
+      "loadingResources": "리소스 불러오는 중…",
+      "noResources": "일치하는 작업 공간 리소스가 없습니다.",
+      "resourceColumns": {
+        "name": "이름",
+        "provider": "제공자",
+        "source": "원본",
+        "status": "상태"
+      },
+      "resourceStatus": {
+        "available": "사용 가능",
+        "connected": "연결됨",
+        "disabled": "비활성화",
+        "readonly": "읽기 전용"
+      },
+      "workspaceSections": {
+        "skills": "Skills",
+        "agents": "하위 에이전트",
+        "mcp": "MCP",
+        "commands": "명령"
+      }
+    },
+    "pro": {
+      "freeBadge": "Free Build",
+      "fullBadge": "Full Build",
+      "title": "Codian Pro",
+      "freeDescription": "업그레이드하면 대화 검색, 라이브 미리보기, 보관소 끌어놓기를 사용할 수 있습니다.",
+      "enabled": "활성화",
+      "featuresTitle": "포함된 기능",
+      "conversationSearch": "대화 검색",
+      "livePreview": "라이브 미리보기 입력창",
+      "vaultDrop": "파일 및 폴더 끌어놓기"
+    },
+    "defaultChatProvider": {
+      "name": "새 채팅 기본 제공자",
+      "desc": "새 빈 탭마다 사용합니다. 기존 대화는 원래 제공자를 유지합니다.",
+      "followModel": "선택한 모델 따르기"
+    },
+    "nativeAcp": {
+      "cliPathName": "{provider} CLI 경로",
+      "cliPathDesc": "이 컴퓨터의 선택적 실행 파일 경로입니다. 비워 두면 PATH의 {command}를 사용합니다.",
+      "environmentName": "{provider} 환경",
+      "environmentDesc": "{provider}에만 전달되는 환경 변수입니다.",
+      "environmentPlaceholder": "KEY=value",
+      "modelManagementName": "모델 관리",
+      "modelManagementDesc": "{provider}는 CLI에서 모델을 선택합니다. Codian은 해당 선택을 덮어쓰지 않습니다.",
+      "permissionHandlingName": "권한 처리",
+      "permissionHandlingDesc": "{provider}는 CLI 세션에서 권한 요청을 처리합니다. Codian은 지속 권한 프리셋을 제공하지 않습니다."
+    },
+    "providerModels": {
+      "browse": "모델 찾아보기",
+      "searchPlaceholder": "모델, 제공자 또는 ID로 필터링...",
+      "discover": "검색",
+      "loadingModels": "모델 불러오는 중...",
+      "available": "{count}개 사용 가능",
+      "noneDiscovered": "검색된 모델 없음",
+      "loading": "불러오는 중...",
+      "refresh": "새로 고침",
+      "selected": "선택됨 ({count})",
+      "clearAll": "모두 지우기",
+      "clearAllAria": "선택한 {provider} 모델 모두 지우기",
+      "aliasAria": "{model} 별칭",
+      "aliasTitle": "모델 선택기에 표시할 사용자 지정 이름입니다. 비워 두면 기본 이름을 사용합니다.",
+      "removeAria": "{model} 제거",
+      "allProviders": "모든 제공자 ({count})",
+      "noMatches": "필터와 일치하는 모델이 없습니다.",
+      "defaultBadge": "기본",
+      "selectedModel": "선택한 모델",
+      "notReported": "현재 {provider}에서 보고하지 않음"
+    },
+    "providerCliPath": {
+      "name": "CLI 경로",
+      "desc": "이 컴퓨터의 {provider} 실행 파일 경로입니다. 비워 두면 PATH의 {command}를 사용합니다.",
+      "notExist": "경로가 없습니다",
+      "isDirectory": "파일 경로를 지정해야 합니다"
+    },
+    "providerCatalog": {
+      "empty": "검색된 {provider} 모델이 없습니다. 검색을 선택하세요.",
+      "failed": "{provider} 모델 카탈로그를 불러올 수 없습니다. CLI 경로와 로그인 상태를 확인하세요.",
+      "loading": "{provider} 모델 카탈로그 불러오는 중...",
+      "discoveryFailed": "{provider} 모델 검색 실패: {message}"
+    },
+    "providerPermissions": {
+      "name": "권한 처리",
+      "cliManagedDesc": "{provider} CLI가 세션 중 권한 요청을 처리합니다. Codian은 액세스 설정을 덮어쓰거나 저장하지 않습니다.",
+      "opencodeDesc": "채팅 권한 토글은 OpenCode 모드에 매핑되고 현재 선택을 저장합니다. 이 설정 페이지에는 별도의 기본 프리셋이 없습니다.",
+      "piDesc": "채팅 권한 토글은 읽기 전용 도구와 모든 도구 사이를 전환하고 선택을 저장합니다. 이 설정 페이지에는 별도의 기본 프리셋이 없습니다."
+    },
+    "kimi": {
+      "permissionDesc": "The chat toolbar controls Safe, Auto, and Plan behavior for Kimi Code. This settings page has no duplicate enable or permission preset.",
+      "sessionSetupRequired": "Kimi Code could not create a session. Run `kimi`, complete `/login`, and confirm a model is configured."
+    },
+    "opencode": {
+      "commandsAndSkills": "명령과 스킬",
+      "commandsAndSkillsDesc": "OpenCode는 .claude/commands/ 명령과 .claude/skills/, .codex/skills/, .agents/skills/ 스킬을 탐지합니다. Claude 또는 Codex 설정에서 관리하고, 여기서는 OpenCode 메뉴에서만 숨깁니다.",
+      "hiddenCommandsAndSkills": "숨긴 명령과 스킬",
+      "hiddenCommandsAndSkillsDesc": "OpenCode 명령과 스킬을 숨깁니다. 앞의 슬래시 없이 한 줄에 하나씩 입력하세요.",
+      "subagents": "서브에이전트",
+      "subagentsDesc": ".opencode/agent/ 및 기존 .opencode/agents/ 경로의 Vault 서브에이전트를 관리합니다. 새 항목은 @mention 메뉴에 표시됩니다.",
+      "environmentVariables": "환경 변수",
+      "environmentVariablesDesc": "OpenCode에 전달할 추가 환경 변수입니다. `OPENCODE_ENABLE_EXA=1`은 기본으로 활성화됩니다."
+    },
+    "pi": {
+      "environmentVariables": "Pi 환경 변수",
+      "environmentVariablesDesc": "Pi에만 전달되는 환경 변수입니다."
+    },
+    "livePreviewComposer": {
+      "name": "입력창 실시간 미리보기",
+      "desc": "입력 중 지원되는 Markdown과 보관함 참조를 렌더링합니다. 끄면 일반 텍스트 입력창을 사용합니다. 채팅 보기를 다시 열면 적용됩니다."
+    },
+    "claude": {
+      "authenticationRequired": "Claude에는 명시적 API 키 또는 지원되는 클라우드 인증이 필요합니다.",
+      "enableProvider": {
+        "name": "Claude 공급자 활성화",
+        "desc": "활성화하면 새 대화의 모델 선택기에 Claude 모델이 표시됩니다. 기존 Claude 세션은 유지됩니다."
+      }
+    },
+    "claudeServices": {
+      "heading": "Third-party model services",
+      "description": "Connect Anthropic-compatible services through Claude. Enabled services appear in the chat model picker.",
+      "empty": "No third-party services configured.",
+      "add": "Add model service",
+      "enable": "Enable",
+      "disable": "Disable",
+      "test": "Test connection",
+      "testing": "Testing connection. This sends a minimal paid request.",
+      "testSuccess": "Connection succeeded in {latency} ms.",
+      "testFailed": "Connection failed: {error}",
+      "setDefault": "Set as default",
+      "defaultActive": "Default service",
+      "deleteReferenced": "This service is used by saved conversations. Disable it instead.",
+      "deleteConfirm": "Delete this model service? Its SecretStorage entry will be kept.",
+      "costNotice": "Connection tests send one minimal request and may incur provider charges.",
+      "modal": {
+        "add": "Add model service",
+        "edit": "Edit model service"
+      },
+      "fields": {
+        "preset": "Service template",
+        "name": "Service name",
+        "url": "Base URL",
+        "urlDesc": "Anthropic-compatible endpoint. HTTPS required except localhost.",
+        "auth": "Authentication",
+        "secret": "API key",
+        "secretDesc": "Select or create a key in Obsidian SecretStorage.",
+        "defaultModel": "Default model ID",
+        "lightModel": "Lightweight model ID",
+        "lightModelDesc": "Used for title generation and Haiku-class tasks."
+      },
+      "auth": {
+        "bearer": "Bearer token",
+        "apiKey": "API key header"
+      },
+      "validation": {
+        "name": "Service name is required.",
+        "url": "Valid Base URL is required.",
+        "https": "Use HTTPS, or HTTP only for localhost.",
+        "secret": "Select or create an API key in SecretStorage.",
+        "defaultModel": "Default model ID is required.",
+        "lightModel": "Lightweight model ID is required."
+      }
+    }
+  }
+}
