@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.1 — Unreleased
+## 1.0.1 — 2026-07-23
 
 - Changed the Obsidian plugin ID from `codian` to `codianz` for Community plugins directory compatibility. The displayed plugin name remains Codian.
 - Migrates legacy `.obsidian/plugins/codian/data.json` into an empty `codianz` data store without deleting or overwriting old data.

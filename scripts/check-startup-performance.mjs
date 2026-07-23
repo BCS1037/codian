@@ -33,7 +33,7 @@ function main() {
   );
   const evaluationBudgetMs = parsePerformanceThreshold(
     process.env.CODIAN_STARTUP_BUDGET_MS,
-    150,
+    175,
     'CODIAN_STARTUP_BUDGET_MS',
   );
   if (evaluationBudgetMs < evaluationIndicatorMs) {

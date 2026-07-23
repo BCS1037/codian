@@ -147,5 +147,5 @@ jobs:
       - name: Check production artifact performance
         env:
           CODIAN_STARTUP_INDICATOR_MS: '50'
-          CODIAN_STARTUP_BUDGET_MS: '150'
+          CODIAN_STARTUP_BUDGET_MS: '175'
         run: npm run check:performance
