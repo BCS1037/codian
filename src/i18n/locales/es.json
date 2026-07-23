@@ -21,7 +21,8 @@
     "refresh": "Actualizar",
     "rewind": "Rebobinar",
     "enable": "Habilitar",
-    "disable": "Deshabilitar"
+    "disable": "Deshabilitar",
+    "legacyPluginDataMigrated": "Se migraron los ajustes del plugin Codian anterior. Desactiva el plugin anterior \"codian\" antes de usar Codian."
   },
   "chat": {
     "drop": {

@@ -21,7 +21,8 @@
     "refresh": "Refresh",
     "rewind": "Rewind",
     "enable": "Enable",
-    "disable": "Disable"
+    "disable": "Disable",
+    "legacyPluginDataMigrated": "Migrated settings from legacy Codian plugin. Disable legacy plugin \"codian\" before using Codian."
   },
   "chat": {
     "drop": {

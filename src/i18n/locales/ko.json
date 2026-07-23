@@ -21,7 +21,8 @@
     "refresh": "새로고침",
     "rewind": "되감기",
     "enable": "활성화",
-    "disable": "비활성화"
+    "disable": "비활성화",
+    "legacyPluginDataMigrated": "기존 Codian 플러그인에서 설정을 마이그레이션했습니다. Codian을 사용하기 전에 기존 플러그인 \"codian\"을 비활성화하세요."
   },
   "chat": {
     "drop": {

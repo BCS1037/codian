@@ -21,7 +21,8 @@
     "refresh": "刷新",
     "rewind": "回退",
     "enable": "启用",
-    "disable": "禁用"
+    "disable": "禁用",
+    "legacyPluginDataMigrated": "已从旧版 Codian 插件迁移设置。使用 Codian 前，请停用旧插件“codian”。"
   },
   "chat": {
     "drop": {
