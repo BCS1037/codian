@@ -25,11 +25,73 @@ function findMatches(roots, pattern) {
   return matches;
 }
 
+function listImportSpecifiers(contents) {
+  const specifiers = [];
+  const pattern = /(?:from\s+|import\s*\()\s*['"]([^'"]+)['"]/g;
+  for (const match of contents.matchAll(pattern)) specifiers.push(match[1]);
+  return specifiers;
+}
+
+function resolveSourceImport(file, specifier) {
+  if (specifier.startsWith('@/')) {
+    return path.join(process.cwd(), 'src', specifier.slice(2));
+  }
+  if (specifier.startsWith('.')) {
+    return path.resolve(path.dirname(file), specifier);
+  }
+  return null;
+}
+
+function isWithin(root, candidate) {
+  if (candidate === null) return false;
+  const relative = path.relative(root, candidate);
+  return relative !== '' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
+function findImportsWithin(roots, forbiddenRoot) {
+  const matches = [];
+  for (const root of roots) {
+    for (const file of listTypeScriptFiles(root)) {
+      const specifiers = listImportSpecifiers(fs.readFileSync(file, 'utf8'));
+      if (specifiers.some(specifier => (
+        isWithin(forbiddenRoot, resolveSourceImport(file, specifier))
+      ))) {
+        matches.push(path.relative(process.cwd(), file));
+      }
+    }
+  }
+  return matches;
+}
+
 const sourceRoot = path.join(process.cwd(), 'src');
+const concreteProvidersRoot = path.join(sourceRoot, 'providers');
+
+test('provider boundary guard covers every provider directory', () => {
+  const providerDirectories = fs.readdirSync(concreteProvidersRoot, {
+    withFileTypes: true,
+  })
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name)
+    .sort();
+
+  const uncoveredProviders = providerDirectories.filter(providerId => (
+    !isWithin(
+      concreteProvidersRoot,
+      resolveSourceImport(
+        path.join(sourceRoot, 'features', 'FeatureHost.ts'),
+        `@/providers/${providerId}/runtime`,
+      ),
+    )
+  ));
+
+  assert.deepEqual(uncoveredProviders, []);
+});
 
 test('core is independent from main, features, and concrete providers', () => {
-  const pattern = /from\s+['"][^'"]*(?:main['"]|features\/|providers\/(?:claude|codex|opencode|pi))/;
-  assert.deepEqual(findMatches([path.join(sourceRoot, 'core')], pattern), []);
+  const coreRoot = path.join(sourceRoot, 'core');
+  const pattern = /from\s+['"][^'"]*(?:main['"]|features\/)/;
+  assert.deepEqual(findMatches([coreRoot], pattern), []);
+  assert.deepEqual(findImportsWithin([coreRoot], concreteProvidersRoot), []);
 });
 
 test('providers are independent from main and features', () => {
@@ -43,11 +105,10 @@ test('features are independent from the composition root and app adapters', () =
 });
 
 test('features and shared UI are independent from concrete providers', () => {
-  const pattern = /from\s+['"][^'"]*providers\/(?:claude|codex|opencode|pi)/;
-  assert.deepEqual(findMatches([
+  assert.deepEqual(findImportsWithin([
     path.join(sourceRoot, 'features'),
     path.join(sourceRoot, 'shared'),
-  ], pattern), []);
+  ], concreteProvidersRoot), []);
 });
 
 test('persisted settings changes use the coordinator boundary', () => {
