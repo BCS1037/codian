@@ -1,6 +1,6 @@
 # Codian
 
-[English](README.md) | [简体中文](README_ZH.md)
+[简体中文](README.md) | [English](README_EN.md)
 
 [![Release](https://img.shields.io/github/v/release/BCS1037/codian)](https://github.com/BCS1037/codian/releases)
 [![License](https://img.shields.io/github/license/BCS1037/codian)](LICENSE)
@@ -8,119 +8,119 @@
 
 ![Codian preview](assets/Preview.png)
 
-**Codian** is a desktop-only Obsidian plugin that embeds local coding agents into your sidebar chat and inline-edit workflow. Your Obsidian Vault acts as the agent's working directory (`pwd`): agents can read and edit files, run search, execute local tools, and perform multi-step coding tasks while preserving your note vault environment.
+**Codian** 是一款仅支持桌面端的 Obsidian 插件，将本地 AI 编码 Agent 无缝嵌入到侧边栏对话与嵌入式（Inline-Edit）编辑工作流中。你的 Obsidian Vault 即为 Agent 的工作目录（`pwd`）：Agent 可以读取和修改笔记文件、执行全文检索、调用本地命令行工具，并在保护笔记库环境的前提下完成多步骤复杂任务。
 
 ---
 
-## ✨ Feature Highlights
+## ✨ 特性亮点
 
-- 💬 **Sidebar Chat Shell**: Multi-tab interface, saved conversations, fast session search, session resume, fork, rewind, and provider-native history replay.
-- ✏️ **Inline Editing**: Inline prompt execution with real-time word-level diff previews directly in your active editor.
-- 📝 **Live Markdown Composer**: Powered by CodeMirror 6 live preview, auto-completing `@note` and `@folder` mentions, drag-and-drop vault items, image attachments, and File Explorer "Add to Codian" integration.
-- 🌐 **Third-Party Claude Service Profiles**: Built-in configuration profiles for China Science and Technology Cloud, Alibaba Bailian, Volcengine Ark Coding Plan, and custom Anthropic-compatible endpoints. API keys are safely managed via Obsidian `SecretStorage`.
-- ⚙️ **Extensive Agent Ecosystem**: Full support for Agent Skills, MCP (Model Context Protocol) servers, subagents, tool execution approvals, and Plan/Thinking modes across 6 local CLI providers (`claude`, `codex`, `kimi`, `grok`, `opencode`, `pi`).
-- 🛡️ **Privacy & Safety**: Operates directly with local provider CLIs. No third-party telemetry services.
+- 💬 **侧边栏 Chat 终端**：支持多 Tab 标签页、会话自动保存、快速历史搜索、会话恢复/Fork/Rewind 以及 Provider 原生历史回放。
+- ✏️ **嵌入式编辑器 (Inline Edit)**：在编辑器中选中文本直接输入指令，实时查看词级 Diff 预览并一键应用修改。
+- 📝 **Live Markdown 实时预览输入框**：基于 CodeMirror 6 构建，支持 `@笔记` 和 `@文件夹` 自动补全、拖拽 Vault 文件/目录添加上下文、图片粘贴，以及文件列表右键“添加到 Codian”。
+- 🌐 **第三方 Claude 服务 Profile**：内置中科院云、阿里百炼 (Bailian)、火山引擎 (Volcengine Ark) 等服务预设，支持自定义 Anthropic 兼容 Endpoint。API Key 通过 Obsidian 原生 `SecretStorage` 安全加密存储。
+- ⚙️ **丰富的 Agent 生态支持**：原生支持 6 大本地 CLI Provider（`claude`, `codex`, `kimi`, `grok`, `opencode`, `pi`），完整支持 Agent Skills、MCP 服务器、Subagents 协同、工具执行审批流以及 Plan / Thinking 思考模式。
+- 🛡️ **安全与隐私保障**：直接调用本地安装的 Provider CLI 运行，不包含任何第三方遥测（Telemetry）或数据收集服务。
 
 ---
 
-## 📦 Requirements & Prerequisites
+## 📦 环境要求
 
-- **Obsidian**: Version 1.11.4 or later on macOS, Linux, or Windows.
-- **Provider CLIs**: One or more installed provider CLIs available on your system `$PATH`:
+- **Obsidian**：桌面端 Version 1.11.4 或更高版本（支持 macOS, Linux, Windows）。
+- **Provider CLI**：本地系统中已安装并在 `$PATH` 中可用的 Provider CLI：
   - [Claude Code](https://code.claude.com/docs/en/overview) (`claude`)
   - [Codex](https://github.com/openai/codex) (`codex`)
   - [Kimi Code](https://moonshotai.github.io/kimi-code/) (`kimi`)
   - [Grok](https://docs.x.ai/docs/grok-code-fast-1) (`grok`)
   - [OpenCode](https://opencode.ai/) (`opencode`)
   - [Pi](https://github.com/badlogic/pi-mono) (`pi`)
-- **Node.js**: Node.js 24 (only required if building from source).
+- **Node.js**：Node.js 24（仅从源码编译时需要）。
 
 ---
 
-## 🚀 Installation
+## 🚀 快速安装
 
-### Option 1: Obsidian Community Plugins (Recommended)
-1. Open Obsidian **Settings** -> **Community plugins**.
-2. Search for **Codian** (Plugin ID: `codianz`).
-3. Click **Install**, then **Enable**.
+### 方式一：Obsidian 社区插件市场（推荐）
+1. 打开 Obsidian **设置** -> **社区插件**。
+2. 搜索 **Codian**（插件 ID 为 `codianz`）。
+3. 点击 **安装** 并 **启用**。
 
-### Option 2: Manual Installation (Release Build)
-1. Download `main.js`, `manifest.json`, and `styles.css` from the latest [GitHub Release](https://github.com/BCS1037/codian/releases).
-2. Open your Vault's plugin directory: `<vault>/.obsidian/plugins/codianz/` (create the `codianz` folder if it does not exist).
-3. Copy the 3 downloaded files into that folder.
-4. Reload Obsidian or toggle **Codian** on in Community plugins settings.
+### 方式二：手动 Release 安装（预构建产物）
+1. 前往最新 [GitHub Release 页面](https://github.com/BCS1037/codian/releases) 下载 `main.js`、`manifest.json` 和 `styles.css`。
+2. 打开 Vault 的插件目录：`<vault>/.obsidian/plugins/codianz/`（如 `codianz` 文件夹不存在请手动新建）。
+3. 将下载的 3 个文件复制到该目录下。
+4. 重新加载 Obsidian 或在社区插件设置中启用 **Codian**。
 
-### Option 3: Build from Source (Developers)
+### 方式三：源码编译安装（开发者）
 ```bash
 git clone https://github.com/BCS1037/codian.git
 cd codian
 npm ci
 npm run build
 ```
-Copy the generated `main.js`, `manifest.json`, and `styles.css` to your vault's `.obsidian/plugins/codianz/` directory.
+编译完成后，将生成的 `main.js`、`manifest.json` 与 `styles.css` 复制到 Vault 的 `.obsidian/plugins/codianz/` 目录中。
 
 ---
 
-## ⚙️ Configuration & Third-Party Endpoints
+## ⚙️ 配置与第三方 Endpoint
 
-Codian includes provider-neutral configuration controls under Obsidian Settings:
+在 Obsidian 设置中的 **Codian** 选项卡可以进行 Provider 独立配置：
 
-- **Third-Party Claude Profiles**: Configure custom Anthropic-compatible endpoints (e.g., Alibaba Bailian, Volcengine Ark, China Science & Technology Cloud) directly in the Claude Provider tab.
-- **SecretStorage**: API keys and auth tokens are securely stored using Obsidian's native SecretStorage API rather than stored in plain text files.
-- **Provider Connection Settings**: Configure absolute CLI executable paths or provider-specific parameters per provider under **Settings** -> **Provider** -> **Connection**.
-
----
-
-## ❓ Frequently Asked Questions & Troubleshooting
-
-### 1. Why does Codian report "CLI not detected"?
-macOS GUI applications (launched via Finder or Dock) do not automatically inherit environment variables defined in Shell configuration files (e.g., `~/.zshrc` or `~/.bash_profile`).
-- **Fix**: Go to Codian **Settings** -> **Provider** -> select the target Provider -> **Connection** tab, and enter the absolute file path to the CLI executable in **CLI Path** (e.g., `/usr/local/bin/claude` or `/opt/homebrew/bin/codex`).
-
-### 2. How to set up Kimi Code CLI?
-Kimi Code CLI requires an initial login before Codian can start an ACP session.
-- **Fix**: Open your terminal, run `kimi`, and complete the interactive authentication process. Once configured, Codian will be able to discover models and connect successfully.
-
-### 3. What is the difference between plugin ID `codianz` and display name `Codian`?
-`codianz` is the unique internal plugin identifier registered with the Obsidian Community Plugin registry, while **Codian** is the user-visible display name. Always ensure your vault's plugin directory is named `codianz`.
+- **第三方 Claude Profiles**：在 Claude 选项卡中，可直接添加中科院云、阿里百炼、火山引擎等 Anthropic 兼容 Endpoint。
+- **SecretStorage 密钥安全**：所有的 API Key 与 Token 均存储于 Obsidian 原生 `SecretStorage` 中，不会明文保存在插件配置文件中。
+- **提供商连接与路径**：可在 **设置** -> **提供商** -> 选择对应的 Provider -> **连接** 选项卡中，配置 CLI 可执行文件路径或独立环境变量。
 
 ---
 
-## 🛠️ Development & Verification
+## ❓ 常见问题排查 (FAQ)
+
+### 1. 提示 "CLI not detected" 无法找到本地 CLI 命令？
+macOS 图形界面应用（通过 Finder 或 Dock 启动）默认不会加载终端 Shell（如 `~/.zshrc` 或 `~/.bash_profile`）中设置的环境变量。
+- **解决方法**：前往 Codian **设置** -> **提供商** -> 选择对应的 Provider（如 Claude、Codex、Kimi 等）-> 在 **连接** 选项卡下的 **CLI 路径** 中，直接填入该 CLI 在你本机上的绝对路径（例如 `/usr/local/bin/claude` 或 `/opt/homebrew/bin/codex`）。
+
+### 2. Kimi Code CLI 提示初始化错误？
+Kimi Code CLI 在使用前需要在终端完成首次认证。
+- **解决方法**：打开终端运行 `kimi` 命令，按照提示完成登录与模型配置。配置完成后，Codian 即可正常识别并开启 ACP 会话。
+
+### 3. 为什么插件文件夹是 `codianz`，但在 Obsidian 里显示叫 `Codian`？
+`codianz` 是提交给 Obsidian 社区插件市场的内部唯一标识（Plugin ID），而 **Codian** 是在界面上呈现给用户的显示名称。安装时请务必保证插件文件夹名称为 `codianz`。
+
+---
+
+## 🛠️ 本地开发与代码验证
 
 ```bash
-# Install dependencies
+# 安装依赖
 npm ci
 
-# Run type check, linter, and unit test suite
+# 执行类型检查、代码 Lint 与单元测试
 npm run verify
 
-# Verify license boundaries and secret scanning
+# 运行依赖许可证与代码安全扫描
 npm run security:audit
 ```
 
-Please review [CONTRIBUTING.md](CONTRIBUTING.md) before submitting Pull Requests. Report security vulnerabilities privately per [SECURITY.md](SECURITY.md).
+在提交 Pull Request 之前，请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。安全漏洞请参照 [SECURITY.md](SECURITY.md) 进行私密通报。
 
 ---
 
-## 💖 Support & Sponsor
+## 💖 支持与赞助
 
-If you find Codian helpful and would like to support its ongoing maintenance and development of new features, you are welcome to sponsor me on [Afdian (爱发电)](https://afdian.com/a/bcs1037).
+如果你觉得 Codian 对你的工作与学习有所帮助，并希望支持项目的持续维护、更新与新特性开发，欢迎通过 [爱发电 (Afdian)](https://afdian.com/a/bcs1037) 给予支持。
 
-Thank you for your support! 🙏
-
----
-
-## 🙏 Acknowledgments
-
-Codian is built upon the foundation of [Claudian](https://github.com/YishenTu/claudian), created by [Yishen Tu](https://github.com/YishenTu). I am deeply grateful to Yishen Tu and the Claudian contributors for their pioneering work in bringing AI coding agents to Obsidian.
-
-I also thank the authors and maintainers of all open-source dependencies and tools that make Codian possible.
+非常感谢你的支持与鼓励！🙏
 
 ---
 
-## 📄 License & Attribution
+## 🙏 致谢 (Acknowledgments)
 
-Codian modifications and derived source code are licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE).
-Upstream Claudian source code remains under the MIT License.
-See [NOTICE](NOTICE) for Claudian upstream attribution and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for third-party component notices.
+Codian 基于 [Yishen Tu](https://github.com/YishenTu) 开发的开源项目 [Claudian](https://github.com/YishenTu/claudian) 衍生开发。我非常感谢 Yishen Tu 及 Claudian 开源社区贡献者们在将 AI 编码 Agent 引入 Obsidian 领域所做出的开创性工作与灵感启发。
+
+同时我也感谢所有使得 Codian 成为可能的开源项目与社区开发者。
+
+---
+
+## 📄 许可证与开源致谢
+
+Codian 修改与衍生源码遵循 [AGPL-3.0 许可证](LICENSE)。
+上游 Claudian 源码保持遵循 MIT 许可证。
+上游 Claudian 声明参见 [NOTICE](NOTICE)，第三方组件声明参见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
