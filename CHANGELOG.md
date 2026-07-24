@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2 — 2026-07-23
+
+- Updated `bun.lock` dependency lockfile for Obsidian Community Store automated review compatibility.
+
 ## 1.0.1 — 2026-07-23
 
 - Changed the Obsidian plugin ID from `codian` to `codianz` for Community plugins directory compatibility. The displayed plugin name remains Codian.

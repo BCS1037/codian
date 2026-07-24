@@ -1,6 +1,6 @@
 {
   "name": "codianz",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Codian - coding agents embedded in Obsidian sidebar",
   "main": "main.js",
   "engines": {
@@ -38,7 +38,7 @@
     "ide"
   ],
   "author": "BCS",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/jest": "^30.0.0",
