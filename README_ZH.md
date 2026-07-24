@@ -103,6 +103,14 @@ npm run security:audit
 
 ---
 
+## 💖 支持与赞助
+
+如果你觉得 Codian 对你的工作与学习有所帮助，并希望支持项目的持续维护、更新与新特性开发，欢迎通过 [爱发电 (Afdian)](https://afdian.com/a/bcs1037) 给予支持。
+
+非常感谢你的支持与鼓励！🙏
+
+---
+
 ## 🙏 致谢 (Acknowledgments)
 
 Codian 基于 [Yishen Tu](https://github.com/YishenTu) 开发的开源项目 [Claudian](https://github.com/YishenTu/claudian) 衍生开发。我非常感谢 Yishen Tu 及 Claudian 开源社区贡献者们在将 AI 编码 Agent 引入 Obsidian 领域所做出的开创性工作与灵感启发。

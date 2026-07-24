@@ -103,6 +103,14 @@ Please review [CONTRIBUTING.md](CONTRIBUTING.md) before submitting Pull Requests
 
 ---
 
+## 💖 Support & Sponsor
+
+If you find Codian helpful and would like to support its ongoing maintenance and development of new features, you are welcome to sponsor me on [Afdian (爱发电)](https://afdian.com/a/bcs1037).
+
+Thank you for your support! 🙏
+
+---
+
 ## 🙏 Acknowledgments
 
 Codian is built upon the foundation of [Claudian](https://github.com/YishenTu/claudian), created by [Yishen Tu](https://github.com/YishenTu). I am deeply grateful to Yishen Tu and the Claudian contributors for their pioneering work in bringing AI coding agents to Obsidian.
