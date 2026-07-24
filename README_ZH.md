@@ -1,3 +1,5 @@
+ne       wwyingwe
+
 # Codian
 
 [English](README.md) | [简体中文](README_ZH.md)
@@ -40,23 +42,27 @@
 ## 🚀 快速安装
 
 ### 方式一：Obsidian 社区插件市场（推荐）
+
 1. 打开 Obsidian **设置** -> **社区插件**。
 2. 搜索 **Codian**（插件 ID 为 `codianz`）。
 3. 点击 **安装** 并 **启用**。
 
 ### 方式二：手动 Release 安装（预构建产物）
+
 1. 前往最新 [GitHub Release 页面](https://github.com/BCS1037/codian/releases) 下载 `main.js`、`manifest.json` 和 `styles.css`。
 2. 打开 Vault 的插件目录：`<vault>/.obsidian/plugins/codianz/`（如 `codianz` 文件夹不存在请手动新建）。
 3. 将下载的 3 个文件复制到该目录下。
 4. 重新加载 Obsidian 或在社区插件设置中启用 **Codian**。
 
 ### 方式三：源码编译安装（开发者）
+
 ```bash
 git clone https://github.com/BCS1037/codian.git
 cd codian
 npm ci
 npm run build
 ```
+
 编译完成后，将生成的 `main.js`、`manifest.json` 与 `styles.css` 复制到 Vault 的 `.obsidian/plugins/codianz/` 目录中。
 
 ---
@@ -74,14 +80,19 @@ npm run build
 ## ❓ 常见问题排查 (FAQ)
 
 ### 1. 提示 "CLI not detected" 无法找到本地 CLI 命令？
+
 macOS 图形界面应用（通过 Finder 或 Dock 启动）默认不会加载终端 Shell（如 `~/.zshrc` 或 `~/.bash_profile`）中设置的环境变量。
+
 - **解决方法**：前往 Codian **设置** -> **提供商** -> 选择对应的 Provider（如 Claude、Codex、Kimi 等）-> 在 **连接** 选项卡下的 **CLI 路径** 中，直接填入该 CLI 在你本机上的绝对路径（例如 `/usr/local/bin/claude` 或 `/opt/homebrew/bin/codex`）。
 
 ### 2. Kimi Code CLI 提示初始化错误？
+
 Kimi Code CLI 在使用前需要在终端完成首次认证。
+
 - **解决方法**：打开终端运行 `kimi` 命令，按照提示完成登录与模型配置。配置完成后，Codian 即可正常识别并开启 ACP 会话。
 
 ### 3. 为什么插件文件夹是 `codianz`，但在 Obsidian 里显示叫 `Codian`？
+
 `codianz` 是提交给 Obsidian 社区插件市场的内部唯一标识（Plugin ID），而 **Codian** 是在界面上呈现给用户的显示名称。安装时请务必保证插件文件夹名称为 `codianz`。
 
 ---
@@ -111,7 +122,7 @@ npm run security:audit
 
 ---
 
-## 🙏 致谢 (Acknowledgments)
+## 🙏 致谢
 
 Codian 基于 [Yishen Tu](https://github.com/YishenTu) 开发的开源项目 [Claudian](https://github.com/YishenTu/claudian) 衍生开发。我非常感谢 Yishen Tu 及 Claudian 开源社区贡献者们在将 AI 编码 Agent 引入 Obsidian 领域所做出的开创性工作与灵感启发。
 
@@ -119,7 +130,7 @@ Codian 基于 [Yishen Tu](https://github.com/YishenTu) 开发的开源项目 [Cl
 
 ---
 
-## 📄 许可证与开源致谢
+## 📄 许可证
 
 Codian 修改与衍生源码遵循 [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE)。
 上游 Claudian 源码保持遵循 MIT 许可证。

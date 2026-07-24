@@ -1,6 +1,6 @@
 # Third-party notices
 
-Codian source is distributed under the GNU Affero General Public License v3.0 (AGPL-3.0), except for third-party components governed by their own licenses and terms.
+Codian source is distributed under AGPL-3.0, except for third-party components governed by their own licenses and terms.
 
 ## Claude Agent SDK
 
