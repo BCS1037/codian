@@ -119,7 +119,7 @@ I also thank the authors and maintainers of all open-source dependencies and too
 
 ---
 
-## 📄 License & Attribution
+## 📄 License
 
 Codian modifications and derived source code are licensed under [AGPL-3.0](LICENSE).
 Upstream Claudian source code remains under the MIT License.
