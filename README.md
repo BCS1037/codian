@@ -121,5 +121,6 @@ I also thank the authors and maintainers of all open-source dependencies and too
 
 ## 📄 License & Attribution
 
-Codian-authored and upstream-derived source code is licensed under the [MIT License](LICENSE).
+Codian modifications and derived source code are licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE).
+Upstream Claudian source code remains under the MIT License.
 See [NOTICE](NOTICE) for Claudian upstream attribution and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for third-party component notices.

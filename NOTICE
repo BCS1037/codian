@@ -2,6 +2,7 @@ Codian
 Copyright (c) 2026 BCS
 
 Codian is derived from Claudian by Yishen Tu.
-Claudian and Codian are distributed under the MIT License; see LICENSE.
+Upstream Claudian source is licensed under the MIT License.
+Codian modifications and overall derived work are licensed under the GNU Affero General Public License v3.0 (AGPL-3.0); see LICENSE.
 
 This repository retains applicable notices from its upstream dependencies.
