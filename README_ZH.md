@@ -105,9 +105,9 @@ npm run security:audit
 
 ## 🙏 致谢 (Acknowledgments)
 
-Codian 基于 [Yishen Tu](https://github.com/YishenTu) 开发的开源项目 [Claudian](https://github.com/YishenTu/claudian) 衍生开发。我们非常感谢 Yishen Tu 及 Claudian 开源社区贡献者们在将 AI 编码 Agent 引入 Obsidian 领域所做出的开创性工作与灵感启发。
+Codian 基于 [Yishen Tu](https://github.com/YishenTu) 开发的开源项目 [Claudian](https://github.com/YishenTu/claudian) 衍生开发。我非常感谢 Yishen Tu 及 Claudian 开源社区贡献者们在将 AI 编码 Agent 引入 Obsidian 领域所做出的开创性工作与灵感启发。
 
-同时也感谢所有使得 Codian 成为可能的开源项目与社区开发者。
+同时我也感谢所有使得 Codian 成为可能的开源项目与社区开发者。
 
 ---
 

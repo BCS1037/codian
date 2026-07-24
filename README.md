@@ -105,9 +105,9 @@ Please review [CONTRIBUTING.md](CONTRIBUTING.md) before submitting Pull Requests
 
 ## 🙏 Acknowledgments
 
-Codian is built upon the foundation of [Claudian](https://github.com/YishenTu/claudian), created by [Yishen Tu](https://github.com/YishenTu). We are deeply grateful to Yishen Tu and the Claudian contributors for their pioneering work in bringing AI coding agents to Obsidian.
+Codian is built upon the foundation of [Claudian](https://github.com/YishenTu/claudian), created by [Yishen Tu](https://github.com/YishenTu). I am deeply grateful to Yishen Tu and the Claudian contributors for their pioneering work in bringing AI coding agents to Obsidian.
 
-We also thank the authors and maintainers of all open-source dependencies and tools that make Codian possible.
+I also thank the authors and maintainers of all open-source dependencies and tools that make Codian possible.
 
 ---
 
