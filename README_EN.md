@@ -124,3 +124,11 @@ I also thank the authors and maintainers of all open-source dependencies and too
 Codian modifications and derived source code are licensed under [AGPL-3.0](LICENSE).
 Upstream Claudian source code remains under the MIT License.
 See [NOTICE](NOTICE) for Claudian upstream attribution and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for third-party component notices.
+
+---
+
+## 📢 Connect & Follow
+
+Follow WeChat Official Account **「维客笔记」** — Dedicated to exploring minimalist ways to solve problems!
+
+- **X (Twitter)**: [https://x.com/bcs1037](https://x.com/bcs1037)

@@ -124,3 +124,11 @@ Codian 基于 [Yishen Tu](https://github.com/YishenTu) 开发的开源项目 [Cl
 Codian 修改与衍生源码遵循 [AGPL-3.0 许可证](LICENSE)。
 上游 Claudian 源码保持遵循 MIT 许可证。
 上游 Claudian 声明参见 [NOTICE](NOTICE)，第三方组件声明参见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+---
+
+## 📢 关注维客笔记
+
+微信公众号「维客笔记」，致力于探索解决问题的极简方式！
+
+- **X (Twitter)**：[https://x.com/bcs1037](https://x.com/bcs1037)
