@@ -20,23 +20,8 @@ Codian is derived from [Claudian](https://github.com/YishenTu/claudian) and main
 - ✏️ **Inline Editing**: Inline prompt execution with real-time word-level diff previews directly in your active editor.
 - 📝 **Live Markdown Composer**: Powered by CodeMirror 6 live preview, auto-completing `@note` and `@folder` mentions, drag-and-drop vault items, image attachments, and File Explorer "Add to Codian" integration.
 - 🌐 **Third-Party Claude Service Profiles**: Built-in configuration profiles for China Science and Technology Cloud, Alibaba Bailian, Volcengine Ark Coding Plan, and custom Anthropic-compatible endpoints. API keys are safely managed via Obsidian `SecretStorage`.
-- ⚙️ **Extensive Agent Ecosystem**: Full support for Agent Skills, MCP (Model Context Protocol) servers, subagents, tool execution approvals, and Plan/Thinking modes.
+- ⚙️ **Extensive Agent Ecosystem**: Full support for Agent Skills, MCP (Model Context Protocol) servers, subagents, tool execution approvals, and Plan/Thinking modes across 6 local CLI providers (`claude`, `codex`, `kimi`, `grok`, `opencode`, `pi`).
 - 🛡️ **Privacy & Safety**: Operates directly with local provider CLIs. No third-party telemetry services.
-
----
-
-## 🔌 Provider Capabilities Matrix
-
-Codian supports 6 local CLI providers out of the box. Provider capabilities intentionally reflect what each installed CLI supports:
-
-| Provider | CLI Command | Authentication / Endpoint | Plan Mode | MCP | Subagents | Image Input |
-| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
-| **Claude Code** | `claude` | API Key / Cloud Auth / Third-party Profiles (`SecretStorage`) | ✅ | ✅ | ✅ | ✅ |
-| **Codex** | `codex` | Local Config / Remote Provider App-Server | ✅ | ✅ | ✅ | ✅ |
-| **Kimi Code** | `kimi` | Native ACP (`kimi` interactive login prerequisite) | ✅ | ❌ | ❌ | ✅ |
-| **Grok** | `grok` | Native ACP (`grok-4.5` reasoning effort controls) | ❌ | ❌ | ❌ | ❌ |
-| **OpenCode** | `opencode` | Native ACP Adapter | ❌ | ✅ | ❌ | ❌ |
-| **Pi** | `pi` | Native ACP Adapter | ❌ | ✅ | ❌ | ❌ |
 
 ---
 
@@ -84,7 +69,7 @@ Codian includes provider-neutral configuration controls under Obsidian Settings:
 
 - **Third-Party Claude Profiles**: Configure custom Anthropic-compatible endpoints (e.g., Alibaba Bailian, Volcengine Ark, China Science & Technology Cloud) directly in the Claude Provider tab.
 - **SecretStorage**: API keys and auth tokens are securely stored using Obsidian's native SecretStorage API rather than stored in plain text files.
-- **Environment Variables**: Configure global environment overrides (such as `PATH` or custom proxies) under **Settings** -> **Environment**.
+- **Provider Connection Settings**: Configure absolute CLI executable paths or provider-specific parameters per provider under **Settings** -> **Provider** -> **Connection**.
 
 ---
 
@@ -92,7 +77,7 @@ Codian includes provider-neutral configuration controls under Obsidian Settings:
 
 ### 1. Why does Codian report "CLI not detected"?
 macOS GUI applications (launched via Finder or Dock) do not automatically inherit environment variables defined in Shell configuration files (e.g., `~/.zshrc` or `~/.bash_profile`).
-- **Fix**: Go to Codian **Settings** -> **Environment** -> **Shared Environment**, and add your CLI installation directories to `PATH` (e.g., `/usr/local/bin:/opt/homebrew/bin:/Users/<username>/.local/bin`).
+- **Fix**: Go to Codian **Settings** -> **Provider** -> select the target Provider -> **Connection** tab, and enter the absolute file path to the CLI executable in **CLI Path** (e.g., `/usr/local/bin/claude` or `/opt/homebrew/bin/codex`).
 
 ### 2. How to set up Kimi Code CLI?
 Kimi Code CLI requires an initial login before Codian can start an ACP session.

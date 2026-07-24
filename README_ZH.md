@@ -20,23 +20,8 @@ Codian 衍生自开源项目 [Claudian](https://github.com/YishenTu/claudian)，
 - ✏️ **嵌入式编辑器 (Inline Edit)**：在编辑器中选中文本直接输入指令，实时查看词级 Diff 预览并一键应用修改。
 - 📝 **Live Markdown 实时预览输入框**：基于 CodeMirror 6 构建，支持 `@笔记` 和 `@文件夹` 自动补全、拖拽 Vault 文件/目录添加上下文、图片粘贴，以及文件列表右键“添加到 Codian”。
 - 🌐 **第三方 Claude 服务 Profile**：内置中科院云、阿里百炼 (Bailian)、火山引擎 (Volcengine Ark) 等服务预设，支持自定义 Anthropic 兼容 Endpoint。API Key 通过 Obsidian 原生 `SecretStorage` 安全加密存储。
-- ⚙️ **丰富的 Agent 生态支持**：完整支持 Agent Skills、MCP (Model Context Protocol) 服务器、Subagents 协同、工具执行审批流以及 Plan / Thinking 思考模式。
+- ⚙️ **丰富的 Agent 生态支持**：原生支持 6 大本地 CLI Provider（`claude`, `codex`, `kimi`, `grok`, `opencode`, `pi`），完整支持 Agent Skills、MCP 服务器、Subagents 协同、工具执行审批流以及 Plan / Thinking 思考模式。
 - 🛡️ **安全与隐私保障**：直接调用本地安装的 Provider CLI 运行，不包含任何第三方遥测（Telemetry）或数据收集服务。
-
----
-
-## 🔌 Provider 能力支持矩阵
-
-Codian 原生支持 6 大本地 CLI Provider。插件展示的能力与你本地安装的 CLI 功能保持一致：
-
-| Provider | CLI 命令 | 认证方式 / 节点配置 | Plan 模式 | MCP | Subagents | 图片输入 |
-| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
-| **Claude Code** | `claude` | API Key / 云端认证 / 第三方 Profiles (`SecretStorage`) | ✅ | ✅ | ✅ | ✅ |
-| **Codex** | `codex` | 本地配置文件 / 远程 Provider App-Server | ✅ | ✅ | ✅ | ✅ |
-| **Kimi Code** | `kimi` | 原生 ACP（需先在终端完成 `kimi` 交互式登录） | ✅ | ❌ | ❌ | ✅ |
-| **Grok** | `grok` | 原生 ACP（支持 `grok-4.5` 推理强度控制） | ❌ | ❌ | ❌ | ❌ |
-| **OpenCode** | `opencode` | 原生 ACP 适配器 | ❌ | ✅ | ❌ | ❌ |
-| **Pi** | `pi` | 原生 ACP 适配器 | ❌ | ✅ | ❌ | ❌ |
 
 ---
 
@@ -84,7 +69,7 @@ npm run build
 
 - **第三方 Claude Profiles**：在 Claude 选项卡中，可直接添加中科院云、阿里百炼、火山引擎等 Anthropic 兼容 Endpoint。
 - **SecretStorage 密钥安全**：所有的 API Key 与 Token 均存储于 Obsidian 原生 `SecretStorage` 中，不会明文保存在插件配置文件中。
-- **环境变量配置**：如需添加全局 `PATH` 环境变量或自定义代理，可在 **Settings** -> **Environment** 选项卡中统一设置。
+- **提供商连接与路径**：可在 **设置** -> **提供商** -> 选择对应的 Provider -> **连接** 选项卡中，配置 CLI 可执行文件路径或独立环境变量。
 
 ---
 
@@ -92,7 +77,7 @@ npm run build
 
 ### 1. 提示 "CLI not detected" 无法找到本地 CLI 命令？
 macOS 图形界面应用（通过 Finder 或 Dock 启动）默认不会加载终端 Shell（如 `~/.zshrc` 或 `~/.bash_profile`）中设置的环境变量。
-- **解决方法**：前往 Codian **设置** -> **Environment** -> **Shared Environment**，在 `PATH` 中补充你的 CLI 安装路径（例如 `/usr/local/bin:/opt/homebrew/bin:/Users/<用户名>/.local/bin`）。
+- **解决方法**：前往 Codian **设置** -> **提供商** -> 选择对应的 Provider（如 Claude、Codex、Kimi 等）-> 在 **连接** 选项卡下的 **CLI 路径** 中，直接填入该 CLI 在你本机上的绝对路径（例如 `/usr/local/bin/claude` 或 `/opt/homebrew/bin/codex`）。
 
 ### 2. Kimi Code CLI 提示初始化错误？
 Kimi Code CLI 在使用前需要在终端完成首次认证。
