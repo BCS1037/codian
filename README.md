@@ -10,8 +10,6 @@
 
 **Codian** is a desktop-only Obsidian plugin that embeds local coding agents into your sidebar chat and inline-edit workflow. Your Obsidian Vault acts as the agent's working directory (`pwd`): agents can read and edit files, run search, execute local tools, and perform multi-step coding tasks while preserving your note vault environment.
 
-Codian is derived from [Claudian](https://github.com/YishenTu/claudian) and maintained by BCS under the MIT License.
-
 ---
 
 ## ✨ Feature Highlights
@@ -102,6 +100,14 @@ npm run security:audit
 ```
 
 Please review [CONTRIBUTING.md](CONTRIBUTING.md) before submitting Pull Requests. Report security vulnerabilities privately per [SECURITY.md](SECURITY.md).
+
+---
+
+## 🙏 Acknowledgments
+
+Codian is built upon the foundation of [Claudian](https://github.com/YishenTu/claudian), created by [Yishen Tu](https://github.com/YishenTu). We are deeply grateful to Yishen Tu and the Claudian contributors for their pioneering work in bringing AI coding agents to Obsidian.
+
+We also thank the authors and maintainers of all open-source dependencies and tools that make Codian possible.
 
 ---
 

@@ -10,8 +10,6 @@
 
 **Codian** 是一款仅支持桌面端的 Obsidian 插件，将本地 AI 编码 Agent 无缝嵌入到侧边栏对话与嵌入式（Inline-Edit）编辑工作流中。你的 Obsidian Vault 即为 Agent 的工作目录（`pwd`）：Agent 可以读取和修改笔记文件、执行全文检索、调用本地命令行工具，并在保护笔记库环境的前提下完成多步骤复杂任务。
 
-Codian 衍生自开源项目 [Claudian](https://github.com/YishenTu/claudian)，由 BCS 基于 MIT 协议开源与维护。
-
 ---
 
 ## ✨ 特性亮点
@@ -102,6 +100,14 @@ npm run security:audit
 ```
 
 在提交 Pull Request 之前，请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。安全漏洞请参照 [SECURITY.md](SECURITY.md) 进行私密通报。
+
+---
+
+## 🙏 致谢 (Acknowledgments)
+
+Codian 基于 [Yishen Tu](https://github.com/YishenTu) 开发的开源项目 [Claudian](https://github.com/YishenTu/claudian) 衍生开发。我们非常感谢 Yishen Tu 及 Claudian 开源社区贡献者们在将 AI 编码 Agent 引入 Obsidian 领域所做出的开创性工作与灵感启发。
+
+同时也感谢所有使得 Codian 成为可能的开源项目与社区开发者。
 
 ---
 
