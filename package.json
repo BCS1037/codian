@@ -61,7 +61,7 @@
     "@anthropic-ai/claude-agent-sdk": "^0.3.209",
     "@codemirror/commands": "6.8.1",
     "@codemirror/state": "^6.5.0",
-    "@codemirror/view": "^6.38.6",
+    "@codemirror/view": "^6.43.6",
     "@modelcontextprotocol/sdk": "~1.29.0",
     "smol-toml": "^1.6.1",
     "tslib": "^2.8.1"
