@@ -1,6 +1,6 @@
 # Third-party notices
 
-Codian source is distributed under the MIT License, except for third-party components governed by their own licenses and terms.
+Codian source is distributed under the GNU Affero General Public License v3.0 (AGPL-3.0), except for third-party components governed by their own licenses and terms.
 
 ## Claude Agent SDK
 
@@ -12,7 +12,7 @@ Codian depends on `@anthropic-ai/claude-agent-sdk` to integrate Claude.
 - SDK repository: <https://github.com/anthropics/claude-agent-sdk-typescript>
 - Platform packages: `@anthropic-ai/claude-agent-sdk-darwin-arm64`, `@anthropic-ai/claude-agent-sdk-darwin-x64`, `@anthropic-ai/claude-agent-sdk-linux-arm64`, `@anthropic-ai/claude-agent-sdk-linux-arm64-musl`, `@anthropic-ai/claude-agent-sdk-linux-x64`, `@anthropic-ai/claude-agent-sdk-linux-x64-musl`, `@anthropic-ai/claude-agent-sdk-win32-arm64`, and `@anthropic-ai/claude-agent-sdk-win32-x64`.
 
-The Claude Agent SDK is not relicensed under Codian's MIT License. Use of the SDK is subject to Anthropic's applicable legal agreements. Before publishing binary artifacts, maintainers must confirm that the planned SDK version and distribution method permit redistribution and must include all required notices.
+The Claude Agent SDK is not relicensed under Codian's AGPL-3.0 License. Use of the SDK is subject to Anthropic's applicable legal agreements. Before publishing binary artifacts, maintainers must confirm that the planned SDK version and distribution method permit redistribution and must include all required notices.
 
 ## Other direct runtime dependencies
 

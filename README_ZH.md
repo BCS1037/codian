@@ -121,5 +121,6 @@ Codian 基于 [Yishen Tu](https://github.com/YishenTu) 开发的开源项目 [Cl
 
 ## 📄 许可证与开源致谢
 
-Codian 源码及上游衍生代码遵循 [MIT 许可证](LICENSE)。
+Codian 修改与衍生源码遵循 [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE)。
+上游 Claudian 源码保持遵循 MIT 许可证。
 上游 Claudian 声明参见 [NOTICE](NOTICE)，第三方组件声明参见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

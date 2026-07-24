@@ -48,4 +48,4 @@ Codian has a clean public history derived from Claudian. Do not merge unrelated 
 - Do not commit `.codian/`, `.claudian/`, `.claude/`, `.codex/`, `.context/`, vault content, credentials, or transcripts.
 - Do not include local maintainer documentation from ignored `docs/` or local Agent configuration.
 
-By contributing, you agree that your contribution is licensed under this repository's MIT License.
+By contributing, you agree that your contribution is licensed under this repository's GNU Affero General Public License v3.0 (AGPL-3.0).
