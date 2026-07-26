@@ -119,12 +119,12 @@ describe('settings provider layout', () => {
     expect(source).not.toContain('ask.feishu.cn');
   });
 
-  it('aligns About section text with the slogan card content', () => {
+  it('aligns About sections with the slogan card edge', () => {
     const css = readFileSync(resolve('src/style/settings/base.css'), 'utf8');
     const rule = css.match(/\.claudian-settings-about-section\s*\{([^}]*)\}/)?.[1];
     const headingRule = css.match(/\.claudian-settings-about-section \.setting-item-heading\s*\{([^}]*)\}/)?.[1];
 
-    expect(rule).toContain('padding: 0 20px;');
+    expect(rule).toContain('padding: 0;');
     expect(headingRule).toContain('padding: 0;');
   });
 
