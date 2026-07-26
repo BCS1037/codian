@@ -102,9 +102,10 @@ export function getBlankTabModelOptions(
     const group = ProviderRegistry.getProviderDisplayName(providerId);
 
     return uiConfig.getModelOptions(settings)
+      .filter(model => providerId !== 'claude' || !uiConfig.isDefaultModel?.(model.value))
       .map(model => ({
         ...model,
-        group: model.group ? `${group} · ${model.group}` : group,
+        group,
         providerIcon,
       }));
   });
@@ -1224,7 +1225,8 @@ export function initializeTabUI(
   if (dom.messagesEl.parentElement) {
     tab.ui.navigationSidebar = new NavigationSidebar(
       dom.messagesEl.parentElement,
-      dom.messagesEl
+      dom.messagesEl,
+      plugin.settings.chatNavigationMode,
     );
   }
 

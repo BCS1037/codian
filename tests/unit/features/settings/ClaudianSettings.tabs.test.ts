@@ -17,6 +17,7 @@ describe('settings tab order', () => {
       'general',
       'providers',
       'workspace',
+      'about',
     ]);
   });
 
@@ -62,9 +63,28 @@ describe('settings provider layout', () => {
     });
   });
 
-  it('preserves Claude manual model management as a distinct provider capability', () => {
+  it('counts only configured Claude models on the provider card', () => {
     expect(getProviderCardModelState('claude', {})).toEqual({
-      count: expect.any(Number),
+      count: 0,
+      kind: 'manual-models',
+    });
+    expect(getProviderCardModelState('claude', {
+      providerConfigs: {
+        claude: {
+          thirdPartyServices: [{
+            id: 'bailian',
+            name: '阿里百炼',
+            baseUrl: 'https://coding.dashscope.aliyuncs.com/apps/anthropic',
+            authMode: 'auth-token',
+            secretId: 'codianz-claude-bailian',
+            defaultModel: 'qwen-plus',
+            lightweightModel: 'qwen-flash',
+            enabled: true,
+          }],
+        },
+      },
+    })).toEqual({
+      count: 1,
       kind: 'manual-models',
     });
   });

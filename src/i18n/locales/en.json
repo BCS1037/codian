@@ -87,7 +87,9 @@
       "add": "Add to Codian",
       "notReady": "Codian chat is not ready.",
       "failed": "Failed to add file to Codian."
-    }
+    },
+    "navigation": { "jumpToPrompt": "Jump to prompt {index}" },
+    "welcomeOrb": { "solving": "Solving" }
   },
   "settings": {
     "title": "Codian Settings",
@@ -97,6 +99,7 @@
       "codex": "Codex",
       "providers": "Provider",
       "workspace": "Workspace",
+      "about": "About",
       "environment": "Environment",
       "pro": "Pro"
     },
@@ -107,6 +110,7 @@
     "setup": "Connection",
     "models": "Models",
     "experimental": "Experimental",
+    "about": { "slogan": "Dedicated to exploring the simplest ways to solve problems.", "followWeike": "Follow Weike", "wechatOfficialAccount": "WeChat Official Account (home base)", "wechatOfficialAccountValue": "维客笔记", "xiaohongshu": "Xiaohongshu", "x": "X", "knowledgeBase": "AI Practice Cases Knowledge Base (paid)" },
     "userName": {
       "name": "What should Codian call you?",
       "desc": "Your name for personalized greetings (leave empty for generic greetings)"
@@ -135,6 +139,12 @@
     "navMappings": {
       "name": "Vim-style navigation mappings",
       "desc": "One mapping per line. Format: \"map <key> <action>\" (actions: scrollUp, scrollDown, focusInput)."
+    },
+    "chatNavigationMode": {
+      "name": "Chat navigation style",
+      "desc": "Choose how to navigate through messages in a conversation.",
+      "conversationRail": "Conversation dot navigation",
+      "buttonNavigation": "Navigation buttons"
     },
     "requireCommandOrControlEnterToSend": {
       "name": "Require Command/Ctrl+Enter to send",

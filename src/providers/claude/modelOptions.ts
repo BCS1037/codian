@@ -15,7 +15,7 @@ export interface ClaudeModelOption extends ProviderUIOption {
   environmentTypes?: readonly ClaudeModelEnvType[];
 }
 
-function parseConfiguredCustomModelIds(value: string): string[] {
+export function parseConfiguredClaudeModelIds(value: string): string[] {
   const modelIds: string[] = [];
   const seen = new Set<string>();
 
@@ -80,7 +80,7 @@ export function getClaudeModelOptions(settings: Record<string, unknown>): Claude
   const seenModelIds = new Set(models.map(model =>
     normalizeLegacyClaudeModelAlias(toClaudeRuntimeModelId(model.value))
   ));
-  for (const configuredModelId of parseConfiguredCustomModelIds(claudeSettings.customModels)) {
+  for (const configuredModelId of parseConfiguredClaudeModelIds(claudeSettings.customModels)) {
     const modelId = toClaudeRuntimeModelId(configuredModelId);
     const normalizedModelId = normalizeLegacyClaudeModelAlias(modelId);
     if (seenModelIds.has(normalizedModelId)) {

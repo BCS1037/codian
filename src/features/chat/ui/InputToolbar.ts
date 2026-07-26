@@ -78,10 +78,39 @@ export class ModelSelector {
   private getAvailableModels() {
     const settings = this.callbacks.getSettings();
     const uiConfig = this.callbacks.getUIConfig();
-    return uiConfig.getModelOptions({
+    const models = uiConfig.getModelOptions({
       ...settings,
       environmentVariables: this.callbacks.getEnvironmentVariables?.(),
     });
+    const capabilities = this.callbacks.getCapabilities();
+    if (capabilities.providerId === 'claude' && uiConfig.modelManagement === 'manual-models') {
+      return models
+        .filter(model => !uiConfig.isDefaultModel(model.value))
+        .map(model => ({ ...model, group: undefined }));
+    }
+    return models;
+  }
+
+  private getEffortOptions(model: string): ProviderReasoningOption[] {
+    const settings = this.callbacks.getSettings();
+    const uiConfig = this.callbacks.getUIConfig();
+    if (this.callbacks.getCapabilities().reasoningControl !== 'effort'
+      || !uiConfig.isAdaptiveReasoningModel(model, settings)) {
+      return [];
+    }
+    return uiConfig.getReasoningOptions(model, settings);
+  }
+
+  private getDisplayLabel(model: ProviderUIOption): string {
+    const currentModel = this.callbacks.getSettings().model;
+    if (model.value !== currentModel) {
+      return model.label;
+    }
+
+    const currentEffort = this.callbacks.getSettings().effortLevel;
+    return this.getEffortOptions(model.value).some(option => option.value === currentEffort)
+      ? `${model.label} (${currentEffort})`
+      : model.label;
   }
 
   private render() {
@@ -105,7 +134,7 @@ export class ModelSelector {
     this.buttonEl.empty();
 
     const labelEl = this.buttonEl.createSpan({ cls: 'claudian-model-label' });
-    labelEl.setText(displayModel?.label || 'Unknown');
+    labelEl.setText(displayModel ? this.getDisplayLabel(displayModel) : 'Unknown');
   }
 
   renderOptions() {
@@ -152,6 +181,11 @@ export class ModelSelector {
         option.setAttribute('title', model.description);
       }
 
+      const effortOptions = this.getEffortOptions(model.value);
+      if (effortOptions.length > 1) {
+        this.renderEffortSubmenu(option, model, effortOptions);
+      }
+
       option.addEventListener('click', (e) => {
         e.stopPropagation();
         runToolbarAction(async () => {
@@ -159,6 +193,38 @@ export class ModelSelector {
           this.updateDisplay();
           this.renderOptions();
         }, 'Failed to change model');
+      });
+    }
+  }
+
+  private renderEffortSubmenu(
+    optionEl: HTMLElement,
+    model: ProviderUIOption,
+    effortOptions: ProviderReasoningOption[],
+  ): void {
+    optionEl.addClass('claudian-model-option-with-effort');
+    optionEl.createSpan({ cls: 'claudian-model-effort-chevron', text: '›' });
+    const submenuEl = optionEl.createDiv({ cls: 'claudian-model-effort-options' });
+    const currentModel = this.callbacks.getSettings().model;
+    const currentEffort = this.callbacks.getSettings().effortLevel;
+
+    for (const effort of effortOptions) {
+      const effortEl = submenuEl.createDiv({ cls: 'claudian-model-effort-option' });
+      effortEl.setText(effort.label);
+      if (model.value === currentModel && effort.value === currentEffort) {
+        effortEl.addClass('selected');
+      }
+      if (effort.description) {
+        effortEl.setAttribute('title', effort.description);
+      }
+      effortEl.addEventListener('click', (event) => {
+        event.stopPropagation();
+        runToolbarAction(async () => {
+          await this.callbacks.onModelChange(model.value);
+          await this.callbacks.onEffortLevelChange(effort.value);
+          this.updateDisplay();
+          this.renderOptions();
+        }, 'Failed to change model effort');
       });
     }
   }
@@ -391,7 +457,7 @@ export class ThinkingBudgetSelector {
     }
 
     if (adaptive) {
-      this.renderEffortGears();
+      this.effortEl?.addClass('claudian-hidden');
     } else {
       this.renderBudgetGears();
     }

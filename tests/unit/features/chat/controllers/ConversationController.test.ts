@@ -326,10 +326,14 @@ describe('ConversationController', () => {
     it('should only add greeting if not already present', () => {
       const welcomeEl = deps.getWelcomeEl()!;
       const createDivSpy = jest.spyOn(welcomeEl, 'createDiv');
+      const createElSpy = jest.spyOn(welcomeEl, 'createEl');
 
-      // First call should add greeting
+      // First call should add the orb and greeting.
       controller.initializeWelcome();
       expect(createDivSpy).toHaveBeenCalledTimes(1);
+      expect(createElSpy).toHaveBeenCalledWith('canvas', expect.objectContaining({
+        cls: 'claudian-welcome-orb',
+      }));
 
       // Mock querySelector to return an element (greeting already exists)
       welcomeEl.querySelector = jest.fn().mockReturnValue(createMockEl());

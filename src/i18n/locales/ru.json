@@ -87,7 +87,9 @@
       "add": "Добавить в Codian",
       "notReady": "Чат Codian не готов.",
       "failed": "Не удалось добавить файл в Codian."
-    }
+    },
+    "navigation": { "jumpToPrompt": "Перейти к запросу {index}" },
+    "welcomeOrb": { "solving": "Решение задачи" }
   },
   "settings": {
     "title": "Настройки Claudian",
@@ -97,6 +99,7 @@
       "codex": "Codex",
       "providers": "Провайдеры",
       "workspace": "Рабочая область",
+      "about": "О приложении",
       "environment": "Переменные среды",
       "pro": "Pro"
     },
@@ -107,6 +110,7 @@
     "setup": "Подключение",
     "models": "Модели",
     "experimental": "Экспериментальное",
+    "about": { "slogan": "Мы ищем самые простые способы решать проблемы.", "followWeike": "Подписаться на Weike", "wechatOfficialAccount": "Официальный аккаунт WeChat (главная площадка)", "wechatOfficialAccountValue": "维客笔记", "xiaohongshu": "Xiaohongshu", "x": "X", "knowledgeBase": "База знаний практических кейсов ИИ (платная)" },
     "userName": {
       "name": "Как Claudian должен обращаться к вам?",
       "desc": "Ваше имя для персонализированных приветствий (оставьте пустым для общих приветствий)"
@@ -135,6 +139,12 @@
     "navMappings": {
       "name": "Сопоставления навигации в стиле Vim",
       "desc": "По одному сопоставлению в строке. Формат: \"map <ключ> <действие>\" (действия: scrollUp, scrollDown, focusInput)."
+    },
+    "chatNavigationMode": {
+      "name": "Стиль навигации чата",
+      "desc": "Выберите способ навигации по сообщениям в разговоре.",
+      "conversationRail": "Точечная навигация по разговору",
+      "buttonNavigation": "Кнопки навигации"
     },
     "requireCommandOrControlEnterToSend": {
       "name": "Требовать Command/Ctrl+Enter для отправки",

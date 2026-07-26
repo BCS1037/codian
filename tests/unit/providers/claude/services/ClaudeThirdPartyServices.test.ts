@@ -33,6 +33,11 @@ describe('ClaudeThirdPartyServices', () => {
       baseUrl: 'https://ark.cn-beijing.volces.com/api/coding',
       authMode: 'auth-token',
     });
+    expect(resolveClaudeServicePreset('deepseek')).toMatchObject({
+      name: 'DeepSeek',
+      baseUrl: 'https://api.deepseek.com/anthropic',
+      authMode: 'auth-token',
+    });
   });
 
   it('normalizes persisted services without retaining unknown fields', () => {

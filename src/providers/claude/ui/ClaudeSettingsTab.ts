@@ -5,10 +5,19 @@ import { ProviderSettingsCoordinator } from '../../../core/providers/ProviderSet
 import type { ProviderSettingsTabRenderer } from '../../../core/providers/types';
 import { t } from '../../../i18n/i18n';
 import { McpSettingsManager } from '../../../shared/settings/McpSettingsManager';
+import {
+  type ProviderModelPickerController,
+  type ProviderModelPickerModel,
+  renderProviderModelPicker,
+} from '../../../shared/settings/ProviderModelPicker';
 import { getHostnameKey } from '../../../utils/env';
 import { expandHomePath } from '../../../utils/path';
 import { getClaudeWorkspaceServices } from '../app/ClaudeWorkspaceServices';
-import { resolveClaudeModelSelection } from '../modelOptions';
+import { formatCustomModelLabel } from '../modelLabels';
+import {
+  parseConfiguredClaudeModelIds,
+  resolveClaudeModelSelection,
+} from '../modelOptions';
 import {
   CLAUDE_SAFE_MODES,
   type ClaudeSafeMode,
@@ -145,6 +154,7 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
     // --- Models ---
 
     new Setting(container).setName(t('settings.models')).setHeading();
+    let configuredModelPicker: ProviderModelPickerController | null = null;
 
     new Setting(container)
       .setName(t('settings.customModels.name'))
@@ -166,6 +176,7 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
           });
           savedCustomModels = nextCustomModels;
           context.refreshModelSelectors();
+          configuredModelPicker?.refresh();
         };
 
         text
@@ -180,6 +191,13 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
           void commitCustomModels();
         });
       });
+
+    configuredModelPicker = renderConfiguredClaudeModelPicker(
+      container,
+      context,
+      settingsBag,
+      reconcileActiveClaudeModelSelection,
+    );
 
     renderClaudeServiceSettings(container, context);
 
@@ -374,3 +392,56 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
     }
   },
 };
+
+function renderConfiguredClaudeModelPicker(
+  container: HTMLElement,
+  context: Parameters<ProviderSettingsTabRenderer['render']>[1],
+  settingsBag: Record<string, unknown>,
+  reconcileActiveClaudeModelSelection: (settings: Record<string, unknown>) => void,
+): ProviderModelPickerController {
+  const getState = () => {
+    const claudeSettings = getClaudeProviderSettings(settingsBag);
+    const configuredModelIds = parseConfiguredClaudeModelIds(claudeSettings.customModels);
+    const aliases = settingsBag.customModelAliases;
+    return {
+      aliases: aliases && typeof aliases === 'object' && !Array.isArray(aliases)
+        ? aliases as Record<string, string>
+        : {},
+      discoveredCount: configuredModelIds.length,
+      models: configuredModelIds.map((id): ProviderModelPickerModel => ({
+        id,
+        name: formatCustomModelLabel(id),
+      })),
+      selectedIds: configuredModelIds,
+    };
+  };
+
+  const persistConfiguredModels = async (modelIds: string[]): Promise<void> => {
+    await context.plugin.mutateSettings((settings) => {
+      updateClaudeProviderSettings(settings, { customModels: modelIds.join('\n') });
+      reconcileActiveClaudeModelSelection(settings);
+      ProviderSettingsCoordinator.reconcileTitleGenerationModelSelection(settings);
+    });
+    context.refreshModelSelectors();
+  };
+
+  return renderProviderModelPicker({
+    container,
+    emptyCatalogText: t('settings.providerCatalog.empty', { provider: 'Claude' }),
+    failedCatalogText: t('settings.providerCatalog.failed', { provider: 'Claude' }),
+    getState,
+    async loadCatalog() {
+      return 'loaded';
+    },
+    loadingCatalogText: t('settings.providerCatalog.loading', { provider: 'Claude' }),
+    modifier: 'claude',
+    async onAliasesChange(customModelAliases) {
+      await context.plugin.mutateSettings((settings) => {
+        settings.customModelAliases = customModelAliases;
+      });
+      context.refreshModelSelectors();
+    },
+    onSelectedIdsChange: persistConfiguredModels,
+    providerName: 'Claude',
+  });
+}

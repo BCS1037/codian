@@ -62,6 +62,14 @@ export const CHAT_VIEW_PLACEMENTS = [
 /** Workspace location used when opening the Claudian chat view. */
 export type ChatViewPlacement = typeof CHAT_VIEW_PLACEMENTS[number];
 
+export const CHAT_NAVIGATION_MODES = [
+  'conversation-rail',
+  'button-navigation',
+] as const;
+
+/** Visual presentation used for navigating messages in a chat tab. */
+export type ChatNavigationMode = typeof CHAT_NAVIGATION_MODES[number];
+
 /** Result from instruction refinement agent query. */
 export interface InstructionRefineResult {
   success: boolean;
@@ -145,6 +153,7 @@ export interface ClaudianSettings {
   deferMathRenderingDuringStreaming: boolean;
   expandFileEditsByDefault: boolean;
   chatViewPlacement: ChatViewPlacement;
+  chatNavigationMode: ChatNavigationMode;
 
   // Provider command visibility
   hiddenProviderCommands: HiddenProviderCommands;

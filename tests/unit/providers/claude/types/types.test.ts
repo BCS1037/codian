@@ -74,6 +74,10 @@ describe('types.ts', () => {
     it('should collapse file edits by default', () => {
       expect(DEFAULT_SETTINGS.expandFileEditsByDefault).toBe(false);
     });
+
+    it('should use conversation rail navigation by default', () => {
+      expect(DEFAULT_SETTINGS.chatNavigationMode).toBe('conversation-rail');
+    });
   });
 
   describe('ClaudianSettings type', () => {
@@ -110,6 +114,7 @@ describe('types.ts', () => {
         deferMathRenderingDuringStreaming: true,
         expandFileEditsByDefault: false,
         chatViewPlacement: 'right-sidebar',
+        chatNavigationMode: 'conversation-rail',
         hiddenProviderCommands: {
           claude: [],
           codex: [],
@@ -162,6 +167,7 @@ describe('types.ts', () => {
         deferMathRenderingDuringStreaming: true,
         expandFileEditsByDefault: false,
         chatViewPlacement: 'right-sidebar',
+        chatNavigationMode: 'conversation-rail',
         hiddenProviderCommands: {
           claude: [],
           codex: [],
@@ -215,6 +221,7 @@ describe('types.ts', () => {
         deferMathRenderingDuringStreaming: true,
         expandFileEditsByDefault: true,
         chatViewPlacement: 'right-sidebar',
+        chatNavigationMode: 'conversation-rail',
         hiddenProviderCommands: {
           claude: [],
           codex: [],

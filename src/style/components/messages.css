@@ -17,6 +17,10 @@
   gap: 12px;
 }
 
+.claudian-messages-wrapper.claudian-conversation-rail-host .claudian-messages {
+  padding-left: 12px;
+}
+
 /* Focusable messages panel for vim-style navigation */
 .claudian-messages-focusable:focus {
   outline: none;
@@ -40,6 +44,12 @@
   font-weight: 300;
   color: var(--text-muted);
   letter-spacing: -0.01em;
+}
+
+.claudian-welcome-orb {
+  width: 112px;
+  height: 112px;
+  margin-bottom: 20px;
 }
 
 .claudian-message {

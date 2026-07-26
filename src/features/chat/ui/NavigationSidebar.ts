@@ -1,5 +1,7 @@
 import { setIcon } from 'obsidian';
 
+import type { ChatNavigationMode } from '../../../core/types/settings';
+import { t } from '../../../i18n/i18n';
 import {
   cancelScheduledAnimationFrame,
   scheduleAnimationFrame,
@@ -7,39 +9,92 @@ import {
 } from '../../../utils/animationFrame';
 import { formatConversationDirectoryTitle } from '../utils/conversationDirectoryTitle';
 
+const PREVIEW_CARD_HALF_HEIGHT = 40;
+const USER_MESSAGE_SELECTOR = '.claudian-message-user, [data-role="user"]';
+
 /**
  * Floating sidebar for navigating chat history.
  * Provides quick access to top/bottom and previous/next user messages.
  */
 export class NavigationSidebar {
   private container: HTMLElement;
-  private topBtn: HTMLElement;
-  private prevBtn: HTMLElement;
-  private tocBtn: HTMLElement;
-  private nextBtn: HTMLElement;
-  private bottomBtn: HTMLElement;
+  private topBtn: HTMLElement | null = null;
+  private prevBtn: HTMLElement | null = null;
+  private tocBtn: HTMLElement | null = null;
+  private nextBtn: HTMLElement | null = null;
+  private bottomBtn: HTMLElement | null = null;
+  private railEl: HTMLElement | null = null;
+  private previewCard: HTMLElement | null = null;
   private tocPopover: HTMLElement | null = null;
   private scrollHandler: () => void = () => {};
   private outsideClickHandler: ((event: MouseEvent) => void) | null = null;
   private mutationObserver: MutationObserver | null = null;
   private pendingVisibilityFrame: ScheduledAnimationFrame | null = null;
   private isVisible: boolean | null = null;
+  private mode: ChatNavigationMode;
 
   constructor(
     private parentEl: HTMLElement,
-    private messagesEl: HTMLElement
+    private messagesEl: HTMLElement,
+    mode: ChatNavigationMode = 'button-navigation',
   ) {
     this.container = this.parentEl.createDiv({ cls: 'claudian-nav-sidebar' });
+    this.mode = mode;
+    this.renderMode();
+    this.setupEventListeners();
+    this.applyVisibility();
+  }
 
-    // Create buttons
+  setMode(mode: ChatNavigationMode): void {
+    if (this.mode === mode) return;
+    this.mode = mode;
+    this.closeDirectory();
+    this.closePreviewCard();
+    this.renderMode();
+    this.isVisible = null;
+    this.applyVisibility();
+  }
+
+  private renderMode(): void {
+    this.container.empty();
+    this.topBtn = null;
+    this.prevBtn = null;
+    this.tocBtn = null;
+    this.nextBtn = null;
+    this.bottomBtn = null;
+    this.railEl = null;
+
+    if (this.mode === 'conversation-rail') {
+      this.parentEl.classList.add('claudian-conversation-rail-host');
+      this.container.classList.add('claudian-conversation-rail');
+      this.renderConversationRail();
+      return;
+    }
+
+    this.parentEl.classList.remove('claudian-conversation-rail-host');
+    this.container.classList.remove('claudian-conversation-rail');
+    this.renderButtonNavigation();
+  }
+
+  private renderButtonNavigation(): void {
     this.topBtn = this.createButton('claudian-nav-btn-top', 'chevrons-up', 'Scroll to top');
     this.prevBtn = this.createButton('claudian-nav-btn-prev', 'chevron-up', 'Previous message');
     this.tocBtn = this.createButton('claudian-nav-btn-toc', 'list-tree', 'Conversation directory');
     this.nextBtn = this.createButton('claudian-nav-btn-next', 'chevron-down', 'Next message');
     this.bottomBtn = this.createButton('claudian-nav-btn-bottom', 'chevrons-down', 'Scroll to bottom');
 
-    this.setupEventListeners();
-    this.applyVisibility();
+    this.topBtn.addEventListener('click', () => {
+      this.messagesEl.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    this.bottomBtn.addEventListener('click', () => {
+      this.messagesEl.scrollTo({ top: this.messagesEl.scrollHeight, behavior: 'smooth' });
+    });
+    this.prevBtn.addEventListener('click', () => this.scrollToMessage('prev'));
+    this.nextBtn.addEventListener('click', () => this.scrollToMessage('next'));
+    this.tocBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      this.toggleDirectory();
+    });
   }
 
   private createButton(cls: string, icon: string, label: string): HTMLElement {
@@ -50,25 +105,8 @@ export class NavigationSidebar {
   }
 
   private setupEventListeners(): void {
-    // Scroll handling to toggle visibility
     this.scrollHandler = () => this.updateVisibility();
     this.messagesEl.addEventListener('scroll', this.scrollHandler, { passive: true });
-
-    // Button clicks
-    this.topBtn.addEventListener('click', () => {
-      this.messagesEl.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-
-    this.bottomBtn.addEventListener('click', () => {
-      this.messagesEl.scrollTo({ top: this.messagesEl.scrollHeight, behavior: 'smooth' });
-    });
-
-    this.prevBtn.addEventListener('click', () => this.scrollToMessage('prev'));
-    this.nextBtn.addEventListener('click', () => this.scrollToMessage('next'));
-    this.tocBtn.addEventListener('click', (event) => {
-      event.stopPropagation();
-      this.toggleDirectory();
-    });
 
     this.outsideClickHandler = (event: MouseEvent) => {
       const target = event.target as Node | null;
@@ -86,6 +124,9 @@ export class NavigationSidebar {
     if (typeof MutationObserver !== 'undefined') {
       this.mutationObserver = new MutationObserver((mutations) => {
         this.updateVisibility();
+        if (this.mode === 'conversation-rail' && this.shouldRefreshConversationRail(mutations)) {
+          this.renderConversationRail();
+        }
         if (this.shouldRefreshDirectory(mutations)) {
           this.refreshOpenDirectory();
         }
@@ -97,6 +138,20 @@ export class NavigationSidebar {
         attributeFilter: ['data-toc-title'],
       });
     }
+  }
+
+  private shouldRefreshConversationRail(mutations: MutationRecord[]): boolean {
+    const touchesUserMessage = (node: Node): boolean => {
+      if (!node.instanceOf(HTMLElement)) return false;
+      return node.matches(USER_MESSAGE_SELECTOR)
+        || node.closest(USER_MESSAGE_SELECTOR) !== null
+        || node.querySelector(USER_MESSAGE_SELECTOR) !== null;
+    };
+
+    return mutations.some((mutation) => (
+      mutation.type === 'childList'
+      && [mutation.target, ...mutation.addedNodes, ...mutation.removedNodes].some(touchesUserMessage)
+    ));
   }
 
   /**
@@ -114,10 +169,129 @@ export class NavigationSidebar {
   private applyVisibility(): void {
     const { scrollHeight, clientHeight } = this.messagesEl;
     const isScrollable = scrollHeight > clientHeight + 50; // Small buffer
-    this.tocBtn.classList.remove('claudian-hidden');
+    this.tocBtn?.classList.remove('claudian-hidden');
     if (this.isVisible === isScrollable) return;
     this.isVisible = isScrollable;
     this.container.classList.toggle('visible', isScrollable);
+  }
+
+  private getConversationEntries(): Array<{ userEl: HTMLElement; prompt: string; reply: string }> {
+    const messages = Array.from(this.messagesEl.querySelectorAll<HTMLElement>(
+      '.claudian-message-user, .claudian-message-assistant, [data-role="user"], [data-role="assistant"]',
+    ));
+    const entries: Array<{ userEl: HTMLElement; prompt: string; reply: string }> = [];
+
+    for (let index = 0; index < messages.length; index += 1) {
+      const userEl = messages[index];
+      if (!this.isUserMessage(userEl)) continue;
+
+      let reply = '';
+      for (let candidateIndex = index + 1; candidateIndex < messages.length; candidateIndex += 1) {
+        const candidate = messages[candidateIndex];
+        if (this.isUserMessage(candidate)) break;
+        if (this.isAssistantMessage(candidate)) {
+          reply = this.getMessageText(candidate);
+          if (reply) break;
+        }
+      }
+
+      const prompt = this.getMessageText(userEl);
+      if (prompt) entries.push({ userEl, prompt, reply });
+    }
+
+    return entries;
+  }
+
+  private isUserMessage(el: HTMLElement): boolean {
+    return el.classList.contains('claudian-message-user') || el.getAttribute('data-role') === 'user';
+  }
+
+  private isAssistantMessage(el: HTMLElement): boolean {
+    return el.classList.contains('claudian-message-assistant') || el.getAttribute('data-role') === 'assistant';
+  }
+
+  private getMessageText(el: HTMLElement): string {
+    const contentEl = el.querySelector<HTMLElement>('.claudian-message-content');
+    return (contentEl?.textContent ?? el.textContent ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  private renderConversationRail(): void {
+    if (this.mode !== 'conversation-rail') return;
+    this.railEl?.remove();
+    this.railEl = this.container.createDiv({ cls: 'claudian-conversation-rail-markers' });
+    const entries = this.getConversationEntries();
+
+    entries.forEach((entry, index) => {
+      const marker = this.railEl!.createDiv({ cls: 'claudian-conversation-rail-marker' });
+      marker.setAttribute('role', 'button');
+      marker.setAttribute('tabindex', '0');
+      marker.setAttribute('data-prompt-index', String(index + 1));
+      marker.createDiv({
+        cls: 'claudian-conversation-rail-marker-accessible-label',
+        text: t('chat.navigation.jumpToPrompt', { index: index + 1 }),
+      });
+      if (index === entries.length - 1) marker.classList.add('is-latest');
+
+      const jump = () => this.scrollToElement(entry.userEl);
+      marker.addEventListener('click', jump);
+      marker.addEventListener('keydown', (event: KeyboardEvent) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        jump();
+      });
+      marker.addEventListener('mouseenter', () => {
+        this.applyWaveFocus(index);
+        this.openPreviewCard(index, this.getConversationEntries()[index] ?? entry, marker);
+      });
+    });
+
+    this.railEl.addEventListener('mouseleave', () => {
+      this.resetWaveFocus();
+      this.closePreviewCard();
+    });
+  }
+
+  private applyWaveFocus(focusIndex: number): void {
+    const markers = Array.from(this.railEl?.querySelectorAll<HTMLElement>(
+      '.claudian-conversation-rail-marker',
+    ) ?? []);
+    markers.forEach((marker, index) => {
+      const diameter = Math.max(6, 10 - Math.abs(index - focusIndex) * 2);
+      marker.setCssProps({ width: `${diameter}px`, height: `${diameter}px` });
+    });
+  }
+
+  private resetWaveFocus(): void {
+    for (const marker of Array.from(this.railEl?.querySelectorAll<HTMLElement>(
+      '.claudian-conversation-rail-marker',
+    ) ?? [])) {
+      marker.setCssProps({ width: '', height: '' });
+    }
+  }
+
+  private openPreviewCard(
+    index: number,
+    entry: { prompt: string; reply: string },
+    marker: HTMLElement,
+  ): void {
+    this.closePreviewCard();
+    const card = this.parentEl.createDiv({ cls: 'claudian-conversation-rail-card' });
+    const markerCenter = marker.offsetTop + marker.offsetHeight / 2;
+    const boundedTop = Math.max(
+      PREVIEW_CARD_HALF_HEIGHT,
+      Math.min(this.parentEl.clientHeight - PREVIEW_CARD_HALF_HEIGHT, markerCenter),
+    );
+    card.setCssProps({ top: `${boundedTop}px` });
+    card.createDiv({ cls: 'claudian-conversation-rail-card-prompt', text: `${index + 1}. ${entry.prompt}` });
+    if (entry.reply) {
+      card.createDiv({ cls: 'claudian-conversation-rail-card-reply', text: entry.reply });
+    }
+    this.previewCard = card;
+  }
+
+  private closePreviewCard(): void {
+    this.previewCard?.remove();
+    this.previewCard = null;
   }
 
   private getDirectoryEntries(): Array<{ el: HTMLElement; title: string }> {
@@ -279,6 +453,7 @@ export class NavigationSidebar {
     this.mutationObserver?.disconnect();
     this.mutationObserver = null;
     this.messagesEl.removeEventListener('scroll', this.scrollHandler);
+    this.parentEl.classList.remove('claudian-conversation-rail-host');
     this.container.remove();
   }
 }

@@ -87,7 +87,9 @@
       "add": "Codian에 추가",
       "notReady": "Codian 채팅이 아직 준비되지 않았습니다.",
       "failed": "파일을 Codian에 추가하지 못했습니다."
-    }
+    },
+    "navigation": { "jumpToPrompt": "프롬프트 {index}(으)로 이동" },
+    "welcomeOrb": { "solving": "해결 중" }
   },
   "settings": {
     "title": "Claudian 설정",
@@ -97,6 +99,7 @@
       "codex": "Codex",
       "providers": "제공자",
       "workspace": "작업 공간",
+      "about": "정보",
       "environment": "환경 변수",
       "pro": "Pro"
     },
@@ -107,6 +110,7 @@
     "setup": "연결",
     "models": "모델",
     "experimental": "실험적 기능",
+    "about": { "slogan": "문제를 해결하는 가장 단순한 방법을 탐구합니다.", "followWeike": "Weike 팔로우", "wechatOfficialAccount": "WeChat 공식 계정(본거지)", "wechatOfficialAccountValue": "维客笔记", "xiaohongshu": "Xiaohongshu", "x": "X", "knowledgeBase": "AI 실전 사례 칼럼 지식 베이스(유료)" },
     "userName": {
       "name": "Claudian이 당신을 어떻게 불러야 합니까?",
       "desc": "개인화된 인사에 사용할 이름 (비워두면 일반 인사)"
@@ -135,6 +139,12 @@
     "navMappings": {
       "name": "Vim 스타일 네비게이션 매핑",
       "desc": "한 줄에 하나의 매핑. 형식: \"map <키> <동작>\" (동작: scrollUp, scrollDown, focusInput)."
+    },
+    "chatNavigationMode": {
+      "name": "채팅 탐색 스타일",
+      "desc": "대화의 메시지를 탐색하는 방식을 선택합니다.",
+      "conversationRail": "대화 점 탐색",
+      "buttonNavigation": "탐색 버튼"
     },
     "requireCommandOrControlEnterToSend": {
       "name": "Command/Ctrl+Enter로 보내기 필수",

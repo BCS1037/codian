@@ -1,6 +1,8 @@
 import type { ProviderCommandEntry } from '../../core/providers/commands/ProviderCommandEntry';
+import { ProviderRegistry } from '../../core/providers/ProviderRegistry';
 import { ProviderWorkspaceRegistry } from '../../core/providers/ProviderWorkspaceRegistry';
 import type { ProviderId, ProviderSettingsSectionId } from '../../core/providers/types';
+import type { AgentSkillListResult } from '../../core/skills/AgentSkill';
 
 export type WorkspaceResourceSection = Extract<
   ProviderSettingsSectionId,
@@ -15,6 +17,10 @@ export interface WorkspaceResourceRow {
   providerIds: ProviderId[];
   source: string;
   status: WorkspaceResourceStatus;
+}
+
+export interface WorkspaceResourceLoadOptions {
+  loadSharedSkills?: () => Promise<AgentSkillListResult>;
 }
 
 function fallbackCommandSource(entry: ProviderCommandEntry): string {
@@ -81,6 +87,31 @@ async function loadCommandResources(
   return rows.flat();
 }
 
+async function loadSharedSkillResources(
+  providerIds: readonly ProviderId[],
+  loadSharedSkills: WorkspaceResourceLoadOptions['loadSharedSkills'],
+): Promise<WorkspaceResourceRow[]> {
+  if (!loadSharedSkills) return [];
+
+  const supportedProviderIds = providerIds.filter(providerId => (
+    ProviderRegistry.getCapabilities(providerId).supportsSharedAgentSkills === true
+  ));
+  if (supportedProviderIds.length === 0) return [];
+
+  try {
+    const { skills } = await loadSharedSkills();
+    return skills.map(skill => ({
+      key: `shared-agent-skill:${skill.name}`,
+      name: skill.name,
+      providerIds: [...supportedProviderIds],
+      source: skill.filePath,
+      status: 'available',
+    }));
+  } catch {
+    return [];
+  }
+}
+
 function loadAgentResources(providerIds: readonly ProviderId[]): WorkspaceResourceRow[] {
   return providerIds.flatMap((providerId) => {
     const provider = ProviderWorkspaceRegistry.getAgentMentionProvider(providerId);
@@ -114,9 +145,15 @@ function loadMcpResources(providerIds: readonly ProviderId[]): WorkspaceResource
 export async function loadWorkspaceResources(
   providerIds: readonly ProviderId[],
   section: WorkspaceResourceSection,
+  options: WorkspaceResourceLoadOptions = {},
 ): Promise<WorkspaceResourceRow[]> {
-  const rows = section === 'skills' || section === 'commands'
-    ? await loadCommandResources(providerIds, section)
+  const rows = section === 'skills'
+    ? [
+      ...await loadCommandResources(providerIds, section),
+      ...await loadSharedSkillResources(providerIds, options.loadSharedSkills),
+    ]
+    : section === 'commands'
+      ? await loadCommandResources(providerIds, section)
     : section === 'agents'
       ? loadAgentResources(providerIds)
       : loadMcpResources(providerIds);

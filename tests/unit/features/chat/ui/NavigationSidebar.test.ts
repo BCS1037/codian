@@ -66,6 +66,7 @@ class MockElement {
   public scrollToCalls: Array<{ top: number; behavior: string }> = [];
 
   offsetTop = 0;
+  offsetHeight = 6;
 
   constructor(tagName: string) {
     this.tagName = tagName.toUpperCase();
@@ -126,6 +127,10 @@ class MockElement {
 
   setAttribute(name: string, value: string): void {
     this.attributes[name] = value;
+  }
+
+  setCssProps(styles: Record<string, string>): void {
+    Object.assign(this.style, styles);
   }
 
   getAttribute(name: string): string | null {
@@ -324,6 +329,87 @@ describe('NavigationSidebar', () => {
       expect(buttons[2].getAttribute('data-icon')).toBe('list-tree');
       expect(buttons[3].getAttribute('data-icon')).toBe('chevron-down');
       expect(buttons[4].getAttribute('data-icon')).toBe('chevrons-down');
+    });
+  });
+
+  describe('conversation rail', () => {
+    function addMessage(
+      role: 'user' | 'assistant',
+      offset: number,
+      text: string,
+    ): MockElement {
+      const message = messagesEl.createDiv({ cls: `claudian-message claudian-message-${role}` });
+      message.offsetTop = offset;
+      message.createDiv({ cls: 'claudian-message-content', text });
+      return message;
+    }
+
+    it('renders one marker per user prompt and accents the latest prompt', () => {
+      messagesEl.scrollHeight = 1200;
+      messagesEl.clientHeight = 500;
+      addMessage('user', 0, 'First prompt');
+      addMessage('assistant', 100, 'First reply');
+      addMessage('user', 400, 'Second prompt');
+
+      sidebar = new NavigationSidebar(
+        parentEl as unknown as HTMLElement,
+        messagesEl as unknown as HTMLElement,
+        'conversation-rail',
+      );
+
+      const markers = parentEl.querySelectorAll('.claudian-conversation-rail-marker');
+      expect(markers).toHaveLength(2);
+      expect(markers[1].classList.contains('is-latest')).toBe(true);
+      expect(parentEl.querySelector('.claudian-nav-btn')).toBeNull();
+      expect(parentEl.classList.contains('claudian-conversation-rail-host')).toBe(true);
+      expect(markers[0].getAttribute('aria-label')).toBeNull();
+      expect(markers[0].children[0].textContent).toBe('Jump to prompt 1');
+    });
+
+    it('shows prompt and reply preview, waves on hover, and jumps on click', () => {
+      messagesEl.scrollHeight = 1200;
+      messagesEl.clientHeight = 500;
+      addMessage('user', 0, 'First prompt');
+      addMessage('assistant', 100, 'First reply');
+      addMessage('user', 400, 'Second prompt');
+
+      sidebar = new NavigationSidebar(
+        parentEl as unknown as HTMLElement,
+        messagesEl as unknown as HTMLElement,
+        'conversation-rail',
+      );
+
+      const markers = parentEl.querySelectorAll('.claudian-conversation-rail-marker');
+      markers[0].dispatchEvent({ type: 'mouseenter' });
+
+      const card = parentEl.querySelector('.claudian-conversation-rail-card');
+      expect(card).not.toBeNull();
+      expect(card!.children[0].textContent).toBe('1. First prompt');
+      expect(card!.children[1].textContent).toBe('First reply');
+      expect(card!.style.top).toBe('40px');
+      expect(markers[0].style.width).toBe('10px');
+      expect(markers[0].style.height).toBe('10px');
+      expect(markers[1].style.width).toBe('8px');
+      expect(markers[1].style.height).toBe('8px');
+
+      markers[1].click();
+      expect(messagesEl.scrollToCalls.at(-1)).toEqual({ top: 390, behavior: 'smooth' });
+    });
+
+    it('switches from button navigation without recreating the tab', () => {
+      messagesEl.scrollHeight = 1200;
+      messagesEl.clientHeight = 500;
+      addMessage('user', 0, 'First prompt');
+
+      sidebar = new NavigationSidebar(
+        parentEl as unknown as HTMLElement,
+        messagesEl as unknown as HTMLElement,
+      );
+      sidebar.setMode('conversation-rail');
+
+      expect(parentEl.querySelector('.claudian-nav-btn')).toBeNull();
+      expect(parentEl.querySelectorAll('.claudian-conversation-rail-marker')).toHaveLength(1);
+      expect(parentEl.classList.contains('claudian-conversation-rail-host')).toBe(true);
     });
   });
 

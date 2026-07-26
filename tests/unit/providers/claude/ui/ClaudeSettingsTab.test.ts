@@ -5,6 +5,7 @@ import { claudeSettingsTabRenderer } from '@/providers/claude/ui/ClaudeSettingsT
 
 const mockRenderEnvironmentSettingsSection = jest.fn();
 const mockRenderClaudeServiceSettings = jest.fn();
+const mockRenderProviderModelPicker = jest.fn((_options: unknown) => ({ refresh: jest.fn() }));
 const mockSaveSettings = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('fs');
@@ -92,6 +93,10 @@ jest.mock('@/shared/settings/EnvironmentSettingsSection', () => ({
 
 jest.mock('@/providers/claude/ui/ClaudeServiceSettings', () => ({
   renderClaudeServiceSettings: (...args: unknown[]) => mockRenderClaudeServiceSettings(...args),
+}));
+
+jest.mock('@/shared/settings/ProviderModelPicker', () => ({
+  renderProviderModelPicker: (options: unknown) => mockRenderProviderModelPicker(options),
 }));
 
 jest.mock('@/shared/settings/McpSettingsManager', () => ({
@@ -435,6 +440,19 @@ describe('ClaudeSettingsTab', () => {
     claudeSettingsTabRenderer.render(container, context, 'provider');
 
     expect(mockRenderClaudeServiceSettings).toHaveBeenCalledWith(container, context);
+  });
+
+  it('renders configured Claude models with the shared provider model picker', () => {
+    const container = createContainer();
+    const context = createContext(createPlugin());
+
+    claudeSettingsTabRenderer.render(container, context, 'provider');
+
+    expect(mockRenderProviderModelPicker).toHaveBeenCalledWith(expect.objectContaining({
+      container,
+      modifier: 'claude',
+      providerName: 'Claude',
+    }));
   });
 
   it('uses the current npm package wrapper path as the CLI placeholder', () => {

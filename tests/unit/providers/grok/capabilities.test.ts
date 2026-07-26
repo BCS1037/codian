@@ -9,6 +9,7 @@ describe('GROK_PROVIDER_CAPABILITIES', () => {
       supportsImageAttachments: true,
       supportsInstructionMode: true,
       supportsMcpTools: false,
+      supportsSharedAgentSkills: true,
       supportsNativeHistory: true,
       supportsPersistentRuntime: true,
       supportsPlanMode: true,

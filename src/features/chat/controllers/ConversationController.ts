@@ -22,6 +22,7 @@ import type { FileContextManager } from '../ui/FileContext';
 import type { ImageContextManager } from '../ui/ImageContext';
 import type { ExternalContextSelector, McpServerSelector } from '../ui/InputToolbar';
 import type { StatusPanel } from '../ui/StatusPanel';
+import { renderWelcomeContent } from '../ui/WelcomeOrb';
 
 function runConversationAction(action: () => Promise<void>, failureMessage: string): void {
   void action().catch(() => {
@@ -196,7 +197,7 @@ export class ConversationController {
 
       // Recreate welcome element first (before StatusPanel for consistent ordering)
       const welcomeEl = messagesEl.createDiv({ cls: 'claudian-welcome' });
-      welcomeEl.createDiv({ cls: 'claudian-welcome-greeting', text: this.getGreeting() });
+      renderWelcomeContent(welcomeEl, this.getGreeting());
       this.deps.setWelcomeEl(welcomeEl);
 
       // Remount StatusPanel to restore state for new conversation
@@ -1229,9 +1230,9 @@ export class ConversationController {
     fileCtx?.resetForNewConversation();
     fileCtx?.autoAttachActiveFile();
 
-    // Only add greeting if not already present
+    // Render the full welcome surface once; new tabs begin with an empty shell.
     if (!welcomeEl.querySelector('.claudian-welcome-greeting')) {
-      welcomeEl.createDiv({ cls: 'claudian-welcome-greeting', text: this.getGreeting() });
+      renderWelcomeContent(welcomeEl, this.getGreeting());
     }
 
     this.updateWelcomeVisibility();
