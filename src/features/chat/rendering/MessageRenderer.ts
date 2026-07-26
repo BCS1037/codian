@@ -27,6 +27,7 @@ import {
 } from '../../../utils/markdownMath';
 import type { FeatureHost } from '../../FeatureHost';
 import { findRewindContext } from '../rewind';
+import { renderWelcomeContent } from '../ui/WelcomeOrb';
 import { formatConversationDirectoryTitle } from '../utils/conversationDirectoryTitle';
 import { resolveSubagentAdapter } from './subagentAdapterResolution';
 import {
@@ -240,7 +241,7 @@ export class MessageRenderer {
 
     // Recreate welcome element after clearing
     const newWelcomeEl = this.messagesEl.createDiv({ cls: 'claudian-welcome' });
-    newWelcomeEl.createDiv({ cls: 'claudian-welcome-greeting', text: getGreeting() });
+    renderWelcomeContent(newWelcomeEl, getGreeting());
 
     for (let i = 0; i < messages.length; i++) {
       this.renderStoredMessage(messages[i], messages, i);

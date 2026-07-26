@@ -7,6 +7,7 @@ export const CLAUDE_SERVICE_PRESET_IDS = [
   'aliyun-token-plan',
   'aliyun-payg',
   'volcengine-coding-plan',
+  'deepseek',
 ] as const;
 
 export type ClaudeServicePresetId = typeof CLAUDE_SERVICE_PRESET_IDS[number];
@@ -67,6 +68,12 @@ const PRESETS: Readonly<Record<ClaudeServicePresetId, ClaudeServicePreset>> = {
     id: 'volcengine-coding-plan',
     name: '火山方舟 · Coding Plan',
     baseUrl: 'https://ark.cn-beijing.volces.com/api/coding',
+    authMode: 'auth-token',
+  },
+  deepseek: {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    baseUrl: 'https://api.deepseek.com/anthropic',
     authMode: 'auth-token',
   },
 };

@@ -87,7 +87,9 @@
       "add": "Zu Codian hinzufügen",
       "notReady": "Codian-Chat ist nicht bereit.",
       "failed": "Datei konnte nicht zu Codian hinzugefügt werden."
-    }
+    },
+    "navigation": { "jumpToPrompt": "Zu Eingabe {index} springen" },
+    "welcomeOrb": { "solving": "Wird gelöst" }
   },
   "settings": {
     "title": "Claudian Einstellungen",
@@ -97,6 +99,7 @@
       "codex": "Codex",
       "providers": "Anbieter",
       "workspace": "Arbeitsbereich",
+      "about": "Über",
       "environment": "Umgebung",
       "pro": "Pro"
     },
@@ -107,6 +110,7 @@
     "setup": "Verbindung",
     "models": "Modelle",
     "experimental": "Experimentell",
+    "about": { "slogan": "Wir erkunden die einfachsten Wege, Probleme zu lösen.", "followWeike": "Weike folgen", "feedback": "Fragen willkommen: Erstelle ein Issue oder folge dem offiziellen WeChat-Konto „维客笔记“ für Feedback.", "sponsor": "Weike unterstützen", "sponsorDescription": "Wenn dieses Plugin dir hilft, unterstütze Weike bei weiterer Entwicklung und Wartung:", "afdian": "Afdian" },
     "userName": {
       "name": "Wie soll Claudian dich nennen?",
       "desc": "Dein Name für personalisierte Begrüßungen (leer lassen für allgemeine Begrüßungen)"
@@ -135,6 +139,12 @@
     "navMappings": {
       "name": "Vim-Style Navigationszuordnungen",
       "desc": "Eine Zuordnung pro Zeile. Format: \"map <Taste> <Aktion>\" (Aktionen: scrollUp, scrollDown, focusInput)."
+    },
+    "chatNavigationMode": {
+      "name": "Chat-Navigationsstil",
+      "desc": "Wähle, wie Nachrichten in einer Unterhaltung navigiert werden.",
+      "conversationRail": "Punktnavigation im Gespräch",
+      "buttonNavigation": "Navigationsschaltflächen"
     },
     "requireCommandOrControlEnterToSend": {
       "name": "Command/Ctrl+Enter zum Senden erfordern",

@@ -45,6 +45,48 @@
   display: block;
 }
 
+.claudian-settings-about {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 680px;
+  padding: 8px 0;
+}
+
+.claudian-settings-about-slogan {
+  padding: 18px 20px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  line-height: 1.6;
+}
+
+.claudian-settings-about-section .setting-item-heading {
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.claudian-settings-about-section {
+  padding: 0 20px;
+}
+
+.claudian-settings-about-copy {
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.claudian-settings-about-link {
+  color: var(--text-accent);
+  text-decoration: none;
+}
+
+.claudian-settings-about-link:hover {
+  text-decoration: underline;
+}
+
 .claudian-settings-provider-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

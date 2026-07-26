@@ -4017,7 +4017,7 @@ describe('Tab - Blank Tab Model Selector', () => {
     })));
   });
 
-  it('preserves provider-owned service groups in the mixed model picker', () => {
+  it('groups provider-owned service models under their provider in the mixed model picker', () => {
     jest.spyOn(ProviderRegistry, 'getEnabledProviderIds').mockReturnValue(['claude']);
     jest.spyOn(ProviderRegistry, 'getProviderDisplayName').mockReturnValue('Claude');
     jest.spyOn(ProviderRegistry, 'getChatUIConfig').mockReturnValue({
@@ -4032,9 +4032,28 @@ describe('Tab - Blank Tab Model Selector', () => {
     expect(getBlankTabModelOptions({})).toEqual([{
       value: 'claude-code/service/bailian/qwen-plus',
       label: 'qwen-plus',
-      group: 'Claude · 阿里百炼',
+      group: 'Claude',
       providerIcon: undefined,
     }]);
+  });
+
+  it('hides unconfigured Claude default candidates from the mixed model picker', () => {
+    jest.spyOn(ProviderRegistry, 'getEnabledProviderIds').mockReturnValue(['claude']);
+    jest.spyOn(ProviderRegistry, 'getProviderDisplayName').mockReturnValue('Claude');
+    jest.spyOn(ProviderRegistry, 'getChatUIConfig').mockReturnValue({
+      getModelOptions: () => [
+        { value: 'haiku', label: 'Haiku' },
+        { value: 'claude-code/claude-opus-4-6', label: 'Opus 4.6' },
+        { value: 'claude-code/service/bailian/qwen-plus', label: 'qwen-plus' },
+      ],
+      getProviderIcon: jest.fn().mockReturnValue(null),
+      isDefaultModel: (model: string) => model === 'haiku',
+    } as any);
+
+    expect(getBlankTabModelOptions({})).toEqual([
+      expect.objectContaining({ value: 'claude-code/claude-opus-4-6', group: 'Claude' }),
+      expect.objectContaining({ value: 'claude-code/service/bailian/qwen-plus', group: 'Claude' }),
+    ]);
   });
 
   it('returns Claude + Codex models when Codex is enabled', () => {

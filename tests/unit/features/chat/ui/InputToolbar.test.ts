@@ -205,7 +205,52 @@ describe('ModelSelector', () => {
     expect(btn).not.toBeNull();
     const label = btn?.querySelector('.claudian-model-label');
     expect(label).not.toBeNull();
-    expect(label?.textContent).toBe('Sonnet');
+    expect(label?.textContent).toBe('Sonnet (high)');
+  });
+
+  it('should render effort as a model submenu', () => {
+    const dropdown = parentEl.querySelector('.claudian-model-dropdown');
+    const sonnetOption = dropdown?.children.find((option: any) =>
+      option.children[0]?.textContent === 'Sonnet'
+    );
+
+    expect(sonnetOption?.querySelector('.claudian-model-effort-options')).not.toBeNull();
+    expect(sonnetOption?.querySelectorAll('.claudian-model-effort-option')
+      .map((option: any) => option.textContent)).toEqual(['Low', 'Med', 'High', 'Max']);
+  });
+
+  it('should hide fallback Claude candidates for a bound Claude session', () => {
+    callbacks.getUIConfig.mockReturnValue({
+      ...createMockUIConfig(),
+      modelManagement: 'manual-models',
+      getModelOptions: jest.fn().mockReturnValue([
+        { value: 'haiku', label: 'Haiku' },
+        { value: 'claude-code/service/bailian/gpt-oss-120b', label: 'gpt-oss-120b' },
+      ]),
+      isDefaultModel: jest.fn((model: string) => model === 'haiku'),
+    });
+
+    selector.renderOptions();
+
+    const dropdown = parentEl.querySelector('.claudian-model-dropdown');
+    expect(dropdown.children.map((option: any) => option.children[0]?.textContent)).toEqual([
+      'gpt-oss-120b',
+    ]);
+    expect(dropdown.querySelector('.claudian-model-group')).toBeNull();
+  });
+
+  it('should select model and effort from an effort submenu', async () => {
+    const dropdown = parentEl.querySelector('.claudian-model-dropdown');
+    const opusOption = dropdown?.children.find((option: any) =>
+      option.children[0]?.textContent === 'Opus'
+    );
+    const lowEffort = opusOption?.querySelectorAll('.claudian-model-effort-option')
+      .find((option: any) => option.textContent === 'Low');
+
+    await lowEffort?.dispatchEvent('click', { stopPropagation: () => {} });
+
+    expect(callbacks.onModelChange).toHaveBeenCalledWith('opus');
+    expect(callbacks.onEffortLevelChange).toHaveBeenCalledWith('low');
   });
 
   it('should display first model when current model not found', () => {
@@ -485,10 +530,10 @@ describe('ThinkingBudgetSelector', () => {
       expect(container).not.toBeNull();
     });
 
-    it('should show effort selector for Claude models', () => {
+    it('should hide standalone effort selector for Claude models', () => {
       const effort = parentEl.querySelector('.claudian-thinking-effort');
       expect(effort).not.toBeNull();
-      expect(effort?.style?.display).not.toBe('none');
+      expect(effort?.style?.display).toBe('none');
     });
 
     it('should hide budget selector for Claude models', () => {
@@ -496,10 +541,6 @@ describe('ThinkingBudgetSelector', () => {
       expect(budget?.style?.display).toBe('none');
     });
 
-    it('should display current effort level for Claude models', () => {
-      const current = parentEl.querySelector('.claudian-thinking-current');
-      expect(current?.textContent).toBe('High');
-    });
   });
 
   describe('legacy mode (custom models)', () => {

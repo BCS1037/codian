@@ -87,7 +87,9 @@
       "add": "Codian に追加",
       "notReady": "Codian チャットの準備ができていません。",
       "failed": "ファイルを Codian に追加できませんでした。"
-    }
+    },
+    "navigation": { "jumpToPrompt": "プロンプト {index} に移動" },
+    "welcomeOrb": { "solving": "解決中" }
   },
   "settings": {
     "title": "Claudian 設定",
@@ -97,6 +99,7 @@
       "codex": "Codex",
       "providers": "プロバイダー",
       "workspace": "ワークスペース",
+      "about": "について",
       "environment": "環境変数",
       "pro": "Pro"
     },
@@ -107,6 +110,7 @@
     "setup": "接続",
     "models": "モデル",
     "experimental": "実験的機能",
+    "about": { "slogan": "問題を解決する最もシンプルな方法を探求します。", "followWeike": "Weike をフォロー", "feedback": "質問があれば issue を作成するか、WeChat 公式アカウント「维客笔记」をフォローしてフィードバックしてください。", "sponsor": "Weike を支援", "sponsorDescription": "このプラグインが役立った場合、Weike の継続的な開発と保守を支援してください：", "afdian": "Afdian" },
     "userName": {
       "name": "Claudian はどのように呼びますか？",
       "desc": "パーソナライズされた挨拶に使用する名前（空欄で一般の挨拶）"
@@ -135,6 +139,12 @@
     "navMappings": {
       "name": "Vimスタイルナビゲーションマッピング",
       "desc": "1行に1つのマッピング。形式：\"map <キー> <アクション>\"（アクション：scrollUp, scrollDown, focusInput）。"
+    },
+    "chatNavigationMode": {
+      "name": "チャットナビゲーションのスタイル",
+      "desc": "会話内のメッセージを移動する方法を選択します。",
+      "conversationRail": "会話ドットナビゲーション",
+      "buttonNavigation": "ナビゲーションボタン"
     },
     "requireCommandOrControlEnterToSend": {
       "name": "送信に Command/Ctrl+Enter を必須にする",

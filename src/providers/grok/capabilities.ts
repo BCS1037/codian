@@ -7,6 +7,7 @@ export const GROK_PROVIDER_CAPABILITIES: Readonly<ProviderCapabilities> = Object
   supportsImageAttachments: true,
   supportsInstructionMode: true,
   supportsMcpTools: false,
+  supportsSharedAgentSkills: true,
   supportsNativeHistory: true,
   supportsPersistentRuntime: true,
   supportsPlanMode: true,

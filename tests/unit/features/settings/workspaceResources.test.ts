@@ -1,6 +1,9 @@
+import '@/providers';
+
 import type { ProviderCommandEntry } from '@/core/providers/commands/ProviderCommandEntry';
 import type { ProviderVaultEntryRepository } from '@/core/providers/commands/ProviderVaultEntryRepository';
 import { ProviderWorkspaceRegistry } from '@/core/providers/ProviderWorkspaceRegistry';
+import type { AgentSkillListResult } from '@/core/skills/AgentSkill';
 import { loadWorkspaceResources } from '@/features/settings/workspaceResources';
 
 function makeSkill(providerId: 'claude' | 'codex'): ProviderCommandEntry {
@@ -28,6 +31,21 @@ function makeRepository(entry: ProviderCommandEntry): ProviderVaultEntryReposito
   };
 }
 
+function makeSharedSkills(): AgentSkillListResult {
+  return {
+    diagnostics: [],
+    skills: [{
+      name: 'shared-skill',
+      description: 'Shared provider skill',
+      instructions: 'Use shared instructions.',
+      directoryPath: '.agents/skills/shared-skill',
+      filePath: '.agents/skills/shared-skill/SKILL.md',
+      frontmatter: {},
+      revision: 'revision-1',
+    }],
+  };
+}
+
 describe('workspace resource aggregation', () => {
   afterEach(() => ProviderWorkspaceRegistry.clear());
 
@@ -41,6 +59,21 @@ describe('workspace resource aggregation', () => {
       name: 'ask-matt',
       providerIds: ['codex', 'claude'],
       source: '.agents/skills/ask-matt/SKILL.md',
+      status: 'available',
+    })]);
+  });
+
+  it('lists shared agent skills for every provider that supports them', async () => {
+    const rows = await loadWorkspaceResources(
+      ['claude', 'codex', 'grok', 'kimi', 'opencode', 'pi'],
+      'skills',
+      { loadSharedSkills: async () => makeSharedSkills() },
+    );
+
+    expect(rows).toEqual([expect.objectContaining({
+      name: 'shared-skill',
+      providerIds: ['codex', 'grok', 'opencode', 'pi'],
+      source: '.agents/skills/shared-skill/SKILL.md',
       status: 'available',
     })]);
   });

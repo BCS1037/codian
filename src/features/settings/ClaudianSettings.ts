@@ -13,8 +13,10 @@ import type {
   ProviderSettingsSectionId,
   ProviderSettingsTabRendererContext,
 } from '../../core/providers/types';
+import type { AgentSkillListResult } from '../../core/skills/AgentSkill';
 import { AgentSkillRepository } from '../../core/skills/AgentSkillRepository';
-import type { ChatViewPlacement } from '../../core/types/settings';
+import { DiscoveredAgentSkillRepository } from '../../core/skills/DiscoveredAgentSkillRepository';
+import type { ChatNavigationMode, ChatViewPlacement } from '../../core/types/settings';
 import { t } from '../../i18n/i18n';
 import { syncLocaleWithObsidian } from '../../i18n/obsidianLocale';
 import type { TranslationKey } from '../../i18n/types';
@@ -107,7 +109,7 @@ class WorkspaceSettingsModal extends Modal {
 export function getSettingsTabIds(
   _providerTabs: readonly ProviderId[],
 ): SettingsTabId[] {
-  return ['general', 'providers', 'workspace'];
+  return ['general', 'providers', 'workspace', 'about'];
 }
 
 export function getOrderedProviderIds(providerIds: readonly ProviderId[]): ProviderId[] {
@@ -139,9 +141,12 @@ export function getProviderCardModelState(
   if (config.modelManagement === 'cli-managed') {
     return { kind: 'cli-managed' };
   }
+  const options = config.getModelOptions(settings).filter(option => (
+    providerId !== 'claude' || !config.isDefaultModel(option.value)
+  ));
   return {
     kind: config.modelManagement === 'manual-models' ? 'manual-models' : 'visible-models',
-    count: config.getModelOptions(settings).length,
+    count: options.length,
   };
 }
 
@@ -221,13 +226,18 @@ export class ClaudianSettingTab extends PluginSettingTab {
   private refreshTitleModelOptions: (() => void) | null = null;
   private displayGeneration = 0;
   private readonly agentSkillCoordinator: AgentSkillManagementCoordinator;
+  private readonly discoveredAgentSkillRepository: DiscoveredAgentSkillRepository;
 
   constructor(app: App, plugin: FeatureHost & Plugin) {
     super(app, plugin);
     this.plugin = plugin;
+    const vaultAdapter = plugin.storage.getAdapter();
     this.agentSkillCoordinator = new AgentSkillManagementCoordinator(
-      new AgentSkillRepository(plugin.storage.getAdapter()),
+      new AgentSkillRepository(vaultAdapter),
       () => plugin.notifyAgentSkillsChanged(),
+    );
+    this.discoveredAgentSkillRepository = new DiscoveredAgentSkillRepository(
+      vaultAdapter,
     );
   }
 
@@ -294,6 +304,9 @@ export class ClaudianSettingTab extends PluginSettingTab {
       case 'workspace':
         void this.renderWorkspaceTab(activeContent, registeredProviderIds, displayGeneration);
         break;
+      case 'about':
+        this.renderAboutTab(activeContent);
+        break;
       default:
         break;
     }
@@ -342,6 +355,7 @@ export class ClaudianSettingTab extends PluginSettingTab {
       general: 'settings.tabs.general',
       providers: 'settings.tabs.providers',
       workspace: 'settings.tabs.workspace',
+      about: 'settings.tabs.about',
     };
     const key = labels[id];
     return key ? t(key) : id;
@@ -570,12 +584,6 @@ export class ClaudianSettingTab extends PluginSettingTab {
     }
 
     const toolbar = container.createDiv({ cls: 'claudian-settings-resource-toolbar' });
-    const copy = toolbar.createDiv({ cls: 'claudian-settings-resource-copy' });
-    copy.createEl('strong', {
-      cls: 'claudian-settings-resource-title',
-      text: t(`settings.settingsHub.workspaceSections.${this.activeWorkspaceSection}`),
-    });
-    copy.createEl('p', { text: t('settings.settingsHub.resourceDesc') });
     const actions = toolbar.createDiv({ cls: 'claudian-settings-resource-actions' });
     const search = actions.createEl('input', {
       cls: 'claudian-settings-resource-search',
@@ -616,11 +624,17 @@ export class ClaudianSettingTab extends PluginSettingTab {
       search.value,
     );
     search.addEventListener('input', renderRows);
-    void loadWorkspaceResources(providerIds, this.activeWorkspaceSection).then((loaded) => {
+    void loadWorkspaceResources(providerIds, this.activeWorkspaceSection, {
+      loadSharedSkills: () => this.loadDiscoveredAgentSkills(),
+    }).then((loaded) => {
       if (!list.isConnected) return;
       resources = loaded;
       renderRows();
     });
+  }
+
+  private loadDiscoveredAgentSkills(): Promise<AgentSkillListResult> {
+    return this.discoveredAgentSkillRepository.list();
   }
 
   private renderWorkspaceResourceRows(
@@ -725,6 +739,27 @@ export class ClaudianSettingTab extends PluginSettingTab {
             await this.plugin.mutateSettings((settings) => {
               settings.chatViewPlacement = value as ChatViewPlacement;
             });
+          });
+      });
+
+    new Setting(container)
+      .setName(t('settings.chatNavigationMode.name'))
+      .setDesc(t('settings.chatNavigationMode.desc'))
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption('conversation-rail', t('settings.chatNavigationMode.conversationRail'))
+          .addOption('button-navigation', t('settings.chatNavigationMode.buttonNavigation'))
+          .setValue(this.plugin.settings.chatNavigationMode)
+          .onChange(async (value) => {
+            const mode = value as ChatNavigationMode;
+            await this.plugin.mutateSettings((settings) => {
+              settings.chatNavigationMode = mode;
+            });
+            for (const view of this.plugin.getAllViews()) {
+              for (const tab of view.getTabManager()?.getAllTabs() ?? []) {
+                tab.ui.navigationSidebar?.setMode(mode);
+              }
+            }
           });
       });
 
@@ -986,6 +1021,37 @@ export class ClaudianSettingTab extends PluginSettingTab {
     addHotkeySettingRow(hotkeyGrid, this.app, 'claudian:new-tab', 'settings.newTabHotkey');
     addHotkeySettingRow(hotkeyGrid, this.app, 'claudian:close-current-tab', 'settings.closeTabHotkey');
 
+  }
+
+  private renderAboutTab(container: HTMLElement): void {
+    const about = container.createDiv({ cls: 'claudian-settings-about' });
+    about.createDiv({
+      cls: 'claudian-settings-about-slogan',
+      text: t('settings.about.slogan'),
+    });
+
+    const follow = about.createDiv({ cls: 'claudian-settings-about-section' });
+    new Setting(follow).setName(t('settings.about.followWeike')).setHeading();
+    follow.createDiv({
+      cls: 'claudian-settings-about-copy',
+      text: t('settings.about.feedback'),
+    });
+
+    const sponsor = about.createDiv({ cls: 'claudian-settings-about-section' });
+    new Setting(sponsor).setName(t('settings.about.sponsor')).setHeading();
+    sponsor.createDiv({
+      cls: 'claudian-settings-about-copy',
+      text: t('settings.about.sponsorDescription'),
+    });
+    this.renderAboutLink(sponsor, t('settings.about.afdian'), 'https://ifdian.net/a/bcs1037');
+  }
+
+  private renderAboutLink(container: HTMLElement, label: string, href: string): void {
+    container.createEl('a', {
+      cls: 'claudian-settings-about-link',
+      text: label,
+      attr: { href, target: '_blank', rel: 'noopener noreferrer' },
+    });
   }
 
   private renderHiddenProviderCommandSetting(

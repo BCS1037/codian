@@ -11,6 +11,7 @@ export const OPENCODE_PROVIDER_CAPABILITIES: Readonly<ProviderCapabilities> = Ob
   supportsImageAttachments: true,
   supportsInstructionMode: true,
   supportsMcpTools: false,
+  supportsSharedAgentSkills: true,
   supportsTurnSteer: false,
   reasoningControl: 'effort',
 });

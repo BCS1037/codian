@@ -13,6 +13,7 @@ describe('PI_PROVIDER_CAPABILITIES', () => {
       supportsImageAttachments: true,
       supportsInstructionMode: true,
       supportsMcpTools: false,
+      supportsSharedAgentSkills: true,
       supportsTurnSteer: true,
       reasoningControl: 'effort',
     });

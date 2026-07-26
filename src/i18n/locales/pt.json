@@ -87,7 +87,9 @@
       "add": "Adicionar ao Codian",
       "notReady": "O chat do Codian não está pronto.",
       "failed": "Não foi possível adicionar o arquivo ao Codian."
-    }
+    },
+    "navigation": { "jumpToPrompt": "Ir para o pedido {index}" },
+    "welcomeOrb": { "solving": "Resolvendo" }
   },
   "settings": {
     "title": "Configurações do Claudian",
@@ -97,6 +99,7 @@
       "codex": "Codex",
       "providers": "Provedores",
       "workspace": "Espaço de trabalho",
+      "about": "Sobre",
       "environment": "Ambiente",
       "pro": "Pro"
     },
@@ -107,6 +110,7 @@
     "setup": "Conexão",
     "models": "Modelos",
     "experimental": "Experimental",
+    "about": { "slogan": "Exploramos as formas mais simples de resolver problemas.", "followWeike": "Seguir Weike", "feedback": "Dúvidas? Abra uma issue ou siga a conta oficial do WeChat “维客笔记” para enviar feedback.", "sponsor": "Apoiar Weike", "sponsorDescription": "Se este plugin ajudar você, apoie o desenvolvimento e a manutenção contínuos de Weike:", "afdian": "Afdian" },
     "userName": {
       "name": "Como o Claudian deve chamá-lo?",
       "desc": "Seu nome para saudações personalizadas (deixe vazio para saudações genéricas)"
@@ -135,6 +139,12 @@
     "navMappings": {
       "name": "Mapeamentos de navegação estilo Vim",
       "desc": "Um mapeamento por linha. Formato: \"map <tecla> <ação>\" (ações: scrollUp, scrollDown, focusInput)."
+    },
+    "chatNavigationMode": {
+      "name": "Estilo de navegação do chat",
+      "desc": "Escolha como navegar pelas mensagens de uma conversa.",
+      "conversationRail": "Navegação por pontos da conversa",
+      "buttonNavigation": "Botões de navegação"
     },
     "requireCommandOrControlEnterToSend": {
       "name": "Exigir Command/Ctrl+Enter para enviar",
