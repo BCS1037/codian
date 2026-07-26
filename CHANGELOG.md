@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.2 — 2026-07-26
+
+### Marketplace compliance
+
+- Removed the redundant platform name from plugin and marketplace descriptions to satisfy Community Plugins manifest validation.
+- Replaced the altered root license text with the complete canonical GNU AGPL-3.0 text and added a verification guard so repository license detection cannot regress.
+
 ## 1.1.1 — 2026-07-26
 
 ### Polish and marketplace metadata

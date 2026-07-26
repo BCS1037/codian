@@ -1,7 +1,7 @@
 {
   "name": "codianz",
-  "version": "1.1.1",
-  "description": "A multi-provider AI agent workspace for Obsidian: connect local coding agents with your vault, conversations, skills, and tools while preserving provider-native sessions and permissions.",
+  "version": "1.1.2",
+  "description": "A multi-provider AI agent workspace: connect local coding agents with your vault, conversations, skills, and tools while preserving provider-native sessions and permissions.",
   "main": "main.js",
   "engines": {
     "node": ">=24 <25"
@@ -25,7 +25,7 @@
     "test:coverage": "node scripts/run-jest.js --coverage",
     "security:audit": "npm audit --omit=dev --audit-level=high",
     "security:secrets": "node scripts/check-secrets.mjs",
-    "licenses:check": "node scripts/check-production-licenses.mjs",
+    "licenses:check": "node scripts/check-root-license.mjs && node scripts/check-production-licenses.mjs",
     "check:diff": "git diff --check",
     "verify": "npm run typecheck && npm run lint && npm run check:providers && npm run test && npm run build && npm run check:performance && npm run licenses:check && npm run security:secrets && npm run check:diff",
     "version": "node scripts/sync-version.js && git add manifest.json"
