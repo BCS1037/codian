@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.3 — 2026-07-26
+
+### Chat navigation
+
+- Fixed conversation-dot preview cards opening at the chat-pane top. Cards now align with the dot being hovered.
+
 ## 1.1.2 — 2026-07-26
 
 ### Marketplace compliance

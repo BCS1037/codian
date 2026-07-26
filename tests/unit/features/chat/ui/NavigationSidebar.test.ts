@@ -67,6 +67,7 @@ class MockElement {
 
   offsetTop = 0;
   offsetHeight = 6;
+  rectTop = 0;
 
   constructor(tagName: string) {
     this.tagName = tagName.toUpperCase();
@@ -106,6 +107,13 @@ class MockElement {
 
   set scrollTop(value: number) {
     this._scrollTop = value;
+  }
+
+  getBoundingClientRect(): DOMRect {
+    return {
+      top: this.rectTop,
+      height: this.offsetHeight,
+    } as DOMRect;
   }
 
   scrollTo(options: { top: number; behavior: string }): void {
@@ -394,6 +402,28 @@ describe('NavigationSidebar', () => {
 
       markers[1].click();
       expect(messagesEl.scrollToCalls.at(-1)).toEqual({ top: 390, behavior: 'smooth' });
+    });
+
+    it('positions preview beside hovered marker instead of rail origin', () => {
+      messagesEl.scrollHeight = 1200;
+      messagesEl.clientHeight = 500;
+      parentEl.rectTop = 100;
+      addMessage('user', 0, 'First prompt');
+      addMessage('assistant', 100, 'First reply');
+      addMessage('user', 400, 'Second prompt');
+
+      sidebar = new NavigationSidebar(
+        parentEl as unknown as HTMLElement,
+        messagesEl as unknown as HTMLElement,
+        'conversation-rail',
+      );
+
+      const markers = parentEl.querySelectorAll('.claudian-conversation-rail-marker');
+      markers[1].rectTop = 320;
+      markers[1].dispatchEvent({ type: 'mouseenter' });
+
+      const card = parentEl.querySelector('.claudian-conversation-rail-card');
+      expect(card!.style.top).toBe('223px');
     });
 
     it('switches from button navigation without recreating the tab', () => {
