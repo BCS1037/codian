@@ -110,7 +110,7 @@
     "setup": "连接",
     "models": "模型",
     "experimental": "实验性功能",
-    "about": { "slogan": "致力于探索解决问题的极简方式", "followWeike": "关注维客", "wechatOfficialAccount": "微信公众号（大本营）", "wechatOfficialAccountValue": "维客笔记", "xiaohongshu": "小红书", "x": "X", "knowledgeBase": "AI 实战案例专栏知识库（付费）" },
+    "about": { "slogan": "致力于探索解决问题的极简方式", "followWeike": "关注维客", "feedback": "有问题欢迎提 issue 或者关注微信公众号「维客笔记」反馈", "sponsor": "赞助维客", "sponsorDescription": "如果这个插件帮助了你，欢迎赞助维客持续开发和维护：", "afdian": "爱发电" },
     "userName": {
       "name": "Codian 应该如何称呼你？",
       "desc": "用于个性化问候的用户名（留空使用通用问候）"

@@ -109,6 +109,25 @@ describe('settings provider layout', () => {
     expect(rule).toContain('align-items: center;');
   });
 
+  it('renders About feedback and sponsorship content without retired media links', () => {
+    const source = readFileSync(resolve('src/features/settings/ClaudianSettings.ts'), 'utf8');
+
+    expect(source).toContain("text: t('settings.about.feedback')");
+    expect(source).toContain("text: t('settings.about.sponsorDescription')");
+    expect(source).toContain("this.renderAboutLink(sponsor, t('settings.about.afdian'), 'https://ifdian.net/a/bcs1037')");
+    expect(source).not.toContain('xiaohongshu.com');
+    expect(source).not.toContain('ask.feishu.cn');
+  });
+
+  it('aligns About section text with the slogan card content', () => {
+    const css = readFileSync(resolve('src/style/settings/base.css'), 'utf8');
+    const rule = css.match(/\.claudian-settings-about-section\s*\{([^}]*)\}/)?.[1];
+    const headingRule = css.match(/\.claudian-settings-about-section \.setting-item-heading\s*\{([^}]*)\}/)?.[1];
+
+    expect(rule).toContain('padding: 0 20px;');
+    expect(headingRule).toContain('padding: 0;');
+  });
+
   it('uses compact provider cards that can form three columns in the settings viewport', () => {
     const css = readFileSync(resolve('src/style/settings/base.css'), 'utf8');
     const gridRule = css.match(/\.claudian-settings-provider-grid\s*\{([^}]*)\}/)?.[1];

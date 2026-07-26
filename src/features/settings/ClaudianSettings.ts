@@ -1032,44 +1032,24 @@ export class ClaudianSettingTab extends PluginSettingTab {
 
     const follow = about.createDiv({ cls: 'claudian-settings-about-section' });
     new Setting(follow).setName(t('settings.about.followWeike')).setHeading();
-    const followList = follow.createDiv({ cls: 'claudian-settings-about-links' });
-    this.renderAboutItem(
-      followList,
-      t('settings.about.wechatOfficialAccount'),
-      t('settings.about.wechatOfficialAccountValue'),
-    );
-    this.renderAboutItem(
-      followList,
-      t('settings.about.xiaohongshu'),
-      'https://www.xiaohongshu.com/user/profile/5cda02840000000016022308',
-      'https://www.xiaohongshu.com/user/profile/5cda02840000000016022308',
-    );
-    this.renderAboutItem(followList, t('settings.about.x'), 'https://x.com/bcs1037', 'https://x.com/bcs1037');
+    follow.createDiv({
+      cls: 'claudian-settings-about-copy',
+      text: t('settings.about.feedback'),
+    });
 
-    const knowledgeBase = about.createDiv({ cls: 'claudian-settings-about-section' });
-    new Setting(knowledgeBase).setName(t('settings.about.knowledgeBase')).setHeading();
-    this.renderAboutItem(
-      knowledgeBase,
-      t('settings.about.knowledgeBase'),
-      'https://ask.feishu.cn/shared-space/7648436643677916131',
-      'https://ask.feishu.cn/shared-space/7648436643677916131',
-    );
+    const sponsor = about.createDiv({ cls: 'claudian-settings-about-section' });
+    new Setting(sponsor).setName(t('settings.about.sponsor')).setHeading();
+    sponsor.createDiv({
+      cls: 'claudian-settings-about-copy',
+      text: t('settings.about.sponsorDescription'),
+    });
+    this.renderAboutLink(sponsor, t('settings.about.afdian'), 'https://ifdian.net/a/bcs1037');
   }
 
-  private renderAboutItem(
-    container: HTMLElement,
-    label: string,
-    value: string,
-    href?: string,
-  ): void {
-    const item = container.createDiv({ cls: 'claudian-settings-about-item' });
-    item.createSpan({ cls: 'claudian-settings-about-label', text: label });
-    if (!href) {
-      item.createSpan({ text: value });
-      return;
-    }
-    item.createEl('a', {
-      text: value,
+  private renderAboutLink(container: HTMLElement, label: string, href: string): void {
+    container.createEl('a', {
+      cls: 'claudian-settings-about-link',
+      text: label,
       attr: { href, target: '_blank', rel: 'noopener noreferrer' },
     });
   }

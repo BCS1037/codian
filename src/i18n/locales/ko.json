@@ -110,7 +110,7 @@
     "setup": "연결",
     "models": "모델",
     "experimental": "실험적 기능",
-    "about": { "slogan": "문제를 해결하는 가장 단순한 방법을 탐구합니다.", "followWeike": "Weike 팔로우", "wechatOfficialAccount": "WeChat 공식 계정(본거지)", "wechatOfficialAccountValue": "维客笔记", "xiaohongshu": "Xiaohongshu", "x": "X", "knowledgeBase": "AI 실전 사례 칼럼 지식 베이스(유료)" },
+    "about": { "slogan": "문제를 해결하는 가장 단순한 방법을 탐구합니다.", "followWeike": "Weike 팔로우", "feedback": "질문이 있으면 issue를 만들거나 WeChat 공식 계정 「维客笔记」를 팔로우해 피드백을 보내 주세요.", "sponsor": "Weike 후원", "sponsorDescription": "이 플러그인이 도움이 되었다면 Weike의 지속적인 개발과 유지 관리를 후원해 주세요:", "afdian": "Afdian" },
     "userName": {
       "name": "Claudian이 당신을 어떻게 불러야 합니까?",
       "desc": "개인화된 인사에 사용할 이름 (비워두면 일반 인사)"

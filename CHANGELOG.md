@@ -18,7 +18,7 @@
 
 - Added shared Skill discovery for vault `.agents/skills` entries, including managed symlinks, and show the Providers that support each shared Skill.
 - Removed duplicated Workspace resource headings and descriptions.
-- Added an About tab with Codian's slogan, 维客 links, and the AI Practice Cases knowledge base.
+- Added an About tab with Codian's slogan, feedback guidance, and an Afdian sponsorship link for 维客.
 
 ## 1.0.2 — 2026-07-23
 

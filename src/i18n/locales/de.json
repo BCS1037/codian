@@ -110,7 +110,7 @@
     "setup": "Verbindung",
     "models": "Modelle",
     "experimental": "Experimentell",
-    "about": { "slogan": "Wir erkunden die einfachsten Wege, Probleme zu lösen.", "followWeike": "Weike folgen", "wechatOfficialAccount": "WeChat-Official-Konto (Heimatbasis)", "wechatOfficialAccountValue": "维客笔记", "xiaohongshu": "Xiaohongshu", "x": "X", "knowledgeBase": "Wissensbasis für KI-Praxisfälle (kostenpflichtig)" },
+    "about": { "slogan": "Wir erkunden die einfachsten Wege, Probleme zu lösen.", "followWeike": "Weike folgen", "feedback": "Fragen willkommen: Erstelle ein Issue oder folge dem offiziellen WeChat-Konto „维客笔记“ für Feedback.", "sponsor": "Weike unterstützen", "sponsorDescription": "Wenn dieses Plugin dir hilft, unterstütze Weike bei weiterer Entwicklung und Wartung:", "afdian": "Afdian" },
     "userName": {
       "name": "Wie soll Claudian dich nennen?",
       "desc": "Dein Name für personalisierte Begrüßungen (leer lassen für allgemeine Begrüßungen)"

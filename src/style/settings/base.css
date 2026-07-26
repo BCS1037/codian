@@ -65,24 +65,26 @@
 
 .claudian-settings-about-section .setting-item-heading {
   margin: 0 0 8px;
+  padding: 0;
 }
 
-.claudian-settings-about-links {
-  display: grid;
-  gap: 8px;
+.claudian-settings-about-section {
+  padding: 0 20px;
 }
 
-.claudian-settings-about-item {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.claudian-settings-about-copy {
   color: var(--text-muted);
-  line-height: 1.5;
+  line-height: 1.6;
+  margin-bottom: 8px;
 }
 
-.claudian-settings-about-label {
-  min-width: 150px;
-  color: var(--text-normal);
+.claudian-settings-about-link {
+  color: var(--text-accent);
+  text-decoration: none;
+}
+
+.claudian-settings-about-link:hover {
+  text-decoration: underline;
 }
 
 .claudian-settings-provider-grid {

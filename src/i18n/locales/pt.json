@@ -110,7 +110,7 @@
     "setup": "Conexão",
     "models": "Modelos",
     "experimental": "Experimental",
-    "about": { "slogan": "Exploramos as formas mais simples de resolver problemas.", "followWeike": "Seguir Weike", "wechatOfficialAccount": "Conta oficial do WeChat (base)", "wechatOfficialAccountValue": "维客笔记", "xiaohongshu": "Xiaohongshu", "x": "X", "knowledgeBase": "Base de conhecimento de casos práticos de IA (paga)" },
+    "about": { "slogan": "Exploramos as formas mais simples de resolver problemas.", "followWeike": "Seguir Weike", "feedback": "Dúvidas? Abra uma issue ou siga a conta oficial do WeChat “维客笔记” para enviar feedback.", "sponsor": "Apoiar Weike", "sponsorDescription": "Se este plugin ajudar você, apoie o desenvolvimento e a manutenção contínuos de Weike:", "afdian": "Afdian" },
     "userName": {
       "name": "Como o Claudian deve chamá-lo?",
       "desc": "Seu nome para saudações personalizadas (deixe vazio para saudações genéricas)"
