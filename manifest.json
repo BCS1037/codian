@@ -1,9 +1,9 @@
 {
   "id": "codianz",
   "name": "Codian",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "minAppVersion": "1.11.4",
-  "description": "Embeds Codex, Claude Code, and other coding agents as AI collaborators in your vault. Your vault becomes their working directory, giving them capabilities for file reads and writes, search, bash commands, and multi-step workflows.",
+  "description": "A multi-provider AI agent workspace for Obsidian: connect local coding agents with your vault, conversations, skills, and tools while preserving provider-native sessions and permissions.",
   "author": "BCS",
   "authorUrl": "https://github.com/BCS1037",
   "isDesktopOnly": true

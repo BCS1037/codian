@@ -1,8 +1,6 @@
-ne       wwyingwe
-
 # Codian
 
-[English](README.md) | [简体中文](README_ZH.md)
+[简体中文](README_ZH.md) | [English](README.md)
 
 [![Release](https://img.shields.io/github/v/release/BCS1037/codian)](https://github.com/BCS1037/codian/releases)
 [![License](https://img.shields.io/github/license/BCS1037/codian)](LICENSE)
@@ -10,17 +8,19 @@ ne       wwyingwe
 
 ![Codian preview](assets/Preview.png)
 
-**Codian** 是一款仅支持桌面端的 Obsidian 插件，将本地 AI 编码 Agent 无缝嵌入到侧边栏对话与嵌入式（Inline-Edit）编辑工作流中。你的 Obsidian Vault 即为 Agent 的工作目录（`pwd`）：Agent 可以读取和修改笔记文件、执行全文检索、调用本地命令行工具，并在保护笔记库环境的前提下完成多步骤复杂任务。
+**Codian** 是面向 Obsidian 的多 Provider AI Agent 工作区。它不把 Vault 当作一次性上下文，而是让笔记、文件夹、会话、Skills 和本地工具围绕同一个问题持续协作。你可以在侧边栏对话或选区编辑中调用已安装的 Agent；各 Provider 的认证、会话与权限边界保持原生，思考、执行和结果留在自己的 Vault 中。
 
 ---
 
 ## ✨ 特性亮点
 
-- 💬 **侧边栏 Chat 终端**：支持多 Tab 标签页、会话自动保存、快速历史搜索、会话恢复/Fork/Rewind 以及 Provider 原生历史回放。
+- 💬 **连续对话工作流**：支持多 Tab、会话自动保存、历史搜索、恢复/Fork/Rewind 与 Provider 原生历史回放；对话圆点导航可预览并直达每轮提问。
 - ✏️ **嵌入式编辑器 (Inline Edit)**：在编辑器中选中文本直接输入指令，实时查看词级 Diff 预览并一键应用修改。
 - 📝 **Live Markdown 实时预览输入框**：基于 CodeMirror 6 构建，支持 `@笔记` 和 `@文件夹` 自动补全、拖拽 Vault 文件/目录添加上下文、图片粘贴，以及文件列表右键“添加到 Codian”。
-- 🌐 **第三方 Claude 服务 Profile**：内置中科院云、阿里百炼 (Bailian)、火山引擎 (Volcengine Ark) 等服务预设，支持自定义 Anthropic 兼容 Endpoint。API Key 通过 Obsidian 原生 `SecretStorage` 安全加密存储。
-- ⚙️ **丰富的 Agent 生态支持**：原生支持 6 大本地 CLI Provider（`claude`, `codex`, `kimi`, `grok`, `opencode`, `pi`），完整支持 Agent Skills、MCP 服务器、Subagents 协同、工具执行审批流以及 Plan / Thinking 思考模式。
+- 🌐 **Provider 原生连接**：支持 6 个本地 CLI Provider（`claude`, `codex`, `kimi`, `grok`, `opencode`, `pi`）；模型、会话、认证和权限遵循 Provider 原生能力，不假设功能完全相同。
+- ⚙️ **共享工作区资源**：管理 Skills、MCP、Subagents 与命令；Vault `.agents/skills` 中的软链接 Skill 可被支持它的 Provider 发现。
+- 🔧 **模型与 Claude 服务配置**：按 Provider 组织模型菜单；Claude 支持自定义模型、别名，以及中科院云、阿里百炼、火山引擎、DeepSeek 和自定义 Anthropic 兼容 Endpoint。密钥使用 Obsidian `SecretStorage` 保存。
+- ✨ **专注的进入体验**：空会话显示可降低动态效果的 thinking-orbs 动画；需要时可切回传统导航按钮。
 - 🛡️ **安全与隐私保障**：直接调用本地安装的 Provider CLI 运行，不包含任何第三方遥测（Telemetry）或数据收集服务。
 
 ---
@@ -42,27 +42,23 @@ ne       wwyingwe
 ## 🚀 快速安装
 
 ### 方式一：Obsidian 社区插件市场（推荐）
-
 1. 打开 Obsidian **设置** -> **社区插件**。
 2. 搜索 **Codian**（插件 ID 为 `codianz`）。
 3. 点击 **安装** 并 **启用**。
 
 ### 方式二：手动 Release 安装（预构建产物）
-
 1. 前往最新 [GitHub Release 页面](https://github.com/BCS1037/codian/releases) 下载 `main.js`、`manifest.json` 和 `styles.css`。
 2. 打开 Vault 的插件目录：`<vault>/.obsidian/plugins/codianz/`（如 `codianz` 文件夹不存在请手动新建）。
 3. 将下载的 3 个文件复制到该目录下。
 4. 重新加载 Obsidian 或在社区插件设置中启用 **Codian**。
 
 ### 方式三：源码编译安装（开发者）
-
 ```bash
 git clone https://github.com/BCS1037/codian.git
 cd codian
 npm ci
 npm run build
 ```
-
 编译完成后，将生成的 `main.js`、`manifest.json` 与 `styles.css` 复制到 Vault 的 `.obsidian/plugins/codianz/` 目录中。
 
 ---
@@ -80,19 +76,14 @@ npm run build
 ## ❓ 常见问题排查 (FAQ)
 
 ### 1. 提示 "CLI not detected" 无法找到本地 CLI 命令？
-
 macOS 图形界面应用（通过 Finder 或 Dock 启动）默认不会加载终端 Shell（如 `~/.zshrc` 或 `~/.bash_profile`）中设置的环境变量。
-
 - **解决方法**：前往 Codian **设置** -> **提供商** -> 选择对应的 Provider（如 Claude、Codex、Kimi 等）-> 在 **连接** 选项卡下的 **CLI 路径** 中，直接填入该 CLI 在你本机上的绝对路径（例如 `/usr/local/bin/claude` 或 `/opt/homebrew/bin/codex`）。
 
 ### 2. Kimi Code CLI 提示初始化错误？
-
 Kimi Code CLI 在使用前需要在终端完成首次认证。
-
 - **解决方法**：打开终端运行 `kimi` 命令，按照提示完成登录与模型配置。配置完成后，Codian 即可正常识别并开启 ACP 会话。
 
 ### 3. 为什么插件文件夹是 `codianz`，但在 Obsidian 里显示叫 `Codian`？
-
 `codianz` 是提交给 Obsidian 社区插件市场的内部唯一标识（Plugin ID），而 **Codian** 是在界面上呈现给用户的显示名称。安装时请务必保证插件文件夹名称为 `codianz`。
 
 ---
@@ -116,7 +107,7 @@ npm run security:audit
 
 ## 💖 支持与赞助
 
-如果你觉得 Codian 对你的工作与学习有所帮助，并希望支持项目的持续维护、更新与新特性开发，欢迎通过 [爱发电 (Afdian)](https://afdian.com/a/bcs1037) 给予支持。
+如果你觉得 Codian 对你的工作与学习有所帮助，并希望支持项目的持续维护、更新与新特性开发，欢迎通过 [爱发电](https://ifdian.net/a/bcs1037) 给予支持。
 
 非常感谢你的支持与鼓励！🙏
 
@@ -132,6 +123,14 @@ Codian 基于 [Yishen Tu](https://github.com/YishenTu) 开发的开源项目 [Cl
 
 ## 📄 许可证
 
-Codian 修改与衍生源码遵循 [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE)。
+Codian 修改与衍生源码遵循 [AGPL-3.0 许可证](LICENSE)。
 上游 Claudian 源码保持遵循 MIT 许可证。
 上游 Claudian 声明参见 [NOTICE](NOTICE)，第三方组件声明参见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+---
+
+## 📢 反馈与关注
+
+有问题欢迎 [提 Issue](https://github.com/BCS1037/codian/issues) 或关注微信公众号「维客笔记」反馈。致力于探索解决问题的极简方式！
+
+- **X (Twitter)**：[https://x.com/bcs1037](https://x.com/bcs1037)

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.1 — 2026-07-26
+
+### Polish and marketplace metadata
+
+- Aligned every About-page section, heading, paragraph, and sponsorship link with the slogan card's left edge.
+- Rewrote Codian's public description around its multi-provider agent workspace and updated the Community Plugins listing copy.
+- Made the English README the primary project entry point, moved Simplified Chinese documentation to `README_ZH.md`, and retained a compatibility redirect at `README_EN.md`.
+- Restored the canonical AGPL-3.0 license file header so GitHub and Obsidian Community Plugins can recognize the repository license; upstream Claudian MIT attribution remains in `NOTICE`.
+
 ## 1.1.0 — 2026-07-26
 
 ### Chat experience
