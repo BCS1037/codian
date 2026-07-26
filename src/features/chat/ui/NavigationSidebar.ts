@@ -276,7 +276,9 @@ export class NavigationSidebar {
   ): void {
     this.closePreviewCard();
     const card = this.parentEl.createDiv({ cls: 'claudian-conversation-rail-card' });
-    const markerCenter = marker.offsetTop + marker.offsetHeight / 2;
+    const parentRect = this.parentEl.getBoundingClientRect();
+    const markerRect = marker.getBoundingClientRect();
+    const markerCenter = markerRect.top - parentRect.top + markerRect.height / 2;
     const boundedTop = Math.max(
       PREVIEW_CARD_HALF_HEIGHT,
       Math.min(this.parentEl.clientHeight - PREVIEW_CARD_HALF_HEIGHT, markerCenter),
