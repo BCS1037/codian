@@ -8,17 +8,19 @@
 
 ![Codian preview](assets/Preview.png)
 
-**Codian** 是一款仅支持桌面端的 Obsidian 插件，将本地 AI 编码 Agent 无缝嵌入到侧边栏对话与嵌入式（Inline-Edit）编辑工作流中。你的 Obsidian Vault 即为 Agent 的工作目录（`pwd`）：Agent 可以读取和修改笔记文件、执行全文检索、调用本地命令行工具，并在保护笔记库环境的前提下完成多步骤复杂任务。
+**Codian** 是面向 Obsidian 的多 Provider AI Agent 工作区。它不把 Vault 当作一次性上下文，而是让笔记、文件夹、会话、Skills 和本地工具围绕同一个问题持续协作。你可以在侧边栏对话或选区编辑中调用已安装的 Agent；各 Provider 的认证、会话与权限边界保持原生，思考、执行和结果留在自己的 Vault 中。
 
 ---
 
 ## ✨ 特性亮点
 
-- 💬 **侧边栏 Chat 终端**：支持多 Tab 标签页、会话自动保存、快速历史搜索、会话恢复/Fork/Rewind 以及 Provider 原生历史回放。
+- 💬 **连续对话工作流**：支持多 Tab、会话自动保存、历史搜索、恢复/Fork/Rewind 与 Provider 原生历史回放；对话圆点导航可预览并直达每轮提问。
 - ✏️ **嵌入式编辑器 (Inline Edit)**：在编辑器中选中文本直接输入指令，实时查看词级 Diff 预览并一键应用修改。
 - 📝 **Live Markdown 实时预览输入框**：基于 CodeMirror 6 构建，支持 `@笔记` 和 `@文件夹` 自动补全、拖拽 Vault 文件/目录添加上下文、图片粘贴，以及文件列表右键“添加到 Codian”。
-- 🌐 **第三方 Claude 服务 Profile**：内置中科院云、阿里百炼 (Bailian)、火山引擎 (Volcengine Ark) 等服务预设，支持自定义 Anthropic 兼容 Endpoint。API Key 通过 Obsidian 原生 `SecretStorage` 安全加密存储。
-- ⚙️ **丰富的 Agent 生态支持**：原生支持 6 大本地 CLI Provider（`claude`, `codex`, `kimi`, `grok`, `opencode`, `pi`），完整支持 Agent Skills、MCP 服务器、Subagents 协同、工具执行审批流以及 Plan / Thinking 思考模式。
+- 🌐 **Provider 原生连接**：支持 6 个本地 CLI Provider（`claude`, `codex`, `kimi`, `grok`, `opencode`, `pi`）；模型、会话、认证和权限遵循 Provider 原生能力，不假设功能完全相同。
+- ⚙️ **共享工作区资源**：管理 Skills、MCP、Subagents 与命令；Vault `.agents/skills` 中的软链接 Skill 可被支持它的 Provider 发现。
+- 🔧 **模型与 Claude 服务配置**：按 Provider 组织模型菜单；Claude 支持自定义模型、别名，以及中科院云、阿里百炼、火山引擎、DeepSeek 和自定义 Anthropic 兼容 Endpoint。密钥使用 Obsidian `SecretStorage` 保存。
+- ✨ **专注的进入体验**：空会话显示可降低动态效果的 thinking-orbs 动画；需要时可切回传统导航按钮。
 - 🛡️ **安全与隐私保障**：直接调用本地安装的 Provider CLI 运行，不包含任何第三方遥测（Telemetry）或数据收集服务。
 
 ---
@@ -105,7 +107,7 @@ npm run security:audit
 
 ## 💖 支持与赞助
 
-如果你觉得 Codian 对你的工作与学习有所帮助，并希望支持项目的持续维护、更新与新特性开发，欢迎通过 [爱发电 (Afdian)](https://afdian.com/a/bcs1037) 给予支持。
+如果你觉得 Codian 对你的工作与学习有所帮助，并希望支持项目的持续维护、更新与新特性开发，欢迎通过 [爱发电](https://ifdian.net/a/bcs1037) 给予支持。
 
 非常感谢你的支持与鼓励！🙏
 
@@ -127,8 +129,8 @@ Codian 修改与衍生源码遵循 [AGPL-3.0 许可证](LICENSE)。
 
 ---
 
-## 📢 关注维客笔记
+## 📢 反馈与关注
 
-微信公众号「维客笔记」，致力于探索解决问题的极简方式！
+有问题欢迎 [提 Issue](https://github.com/BCS1037/codian/issues) 或关注微信公众号「维客笔记」反馈。致力于探索解决问题的极简方式！
 
 - **X (Twitter)**：[https://x.com/bcs1037](https://x.com/bcs1037)

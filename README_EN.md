@@ -8,17 +8,19 @@
 
 ![Codian preview](assets/Preview.png)
 
-**Codian** is a desktop-only Obsidian plugin that embeds local coding agents into your sidebar chat and inline-edit workflow. Your Obsidian Vault acts as the agent's working directory (`pwd`): agents can read and edit files, run search, execute local tools, and perform multi-step coding tasks while preserving your note vault environment.
+**Codian** is a multi-provider AI agent workspace for Obsidian. Instead of treating your vault as one-off context, it keeps notes, folders, conversations, Skills, and local tools working around the same problem. Use installed agents from sidebar chat or inline editing while preserving each provider's native authentication, session, and permission boundaries; your reasoning, execution, and results stay in your vault.
 
 ---
 
 ## ✨ Feature Highlights
 
-- 💬 **Sidebar Chat Shell**: Multi-tab interface, saved conversations, fast session search, session resume, fork, rewind, and provider-native history replay.
+- 💬 **Continuous Conversation Workflow**: Multi-tab interface, saved conversations, fast session search, resume, fork, rewind, and provider-native history replay. Conversation-dot navigation previews and jumps to each prompt.
 - ✏️ **Inline Editing**: Inline prompt execution with real-time word-level diff previews directly in your active editor.
 - 📝 **Live Markdown Composer**: Powered by CodeMirror 6 live preview, auto-completing `@note` and `@folder` mentions, drag-and-drop vault items, image attachments, and File Explorer "Add to Codian" integration.
-- 🌐 **Third-Party Claude Service Profiles**: Built-in configuration profiles for China Science and Technology Cloud, Alibaba Bailian, Volcengine Ark Coding Plan, and custom Anthropic-compatible endpoints. API keys are safely managed via Obsidian `SecretStorage`.
-- ⚙️ **Extensive Agent Ecosystem**: Full support for Agent Skills, MCP (Model Context Protocol) servers, subagents, tool execution approvals, and Plan/Thinking modes across 6 local CLI providers (`claude`, `codex`, `kimi`, `grok`, `opencode`, `pi`).
+- 🌐 **Provider-Native Connections**: Supports 6 local CLI providers (`claude`, `codex`, `kimi`, `grok`, `opencode`, `pi`). Models, sessions, authentication, and permissions follow provider-native capabilities; feature parity is never assumed.
+- ⚙️ **Shared Workspace Resources**: Manage Skills, MCP servers, subagents, and commands. Supported providers can discover managed symlink Skills from vault `.agents/skills`.
+- 🔧 **Models and Claude Services**: Model menus are organized by provider. Claude supports custom models, aliases, China Science and Technology Cloud, Alibaba Bailian, Volcengine Ark, DeepSeek, and custom Anthropic-compatible endpoints. Secrets use Obsidian `SecretStorage`.
+- ✨ **Focused Entry Experience**: Empty chats show a reduced-motion-aware thinking-orbs animation; switch back to traditional navigation buttons when preferred.
 - 🛡️ **Privacy & Safety**: Operates directly with local provider CLIs. No third-party telemetry services.
 
 ---
@@ -105,7 +107,7 @@ Please review [CONTRIBUTING.md](CONTRIBUTING.md) before submitting Pull Requests
 
 ## 💖 Support & Sponsor
 
-If you find Codian helpful and would like to support its ongoing maintenance and development of new features, you are welcome to sponsor me on [Afdian (爱发电)](https://afdian.com/a/bcs1037).
+If you find Codian helpful and would like to support its ongoing maintenance and development of new features, you are welcome to sponsor me on [Afdian (爱发电)](https://ifdian.net/a/bcs1037).
 
 Thank you for your support! 🙏
 
@@ -127,8 +129,8 @@ See [NOTICE](NOTICE) for Claudian upstream attribution and [THIRD_PARTY_NOTICES.
 
 ---
 
-## 📢 Connect & Follow
+## 📢 Feedback & Follow
 
-Follow WeChat Official Account **「维客笔记」** — Dedicated to exploring minimalist ways to solve problems!
+Open an [Issue](https://github.com/BCS1037/codian/issues) for feedback, or follow WeChat Official Account **「维客笔记」**. Dedicated to exploring minimalist ways to solve problems!
 
 - **X (Twitter)**: [https://x.com/bcs1037](https://x.com/bcs1037)
