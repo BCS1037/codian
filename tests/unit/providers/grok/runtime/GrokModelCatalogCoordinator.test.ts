@@ -77,6 +77,7 @@ function makeHost(options: {
     mutateSettingsConditionally: jest.fn(async (mutation) => {
       await mutation(settings as never);
     }),
+    notifyProviderChatOptionsChanged: jest.fn(),
     refreshModelSelectors: jest.fn(),
     settings,
   } as unknown as ProviderHost;
@@ -338,7 +339,7 @@ describe('GrokModelCatalogCoordinator', () => {
       fingerprint: 'owner-fingerprint',
       models: [expect.objectContaining({ rawId: 'owner-model' })],
     });
-    expect(host.refreshModelSelectors).toHaveBeenCalledTimes(1);
+    expect(host.notifyProviderChatOptionsChanged).toHaveBeenCalledWith('grok');
   });
 
   it('merges richer live ACP metadata by raw id and preserves CLI-only models', async () => {

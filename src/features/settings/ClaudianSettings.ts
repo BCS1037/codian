@@ -380,14 +380,18 @@ export class ClaudianSettingTab extends PluginSettingTab {
         targetProviderId,
         copy,
       ) => this.renderHiddenProviderCommandSetting(target, targetProviderId, copy),
-      refreshModelSelectors: () => {
-        for (const view of this.plugin.getAllViews()) {
-          view.refreshModelSelector();
-        }
-      },
-      refreshTitleGenerationModelOptions: () => this.refreshTitleModelOptions?.(),
-      renderCustomContextLimits: (target, providerId) => this.renderCustomContextLimits(target, providerId),
-    };
+          notifyProviderModelOptionsChanged: (changedProviderId) => {
+            this.notifyProviderModelOptionsChanged(changedProviderId);
+          },
+          renderCustomContextLimits: (target, providerId) => this.renderCustomContextLimits(target, providerId),
+        };
+  }
+
+  private notifyProviderModelOptionsChanged(providerId?: ProviderId): void {
+    for (const view of this.plugin.getAllViews()) {
+      view.refreshModelSelector(providerId);
+    }
+    this.refreshTitleModelOptions?.();
   }
 
   private async renderProviderPicker(
@@ -1156,9 +1160,7 @@ export class ClaudianSettingTab extends PluginSettingTab {
             delete settings.customModelAliases[modelId];
           }
         });
-        for (const view of this.plugin.getAllViews()) {
-          view.refreshModelSelector();
-        }
+        this.notifyProviderModelOptionsChanged(providerId);
       };
 
       const saveContextLimit = async (): Promise<void> => {

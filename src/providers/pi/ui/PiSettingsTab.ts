@@ -15,7 +15,7 @@ import {
 import { getHostnameKey } from '../../../utils/env';
 import { expandHomePath } from '../../../utils/path';
 import { maybeGetPiWorkspaceServices } from '../app/PiWorkspaceServices';
-import { sameStringList } from '../internal/compareCollections';
+import { sameDiscoveredModels, sameStringList } from '../internal/compareCollections';
 import { decodePiModelId, type PiDiscoveredModel } from '../models';
 import { PiModelDiscoveryService } from '../runtime/PiModelDiscoveryService';
 import {
@@ -77,7 +77,7 @@ export const piSettingsTabRenderer: ProviderSettingsTabRenderer = {
         });
         workspace?.cliResolver?.reset();
       });
-      context.refreshModelSelectors();
+      context.notifyProviderModelOptionsChanged('pi');
     };
 
     new Setting(container)
@@ -144,17 +144,16 @@ function renderPiModelPicker(
 
       const current = getPiProviderSettings(settingsBag);
       const normalizedVisibleModels = normalizePiVisibleModels(current.visibleModels, result.models);
-      const shouldPersist = result.models.length > 0
-        || current.discoveredModels.length > 0
-        || !sameStringList(current.visibleModels, normalizedVisibleModels);
-      if (shouldPersist) {
+      const catalogChanged = !sameDiscoveredModels(current.discoveredModels, result.models);
+      const visibilityChanged = !sameStringList(current.visibleModels, normalizedVisibleModels);
+      if (catalogChanged || visibilityChanged) {
         await context.plugin.mutateSettings((settings) => {
           updatePiProviderSettings(settings, {
             discoveredModels: result.models,
             visibleModels: normalizedVisibleModels,
           });
         });
-        context.refreshModelSelectors();
+        context.notifyProviderModelOptionsChanged('pi');
       }
       return result.models.length > 0 ? 'loaded' : 'empty';
     },
@@ -164,7 +163,7 @@ function renderPiModelPicker(
       await context.plugin.mutateSettings((settings) => {
         updatePiProviderSettings(settings, { modelAliases });
       });
-      context.refreshModelSelectors();
+      context.notifyProviderModelOptionsChanged('pi');
     },
     async onSelectedIdsChange(visibleModels) {
       const current = getPiProviderSettings(settingsBag);
@@ -176,7 +175,7 @@ function renderPiModelPicker(
       await context.plugin.mutateSettings((settings) => {
         updatePiProviderSettings(settings, { visibleModels: normalized });
       });
-      context.refreshModelSelectors();
+      context.notifyProviderModelOptionsChanged('pi');
     },
     providerName: 'Pi',
   });

@@ -13,6 +13,7 @@ function createPlugin(): any {
   return {
     settings,
     mutateSettings: jest.fn(async (mutation) => mutation(settings)),
+    notifyProviderChatOptionsChanged: jest.fn(),
     refreshModelSelectors: jest.fn(),
   };
 }
@@ -70,7 +71,7 @@ describe('KimiAcpSessionAdapter', () => {
       ],
       visibleModels: ['kimi-k2.5', 'kimi-k2.5-thinking'],
     });
-    expect(plugin.refreshModelSelectors).toHaveBeenCalled();
+    expect(plugin.notifyProviderChatOptionsChanged).toHaveBeenCalledWith('kimi');
   });
 
   it('does not re-enable models the user explicitly cleared', async () => {

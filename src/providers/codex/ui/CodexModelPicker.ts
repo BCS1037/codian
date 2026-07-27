@@ -87,7 +87,7 @@ export function renderCodexModelPicker(
       updateCodexProviderSettings(settings, { visibleModels: nextVisibleModels });
       ProviderSettingsCoordinator.normalizeAllModelVariants(settings);
     });
-    context.refreshModelSelectors();
+    context.notifyProviderModelOptionsChanged('codex');
   };
 
   let refreshPicker = (): void => {};
@@ -106,9 +106,11 @@ export function renderCodexModelPicker(
       const result = await workspace.modelCatalogCoordinator.ensureFresh('model-picker', { force });
       if (result.backgroundRefresh) {
         void result.backgroundRefresh.then(
-          () => {
-            context.refreshModelSelectors();
+          (backgroundResult) => {
             refreshPicker();
+            if (backgroundResult?.refreshed) {
+              context.notifyProviderModelOptionsChanged('codex');
+            }
           },
           () => refreshPicker(),
         );
@@ -120,7 +122,9 @@ export function renderCodexModelPicker(
         }));
         return 'failed';
       }
-      context.refreshModelSelectors();
+      if (result.refreshed) {
+        context.notifyProviderModelOptionsChanged('codex');
+      }
       return getCodexProviderSettings(settingsBag).discoveredModels.length > 0 ? 'loaded' : 'empty';
     },
     loadingCatalogText: t('settings.providerCatalog.loading', { provider: 'Codex' }),
@@ -129,7 +133,7 @@ export function renderCodexModelPicker(
       await context.plugin.mutateSettings((settings) => {
         updateCodexProviderSettings(settings, { modelAliases });
       });
-      context.refreshModelSelectors();
+      context.notifyProviderModelOptionsChanged('codex');
     },
     onSelectedIdsChange: persistVisibleModels,
     providerName: 'Codex',

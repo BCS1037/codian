@@ -21,7 +21,7 @@ export interface FeatureTabManagerHost {
 export interface FeatureViewHost extends TabManagerViewHost {
   getActiveTab(): TabData | null;
   getTabManager(): FeatureTabManagerHost | null;
-  refreshModelSelector(): void;
+  refreshModelSelector(providerId?: ProviderId): void;
   refreshTabControls(): void;
   updateHiddenProviderCommands(): void;
   invalidateProviderResources(providerIds: ProviderId[], generation: number): void;

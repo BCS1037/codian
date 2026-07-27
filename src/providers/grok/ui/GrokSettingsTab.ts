@@ -49,8 +49,7 @@ export const grokSettingsTabRenderer: ProviderSettingsTabRenderer = {
         new Notice(`Grok model discovery failed: ${result.diagnostics}`);
         return 'failed';
       }
-      context.refreshModelSelectors();
-      context.refreshTitleGenerationModelOptions();
+      context.notifyProviderModelOptionsChanged(GROK_PROVIDER_ID);
       return (getGrokProviderSettings(settingsBag).currentCatalog?.models.length ?? 0) > 0
         ? 'loaded'
         : 'empty';
@@ -137,8 +136,7 @@ export const grokSettingsTabRenderer: ProviderSettingsTabRenderer = {
         throw error;
       }
       currentCliPath = trimmed;
-      context.refreshModelSelectors();
-      context.refreshTitleGenerationModelOptions();
+      context.notifyProviderModelOptionsChanged(GROK_PROVIDER_ID);
     };
 
       cliPathSetting.addText(text => {
@@ -206,8 +204,7 @@ function renderGrokModelPicker(
       await context.plugin.mutateSettings((settings) => {
         updateGrokProviderSettings(settings, { modelAliases });
       });
-      context.refreshModelSelectors();
-      context.refreshTitleGenerationModelOptions();
+      context.notifyProviderModelOptionsChanged(GROK_PROVIDER_ID);
     },
     async onSelectedIdsChange(selectedIds) {
       const current = getGrokProviderSettings(settingsBag);
@@ -221,8 +218,7 @@ function renderGrokModelPicker(
       await context.plugin.mutateSettings((settings) => {
         updateGrokVisibleModels(settings, nextVisibleModels);
       });
-      context.refreshModelSelectors();
-      context.refreshTitleGenerationModelOptions();
+      context.notifyProviderModelOptionsChanged(GROK_PROVIDER_ID);
     },
     providerName: 'Grok',
     searchPlaceholder: 'Filter by model name, description, or alias ID...',

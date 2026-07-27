@@ -46,8 +46,7 @@ describe('applyProviderEnablementToggle', () => {
         settings,
         mutateSettings: jest.fn(async (mutation) => mutation(settings)),
       },
-      refreshModelSelectors: jest.fn(),
-      refreshTitleGenerationModelOptions: jest.fn(),
+      notifyProviderModelOptionsChanged: jest.fn(),
     };
 
     const applied = await applyProviderEnablementToggle(
@@ -60,8 +59,7 @@ describe('applyProviderEnablementToggle', () => {
     expect(applied).toBe(false);
     expect(toggle.setValue).toHaveBeenCalledWith(true);
     expect(Notice).toHaveBeenCalledWith('settings.providerEnablement.atLeastOne');
-    expect(context.refreshModelSelectors).not.toHaveBeenCalled();
-    expect(context.refreshTitleGenerationModelOptions).not.toHaveBeenCalled();
+    expect(context.notifyProviderModelOptionsChanged).not.toHaveBeenCalled();
   });
 
   it('supports card controls without requiring an Obsidian toggle component', async () => {
@@ -74,8 +72,7 @@ describe('applyProviderEnablementToggle', () => {
         settings,
         mutateSettings: jest.fn(async (mutation) => mutation(settings)),
       },
-      refreshModelSelectors: jest.fn(),
-      refreshTitleGenerationModelOptions: jest.fn(),
+      notifyProviderModelOptionsChanged: jest.fn(),
     };
 
     const applied = await applyProviderEnablement(context as any, 'claude', false);

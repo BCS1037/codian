@@ -38,7 +38,7 @@ export function createNativeAcpSettingsTabRenderer(options: {
                 updateNativeAcpProviderSettings(pluginSettings, options.providerId, { cliPathsByHost });
               });
               options.cliResolver.reset();
-              context.refreshModelSelectors();
+              context.notifyProviderModelOptionsChanged(options.providerId);
             }));
 
         new Setting(container).setName(t('settings.models')).setHeading();

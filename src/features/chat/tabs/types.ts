@@ -1,7 +1,7 @@
 import type { Component, WorkspaceLeaf } from 'obsidian';
 
 import type { ProviderCommandDropdownConfig } from '../../../core/providers/commands/ProviderCommandCatalog';
-import type { ProviderCommandDiscoveryResult } from '../../../core/providers/commands/ProviderCommandDiscoveryResult';
+import type { ProviderCommandDiscoveryController } from '../../../core/providers/commands/ProviderCommandDiscoveryStore';
 import type { ProviderCommandEntry } from '../../../core/providers/commands/ProviderCommandEntry';
 import type { InstructionRefineService, ProviderId, TitleGenerationService } from '../../../core/providers/types';
 import type { ChatRuntime } from '../../../core/runtime/ChatRuntime';
@@ -92,7 +92,7 @@ export type TabId = string;
 
 export type ProviderCatalogInfo = {
   config: ProviderCommandDropdownConfig;
-  getEntries: () => Promise<ProviderCommandDiscoveryResult<ProviderCommandEntry>>;
+  discovery: ProviderCommandDiscoveryController<ProviderCommandEntry>;
 } | null;
 
 export type ProviderCatalogResolver = () => ProviderCatalogInfo;
@@ -227,6 +227,9 @@ export interface TabData {
   /** Tab-manager hook for generation-guarded provider command subscriptions. */
   onRuntimeInstalled?: (runtime: ChatRuntime) => void;
 
+  /** Tab-manager hook for mutations that change the serialized tab state. */
+  onPersistedStateChanged?: () => void;
+
   /** Tab-manager-owned provider discovery callback retained across UI/runtime refreshes. */
   providerCatalogResolver: ProviderCatalogResolver | null;
 
@@ -276,6 +279,9 @@ export interface PersistedTabManagerState {
  * Callbacks for tab state changes.
  */
 export interface TabManagerCallbacks {
+  /** Called whenever the serialized tab-manager state may have changed. */
+  onPersistedStateChanged?: () => void;
+
   /** Called when a tab is created. */
   onTabCreated?: (tab: TabData) => void;
 

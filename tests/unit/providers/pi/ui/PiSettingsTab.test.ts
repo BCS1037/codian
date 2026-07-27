@@ -343,6 +343,7 @@ function createContext(settings: Record<string, unknown>) {
         await saveSettings();
       }),
     },
+    notifyProviderModelOptionsChanged: jest.fn(),
     refreshModelSelectors: jest.fn(),
     refreshTitleGenerationModelOptions: jest.fn(),
     renderHiddenProviderCommandSetting: jest.fn(),
@@ -483,7 +484,7 @@ describe('PiSettingsTab', () => {
     expect(mockDiscoverModels).toHaveBeenCalledTimes(1);
     expect(getPiProviderSettings(settings).discoveredModels).toHaveLength(1);
     expect(getPiProviderSettings(settings).visibleModels).toEqual(['pi:anthropic/claude-sonnet-4']);
-    expect(context.refreshModelSelectors).toHaveBeenCalled();
+    expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('pi');
 
     mockDiscoverModels.mockResolvedValueOnce({
       diagnostics: 'not logged in',
@@ -560,6 +561,6 @@ describe('PiSettingsTab', () => {
     expect(getPiProviderSettings(settings).modelAliases).toEqual({
       'pi:anthropic/claude-sonnet-4': 'Sonnet',
     });
-    expect(context.refreshModelSelectors).toHaveBeenCalled();
+    expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('pi');
   });
 });

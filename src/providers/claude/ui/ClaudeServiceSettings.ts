@@ -187,8 +187,7 @@ async function persistServices(
     ProviderSettingsCoordinator.reconcileTitleGenerationModelSelection(settings);
   });
   await context.plugin.recycleProviderRuntimes?.('claude');
-  context.refreshModelSelectors();
-  context.refreshTitleGenerationModelOptions();
+  context.notifyProviderModelOptionsChanged('claude');
 }
 
 export function renderClaudeServiceSettings(
@@ -306,7 +305,7 @@ export function renderClaudeServiceSettings(
             }
             updateClaudeProviderSettings(target, { defaultThirdPartyServiceId: service.id });
           });
-          context.refreshModelSelectors();
+          context.notifyProviderModelOptionsChanged('claude');
           refresh();
         });
     }

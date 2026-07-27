@@ -3,6 +3,7 @@ import { Notice } from 'obsidian';
 import { StartupProfiler } from '../../../core/performance/StartupProfiler';
 import type { ProviderCommandDiscoveryResult } from '../../../core/providers/commands/ProviderCommandDiscoveryResult';
 import { normalizeProviderCommandDiscoveryItems } from '../../../core/providers/commands/ProviderCommandDiscoveryResult';
+import { ProviderCommandDiscoveryStore } from '../../../core/providers/commands/ProviderCommandDiscoveryStore';
 import type { ProviderCommandEntry } from '../../../core/providers/commands/ProviderCommandEntry';
 import { ProviderRegistry } from '../../../core/providers/ProviderRegistry';
 import { ProviderWorkspaceRegistry } from '../../../core/providers/ProviderWorkspaceRegistry';
@@ -215,7 +216,8 @@ export class TabManager implements TabManagerInterface {
         },
         onConversationIdChanged: (conversationId) => {
           this.bumpTabCommandContextRevision(tab.id);
-          tab.ui.slashCommandDropdown?.resetSdkSkillsCache();
+          tab.ui?.slashCommandDropdown?.resetProviderViewState?.();
+          tab.ui?.slashCommandDropdown?.resetSdkSkillsCache?.();
           // Sync tab.conversationId when conversation is lazily created
           tab.conversationId = conversationId;
           this.callbacks.onTabConversationChanged?.(tab.id, conversationId);
@@ -230,7 +232,8 @@ export class TabManager implements TabManagerInterface {
         getProviderCatalogConfig: () => this.getProviderCatalogConfig(tab),
         onCommandContextChanged: () => {
           this.bumpTabCommandContextRevision(tab.id);
-          tab.ui.slashCommandDropdown?.resetSdkSkillsCache();
+          tab.ui?.slashCommandDropdown?.resetProviderViewState?.();
+          tab.ui?.slashCommandDropdown?.resetSdkSkillsCache?.();
         },
         onProviderChanged: async (providerId) => {
           this.bumpTabCommandContextRevision(tab.id);
@@ -244,7 +247,7 @@ export class TabManager implements TabManagerInterface {
         this.plugin,
         this.view,
         (forkContext) => this.handleForkRequest(forkContext),
-        (conversationId) => this.openConversation(conversationId),
+        async (conversationId) => { await this.openConversation(conversationId); },
         () => this.getProviderCatalogConfig(tab),
       );
 
@@ -615,7 +618,8 @@ export class TabManager implements TabManagerInterface {
   invalidateProviderCommandCaches(providerIds?: ProviderId | ProviderId[]): void {
     for (const tab of this.filterTabsByProvider(providerIds, (tab) => getTabProviderId(tab, this.plugin))) {
       this.bumpTabCommandContextRevision(tab.id);
-      tab.ui?.slashCommandDropdown?.resetSdkSkillsCache();
+      tab.ui?.slashCommandDropdown?.resetProviderViewState?.();
+      tab.ui?.slashCommandDropdown?.resetSdkSkillsCache?.();
     }
   }
 
@@ -638,7 +642,8 @@ export class TabManager implements TabManagerInterface {
       if (!filter.has(providerId)) continue;
       this.bumpTabCommandContextRevision(tab.id);
       tab.runtimeSupervisor.invalidate(generation);
-      tab.ui.slashCommandDropdown?.resetSdkSkillsCache();
+      tab.ui?.slashCommandDropdown?.resetProviderViewState?.();
+      tab.ui?.slashCommandDropdown?.resetSdkSkillsCache?.();
     }
   }
 
@@ -1196,9 +1201,11 @@ export class TabManager implements TabManagerInterface {
     const catalog = ProviderWorkspaceRegistry.getCommandCatalog(providerId);
     if (!catalog) return null;
 
+    const getEntries = () => this.getProviderCommandDiscovery(tab.id);
     return {
       config: catalog.getDropdownConfig(),
-      getEntries: () => this.getProviderCommandDiscovery(tab.id),
+      discovery: new ProviderCommandDiscoveryStore(getEntries),
+      getEntries,
     };
   }
 
@@ -1223,7 +1230,7 @@ export class TabManager implements TabManagerInterface {
         );
       }
       this.providerCommandCache.delete(tab.id);
-      tab.ui.slashCommandDropdown?.resetSdkSkillsCache();
+      tab.ui.slashCommandDropdown?.resetProviderViewState();
     });
     this.runtimeCommandSubscriptions.set(tab.id, { runtime, unsubscribe });
   }
