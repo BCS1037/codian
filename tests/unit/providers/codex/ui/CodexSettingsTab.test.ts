@@ -373,6 +373,7 @@ function createPlugin(overrides: Record<string, unknown> = {}): any {
 function createContext(plugin: any) {
   return {
     plugin,
+    notifyProviderModelOptionsChanged: jest.fn(),
     renderHiddenProviderCommandSetting: jest.fn(),
     refreshModelSelectors: jest.fn(),
     refreshTitleGenerationModelOptions: jest.fn(),

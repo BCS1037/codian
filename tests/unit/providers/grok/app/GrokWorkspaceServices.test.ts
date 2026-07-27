@@ -38,6 +38,7 @@ function createPlugin(cached = true): any {
     mutateSettingsConditionally: jest.fn(async (mutation: (value: any) => boolean) => {
       await mutation(settings);
     }),
+    notifyProviderChatOptionsChanged: jest.fn(),
     refreshModelSelectors: jest.fn(),
     settings,
   };

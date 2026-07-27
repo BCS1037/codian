@@ -127,10 +127,17 @@ export class ClaudianView extends ItemView {
   }
 
   /** Refreshes model-dependent UI across all tabs (used after settings/env changes). */
-  refreshModelSelector(): void {
+  refreshModelSelector(changedProviderId?: ProviderId): void {
     for (const tab of this.tabManager?.getAllTabs() ?? []) {
       onProviderAvailabilityChanged(tab, this.plugin);
       const providerId = getTabProviderId(tab, this.plugin);
+      if (
+        changedProviderId
+        && tab.lifecycleState !== 'blank'
+        && providerId !== changedProviderId
+      ) {
+        continue;
+      }
       const conversation = tab.conversationId
         ? this.plugin.getConversationSync(tab.conversationId)
         : null;
@@ -170,7 +177,9 @@ export class ClaudianView extends ItemView {
       );
     }
 
-    this.tabManager?.primeProviderRuntime();
+    if (!changedProviderId) {
+      this.tabManager?.primeProviderRuntime();
+    }
   }
 
   invalidateProviderCommandCaches(providerIds?: ProviderId[]): void {

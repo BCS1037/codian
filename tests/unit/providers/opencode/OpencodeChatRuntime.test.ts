@@ -34,6 +34,7 @@ function createMockPlugin(overrides: Record<string, unknown> = {}): any {
     },
     ...overrides,
   };
+  plugin.notifyProviderChatOptionsChanged ??= jest.fn();
   plugin.refreshModelSelectors ??= jest.fn(() => {
     for (const view of plugin.getAllViews()) {
       view.refreshModelSelector();
@@ -733,7 +734,7 @@ describe('OpencodeChatRuntime', () => {
     expect(plugin.settings.providerConfigs.opencode.selectedMode).toBe('plan');
     expect((runtime as any).currentSessionModeId).toBe('build');
     expect(plugin.saveSettings).not.toHaveBeenCalled();
-    expect(refreshModelSelector).toHaveBeenCalledTimes(1);
+    expect(plugin.notifyProviderChatOptionsChanged).toHaveBeenCalledWith('opencode');
   });
 
   it('seeds the OpenCode selected mode when no explicit mode has been saved yet', async () => {
@@ -1044,7 +1045,7 @@ describe('OpencodeChatRuntime', () => {
     });
     expect(plugin.settings.effortLevel).toBe('high');
     expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
-    expect(refreshModelSelector).toHaveBeenCalledTimes(1);
+    expect(plugin.notifyProviderChatOptionsChanged).toHaveBeenCalledWith('opencode');
   });
 
   it('clamps optimistic high defaults when ACP reports that high is unsupported', async () => {

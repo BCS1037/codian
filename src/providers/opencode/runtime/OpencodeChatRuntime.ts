@@ -1232,7 +1232,7 @@ export class OpencodeChatRuntime implements ChatRuntime {
     ) {
       return;
     }
-    this.refreshModelSelectors();
+    this.plugin.notifyProviderChatOptionsChanged?.('opencode');
   }
 
   private seedActiveModelSelection(
@@ -1331,17 +1331,7 @@ export class OpencodeChatRuntime implements ChatRuntime {
         updateOpencodeProviderSettings(settings, { selectedMode: currentModeId });
       });
     }
-    if (
-      conversationGeneration !== undefined
-      && !this.isConversationCurrent(conversationGeneration)
-    ) {
-      return;
-    }
-    this.refreshModelSelectors();
-  }
-
-  private refreshModelSelectors(): void {
-    this.plugin.refreshModelSelectors?.();
+    this.plugin.notifyProviderChatOptionsChanged?.('opencode');
   }
 
   private emitPermissionModeSync(modeId: string): void {

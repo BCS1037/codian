@@ -43,7 +43,6 @@ export async function applyProviderEnablement(
     return false;
   }
 
-  context.refreshModelSelectors();
-  context.refreshTitleGenerationModelOptions();
+  context.notifyProviderModelOptionsChanged(providerId);
   return true;
 }

@@ -57,7 +57,7 @@ export class KimiAcpSessionAdapter implements NativeAcpSessionAdapter {
         ...(discoveredModels.length > 0 ? { discoveredModels, visibleModels } : {}),
       });
     });
-    this.plugin.refreshModelSelectors?.();
+    this.plugin.notifyProviderChatOptionsChanged?.('kimi');
   }
 
   async applySelections(params: {

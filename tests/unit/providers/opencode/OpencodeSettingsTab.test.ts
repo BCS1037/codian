@@ -422,6 +422,7 @@ function createPlugin(overrides: Record<string, unknown> = {}): any {
 function createContext(plugin: any) {
   return {
     plugin,
+    notifyProviderModelOptionsChanged: jest.fn(),
     renderHiddenProviderCommandSetting: jest.fn(),
     refreshModelSelectors: jest.fn(),
     refreshTitleGenerationModelOptions: jest.fn(),
@@ -617,7 +618,7 @@ describe('OpencodeSettingsTab', () => {
       { allowSessionCreation: true },
     );
     expect(mockRuntimeCleanup).toHaveBeenCalledTimes(1);
-    expect(context.refreshModelSelectors).toHaveBeenCalledTimes(1);
+    expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('opencode');
   });
 
   it('loads the OpenCode model catalog immediately when a fresh picker starts expanded', async () => {
@@ -658,7 +659,7 @@ describe('OpencodeSettingsTab', () => {
       { allowSessionCreation: true },
     );
     expect(mockRuntimeCleanup).toHaveBeenCalledTimes(1);
-    expect(context.refreshModelSelectors).toHaveBeenCalledTimes(1);
+    expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('opencode');
   });
 
   it('loads the OpenCode catalog when saved models start with the browser collapsed', async () => {
@@ -694,7 +695,7 @@ describe('OpencodeSettingsTab', () => {
       plugin,
       { allowSessionCreation: true },
     );
-    expect(context.refreshModelSelectors).toHaveBeenCalledTimes(1);
+    expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('opencode');
   });
 
   it('warms and persists thinking metadata when a model is added to the visible list', async () => {
@@ -737,7 +738,7 @@ describe('OpencodeSettingsTab', () => {
       plugin,
       'opencode:deepseek/deepseek-v4-pro',
     );
-    expect(context.refreshModelSelectors).toHaveBeenCalled();
+    expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('opencode');
   });
 
   it('persists aliases through the shared model picker', async () => {
@@ -764,6 +765,6 @@ describe('OpencodeSettingsTab', () => {
     expect(getOpencodeProviderSettings(plugin.settings).modelAliases).toEqual({
       'deepseek/deepseek-v4-pro': 'V4 Pro',
     });
-    expect(context.refreshModelSelectors).toHaveBeenCalled();
+    expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('opencode');
   });
 });

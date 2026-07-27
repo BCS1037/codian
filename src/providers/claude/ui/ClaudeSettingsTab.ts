@@ -175,7 +175,7 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
             ProviderSettingsCoordinator.reconcileTitleGenerationModelSelection(settings);
           });
           savedCustomModels = nextCustomModels;
-          context.refreshModelSelectors();
+          context.notifyProviderModelOptionsChanged('claude');
           configuredModelPicker?.refresh();
         };
 
@@ -422,7 +422,7 @@ function renderConfiguredClaudeModelPicker(
       reconcileActiveClaudeModelSelection(settings);
       ProviderSettingsCoordinator.reconcileTitleGenerationModelSelection(settings);
     });
-    context.refreshModelSelectors();
+    context.notifyProviderModelOptionsChanged('claude');
   };
 
   return renderProviderModelPicker({
@@ -439,7 +439,7 @@ function renderConfiguredClaudeModelPicker(
       await context.plugin.mutateSettings((settings) => {
         settings.customModelAliases = customModelAliases;
       });
-      context.refreshModelSelectors();
+      context.notifyProviderModelOptionsChanged('claude');
     },
     onSelectedIdsChange: persistConfiguredModels,
     providerName: 'Claude',

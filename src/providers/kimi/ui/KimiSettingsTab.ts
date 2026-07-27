@@ -102,13 +102,13 @@ function renderKimiModelPicker(
       await context.plugin.mutateSettings(settings => {
         updateKimiProviderSettings(settings, { modelAliases });
       });
-      context.refreshModelSelectors();
+      context.notifyProviderModelOptionsChanged('kimi');
     },
     async onSelectedIdsChange(visibleModels) {
       await context.plugin.mutateSettings(settings => {
         updateKimiProviderSettings(settings, { visibleModels });
       });
-      context.refreshModelSelectors();
+      context.notifyProviderModelOptionsChanged('kimi');
     },
     providerName: 'Kimi Code',
   });

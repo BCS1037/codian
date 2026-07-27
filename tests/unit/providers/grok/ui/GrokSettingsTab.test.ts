@@ -279,6 +279,7 @@ function createPlugin(): any {
 
 function createContext(plugin: any): any {
   return {
+    notifyProviderModelOptionsChanged: jest.fn(),
     plugin,
     refreshModelSelectors: jest.fn(),
     refreshTitleGenerationModelOptions: jest.fn(),
@@ -494,14 +495,13 @@ describe('GrokSettingsTab', () => {
     ]);
 
     await picker.onAliasesChange({ 'grok-4': 'Primary' });
-    expect(context.refreshTitleGenerationModelOptions).toHaveBeenCalledTimes(1);
-    context.refreshTitleGenerationModelOptions.mockClear();
+    expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('grok');
+    context.notifyProviderModelOptionsChanged.mockClear();
     await picker.onSelectedIdsChange(['grok-4', 'kimi-coding']);
 
     expect(getGrokProviderSettings(plugin.settings).modelAliases).toEqual({ 'grok-4': 'Primary' });
     expect(getGrokProviderSettings(plugin.settings).visibleModels).toBeNull();
-    expect(context.refreshModelSelectors).toHaveBeenCalled();
-    expect(context.refreshTitleGenerationModelOptions).toHaveBeenCalledTimes(1);
+    expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('grok');
   });
 
   it('prunes reasoning metadata and preferences when a model is disabled', async () => {

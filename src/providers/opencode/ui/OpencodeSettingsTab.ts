@@ -185,7 +185,7 @@ function renderOpencodeModelPicker(
         sessionId: null,
       });
       if (await runtime.warmModelMetadata(encodeOpencodeModelId(rawId))) {
-        context.refreshModelSelectors();
+        context.notifyProviderModelOptionsChanged('opencode');
       }
     } catch {
       // Metadata warmup is opportunistic; the first chat turn can still discover it.
@@ -212,7 +212,7 @@ function renderOpencodeModelPicker(
           return 'failed';
         }
         if (discoveredCount > 0) {
-          context.refreshModelSelectors();
+          context.notifyProviderModelOptionsChanged('opencode');
           return 'loaded';
         }
         return 'empty';
@@ -229,7 +229,7 @@ function renderOpencodeModelPicker(
       await context.plugin.mutateSettings((settings) => {
         updateOpencodeProviderSettings(settings, { modelAliases });
       });
-      context.refreshModelSelectors();
+      context.notifyProviderModelOptionsChanged('opencode');
     },
     onModelSelected: async (model) => warmModelMetadata(model.id),
     async onSelectedIdsChange(visibleModels) {
@@ -242,7 +242,7 @@ function renderOpencodeModelPicker(
       await context.plugin.mutateSettings((settings) => {
         updateOpencodeProviderSettings(settings, { visibleModels: normalized });
       });
-      context.refreshModelSelectors();
+      context.notifyProviderModelOptionsChanged('opencode');
     },
     providerName: 'OpenCode',
   });

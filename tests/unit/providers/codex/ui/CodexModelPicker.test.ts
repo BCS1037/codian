@@ -157,6 +157,7 @@ function createPlugin() {
 function createContext(plugin: ReturnType<typeof createPlugin>) {
   return {
     plugin,
+    notifyProviderModelOptionsChanged: jest.fn(),
     refreshModelSelectors: jest.fn(),
   } as any;
 }
@@ -218,7 +219,7 @@ describe('CodexModelPicker', () => {
 
     expect(getCodexProviderSettings(plugin.settings).visibleModels).toEqual([]);
     expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
-    expect(context.refreshModelSelectors).toHaveBeenCalledTimes(1);
+    expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('codex');
   });
 
   it('registers void-returning DOM event callbacks for asynchronous actions', async () => {
@@ -299,7 +300,7 @@ describe('CodexModelPicker', () => {
       'gpt-5.5': 'Primary',
     });
     expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
-    expect(context.refreshModelSelectors).toHaveBeenCalledTimes(1);
+    expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('codex');
   });
 
   it('refreshes the app-server catalog through the provider-owned persistence boundary', async () => {
@@ -320,7 +321,7 @@ describe('CodexModelPicker', () => {
 
     expect(ensureFresh).toHaveBeenCalledWith('model-picker', { force: true });
     expect(plugin.saveSettings).not.toHaveBeenCalled();
-    expect(context.refreshModelSelectors).toHaveBeenCalledTimes(1);
+    expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('codex');
   });
 
   it('does not save when refresh only changes the runtime catalog', async () => {
@@ -340,7 +341,7 @@ describe('CodexModelPicker', () => {
     await flushPromises();
 
     expect(plugin.saveSettings).not.toHaveBeenCalled();
-    expect(context.refreshModelSelectors).toHaveBeenCalledTimes(1);
+    expect(context.notifyProviderModelOptionsChanged).not.toHaveBeenCalled();
   });
 
   it('checks cached catalog freshness on open and rerenders after background refresh', async () => {
@@ -398,6 +399,6 @@ describe('CodexModelPicker', () => {
     expect(elements.some(element => (
       element.tag === 'label' && element.title === 'gpt-5.6-new'
     ))).toBe(true);
-    expect(context.refreshModelSelectors).toHaveBeenCalledTimes(2);
+    expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('codex');
   });
 });

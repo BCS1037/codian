@@ -89,4 +89,23 @@ describe('probeRuntimeCommands', () => {
 
     expect(sdkMock.getLastOptions()?.extraArgs).toEqual({ 'enable-auto-mode': null });
   });
+
+  it('normalizes a non-Error abort reason before rejecting', async () => {
+    sdkMock.setMockMessages([
+      { type: 'system', subtype: 'init', session_id: 'probe-session' },
+    ], { appendResult: false });
+    const abortController = new AbortController();
+
+    const probe = probeRuntimeCommands(
+      createMockPlugin(),
+      abortController.signal,
+    );
+
+    abortController.abort('caller cancelled');
+
+    await expect(probe).rejects.toMatchObject({
+      message: 'Claude command discovery aborted',
+      cause: 'caller cancelled',
+    });
+  });
 });

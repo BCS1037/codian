@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.4 — 2026-07-27
+
+### Chat and commands
+
+- Made provider slash-command menus load reliably, refresh when chat context changes, and show a retry path when discovery fails.
+- Added Codex `/fast` to switch its fast-mode setting directly from chat.
+- Improved provider-specific command visibility, cancellation handling, and chat-tab state persistence.
+
+### Models, settings, and history
+
+- Improved model, Provider settings, and command catalog refresh behavior across supported Providers.
+- Preserved Claude conversation history after a Claude environment change while preventing accidental resume against the changed service.
+
 ## 1.1.3 — 2026-07-26
 
 ### Chat navigation
