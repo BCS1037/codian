@@ -68,14 +68,17 @@ export class AcpToolStreamAdapter {
 
     const result: StreamChunk[] = [];
     const providerPayloadFields = this.buildProviderPayloadFields(state);
-    if (
+    const hasToolStart = chunks.some(chunk =>
+      chunk.type === 'tool_use' && chunk.id === toolCallUpdate.toolCallId
+    );
+    if (!hasToolStart && (
       toolCallUpdate.rawInput !== undefined
       || state.rawName !== current?.rawName
       || (
         toolCallUpdate.rawOutput !== undefined
         && providerPayloadFields.providerPayload !== undefined
       )
-    ) {
+    )) {
       result.push({
         id: toolCallUpdate.toolCallId,
         input: state.input,

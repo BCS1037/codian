@@ -180,6 +180,7 @@ const createMockMcpServerSelector = () => ({
   setMcpManager: jest.fn(),
   addMentionedServers: jest.fn(),
   clearEnabled: jest.fn(),
+  setDisplayOnlyNotice: jest.fn(),
   setVisible: jest.fn(),
 });
 

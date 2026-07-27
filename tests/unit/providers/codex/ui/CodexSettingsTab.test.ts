@@ -106,6 +106,10 @@ jest.mock('@/shared/settings/EnvironmentSettingsSection', () => ({
 jest.mock('@/providers/codex/app/CodexWorkspaceServices', () => ({
   getCodexWorkspaceServices: jest.fn(() => ({
     commandCatalog: null,
+    mcpManager: {
+      ensureLoaded: jest.fn().mockResolvedValue(undefined),
+      getServers: jest.fn().mockReturnValue([]),
+    },
     subagentStorage: {},
     refreshAgentMentions: jest.fn(),
     refreshModelCatalog: mockRefreshModelCatalog,

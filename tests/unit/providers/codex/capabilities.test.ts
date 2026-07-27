@@ -33,6 +33,11 @@ describe('CODEX_PROVIDER_CAPABILITIES', () => {
     expect(CODEX_PROVIDER_CAPABILITIES.reasoningControl).toBe('effort');
   });
 
+  it('should expose MCP servers without local toggle controls', () => {
+    expect(CODEX_PROVIDER_CAPABILITIES.mcpSelectorMode).toBe('display-only');
+    expect(CODEX_PROVIDER_CAPABILITIES.mcpDisplayOnlyNotice?.()).toBeTruthy();
+  });
+
   it('should be frozen', () => {
     expect(Object.isFrozen(CODEX_PROVIDER_CAPABILITIES)).toBe(true);
   });

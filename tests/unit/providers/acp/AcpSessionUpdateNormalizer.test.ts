@@ -91,6 +91,27 @@ describe('AcpSessionUpdateNormalizer', () => {
     });
   });
 
+  it('creates a visible running tool when ACP starts with a status update', () => {
+    const normalizer = new AcpSessionUpdateNormalizer();
+
+    const progress = normalizer.normalize({
+      sessionUpdate: 'tool_call_update',
+      status: 'in_progress',
+      toolCallId: 'tool-late-start',
+    });
+
+    expect(progress).toMatchObject({
+      streamChunks: [{
+        id: 'tool-late-start',
+        input: {},
+        name: 'tool',
+        showWhileRunning: true,
+        type: 'tool_use',
+      }],
+      type: 'tool_call_update',
+    });
+  });
+
   it('retains raw tool payloads while preferring concise rendered content', () => {
     const normalizer = new AcpSessionUpdateNormalizer();
     const rawInput = ['opaque', { nested: true }];

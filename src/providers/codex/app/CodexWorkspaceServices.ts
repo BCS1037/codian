@@ -1,3 +1,4 @@
+import { McpServerManager } from '../../../core/mcp/McpServerManager';
 import type { ProviderCommandCatalog } from '../../../core/providers/commands/ProviderCommandCatalog';
 import type { ProviderVaultEntryRepository } from '../../../core/providers/commands/ProviderVaultEntryRepository';
 import type { ProviderHost } from '../../../core/providers/ProviderHost';
@@ -19,11 +20,13 @@ import { CodexModelCatalogCoordinator } from '../runtime/CodexModelCatalogCoordi
 import { CodexModelDiscoveryService } from '../runtime/CodexModelDiscoveryService';
 import { getCodexProviderSettings } from '../settings';
 import { CodexSkillListingService } from '../skills/CodexSkillListingService';
+import { CodexMcpStorage } from '../storage/CodexMcpStorage';
 import { CodexSkillStorage } from '../storage/CodexSkillStorage';
 import { CodexSubagentStorage } from '../storage/CodexSubagentStorage';
 import { codexSettingsTabRenderer } from '../ui/CodexSettingsTab';
 
 export interface CodexWorkspaceServices extends ProviderWorkspaceServices {
+  mcpManager: McpServerManager;
   subagentStorage: CodexSubagentStorage;
   commandCatalog: ProviderCommandCatalog;
   vaultCommandRepository: ProviderVaultEntryRepository & { refresh(): Promise<void> };
@@ -44,6 +47,11 @@ export async function createCodexWorkspaceServices(
   vaultAdapter: VaultFileAdapter,
   homeAdapter?: HomeFileAdapter,
 ): Promise<CodexWorkspaceServices> {
+  const mcpStorage = new CodexMcpStorage(homeAdapter ?? {
+    exists: async () => false,
+    read: async () => '',
+  });
+  const mcpManager = new McpServerManager(mcpStorage);
   const subagentStorage = new CodexSubagentStorage(vaultAdapter);
   const agentMentionProvider = new CodexAgentMentionProvider(subagentStorage);
 
@@ -64,6 +72,9 @@ export async function createCodexWorkspaceServices(
   }
 
   return {
+    mcpServerManager: mcpManager,
+    mcpSourcePath: '~/.codex/config.toml',
+    mcpManager,
     subagentStorage,
     commandCatalog,
     vaultCommandRepository,
@@ -75,7 +86,12 @@ export async function createCodexWorkspaceServices(
       await agentMentionProvider.loadAgents();
     },
     refreshModelCatalog: async context => modelCatalogCoordinator.refreshModelCatalog(context),
-    prepareSettings: async () => agentMentionProvider.loadAgents(),
+    prepareSettings: async () => {
+      await Promise.all([
+        mcpManager.loadServers(),
+        agentMentionProvider.loadAgents(),
+      ]);
+    },
     dispose: () => modelCatalogCoordinator.dispose(),
   };
 }

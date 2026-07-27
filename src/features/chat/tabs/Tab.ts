@@ -451,15 +451,17 @@ function refreshTabProviderUI(tab: TabData, plugin: FeatureHost): void {
 function applyProviderUIGating(tab: TabData, plugin: FeatureHost): void {
   const capabilities = getTabCapabilities(tab, plugin);
   const uiConfig = getTabChatUIConfig(tab, plugin);
-  const mcpManager = capabilities.supportsMcpTools
+  const showsMcpSelector = capabilities.supportsMcpTools || capabilities.mcpSelectorMode === 'display-only';
+  const mcpManager = showsMcpSelector
     ? getProviderMcpManager(capabilities.providerId)
     : null;
   const hasPermissionToggle = Boolean(uiConfig.getPermissionModeToggle?.());
 
-  if (!capabilities.supportsMcpTools) {
+  if (!showsMcpSelector) {
     tab.ui.mcpServerSelector?.clearEnabled();
   }
-  tab.ui.mcpServerSelector?.setVisible(capabilities.supportsMcpTools);
+  tab.ui.mcpServerSelector?.setDisplayOnlyNotice(capabilities.mcpDisplayOnlyNotice?.() ?? null);
+  tab.ui.mcpServerSelector?.setVisible(showsMcpSelector);
   tab.ui.permissionToggle?.setVisible(hasPermissionToggle);
   tab.ui.fileContextManager?.setMcpManager(mcpManager);
 

@@ -527,6 +527,28 @@ describe('StreamController - Text Content', () => {
       expect(msg.contentBlocks![0]).toEqual({ type: 'tool_use', toolId: 'tool-1' });
     });
 
+    it('renders a status-only ACP tool immediately', async () => {
+      const { renderToolCall } = jest.requireMock('@/features/chat/rendering/ToolCallRenderer');
+      const msg = createTestMessage();
+      deps.state.currentContentEl = createMockEl();
+
+      await controller.handleStreamChunk({
+        id: 'tool-status-only',
+        input: {},
+        name: 'Tool',
+        showWhileRunning: true,
+        type: 'tool_use',
+      }, msg);
+
+      expect(deps.state.pendingTools.size).toBe(0);
+      expect(renderToolCall).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ id: 'tool-status-only', status: 'running' }),
+        expect.any(Map),
+        { initiallyExpanded: false },
+      );
+    });
+
     it('should update tool_result status', async () => {
       const msg = createTestMessage();
       msg.toolCalls = [

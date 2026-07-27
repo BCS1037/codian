@@ -320,6 +320,14 @@ export const codexSettingsTabRenderer: ProviderSettingsTabRenderer = {
       text: t('settings.codex.mcp.learnMore'),
       href: 'https://developers.openai.com/codex/mcp',
     });
+
+    const configuredServers = mcpNotice.createEl('ul');
+    void codexWorkspace.mcpManager.ensureLoaded().then(() => {
+      for (const server of codexWorkspace.mcpManager.getServers()) {
+        const item = configuredServers.createEl('li');
+        item.createEl('code', { text: server.name });
+      }
+    });
     }
 
   },

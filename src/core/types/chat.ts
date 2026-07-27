@@ -153,6 +153,8 @@ export type StreamChunk =
       name: string;
       input: Record<string, unknown>;
       providerPayload?: ToolProviderPayload;
+      /** Render immediately when ACP first reports a running tool without a start event. */
+      showWhileRunning?: boolean;
     }
   | { type: 'tool_result'; id: string; content: string; isError?: boolean; toolUseResult?: SDKToolUseResult }
   | { type: 'tool_output'; id: string; content: string }

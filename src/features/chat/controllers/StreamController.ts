@@ -360,7 +360,11 @@ export class StreamController {
         toolCall,
         parentEl: state.currentContentEl,
       });
-      this.showThinkingIndicator();
+      if (chunk.showWhileRunning) {
+        this.flushPendingTools();
+      } else {
+        this.showThinkingIndicator();
+      }
     }
   }
 

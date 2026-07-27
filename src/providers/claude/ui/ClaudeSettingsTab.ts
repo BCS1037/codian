@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import { Setting } from 'obsidian';
 
+import { getRuntimeEnvironmentVariables } from '../../../core/providers/providerEnvironment';
 import { ProviderSettingsCoordinator } from '../../../core/providers/ProviderSettingsCoordinator';
 import type { ProviderSettingsTabRenderer } from '../../../core/providers/types';
 import { t } from '../../../i18n/i18n';
@@ -11,13 +12,18 @@ import {
   renderProviderModelPicker,
 } from '../../../shared/settings/ProviderModelPicker';
 import { getHostnameKey } from '../../../utils/env';
-import { expandHomePath } from '../../../utils/path';
+import { expandHomePath, getVaultPath } from '../../../utils/path';
 import { getClaudeWorkspaceServices } from '../app/ClaudeWorkspaceServices';
+import { isClaudeAuthenticated } from '../cli/ClaudeAuthenticationStatus';
+import { resolveClaudeConfigDir } from '../config/ClaudeConfigDir';
+import { getClaudeSettingsModelEnvironment } from '../config/ClaudeModelSettings';
+import { getModelsFromEnvironment } from '../env/claudeModelEnv';
 import { formatCustomModelLabel } from '../modelLabels';
 import {
   parseConfiguredClaudeModelIds,
   resolveClaudeModelSelection,
 } from '../modelOptions';
+import { decodeClaudeServiceModelSelection } from '../services/ClaudeThirdPartyServices';
 import {
   CLAUDE_SAFE_MODES,
   type ClaudeSafeMode,
@@ -197,6 +203,7 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
       context,
       settingsBag,
       reconcileActiveClaudeModelSelection,
+      claudeWorkspace.cliResolver,
     );
 
     renderClaudeServiceSettings(container, context);
@@ -398,19 +405,43 @@ function renderConfiguredClaudeModelPicker(
   context: Parameters<ProviderSettingsTabRenderer['render']>[1],
   settingsBag: Record<string, unknown>,
   reconcileActiveClaudeModelSelection: (settings: Record<string, unknown>) => void,
+  cliResolver: { resolveFromSettings(settings: Record<string, unknown>): string | Promise<string | null> | null },
 ): ProviderModelPickerController {
+  let isNativeClaudeAuthenticated: boolean | null = null;
+
   const getState = () => {
     const claudeSettings = getClaudeProviderSettings(settingsBag);
     const configuredModelIds = parseConfiguredClaudeModelIds(claudeSettings.customModels);
+    const runtimeEnvironment = getRuntimeEnvironmentVariables(settingsBag, 'claude');
+    const configuredEnvironment = getModelsFromEnvironment(
+      {
+        ...getClaudeSettingsModelEnvironment({
+          configDir: resolveClaudeConfigDir({
+            environment: { ...process.env, ...runtimeEnvironment },
+            vaultPath: getVaultPath(context.plugin.app),
+          }),
+          loadUserSettings: claudeSettings.loadUserSettings,
+          vaultPath: getVaultPath(context.plugin.app),
+        }),
+        ...runtimeEnvironment,
+      },
+    );
+    const availableModels = configuredEnvironment.length > 0
+      ? configuredEnvironment
+      : isNativeClaudeAuthenticated
+        ? claudeChatUIConfig.getModelOptions(settingsBag)
+          .filter(model => !decodeClaudeServiceModelSelection(model.value))
+        : [];
     const aliases = settingsBag.customModelAliases;
     return {
       aliases: aliases && typeof aliases === 'object' && !Array.isArray(aliases)
         ? aliases as Record<string, string>
         : {},
-      discoveredCount: configuredModelIds.length,
-      models: configuredModelIds.map((id): ProviderModelPickerModel => ({
-        id,
-        name: formatCustomModelLabel(id),
+      discoveredCount: availableModels.length,
+      models: availableModels.map((model): ProviderModelPickerModel => ({
+        description: model.description,
+        id: model.value,
+        name: model.label || formatCustomModelLabel(model.value),
       })),
       selectedIds: configuredModelIds,
     };
@@ -431,7 +462,13 @@ function renderConfiguredClaudeModelPicker(
     failedCatalogText: t('settings.providerCatalog.failed', { provider: 'Claude' }),
     getState,
     async loadCatalog() {
-      return 'loaded';
+      if (getState().discoveredCount > 0) {
+        return 'loaded';
+      }
+
+      const cliPath = await cliResolver.resolveFromSettings(settingsBag);
+      isNativeClaudeAuthenticated = await isClaudeAuthenticated(cliPath);
+      return isNativeClaudeAuthenticated ? 'loaded' : 'empty';
     },
     loadingCatalogText: t('settings.providerCatalog.loading', { provider: 'Claude' }),
     modifier: 'claude',

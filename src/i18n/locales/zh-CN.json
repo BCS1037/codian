@@ -415,7 +415,8 @@
       },
       "mcp": {
         "descBeforeCommand": "Codex 通过自己的 CLI 管理 MCP 服务器。请使用 ",
-        "descAfterCommand": " 进行配置，它们会在 Claudian 中可用。",
+        "descAfterCommand": " 进行配置，它们会在 Codian 中可用。",
+        "manageHint": "Codex MCP 由 Codex 管理。请使用 codex mcp 修改服务器开关。",
         "learnMore": "了解更多"
       },
       "environment": {
