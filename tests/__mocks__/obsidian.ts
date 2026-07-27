@@ -1,5 +1,7 @@
 // Mock for Obsidian API
 
+export const addIcon = jest.fn();
+
 export class Plugin {
   app: any;
   manifest: any;

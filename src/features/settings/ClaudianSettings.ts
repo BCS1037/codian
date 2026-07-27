@@ -1036,10 +1036,12 @@ export class ClaudianSettingTab extends PluginSettingTab {
 
     const follow = about.createDiv({ cls: 'claudian-settings-about-section' });
     new Setting(follow).setName(t('settings.about.followWeike')).setHeading();
-    follow.createDiv({
-      cls: 'claudian-settings-about-copy',
-      text: t('settings.about.feedback'),
-    });
+    const feedback = follow.createDiv({ cls: 'claudian-settings-about-copy' });
+    feedback.appendText(t('settings.about.feedbackPrefix'));
+    this.renderAboutInlineLink(feedback, 'issue', 'https://github.com/BCS1037/codian');
+    feedback.appendText(t('settings.about.feedbackBetweenLinks'));
+    this.renderAboutInlineLink(feedback, '维客笔记', 'https://mp.weixin.qq.com/s/gU2gbk9vYhsGfbUQrN333g');
+    feedback.appendText(t('settings.about.feedbackSuffix'));
 
     const sponsor = about.createDiv({ cls: 'claudian-settings-about-section' });
     new Setting(sponsor).setName(t('settings.about.sponsor')).setHeading();
@@ -1051,6 +1053,14 @@ export class ClaudianSettingTab extends PluginSettingTab {
   }
 
   private renderAboutLink(container: HTMLElement, label: string, href: string): void {
+    container.createEl('a', {
+      cls: 'claudian-settings-about-link',
+      text: label,
+      attr: { href, target: '_blank', rel: 'noopener noreferrer' },
+    });
+  }
+
+  private renderAboutInlineLink(container: HTMLElement, label: string, href: string): void {
     container.createEl('a', {
       cls: 'claudian-settings-about-link',
       text: label,

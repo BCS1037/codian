@@ -1,4 +1,6 @@
 
+import { addIcon } from 'obsidian';
+
 import { ProviderRegistry } from '@/core/providers/ProviderRegistry';
 import { ProviderSettingsCoordinator } from '@/core/providers/ProviderSettingsCoordinator';
 import { ProviderWorkspaceRegistry } from '@/core/providers/ProviderWorkspaceRegistry';
@@ -24,6 +26,7 @@ jest.mock('fs');
 
 // Now import the plugin after mocking
 import ClaudianPlugin from '@/main';
+import { CODIAN_RIBBON_ICON_ID, CODIAN_RIBBON_ICON_SVG } from '@/shared/codianLogo';
 
 describe('ClaudianPlugin', () => {
   let plugin: ClaudianPlugin;
@@ -147,8 +150,9 @@ describe('ClaudianPlugin', () => {
     it('should add ribbon icon', async () => {
       await plugin.onload();
 
+      expect(addIcon).toHaveBeenCalledWith(CODIAN_RIBBON_ICON_ID, CODIAN_RIBBON_ICON_SVG);
       expect((plugin.addRibbonIcon as jest.Mock)).toHaveBeenCalledWith(
-        'bot',
+        CODIAN_RIBBON_ICON_ID,
         'Open codian',
         expect.any(Function)
       );

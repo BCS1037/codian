@@ -2,6 +2,7 @@ import { createMockEl } from '@test/helpers/mockElement';
 import { Platform, Scope } from 'obsidian';
 
 import { ClaudianView } from '@/features/chat/ClaudianView';
+import { CODIAN_RIBBON_ICON_ID } from '@/shared/codianLogo';
 
 const MockScope = Scope as typeof Scope & { instances: Scope[] };
 
@@ -30,6 +31,12 @@ function createViewHarness(options: {
 }
 
 describe('ClaudianView tab controls', () => {
+  it('uses the Codian mark for the view header icon', () => {
+    const view = Object.create(ClaudianView.prototype) as ClaudianView;
+
+    expect(view.getIcon()).toBe(CODIAN_RIBBON_ICON_ID);
+  });
+
   it('appends text to the active composer without sending', () => {
     const dispatchEvent = jest.fn();
     const inputEl = {
