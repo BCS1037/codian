@@ -8,7 +8,7 @@ import './providers';
 StartupProfiler.finishModuleEvaluation();
 
 import type { Editor, WorkspaceLeaf } from 'obsidian';
-import { MarkdownView, Notice, Plugin } from 'obsidian';
+import { addIcon, MarkdownView, Notice, Plugin } from 'obsidian';
 
 import { ConversationRepository } from './app/conversations/ConversationRepository';
 import { ClaudianProviderHost } from './app/providers/ClaudianProviderHost';
@@ -62,6 +62,7 @@ import { ClaudianSettingTab } from './features/settings/ClaudianSettings';
 import { t } from './i18n/i18n';
 import { syncLocaleWithObsidian } from './i18n/obsidianLocale';
 import { OPENCODE_PLAN_MODE_ID, OPENCODE_SAFE_MODE_ID } from './providers/opencode/modes';
+import { CODIAN_RIBBON_ICON_ID, CODIAN_RIBBON_ICON_SVG } from './shared/codianLogo';
 import { buildCursorContext } from './utils/editor';
 import { revealWorkspaceLeaf } from './utils/obsidianCompat';
 import { getVaultPath } from './utils/path';
@@ -150,7 +151,8 @@ export default class ClaudianPlugin extends Plugin {
       );
       registerFileMenu(this);
 
-      this.addRibbonIcon('bot', 'Open codian', () => {
+      addIcon(CODIAN_RIBBON_ICON_ID, CODIAN_RIBBON_ICON_SVG);
+      this.addRibbonIcon(CODIAN_RIBBON_ICON_ID, 'Open codian', () => {
         void this.activateView();
       });
 

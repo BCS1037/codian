@@ -11,6 +11,7 @@ import { ProviderRegistry } from '../../core/providers/ProviderRegistry';
 import { ProviderSettingsCoordinator } from '../../core/providers/ProviderSettingsCoordinator';
 import { type AppTabManagerState, DEFAULT_CHAT_PROVIDER_ID, type ProviderId } from '../../core/providers/types';
 import { VIEW_TYPE_CLAUDIAN } from '../../core/types';
+import { CODIAN_RIBBON_ICON_ID } from '../../shared/codianLogo';
 import { createProviderIconSvg } from '../../shared/icons';
 import {
   cancelScheduledAnimationFrame,
@@ -110,7 +111,7 @@ export class ClaudianView extends ItemView {
   }
 
   getIcon(): string {
-    return 'bot';
+    return CODIAN_RIBBON_ICON_ID;
   }
 
   appendToActiveInput(text: string): boolean {

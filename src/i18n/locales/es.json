@@ -110,7 +110,7 @@
     "setup": "Conexión",
     "models": "Modelos",
     "experimental": "Experimental",
-    "about": { "slogan": "Exploramos las formas más simples de resolver problemas.", "followWeike": "Seguir a Weike", "feedback": "¿Preguntas? Abre un issue o sigue la cuenta oficial de WeChat «维客笔记» para enviar comentarios.", "sponsor": "Apoyar a Weike", "sponsorDescription": "Si este complemento te ayuda, apoya el desarrollo y mantenimiento continuos de Weike:", "afdian": "Afdian" },
+    "about": { "slogan": "Exploramos las formas más simples de resolver problemas.", "followWeike": "Seguir a Weike", "feedback": "¿Preguntas? Abre un issue o sigue la cuenta oficial de WeChat «维客笔记» para enviar comentarios.", "feedbackPrefix": "¿Preguntas? Abre un ", "feedbackBetweenLinks": " o sigue la cuenta oficial de WeChat «", "feedbackSuffix": "» para enviar comentarios.", "sponsor": "Apoyar a Weike", "sponsorDescription": "Si este complemento te ayuda, apoya el desarrollo y mantenimiento continuos de Weike:", "afdian": "Afdian" },
     "userName": {
       "name": "¿Cómo debería Claudian llamarte?",
       "desc": "Tu nombre para saludos personalizados (dejar vacío para saludos genéricos)"

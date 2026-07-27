@@ -110,7 +110,7 @@
     "setup": "Connection",
     "models": "Models",
     "experimental": "Experimental",
-    "about": { "slogan": "Dedicated to exploring the simplest ways to solve problems.", "followWeike": "Follow Weike", "feedback": "Questions welcome: open an issue or follow the WeChat Official Account “维客笔记” for feedback.", "sponsor": "Support Weike", "sponsorDescription": "If this plugin helps you, consider supporting Weike's continued development and maintenance:", "afdian": "Afdian" },
+    "about": { "slogan": "Dedicated to exploring the simplest ways to solve problems.", "followWeike": "Follow Weike", "feedback": "Questions welcome: open an issue or follow the WeChat Official Account “维客笔记” for feedback.", "feedbackPrefix": "Questions welcome: open an ", "feedbackBetweenLinks": " or follow the WeChat Official Account “", "feedbackSuffix": "” for feedback.", "sponsor": "Support Weike", "sponsorDescription": "If this plugin helps you, consider supporting Weike's continued development and maintenance:", "afdian": "Afdian" },
     "userName": {
       "name": "What should Codian call you?",
       "desc": "Your name for personalized greetings (leave empty for generic greetings)"

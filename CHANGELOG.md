@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1 — 2026-07-27
+
+- Logo refresh.
+- About copy update.
+
 ## 1.2.0 — 2026-07-27
 
 ### Claude models

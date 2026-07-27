@@ -112,7 +112,9 @@ describe('settings provider layout', () => {
   it('renders About feedback and sponsorship content without retired media links', () => {
     const source = readFileSync(resolve('src/features/settings/ClaudianSettings.ts'), 'utf8');
 
-    expect(source).toContain("text: t('settings.about.feedback')");
+    expect(source).toContain("feedback.appendText(t('settings.about.feedbackPrefix'))");
+    expect(source).toContain("this.renderAboutInlineLink(feedback, 'issue', 'https://github.com/BCS1037/codian')");
+    expect(source).toContain("this.renderAboutInlineLink(feedback, '维客笔记', 'https://mp.weixin.qq.com/s/gU2gbk9vYhsGfbUQrN333g')");
     expect(source).toContain("text: t('settings.about.sponsorDescription')");
     expect(source).toContain("this.renderAboutLink(sponsor, t('settings.about.afdian'), 'https://ifdian.net/a/bcs1037')");
     expect(source).not.toContain('xiaohongshu.com');

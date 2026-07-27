@@ -110,7 +110,7 @@
     "setup": "接続",
     "models": "モデル",
     "experimental": "実験的機能",
-    "about": { "slogan": "問題を解決する最もシンプルな方法を探求します。", "followWeike": "Weike をフォロー", "feedback": "質問があれば issue を作成するか、WeChat 公式アカウント「维客笔记」をフォローしてフィードバックしてください。", "sponsor": "Weike を支援", "sponsorDescription": "このプラグインが役立った場合、Weike の継続的な開発と保守を支援してください：", "afdian": "Afdian" },
+    "about": { "slogan": "問題を解決する最もシンプルな方法を探求します。", "followWeike": "Weike をフォロー", "feedback": "質問があれば issue を作成するか、WeChat 公式アカウント「维客笔记」をフォローしてフィードバックしてください。", "feedbackPrefix": "質問があれば ", "feedbackBetweenLinks": " を作成するか、WeChat 公式アカウント「", "feedbackSuffix": "」をフォローしてフィードバックしてください。", "sponsor": "Weike を支援", "sponsorDescription": "このプラグインが役立った場合、Weike の継続的な開発と保守を支援してください：", "afdian": "Afdian" },
     "userName": {
       "name": "Claudian はどのように呼びますか？",
       "desc": "パーソナライズされた挨拶に使用する名前（空欄で一般の挨拶）"
