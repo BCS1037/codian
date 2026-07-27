@@ -18,6 +18,15 @@ export function getClaudeState(
 
 export function clearClaudeResumeState(conversation: Conversation): boolean {
   const providerState = { ...(conversation.providerState ?? {}) };
+  const historicalSessionIds = [
+    ...(Array.isArray(providerState.previousProviderSessionIds)
+      ? providerState.previousProviderSessionIds.filter((id): id is string => typeof id === 'string')
+      : []),
+    ...(typeof providerState.providerSessionId === 'string'
+      ? [providerState.providerSessionId]
+      : []),
+    ...(typeof conversation.sessionId === 'string' ? [conversation.sessionId] : []),
+  ];
   const hadResumeState = conversation.sessionId != null
     || conversation.resumeAtMessageId != null
     || typeof providerState.providerSessionId === 'string'
@@ -30,8 +39,12 @@ export function clearClaudeResumeState(conversation: Conversation): boolean {
   conversation.sessionId = null;
   delete conversation.resumeAtMessageId;
   delete providerState.providerSessionId;
-  delete providerState.previousProviderSessionIds;
   delete providerState.forkSource;
+  if (historicalSessionIds.length > 0) {
+    providerState.previousProviderSessionIds = [...new Set(historicalSessionIds)];
+  } else {
+    delete providerState.previousProviderSessionIds;
+  }
   conversation.providerState = Object.keys(providerState).length > 0
     ? providerState
     : undefined;

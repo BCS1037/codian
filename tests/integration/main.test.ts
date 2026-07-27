@@ -311,12 +311,16 @@ describe('ClaudianPlugin', () => {
 
       expect(restored).toEqual(expect.objectContaining({
         sessionId: null,
-        providerState: undefined,
+        providerState: {
+          previousProviderSessionIds: ['restored-provider-session-id', 'restored-session-id'],
+        },
       }));
       expect(restored).not.toHaveProperty('resumeAtMessageId');
       expect(deferred).toEqual(expect.objectContaining({
         sessionId: null,
-        providerState: undefined,
+        providerState: {
+          previousProviderSessionIds: ['deferred-provider-session-id', 'deferred-session-id'],
+        },
       }));
       expect(deferred).not.toHaveProperty('resumeAtMessageId');
     });
@@ -440,9 +444,13 @@ describe('ClaudianPlugin', () => {
       listSpy.mockRestore();
 
       expect(first?.sessionId).toBeNull();
-      expect(first?.providerState).toBeUndefined();
+      expect(first?.providerState).toEqual({
+        previousProviderSessionIds: ['first-provider-session-id', 'first-session-id'],
+      });
       expect(later?.sessionId).toBeNull();
-      expect(later?.providerState).toBeUndefined();
+      expect(later?.providerState).toEqual({
+        previousProviderSessionIds: ['later-provider-session-id', 'later-session-id'],
+      });
       expect(pendingGeneration).toEqual(expect.any(Number));
       expect(plugin.settings.pendingProviderSessionInvalidations.claude)
         .toBeUndefined();
@@ -688,9 +696,13 @@ describe('ClaudianPlugin', () => {
       restartedSaveMetadataSpy.mockRestore();
 
       expect(restartedConversation?.sessionId).toBeNull();
-      expect(restartedConversation?.providerState).toBeUndefined();
+      expect(restartedConversation?.providerState).toEqual({
+        previousProviderSessionIds: ['restart-provider-session-id', 'restart-session-id'],
+      });
       expect(persistedMetadata.sessionId).toBeNull();
-      expect(persistedMetadata).not.toHaveProperty('providerState');
+      expect(persistedMetadata.providerState).toEqual({
+        previousProviderSessionIds: ['restart-provider-session-id', 'restart-session-id'],
+      });
       expect(restartedSettings.pendingProviderSessionInvalidations?.claude).toBeUndefined();
       expect(deferredInvalidationWrites).toHaveLength(1);
     });
@@ -1595,10 +1607,22 @@ describe('ClaudianPlugin', () => {
 
       expect(invalidateSpy).toHaveBeenCalledTimes(1);
       expect(live.sessionId).toBeNull();
-      expect(live.providerState).toBeUndefined();
+      expect(live.providerState).toEqual({
+        previousProviderSessionIds: [
+          'live-previous-session',
+          'live-provider-session',
+          'live-session',
+        ],
+      });
       expect(live.resumeAtMessageId).toBeUndefined();
       expect(deferred?.sessionId).toBeNull();
-      expect(deferred?.providerState).toBeUndefined();
+      expect(deferred?.providerState).toEqual({
+        previousProviderSessionIds: [
+          'deferred-previous-session',
+          'deferred-provider-session',
+          'deferred-session',
+        ],
+      });
       expect(deferred?.resumeAtMessageId).toBeUndefined();
       expect(saveMetadataSpy.mock.calls.map(([metadata]) => metadata.id).sort()).toEqual([
         deferredMetadata.id,
