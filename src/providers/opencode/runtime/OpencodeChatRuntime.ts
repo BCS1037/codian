@@ -101,6 +101,13 @@ interface ActiveTurn {
   sessionId: string;
 }
 
+export class OpencodeCommandDiscoveryTimeoutError extends Error {
+  constructor() {
+    super('Timed out waiting for OpenCode commands.');
+    this.name = 'OpencodeCommandDiscoveryTimeoutError';
+  }
+}
+
 interface SupportedCommandWaiter {
   reject: (error: Error) => void;
   resolve: (commands: SlashCommand[]) => void;
@@ -649,7 +656,7 @@ export class OpencodeChatRuntime implements ChatRuntime {
           if (index >= 0) {
             this.supportedCommandWaiters.splice(index, 1);
           }
-          reject(new Error('Timed out waiting for OpenCode commands.'));
+          reject(new OpencodeCommandDiscoveryTimeoutError());
         }, timeoutMs),
       };
       this.supportedCommandWaiters.push(waiter);

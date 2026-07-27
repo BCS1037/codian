@@ -7,6 +7,8 @@ const mockRenderEnvironmentSettingsSection = jest.fn();
 const mockRenderClaudeServiceSettings = jest.fn();
 const mockRenderProviderModelPicker = jest.fn((_options: unknown) => ({ refresh: jest.fn() }));
 const mockSaveSettings = jest.fn().mockResolvedValue(undefined);
+const mockGetClaudeSettingsModelEnvironment = jest.fn(() => ({}));
+const mockIsClaudeAuthenticated = jest.fn().mockResolvedValue(true);
 
 jest.mock('fs');
 jest.mock('@/core/providers/ProviderSettingsCoordinator', () => ({
@@ -95,6 +97,14 @@ jest.mock('@/providers/claude/ui/ClaudeServiceSettings', () => ({
   renderClaudeServiceSettings: (...args: unknown[]) => mockRenderClaudeServiceSettings(...args),
 }));
 
+jest.mock('@/providers/claude/config/ClaudeModelSettings', () => ({
+  getClaudeSettingsModelEnvironment: () => mockGetClaudeSettingsModelEnvironment(),
+}));
+
+jest.mock('@/providers/claude/cli/ClaudeAuthenticationStatus', () => ({
+  isClaudeAuthenticated: () => mockIsClaudeAuthenticated(),
+}));
+
 jest.mock('@/shared/settings/ProviderModelPicker', () => ({
   renderProviderModelPicker: (options: unknown) => mockRenderProviderModelPicker(options),
 }));
@@ -107,6 +117,7 @@ jest.mock('@/providers/claude/app/ClaudeWorkspaceServices', () => ({
   getClaudeWorkspaceServices: jest.fn(() => ({
     cliResolver: {
       reset: jest.fn(),
+      resolveFromSettings: jest.fn(() => '/test/claude'),
     },
     commandCatalog: {},
     agentManager: {},
@@ -407,6 +418,8 @@ describe('ClaudeSettingsTab', () => {
     jest.clearAllMocks();
     mockedExistsSync.mockReturnValue(false);
     mockedStatSync.mockReturnValue({ isFile: () => true } as fs.Stats);
+    mockGetClaudeSettingsModelEnvironment.mockReturnValue({});
+    mockIsClaudeAuthenticated.mockResolvedValue(true);
   });
 
   it('does not duplicate provider enablement inside the detail panel', () => {
@@ -454,6 +467,90 @@ describe('ClaudeSettingsTab', () => {
       modifier: 'claude',
       providerName: 'Claude',
     }));
+  });
+
+  it('lists built-in Claude models after native Claude authentication succeeds', async () => {
+    const plugin = createPlugin({
+      providerConfigs: {
+        claude: {
+          ...DEFAULT_CLAUDE_PROVIDER_SETTINGS,
+          customModels: '',
+        },
+      },
+    });
+
+    claudeSettingsTabRenderer.render(createContainer(), createContext(plugin), 'provider');
+
+    const options = mockRenderProviderModelPicker.mock.calls[0][0] as {
+      getState(): { discoveredCount: number; models: Array<{ id: string }> };
+      loadCatalog(): Promise<string>;
+    };
+    await options.loadCatalog();
+    const state = options.getState();
+
+    expect(state.discoveredCount).toBeGreaterThan(0);
+    expect(state.models.map(model => model.id)).toEqual(expect.arrayContaining([
+      'haiku',
+      'sonnet',
+      'opus',
+    ]));
+  });
+
+  it('uses configured Claude settings models without checking native authentication', async () => {
+    mockGetClaudeSettingsModelEnvironment.mockReturnValue({
+      ANTHROPIC_MODEL: 'gateway/custom-model',
+    });
+    const plugin = createPlugin({
+      providerConfigs: {
+        claude: {
+          ...DEFAULT_CLAUDE_PROVIDER_SETTINGS,
+          customModels: '',
+        },
+      },
+    });
+
+    claudeSettingsTabRenderer.render(createContainer(), createContext(plugin), 'provider');
+
+    const options = mockRenderProviderModelPicker.mock.calls[0][0] as {
+      getState(): { models: Array<{ id: string }> };
+      loadCatalog(): Promise<string>;
+    };
+
+    expect(options.getState().models.map(model => model.id)).toEqual(['gateway/custom-model']);
+    await expect(options.loadCatalog()).resolves.toBe('loaded');
+    expect(mockIsClaudeAuthenticated).not.toHaveBeenCalled();
+  });
+
+  it('keeps third-party service selections out of manual model persistence', () => {
+    const plugin = createPlugin({
+      providerConfigs: {
+        claude: {
+          ...DEFAULT_CLAUDE_PROVIDER_SETTINGS,
+          thirdPartyServices: [{
+            id: 'gateway',
+            name: 'Gateway',
+            preset: 'custom',
+            baseUrl: 'https://example.com',
+            authMode: 'api-key',
+            secretId: 'secret',
+            defaultModel: 'gateway-model',
+            lightweightModel: 'gateway-model',
+            enabled: true,
+            advancedEnvironmentVariables: '',
+          }],
+        },
+      },
+    });
+
+    claudeSettingsTabRenderer.render(createContainer(), createContext(plugin), 'provider');
+
+    const options = mockRenderProviderModelPicker.mock.calls[0][0] as {
+      getState(): { models: Array<{ id: string }> };
+    };
+
+    expect(options.getState().models.map(model => model.id)).not.toContain(
+      'claude-code/service/gateway/gateway-model',
+    );
   });
 
   it('uses the current npm package wrapper path as the CLI placeholder', () => {

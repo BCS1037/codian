@@ -34,6 +34,9 @@ export interface ProviderCapabilities {
   supportsImageAttachments: boolean;
   supportsInstructionMode: boolean;
   supportsMcpTools: boolean;
+  /** Shows provider-owned MCP servers without exposing unsupported local toggles. */
+  mcpSelectorMode?: 'display-only';
+  mcpDisplayOnlyNotice?: () => string;
   /** Provider reloads and consumes shared vault skills from .agents/skills. */
   supportsSharedAgentSkills?: boolean;
   supportsTurnSteer?: boolean;

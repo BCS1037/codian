@@ -133,6 +133,22 @@ describe('CodexWorkspaceServices', () => {
     expect(plugin.saveSettings).not.toHaveBeenCalled();
   });
 
+  it('loads the Codex CLI MCP catalog when preparing settings', async () => {
+    const plugin = createPlugin(false);
+    const homeAdapter = {
+      exists: jest.fn().mockResolvedValue(true),
+      read: jest.fn().mockResolvedValue('[mcp_servers.local]\ncommand = "node"'),
+    };
+
+    const services = await createCodexWorkspaceServices(plugin, {} as any, homeAdapter as any);
+    await services.prepareSettings?.();
+
+    expect(services.mcpSourcePath).toBe('~/.codex/config.toml');
+    expect(services.mcpManager.getServers()).toEqual([
+      expect.objectContaining({ name: 'local', enabled: true }),
+    ]);
+  });
+
   it('does not run deferred layout discovery after workspace disposal', async () => {
     const plugin = createPlugin(true);
     mockDiscoverModels.mockResolvedValue({

@@ -1,4 +1,5 @@
 import type { ProviderCapabilities } from '../../core/providers/types';
+import { t } from '../../i18n/i18n';
 
 export const CODEX_PROVIDER_CAPABILITIES: Readonly<ProviderCapabilities> = Object.freeze({
   providerId: 'codex',
@@ -11,6 +12,8 @@ export const CODEX_PROVIDER_CAPABILITIES: Readonly<ProviderCapabilities> = Objec
   supportsImageAttachments: true,
   supportsInstructionMode: true,
   supportsMcpTools: false,
+  mcpSelectorMode: 'display-only',
+  mcpDisplayOnlyNotice: () => t('settings.codex.mcp.manageHint'),
   supportsSharedAgentSkills: true,
   supportsTurnSteer: true,
   reasoningControl: 'effort',

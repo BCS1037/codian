@@ -415,7 +415,8 @@
       },
       "mcp": {
         "descBeforeCommand": "Codex manages MCP servers via its own CLI. Configure with ",
-        "descAfterCommand": " and they will be available in Claudian. ",
+        "descAfterCommand": " and they will be available in Codian. ",
+        "manageHint": "Codex manages these MCP servers. Use codex mcp to change their status.",
         "learnMore": "Learn more"
       },
       "environment": {

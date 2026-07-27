@@ -7,10 +7,31 @@ import type {
   ProviderRuntimeCommandLoaderContext,
 } from '../../../core/providers/types';
 import type { SlashCommand } from '../../../core/types';
-import { OpencodeChatRuntime } from '../runtime/OpencodeChatRuntime';
+import {
+  OpencodeChatRuntime,
+  OpencodeCommandDiscoveryTimeoutError,
+} from '../runtime/OpencodeChatRuntime';
 import { getOpencodeProviderSettings } from '../settings';
 
 const OPENCODE_METADATA_WARMUP_DB = ':memory:';
+const OPENCODE_COMMAND_DISCOVERY_TIMEOUT_MS = 5_000;
+
+function resolveAfterTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  fallback: T,
+): Promise<T> {
+  let timeoutId: number | null = null;
+  const timeout = new Promise<T>(resolve => {
+    timeoutId = window.setTimeout(() => resolve(fallback), timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+    }
+  });
+}
 
 export class OpencodeRuntimeCommandLoader implements ProviderRuntimeCommandLoader {
   getCacheFingerprint(settings: Record<string, unknown>): string {
@@ -72,20 +93,35 @@ export class OpencodeRuntimeCommandLoader implements ProviderRuntimeCommandLoade
         });
       }
 
-      const commandSnapshot = (runtime as OpencodeChatRuntime).discoverSupportedCommands(5_000);
+      const commandSnapshot = (runtime as OpencodeChatRuntime).discoverSupportedCommands(
+        OPENCODE_COMMAND_DISCOVERY_TIMEOUT_MS,
+      );
       void commandSnapshot.catch(() => {});
-      const ready = await runtime.ensureReady({
-        allowSessionCreation: shouldWarmBlankSession || shouldWarmPreSessionConversation,
-      });
-      if (!ready) {
-        return {
-          message: 'Could not load OpenCode commands.',
-          retryable: true,
-          status: 'error' as const,
-        };
-      }
+      return await resolveAfterTimeout(
+        (async (): Promise<ProviderCommandDiscoveryResult<SlashCommand>> => {
+          const ready = await runtime.ensureReady({
+            allowSessionCreation: shouldWarmBlankSession || shouldWarmPreSessionConversation,
+          });
+          if (!ready) {
+            return {
+              message: 'Could not load OpenCode commands.',
+              retryable: true,
+              status: 'error' as const,
+            };
+          }
 
-      return normalizeProviderCommandDiscoveryItems(await commandSnapshot);
+          try {
+            return normalizeProviderCommandDiscoveryItems(await commandSnapshot);
+          } catch (error) {
+            if (error instanceof OpencodeCommandDiscoveryTimeoutError) {
+              return { status: 'empty' };
+            }
+            throw error;
+          }
+        })(),
+        OPENCODE_COMMAND_DISCOVERY_TIMEOUT_MS,
+        { status: 'empty' },
+      );
     } catch {
       return {
         message: 'Could not load OpenCode commands.',

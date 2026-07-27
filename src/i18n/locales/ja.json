@@ -415,7 +415,8 @@
       },
       "mcp": {
         "descBeforeCommand": "Codex は独自の CLI で MCP サーバーを管理します。",
-        "descAfterCommand": " で設定すると Claudian で利用できます。",
+        "descAfterCommand": " で設定すると Codian で利用できます。",
+        "manageHint": "これらの MCP サーバーは Codex が管理します。状態の変更には codex mcp を使用してください。",
         "learnMore": "詳しく見る"
       },
       "environment": {

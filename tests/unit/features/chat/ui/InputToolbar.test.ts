@@ -3,6 +3,7 @@ import {
   TEST_CODEX_MODEL_LABEL,
 } from '@test/helpers/codexModels';
 import { createMockEl } from '@test/helpers/mockElement';
+import { Notice } from 'obsidian';
 
 import type { UsageInfo } from '@/core/types';
 import {
@@ -1196,6 +1197,20 @@ describe('McpServerSelector - toggle and badges', () => {
 
     expect(selector.getEnabledServers().has('server1')).toBe(false);
     expect(onChange).toHaveBeenCalled();
+  });
+
+  it('shows Codex-managed servers as enabled and redirects toggle attempts', () => {
+    selector.setMcpManager(createMockMcpManager([{ name: 'codex-server', enabled: true }]));
+    selector.setDisplayOnlyNotice('Manage this MCP server in Codex.');
+
+    const item = parentEl.querySelector('.claudian-mcp-selector-item');
+    expect(item?.hasClass('enabled')).toBe(true);
+
+    const mousedownHandlers = item?._eventListeners?.get('mousedown');
+    mousedownHandlers![0]({ preventDefault: jest.fn(), stopPropagation: jest.fn() });
+
+    expect(selector.getEnabledServers()).toEqual(new Set());
+    expect(Notice).toHaveBeenCalledWith('Manage this MCP server in Codex.');
   });
 
   it('should re-render dropdown on mouseenter', () => {

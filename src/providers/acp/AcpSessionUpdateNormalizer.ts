@@ -183,6 +183,7 @@ export class AcpSessionUpdateNormalizer {
   private normalizeToolCallUpdate(
     toolCallUpdate: AcpToolCallUpdate,
   ): Extract<AcpNormalizedUpdate, { type: 'tool_call_update' }> {
+    const isInitialUpdate = !this.toolCalls.has(toolCallUpdate.toolCallId);
     const current = this.toolCalls.get(toolCallUpdate.toolCallId) ?? {
       input: {},
       name: 'tool',
@@ -207,6 +208,16 @@ export class AcpSessionUpdateNormalizer {
     const nextOutput = renderToolPayload(toolCallUpdate.content ?? undefined, toolCallUpdate.rawOutput)
       || current.output;
     const streamChunks: StreamChunk[] = [];
+
+    if (isInitialUpdate && toolCallUpdate.status === 'in_progress') {
+      streamChunks.push({
+        id: toolCallUpdate.toolCallId,
+        input: current.input,
+        name: current.name,
+        showWhileRunning: true,
+        type: 'tool_use',
+      });
+    }
 
     // Emit only the delta so the UI can append incrementally without re-rendering prior output.
     if (nextOutput.length > current.output.length && nextOutput.startsWith(current.output)) {

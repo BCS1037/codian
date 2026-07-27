@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.0 — 2026-07-27
+
+### Claude models
+
+- Show models configured in Claude Code settings, including global, project, and local model overrides.
+- Show built-in Claude models only after native Claude authentication is confirmed.
+
+### Codex MCP
+
+- Read Codex MCP server definitions from `~/.codex/config.toml` and show them in Codian.
+- Mark Codex MCP controls as display-only and direct server changes to `codex mcp`.
+
+### OpenCode and agent status
+
+- Keep OpenCode slash-command menus usable when ACP command metadata is delayed or absent.
+- Show a running tool card when ACP reports an in-progress tool update before its start event.
+
 ## 1.1.4 — 2026-07-27
 
 ### Chat and commands

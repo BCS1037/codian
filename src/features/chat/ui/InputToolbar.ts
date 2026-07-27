@@ -974,6 +974,7 @@ export class McpServerSelector {
   private enabledServers: Set<string> = new Set();
   private onChangeCallback: ((enabled: Set<string>) => void) | null = null;
   private visible = true;
+  private displayOnlyNotice: string | null = null;
 
   constructor(parentEl: HTMLElement) {
     this.container = parentEl.createDiv({ cls: 'claudian-mcp-selector' });
@@ -996,6 +997,12 @@ export class McpServerSelector {
       this.onChangeCallback?.(this.enabledServers);
     }
     this.pruneEnabledServers();
+    this.updateDisplay();
+    this.renderDropdown();
+  }
+
+  setDisplayOnlyNotice(notice: string | null): void {
+    this.displayOnlyNotice = notice;
     this.updateDisplay();
     this.renderDropdown();
   }
@@ -1112,7 +1119,7 @@ export class McpServerSelector {
     const itemEl = listEl.createDiv({ cls: 'claudian-mcp-selector-item' });
     itemEl.dataset.serverName = server.name;
 
-    const isEnabled = this.enabledServers.has(server.name);
+    const isEnabled = this.displayOnlyNotice !== null || this.enabledServers.has(server.name);
     if (isEnabled) {
       itemEl.addClass('enabled');
     }
@@ -1145,6 +1152,11 @@ export class McpServerSelector {
   }
 
   private toggleServer(name: string, itemEl: HTMLElement) {
+    if (this.displayOnlyNotice) {
+      new Notice(this.displayOnlyNotice);
+      return;
+    }
+
     if (this.enabledServers.has(name)) {
       this.enabledServers.delete(name);
     } else {
@@ -1171,7 +1183,9 @@ export class McpServerSelector {
     this.pruneEnabledServers();
     if (!this.iconEl || !this.badgeEl) return;
 
-    const count = this.enabledServers.size;
+    const count = this.displayOnlyNotice !== null
+      ? this.mcpManager?.getServers().filter(server => server.enabled).length ?? 0
+      : this.enabledServers.size;
     const isPendingLazyLoad = this.mcpManager?.isLoaded?.() === false;
     const hasServers = isPendingLazyLoad || (this.mcpManager?.getServers().length || 0) > 0;
 
@@ -1184,7 +1198,12 @@ export class McpServerSelector {
 
     if (count > 0) {
       this.iconEl.addClass('active');
-      this.iconEl.setAttribute('title', `${count} MCP server${count > 1 ? 's' : ''} enabled (click to manage)`);
+      this.iconEl.setAttribute(
+        'title',
+        this.displayOnlyNotice !== null
+          ? `${count} MCP server${count > 1 ? 's' : ''} managed by Codex (click for details)`
+          : `${count} MCP server${count > 1 ? 's' : ''} enabled (click to manage)`,
+      );
 
       // Show badge only when more than 1
       if (count > 1) {

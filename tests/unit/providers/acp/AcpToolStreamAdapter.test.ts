@@ -77,6 +77,28 @@ describe('AcpToolStreamAdapter', () => {
     }]);
   });
 
+  it('does not duplicate a provider-supplied running tool start', () => {
+    const adapter = createAdapter();
+
+    expect(adapter.normalizeToolCallUpdate({
+      status: 'in_progress',
+      toolCallId: 'tool-1',
+    }, [{
+      id: 'tool-1',
+      input: {},
+      name: 'tool',
+      showWhileRunning: true,
+      type: 'tool_use',
+    }])).toEqual([{
+      id: 'tool-1',
+      input: {},
+      name: 'Tool',
+      providerPayload: { rawName: 'tool' },
+      showWhileRunning: true,
+      type: 'tool_use',
+    }]);
+  });
+
   it('emits a title-only normalized-name refinement and ignores a no-name update', () => {
     const adapter = createAdapter();
     expect(adapter.normalizeToolCall({ title: 'tool', toolCallId: 'tool-1' }, [

@@ -1,5 +1,8 @@
 import { OpencodeRuntimeCommandLoader } from '@/providers/opencode/app/OpencodeRuntimeCommandLoader';
-import { OpencodeChatRuntime } from '@/providers/opencode/runtime/OpencodeChatRuntime';
+import {
+  OpencodeChatRuntime,
+  OpencodeCommandDiscoveryTimeoutError,
+} from '@/providers/opencode/runtime/OpencodeChatRuntime';
 
 function createMockPlugin(): any {
   return {
@@ -15,6 +18,7 @@ function createMockPlugin(): any {
 
 describe('OpencodeRuntimeCommandLoader', () => {
   afterEach(() => {
+    jest.useRealTimers();
     jest.restoreAllMocks();
   });
 
@@ -175,6 +179,45 @@ describe('OpencodeRuntimeCommandLoader', () => {
     });
     expect(JSON.stringify(failure)).not.toContain('SECRET_SENTINEL');
     expect(cleanupSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('treats missing OpenCode command metadata as an empty catalog', async () => {
+    const loader = new OpencodeRuntimeCommandLoader();
+    jest.spyOn(OpencodeChatRuntime.prototype, 'syncConversationState').mockImplementation(() => {});
+    jest.spyOn(OpencodeChatRuntime.prototype, 'ensureReady').mockResolvedValue(true);
+    jest.spyOn(OpencodeChatRuntime.prototype, 'discoverSupportedCommands')
+      .mockRejectedValue(new OpencodeCommandDiscoveryTimeoutError());
+    jest.spyOn(OpencodeChatRuntime.prototype, 'cleanup').mockImplementation(() => {});
+
+    await expect(loader.loadCommands({
+      allowSessionCreation: true,
+      conversation: null,
+      externalContextPaths: [],
+      plugin: createMockPlugin(),
+      runtime: null,
+    })).resolves.toEqual({ status: 'empty' });
+  });
+
+  it('treats an unresponsive OpenCode startup as an empty catalog', async () => {
+    jest.useFakeTimers();
+    const loader = new OpencodeRuntimeCommandLoader();
+    jest.spyOn(OpencodeChatRuntime.prototype, 'syncConversationState').mockImplementation(() => {});
+    jest.spyOn(OpencodeChatRuntime.prototype, 'ensureReady')
+      .mockReturnValue(new Promise(() => {}));
+    jest.spyOn(OpencodeChatRuntime.prototype, 'discoverSupportedCommands')
+      .mockReturnValue(new Promise(() => {}));
+    jest.spyOn(OpencodeChatRuntime.prototype, 'cleanup').mockImplementation(() => {});
+
+    const commands = loader.loadCommands({
+      allowSessionCreation: true,
+      conversation: null,
+      externalContextPaths: [],
+      plugin: createMockPlugin(),
+      runtime: null,
+    });
+    await jest.advanceTimersByTimeAsync(5_000);
+
+    await expect(commands).resolves.toEqual({ status: 'empty' });
   });
 
   it('cleans up the isolated process when runtime readiness fails', async () => {
