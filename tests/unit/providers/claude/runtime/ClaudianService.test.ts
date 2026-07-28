@@ -151,6 +151,24 @@ describe('ClaudianService', () => {
       const chunks = await collectChunks(service.query(turn, history));
       expect(chunks.some(c => c.type === 'text')).toBe(true);
     });
+
+    it('completes first persistent turn when provider omits result event after final assistant text', async () => {
+      sdkMock.setMockMessages([
+        { type: 'system', subtype: 'init', session_id: 'final-assistant-session' },
+        { type: 'assistant', message: { content: [{ type: 'text', text: 'DeepSeek reply' }] } },
+      ], { appendResult: false });
+
+      const turn = service.prepareTurn({ text: 'hello' });
+      const result = await Promise.race([
+        collectChunks(service.query(turn)),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('query did not complete')), 100)),
+      ]);
+
+      expect(result).toEqual(expect.arrayContaining([
+        expect.objectContaining({ type: 'text', content: 'DeepSeek reply' }),
+        expect.objectContaining({ type: 'done' }),
+      ]));
+    });
   });
 
   describe('Session Management', () => {
