@@ -3,6 +3,7 @@ import type { ChatTurnRequest, PreparedChatTurn } from '../../../core/runtime/ty
 import { appendBrowserContext } from '../../../utils/browser';
 import { appendCanvasContext } from '../../../utils/canvas';
 import { appendCurrentNote } from '../../../utils/context';
+import { appendChatSelections } from '../../../utils/context';
 import { appendEditorContext } from '../../../utils/editor';
 
 function isCompactCommand(text: string): boolean {
@@ -32,6 +33,8 @@ export function encodeClaudeTurn(
     if (request.canvasSelection) {
       persistedContent = appendCanvasContext(persistedContent, request.canvasSelection);
     }
+
+    persistedContent = appendChatSelections(persistedContent, request.chatSelections);
   }
 
   const mcpMentions = mcpManager.extractMentions(persistedContent);

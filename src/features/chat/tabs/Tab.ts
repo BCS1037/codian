@@ -34,6 +34,7 @@ import type { FeatureHost } from '../../FeatureHost';
 import { toggleServiceTier } from '../actions/toggleServiceTier';
 import { BrowserSelectionController } from '../controllers/BrowserSelectionController';
 import { CanvasSelectionController } from '../controllers/CanvasSelectionController';
+import { ChatSelectionController } from '../controllers/ChatSelectionController';
 import { ConversationController } from '../controllers/ConversationController';
 import { InputController } from '../controllers/InputController';
 import { NavigationController } from '../controllers/NavigationController';
@@ -665,6 +666,7 @@ export function createTab(options: TabCreateOptions): TabData {
       selectionController: null,
       browserSelectionController: null,
       canvasSelectionController: null,
+      chatSelectionController: null,
       conversationController: null,
       streamController: null,
       inputController: null,
@@ -1593,6 +1595,12 @@ export function initializeTabControllers(
     ui.contextTray!,
     composerFocusTargetEl,
   );
+  tab.controllers.chatSelectionController = new ChatSelectionController(
+    dom.messagesEl,
+    ui.contextTray!,
+    () => autoResizeTextarea(dom.inputEl),
+    () => state.isStreaming,
+  );
 
   tab.controllers.streamController = new StreamController({
     plugin,
@@ -1708,6 +1716,7 @@ export function initializeTabControllers(
     selectionController: tab.controllers.selectionController,
     browserSelectionController: tab.controllers.browserSelectionController,
     canvasSelectionController: tab.controllers.canvasSelectionController,
+    chatSelectionController: tab.controllers.chatSelectionController,
     conversationController: tab.controllers.conversationController,
     getInputEl: () => dom.inputEl,
     getInputContainerEl: () => dom.inputContainerEl,
@@ -2015,6 +2024,8 @@ export async function destroyTab(tab: TabData): Promise<void> {
   tab.controllers.browserSelectionController?.clear();
   tab.controllers.canvasSelectionController?.stop();
   tab.controllers.canvasSelectionController?.clear();
+  tab.controllers.chatSelectionController?.destroy();
+  tab.controllers.chatSelectionController = null;
   tab.controllers.navigationController?.dispose();
 
   cleanupThinkingBlock(tab.state.currentThinkingState);

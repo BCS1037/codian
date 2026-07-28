@@ -26,6 +26,13 @@ describe('ComposerContextTray', () => {
       icon: 'text-select',
       onRemove: jest.fn(),
     }]);
+    tray.setItems('chat-selection', [{
+      id: 'reply-1',
+      kind: 'selection',
+      label: 'Answer',
+      icon: 'file-text',
+      onRemove: jest.fn(),
+    }]);
     tray.setItems('current-note', [{
       id: 'current-note',
       kind: 'note',
@@ -38,6 +45,7 @@ describe('ComposerContextTray', () => {
     expect(containerEl.querySelectorAll('.claudian-context-chip').map((item: any) => item.dataset.contextSlot)).toEqual([
       'current-note',
       'editor-selection',
+      'chat-selection',
       'images',
     ]);
   });

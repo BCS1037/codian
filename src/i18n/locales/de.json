@@ -88,6 +88,7 @@
       "notReady": "Codian-Chat ist nicht bereit.",
       "failed": "Datei konnte nicht zu Codian hinzugefügt werden."
     },
+    "selectionToolbar": { "add": "Zum Chat hinzufügen", "copy": "Kopieren", "limit": "Auswahllimit erreicht", "selectedReply": "Ausgewählte KI-Antwort" },
     "navigation": { "jumpToPrompt": "Zu Eingabe {index} springen" },
     "welcomeOrb": { "solving": "Wird gelöst" }
   },

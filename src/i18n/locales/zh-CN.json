@@ -88,6 +88,7 @@
       "notReady": "Codian 聊天尚未准备就绪。",
       "failed": "无法将文件添加到 Codian。"
     },
+    "selectionToolbar": { "add": "添加到聊天", "copy": "复制", "limit": "已达到选区限制", "selectedReply": "已选 AI 回复" },
     "navigation": { "jumpToPrompt": "跳转到提问 {index}" },
     "welcomeOrb": { "solving": "正在解题" }
   },

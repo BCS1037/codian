@@ -11,6 +11,7 @@ export type ComposerContextSlot =
   | 'editor-selection'
   | 'browser-selection'
   | 'canvas-selection'
+  | 'chat-selection'
   | 'vault-references'
   | 'images';
 
@@ -36,6 +37,7 @@ const SLOT_ORDER: readonly ComposerContextSlot[] = [
   'editor-selection',
   'browser-selection',
   'canvas-selection',
+  'chat-selection',
   'vault-references',
   'images',
 ];

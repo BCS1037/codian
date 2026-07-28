@@ -158,6 +158,7 @@ export class MessageRenderer {
     const contentEl = msgEl.createDiv({ cls: 'claudian-message-content', attr: { dir: 'auto' } });
 
     if (msg.role === 'user') {
+      this.renderChatSelectionChips(contentEl, msg);
       const textToShow = this.getUserMessageTextToShow(msg);
       if (textToShow) {
         const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
@@ -293,6 +294,7 @@ export class MessageRenderer {
     const contentEl = msgEl.createDiv({ cls: 'claudian-message-content', attr: { dir: 'auto' } });
 
     if (msg.role === 'user') {
+      this.renderChatSelectionChips(contentEl, msg);
       const textToShow = this.getUserMessageTextToShow(msg);
       if (textToShow) {
         const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
@@ -332,6 +334,18 @@ export class MessageRenderer {
     }
     if (msg.toolCalls?.some(toolCall => this.shouldRenderToolCall(toolCall, msg))) return true;
     return false;
+  }
+
+  private renderChatSelectionChips(contentEl: HTMLElement, msg: ChatMessage): void {
+    if (!msg.chatSelections?.length) return;
+    const chipsEl = contentEl.createDiv({ cls: 'claudian-sent-chat-selections' });
+    for (const selection of msg.chatSelections) {
+      chipsEl.createDiv({
+        cls: 'claudian-sent-chat-selection',
+        text: selection.text.trim().replace(/\s+/g, ' ').slice(0, 5),
+        attr: { title: selection.text },
+      });
+    }
   }
 
   private isRewindEligible(allMessages?: ChatMessage[], index?: number): boolean {

@@ -9,6 +9,7 @@ import type { SlashCommandDropdown } from '../../../shared/components/SlashComma
 import type { ComposerSession, VaultContextReference } from '../composer/types';
 import type { BrowserSelectionController } from '../controllers/BrowserSelectionController';
 import type { CanvasSelectionController } from '../controllers/CanvasSelectionController';
+import type { ChatSelectionController } from '../controllers/ChatSelectionController';
 import type { ConversationController } from '../controllers/ConversationController';
 import type { InputController } from '../controllers/InputController';
 import type { NavigationController } from '../controllers/NavigationController';
@@ -110,6 +111,7 @@ export interface TabControllers {
   selectionController: SelectionController | null;
   browserSelectionController: BrowserSelectionController | null;
   canvasSelectionController: CanvasSelectionController | null;
+  chatSelectionController: ChatSelectionController | null;
   conversationController: ConversationController | null;
   streamController: StreamController | null;
   inputController: InputController | null;

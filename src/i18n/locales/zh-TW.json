@@ -88,6 +88,7 @@
       "notReady": "Codian 聊天尚未準備就緒。",
       "failed": "無法將檔案加入 Codian。"
     },
+    "selectionToolbar": { "add": "加入聊天", "copy": "複製", "limit": "已達選取限制", "selectedReply": "已選 AI 回覆" },
     "navigation": { "jumpToPrompt": "跳至提問 {index}" },
     "welcomeOrb": { "solving": "正在解題" }
   },

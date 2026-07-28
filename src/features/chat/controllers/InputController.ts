@@ -59,6 +59,7 @@ import type { InstructionModeManager } from '../ui/InstructionModeManager';
 import type { StatusPanel } from '../ui/StatusPanel';
 import type { BrowserSelectionController } from './BrowserSelectionController';
 import type { CanvasSelectionController } from './CanvasSelectionController';
+import type { ChatSelectionController } from './ChatSelectionController';
 import type { ConversationController } from './ConversationController';
 import type { SelectionController } from './SelectionController';
 import type { StreamController } from './StreamController';
@@ -90,6 +91,7 @@ export interface InputControllerDeps {
   selectionController: SelectionController;
   browserSelectionController?: BrowserSelectionController;
   canvasSelectionController: CanvasSelectionController;
+  chatSelectionController?: ChatSelectionController;
   conversationController: ConversationController;
   getInputEl: () => HTMLTextAreaElement;
   getWelcomeEl: () => HTMLElement | null;
@@ -364,6 +366,7 @@ export class InputController {
       displayContent,                // Original user input (for UI display)
       timestamp: Date.now(),
       images: imagesForMessage,
+      chatSelections: turnRequest.chatSelections,
     };
     state.addMessage(userMsg);
     state.hasPendingConversationSave = true;
@@ -620,6 +623,9 @@ export class InputController {
         if (!planApprovalInvalidated) {
           // Only clear resumeAtMessageId if enqueue succeeded; preserve checkpoint on failure for retry
           const saveExtras = didEnqueueToSdk ? { resumeAtMessageId: undefined } : undefined;
+          if (didEnqueueToSdk) {
+            this.deps.chatSelectionController?.clear();
+          }
           await conversationController.save(true, saveExtras);
 
           const userMsgIndex = state.messages.indexOf(userMsg);
@@ -860,6 +866,7 @@ export class InputController {
     const canvasContext = options.canvasContextOverride !== undefined
       ? options.canvasContextOverride
       : canvasSelectionController.getContext();
+    const chatSelections = this.deps.chatSelectionController?.getSelections() ?? [];
 
     const externalContextPaths = externalContextSelector?.getExternalContexts();
     const isCompact = /^\/compact(\s|$)/i.test(options.content);
@@ -877,6 +884,7 @@ export class InputController {
         editorSelection: editorContext,
         browserSelection: browserContext,
         canvasSelection: canvasContext,
+        chatSelections: chatSelections.length > 0 ? [...chatSelections] : undefined,
         externalContextPaths: externalContextPaths && externalContextPaths.length > 0
           ? externalContextPaths
           : undefined,

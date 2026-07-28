@@ -113,6 +113,17 @@ describe('encodeClaudeTurn', () => {
     expect(result.persistedContent).toContain('node-2');
   });
 
+  it('persists AI reply selections as provider-neutral chat context', () => {
+    const result = encodeClaudeTurn({
+      text: 'Use this in a follow-up',
+      chatSelections: [{ id: 'reply-1', text: 'Selected assistant answer' }],
+    }, mcpManager);
+
+    expect(result.persistedContent).toContain('<chat_selection>');
+    expect(result.persistedContent).toContain('Selected assistant answer');
+    expect(result.prompt).toContain('Selected assistant answer');
+  });
+
   it('should extract and transform MCP mentions', () => {
     const mentions = new Set(['server-a']);
     mcpManager.extractMentions.mockReturnValue(mentions);

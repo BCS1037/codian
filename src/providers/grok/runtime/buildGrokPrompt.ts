@@ -1,7 +1,7 @@
 import type { ChatTurnRequest } from '../../../core/runtime/types';
 import { appendBrowserContext } from '../../../utils/browser';
 import { appendCanvasContext } from '../../../utils/canvas';
-import { appendCurrentNote } from '../../../utils/context';
+import { appendChatSelections, appendCurrentNote } from '../../../utils/context';
 import { appendEditorContext } from '../../../utils/editor';
 import type { AcpContentBlock } from '../../acp';
 
@@ -13,6 +13,7 @@ export function buildGrokPromptText(request: ChatTurnRequest): string {
   }
   if (request.browserSelection) prompt = appendBrowserContext(prompt, request.browserSelection);
   if (request.canvasSelection) prompt = appendCanvasContext(prompt, request.canvasSelection);
+  prompt = appendChatSelections(prompt, request.chatSelections);
   return prompt;
 }
 

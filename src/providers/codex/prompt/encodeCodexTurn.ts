@@ -45,6 +45,12 @@ export function encodeCodexTurn(request: ChatTurnRequest): PreparedChatTurn {
     }
   }
 
+  for (const selection of request.chatSelections ?? []) {
+    if (selection.text.trim()) {
+      sections.push(`\n[Selected AI reply:\n${selection.text}\n]`);
+    }
+  }
+
   const prompt = sections.join('');
 
   return {

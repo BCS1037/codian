@@ -44,6 +44,8 @@ export type AskUserQuestionCallback = (
 
 export interface ChatTurnRequest {
   text: string;
+  /** Rendered text selected from a completed assistant reply in this chat. */
+  chatSelections?: ChatSelectionContext[];
   images?: ImageAttachment[];
   currentNotePath?: string;
   editorSelection?: EditorSelectionContext | null;
@@ -51,6 +53,11 @@ export interface ChatTurnRequest {
   canvasSelection?: CanvasSelectionContext | null;
   externalContextPaths?: string[];
   enabledMcpServers?: Set<string>;
+}
+
+export interface ChatSelectionContext {
+  id: string;
+  text: string;
 }
 
 export interface PreparedChatTurn {

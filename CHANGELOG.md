@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.2 — 2026-07-28
+
+### Chat
+
+- Select text in a completed AI reply, then copy it or add it as removable chat context for a follow-up prompt.
+- Preserve selected-reply context across all built-in Providers and show compact context chips in the conversation.
+
 ## 1.2.1 — 2026-07-27
 
 - Logo refresh.
