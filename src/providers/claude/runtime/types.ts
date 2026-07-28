@@ -131,5 +131,24 @@ export const DISABLED_BUILTIN_SUBAGENTS = [
 ] as const;
 
 export function isTurnCompleteMessage(message: SDKMessage): boolean {
-  return message.type === 'result';
+  if (message.type === 'result') {
+    return true;
+  }
+
+  if (message.type !== 'assistant' || (message.parent_tool_use_id ?? null) !== null) {
+    return false;
+  }
+
+  const content = message.message?.content;
+  if (!Array.isArray(content)) {
+    return false;
+  }
+
+  const hasVisibleText = content.some(block => (
+    block.type === 'text'
+    && typeof block.text === 'string'
+    && block.text.trim().length > 0
+  ));
+  const hasToolUse = content.some(block => block.type === 'tool_use');
+  return hasVisibleText && !hasToolUse;
 }

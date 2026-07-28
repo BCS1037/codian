@@ -82,7 +82,10 @@ import {
   isStreamChunk,
 } from '../sdk/typeGuards';
 import type { TransformEvent } from '../sdk/types';
-import { applyClaudeServiceEnvironment } from '../services/ClaudeThirdPartyServices';
+import {
+  applyClaudeServiceEnvironment,
+  decodeClaudeServiceModelSelection,
+} from '../services/ClaudeThirdPartyServices';
 import { getClaudeProviderSettings } from '../settings';
 import {
   createTransformStreamState,
@@ -1317,7 +1320,13 @@ export class ClaudianService implements ChatRuntime {
 
     // Rebuild history if needed before choosing persistent vs cold-start
     let promptToSend = prompt;
-    let forceColdStart = false;
+    // Some Claude-compatible services omit the final result event from a fresh
+    // persistent transport. Start their first turn cold, then reuse its session.
+    const selectedModel = queryOptions?.model ?? this.getScopedSettings().model;
+    const usesCompatibleService = decodeClaudeServiceModelSelection(selectedModel) !== null;
+    let forceColdStart = usesCompatibleService
+      && !this.sessionManager.getSessionId()
+      && !this.persistentQuery;
 
     // Clear interrupted flag - persistent query handles interruption gracefully,
     // no need to force cold-start just because user cancelled previous response
