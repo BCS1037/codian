@@ -88,6 +88,7 @@
       "notReady": "O chat do Codian não está pronto.",
       "failed": "Não foi possível adicionar o arquivo ao Codian."
     },
+    "selectionToolbar": { "add": "Adicionar ao chat", "copy": "Copiar", "limit": "Limite de seleção atingido", "selectedReply": "Resposta de IA selecionada" },
     "navigation": { "jumpToPrompt": "Ir para o pedido {index}" },
     "welcomeOrb": { "solving": "Resolvendo" }
   },

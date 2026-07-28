@@ -88,6 +88,7 @@
       "notReady": "Codian チャットの準備ができていません。",
       "failed": "ファイルを Codian に追加できませんでした。"
     },
+    "selectionToolbar": { "add": "チャットに追加", "copy": "コピー", "limit": "選択数の上限に達しました", "selectedReply": "選択した AI 応答" },
     "navigation": { "jumpToPrompt": "プロンプト {index} に移動" },
     "welcomeOrb": { "solving": "解決中" }
   },

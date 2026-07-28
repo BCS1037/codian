@@ -82,6 +82,16 @@ describe('encodeCodexTurn', () => {
     expect(result.prompt).toContain('node1, node2');
   });
 
+  it('should include selected AI reply context without calling it an editor selection', () => {
+    const result = encodeCodexTurn({
+      text: 'Continue from this',
+      chatSelections: [{ id: 'reply-1', text: 'Assistant answer' }],
+    });
+
+    expect(result.prompt).toContain('[Selected AI reply:\nAssistant answer\n]');
+    expect(result.prompt).not.toContain('Editor selection');
+  });
+
   it('should combine all context sections', () => {
     const request: ChatTurnRequest = {
       text: 'Do something',

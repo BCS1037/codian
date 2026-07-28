@@ -88,6 +88,7 @@
       "notReady": "Чат Codian не готов.",
       "failed": "Не удалось добавить файл в Codian."
     },
+    "selectionToolbar": { "add": "Добавить в чат", "copy": "Копировать", "limit": "Достигнут лимит выбора", "selectedReply": "Выбранный ответ ИИ" },
     "navigation": { "jumpToPrompt": "Перейти к запросу {index}" },
     "welcomeOrb": { "solving": "Решение задачи" }
   },

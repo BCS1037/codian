@@ -18,8 +18,8 @@ const NOTE_CONTEXT_SUFFIX_REGEX = new RegExp(`\\n\\n<${NOTE_CONTEXT_TAG_PATTERN}
  * Matches: linked_note/current_note, editor_selection (with attributes), editor_cursor (with attributes),
  * context_files, canvas_selection, browser_selection
  */
-export const XML_CONTEXT_PATTERN = /\n\n<(?:linked_note|current_note|editor_selection|editor_cursor|context_files|canvas_selection|browser_selection)[\s>]/;
-const BRACKET_CONTEXT_PATTERN = /\n\[(?:Current note|Editor selection from|Browser selection from|Canvas selection from)\b/;
+export const XML_CONTEXT_PATTERN = /\n\n<(?:linked_note|current_note|editor_selection|editor_cursor|context_files|canvas_selection|browser_selection|chat_selection)[\s>]/;
+const BRACKET_CONTEXT_PATTERN = /\n\[(?:Current note|Editor selection from|Browser selection from|Canvas selection from|Selected AI reply)\b/;
 
 export function formatCurrentNote(notePath: string): string {
   return `<${LINKED_NOTE_TAG}>\n${notePath}\n</${LINKED_NOTE_TAG}>`;
@@ -27,6 +27,17 @@ export function formatCurrentNote(notePath: string): string {
 
 export function appendCurrentNote(prompt: string, notePath: string): string {
   return `${prompt}\n\n${formatCurrentNote(notePath)}`;
+}
+
+export function appendChatSelections(
+  prompt: string,
+  selections: readonly { text: string }[] | undefined,
+): string {
+  const contents = (selections ?? [])
+    .map(selection => selection.text.trim())
+    .filter(Boolean)
+    .map(text => `<chat_selection>\n${text}\n</chat_selection>`);
+  return contents.length > 0 ? `${prompt}\n\n${contents.join('\n\n')}` : prompt;
 }
 
 /**
@@ -106,6 +117,7 @@ export function extractUserQuery(prompt: string): string {
     .replace(/<context_files>[\s\S]*?<\/context_files>\s*/g, '')
     .replace(/<canvas_selection[\s\S]*?<\/canvas_selection>\s*/g, '')
     .replace(/<browser_selection[\s\S]*?<\/browser_selection>\s*/g, '')
+    .replace(/<chat_selection>[\s\S]*?<\/chat_selection>\s*/g, '')
     .trim();
 }
 

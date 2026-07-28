@@ -28,6 +28,7 @@ import type {
   SlashCommand,
   StreamChunk,
 } from '../../../core/types';
+import { appendChatSelections } from '../../../utils/context';
 import { getEnhancedPath, parseEnvironmentVariables } from '../../../utils/env';
 import { getVaultPath } from '../../../utils/path';
 import {
@@ -76,10 +77,11 @@ export class NativeAcpChatRuntime implements ChatRuntime {
   }
 
   prepareTurn(request: ChatTurnRequest): PreparedChatTurn {
+    const prompt = appendChatSelections(request.text, request.chatSelections);
     return {
       request,
-      persistedContent: request.text,
-      prompt: request.text,
+      persistedContent: prompt,
+      prompt,
       isCompact: false,
       mcpMentions: new Set(),
     };

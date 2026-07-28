@@ -2,7 +2,7 @@ import type { ChatTurnRequest } from '../../../core/runtime/types';
 import type { ChatMessage, ImageAttachment } from '../../../core/types';
 import { appendBrowserContext } from '../../../utils/browser';
 import { appendCanvasContext } from '../../../utils/canvas';
-import { appendCurrentNote } from '../../../utils/context';
+import { appendChatSelections, appendCurrentNote } from '../../../utils/context';
 import { appendEditorContext } from '../../../utils/editor';
 import { buildContextFromHistory, buildPromptWithHistoryContext } from '../../../utils/session';
 
@@ -33,6 +33,8 @@ export function buildPiPromptText(
   if (request.canvasSelection) {
     prompt = appendCanvasContext(prompt, request.canvasSelection);
   }
+
+  prompt = appendChatSelections(prompt, request.chatSelections);
 
   if (conversationHistory.length > 0) {
     const historyContext = buildContextFromHistory(conversationHistory);

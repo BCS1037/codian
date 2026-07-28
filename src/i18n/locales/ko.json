@@ -88,6 +88,7 @@
       "notReady": "Codian 채팅이 아직 준비되지 않았습니다.",
       "failed": "파일을 Codian에 추가하지 못했습니다."
     },
+    "selectionToolbar": { "add": "채팅에 추가", "copy": "복사", "limit": "선택 제한에 도달했습니다", "selectedReply": "선택한 AI 답변" },
     "navigation": { "jumpToPrompt": "프롬프트 {index}(으)로 이동" },
     "welcomeOrb": { "solving": "해결 중" }
   },
