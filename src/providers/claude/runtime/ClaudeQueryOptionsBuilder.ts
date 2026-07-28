@@ -36,6 +36,7 @@ export interface QueryOptionsContext {
   enhancedPath: string;
   mcpManager: McpServerManager;
   pluginManager: AppPluginManager;
+  memoryAppendix?: string;
 }
 
 export interface PersistentQueryContext extends QueryOptionsContext {
@@ -120,7 +121,9 @@ export class QueryOptionsBuilder {
       effortLevel: resolveEffortLevel(runtimeModel, ctx.settings.effortLevel),
       permissionMode: ctx.settings.permissionMode,
       sdkPermissionMode,
-      systemPromptKey: computeSystemPromptKey(systemPromptSettings),
+      systemPromptKey: computeSystemPromptKey(systemPromptSettings, {
+        memoryAppendix: ctx.memoryAppendix,
+      }),
       disallowedToolsKey,
       mcpServersKey: '', // Dynamic via setMcpServers, not tracked for restart
       pluginsKey,
@@ -279,7 +282,9 @@ export class QueryOptionsBuilder {
     };
     const options: Options = {
       cwd: ctx.vaultPath,
-      systemPrompt: buildSystemPrompt(systemPromptSettings),
+      systemPrompt: buildSystemPrompt(systemPromptSettings, {
+        memoryAppendix: ctx.memoryAppendix,
+      }),
       model,
       abortController,
       pathToClaudeCodeExecutable: ctx.cliPath,

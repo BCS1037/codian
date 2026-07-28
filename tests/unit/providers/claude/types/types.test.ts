@@ -128,6 +128,11 @@ describe('types.ts', () => {
         savedProviderThinkingBudget: {},
         savedProviderPermissionMode: {},
         pendingProviderSessionInvalidations: {},
+        memoryEnabled: true,
+        memoryFilePath: '.claudian/memory.md',
+        memoryMaxInjectionChars: 1500,
+        consciousnessEnabled: false,
+        consciousnessAutoMemory: false,
       };
 
       expect(settings.permissionMode).toBe('yolo');
@@ -181,6 +186,11 @@ describe('types.ts', () => {
         savedProviderThinkingBudget: {},
         savedProviderPermissionMode: {},
         pendingProviderSessionInvalidations: {},
+        memoryEnabled: true,
+        memoryFilePath: '.claudian/memory.md',
+        memoryMaxInjectionChars: 1500,
+        consciousnessEnabled: false,
+        consciousnessAutoMemory: false,
       };
 
       expect(settings.model).toBe('anthropic/custom-model-v1');
@@ -235,6 +245,11 @@ describe('types.ts', () => {
         savedProviderThinkingBudget: {},
         savedProviderPermissionMode: {},
         pendingProviderSessionInvalidations: {},
+        memoryEnabled: true,
+        memoryFilePath: '.claudian/memory.md',
+        memoryMaxInjectionChars: 1500,
+        consciousnessEnabled: false,
+        consciousnessAutoMemory: false,
       };
 
       expect(settings.lastClaudeModel).toBe('opus');
