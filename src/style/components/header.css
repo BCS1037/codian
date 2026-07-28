@@ -1,14 +1,16 @@
 /* Header - logo and title */
-.claudian-header {
+.claudian-container > .claudian-header {
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   padding: 0 12px 12px 12px;
 }
 
-.claudian-title {
+.claudian-container .claudian-title {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 8px;
   flex: 1;
   min-width: 0;

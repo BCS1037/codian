@@ -7,9 +7,10 @@
   max-width: 100%;
 }
 
-.claudian-tab-badges {
+.claudian-container .claudian-tab-badges {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 4px;
   flex-wrap: nowrap;
   min-width: 0;

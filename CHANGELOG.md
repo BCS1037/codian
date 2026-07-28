@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.4 — 2026-07-28
+
+### Chat layout
+
+- Keep the provider header and chat tabs aligned to the start of the pane.
+- Keep the composer fixed at the pane bottom while messages scroll independently.
+
 ## 1.2.3 — 2026-07-28
 
 ### Chat
