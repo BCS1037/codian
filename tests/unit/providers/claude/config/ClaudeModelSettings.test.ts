@@ -1,4 +1,7 @@
-import { getClaudeSettingsModelEnvironment } from '@/providers/claude/config/ClaudeModelSettings';
+import {
+  getClaudeSettingsModelEnvironment,
+  getClaudeUserSettingsAuthenticationEnvironment,
+} from '@/providers/claude/config/ClaudeModelSettings';
 
 describe('getClaudeSettingsModelEnvironment', () => {
   it('uses the global model when user settings are enabled', () => {
@@ -74,5 +77,46 @@ describe('getClaudeSettingsModelEnvironment', () => {
     });
 
     expect(environment).toEqual({});
+  });
+});
+
+describe('getClaudeUserSettingsAuthenticationEnvironment', () => {
+  it('reads only supported authentication values from Claude settings', () => {
+    const readFile = jest.fn(() => JSON.stringify({
+      env: {
+        ANTHROPIC_AUTH_TOKEN: 'gateway-token',
+        ANTHROPIC_BASE_URL: 'https://gateway.example.com',
+        ANTHROPIC_MODEL: 'gateway-model',
+        UNRELATED_SECRET: 'do-not-read',
+      },
+    }));
+    const environment = getClaudeUserSettingsAuthenticationEnvironment({
+      configDir: '/home/user/.claude',
+      loadUserSettings: true,
+      readFile,
+      vaultPath: '/untrusted/project',
+    });
+
+    expect(environment).toEqual({
+      ANTHROPIC_AUTH_TOKEN: 'gateway-token',
+      ANTHROPIC_BASE_URL: 'https://gateway.example.com',
+    });
+    expect(readFile).toHaveBeenCalledTimes(1);
+    expect(readFile).toHaveBeenCalledWith('/home/user/.claude/settings.json');
+  });
+
+  it('does not read user authentication when Claude user settings are disabled', () => {
+    const readFile = jest.fn(() => JSON.stringify({
+      env: { ANTHROPIC_API_KEY: 'user-key' },
+    }));
+
+    const environment = getClaudeUserSettingsAuthenticationEnvironment({
+      configDir: '/home/user/.claude',
+      loadUserSettings: false,
+      readFile,
+    });
+
+    expect(environment).toEqual({});
+    expect(readFile).not.toHaveBeenCalled();
   });
 });

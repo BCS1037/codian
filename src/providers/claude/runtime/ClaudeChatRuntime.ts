@@ -71,6 +71,8 @@ import {
   isSessionMissingError,
 } from '../../../utils/session';
 import { CLAUDE_PROVIDER_CAPABILITIES } from '../capabilities';
+import { resolveClaudeConfigDir } from '../config/ClaudeConfigDir';
+import { getClaudeUserSettingsAuthenticationEnvironment } from '../config/ClaudeModelSettings';
 import { loadSubagentFinalResult, loadSubagentToolCalls } from '../history/ClaudeHistoryStore';
 import { loadClaudeAgentQuery } from '../loadClaudeAgentSdk';
 import { toClaudeRuntimeModelId } from '../modelSelection';
@@ -806,13 +808,25 @@ export class ClaudianService implements ChatRuntime {
 
   private buildQueryOptionsContext(vaultPath: string, cliPath: string): QueryOptionsContext {
     const settings = this.getScopedSettings();
+    const claudeSettings = getClaudeProviderSettings(settings);
     const customEnv = applyClaudeServiceEnvironment(
       parseEnvironmentVariables(this.plugin.getActiveEnvironmentVariables(this.providerId)),
       settings.model,
-      getClaudeProviderSettings(settings).thirdPartyServices,
+      claudeSettings.thirdPartyServices,
       secretId => this.plugin.app.secretStorage.getSecret(secretId),
     );
-    assertSupportedClaudeAuthentication({ ...process.env, ...customEnv });
+    const settingsAuthentication = getClaudeUserSettingsAuthenticationEnvironment({
+      configDir: resolveClaudeConfigDir({
+        environment: { ...process.env, ...customEnv },
+        vaultPath,
+      }),
+      loadUserSettings: claudeSettings.loadUserSettings,
+    });
+    assertSupportedClaudeAuthentication({
+      ...settingsAuthentication,
+      ...process.env,
+      ...customEnv,
+    });
     const enhancedPath = getEnhancedPath(customEnv.PATH, cliPath);
 
     return {

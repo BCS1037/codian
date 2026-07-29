@@ -5,6 +5,8 @@ import { ProviderSettingsCoordinator } from '../../../core/providers/ProviderSet
 import { getEnhancedPath, getMissingNodeError, parseEnvironmentVariables } from '../../../utils/env';
 import { getVaultPath } from '../../../utils/path';
 import { extractAssistantText } from '../auxiliary/extractAssistantText';
+import { resolveClaudeConfigDir } from '../config/ClaudeConfigDir';
+import { getClaudeUserSettingsAuthenticationEnvironment } from '../config/ClaudeModelSettings';
 import { loadClaudeAgentQuery } from '../loadClaudeAgentSdk';
 import { toClaudeRuntimeModelId } from '../modelSelection';
 import { applyClaudeServiceEnvironment } from '../services/ClaudeThirdPartyServices';
@@ -74,7 +76,18 @@ export async function runColdStartQuery(
     claudeSettings.thirdPartyServices,
     secretId => config.plugin.app.secretStorage.getSecret(secretId),
   );
-  assertSupportedClaudeAuthentication({ ...process.env, ...customEnv });
+  const settingsAuthentication = getClaudeUserSettingsAuthenticationEnvironment({
+    configDir: resolveClaudeConfigDir({
+      environment: { ...process.env, ...customEnv },
+      vaultPath,
+    }),
+    loadUserSettings: claudeSettings.loadUserSettings,
+  });
+  assertSupportedClaudeAuthentication({
+    ...settingsAuthentication,
+    ...process.env,
+    ...customEnv,
+  });
   const enhancedPath = getEnhancedPath(customEnv.PATH, resolvedClaudePath);
 
   const missingNodeError = getMissingNodeError(resolvedClaudePath, enhancedPath);

@@ -5,6 +5,7 @@ import { Notice } from 'obsidian';
 
 import type { McpServerManager } from '@/core/mcp/McpServerManager';
 import type ClaudianPlugin from '@/main';
+import * as claudeModelSettings from '@/providers/claude/config/ClaudeModelSettings';
 import * as historyStore from '@/providers/claude/history/ClaudeHistoryStore';
 import * as sdkLoader from '@/providers/claude/loadClaudeAgentSdk';
 import { ClaudianService } from '@/providers/claude/runtime/ClaudeChatRuntime';
@@ -426,6 +427,24 @@ describe('ClaudianService', () => {
 
       expect(result).toBe(true);
       expect(startPersistentQuerySpy).toHaveBeenCalled();
+    });
+
+    it('starts a persistent query with authentication loaded from Claude settings', async () => {
+      jest.mocked(mockPlugin.getActiveEnvironmentVariables!).mockReturnValue('');
+      mockPlugin.settings!.loadUserClaudeSettings = true;
+      const settingsAuthentication = jest.spyOn(
+        claudeModelSettings,
+        'getClaudeUserSettingsAuthenticationEnvironment',
+      ).mockReturnValue({
+        ANTHROPIC_AUTH_TOKEN: 'settings-token',
+        ANTHROPIC_BASE_URL: 'https://gateway.example.com',
+      });
+
+      try {
+        await expect(service.ensureReady()).resolves.toBe(true);
+      } finally {
+        settingsAuthentication.mockRestore();
+      }
     });
 
     it('should use the synced conversation model when starting a persistent query', async () => {
