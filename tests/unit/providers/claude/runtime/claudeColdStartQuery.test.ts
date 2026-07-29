@@ -1,5 +1,6 @@
 import * as sdkModule from '@anthropic-ai/claude-agent-sdk';
 
+import * as claudeModelSettings from '@/providers/claude/config/ClaudeModelSettings';
 import * as sdkLoader from '@/providers/claude/loadClaudeAgentSdk';
 import { type ColdStartQueryConfig, runColdStartQuery } from '@/providers/claude/runtime/claudeColdStartQuery';
 
@@ -112,6 +113,29 @@ describe('runColdStartQuery', () => {
   });
 
   describe('infrastructure errors', () => {
+    it('accepts compatible endpoint authentication loaded from Claude settings', async () => {
+      const plugin = createMockPlugin({
+        getActiveEnvironmentVariables: jest.fn().mockReturnValue(''),
+      });
+      const settingsAuthentication = jest.spyOn(
+        claudeModelSettings,
+        'getClaudeUserSettingsAuthenticationEnvironment',
+      ).mockReturnValue({
+        ANTHROPIC_AUTH_TOKEN: 'settings-token',
+        ANTHROPIC_BASE_URL: 'https://gateway.example.com',
+      });
+      sdkMock.setMockMessages([
+        { type: 'assistant', message: { content: [{ type: 'text', text: 'answer' }] } },
+      ]);
+
+      try {
+        const result = await runColdStartQuery(createConfig({ plugin }), 'hi');
+        expect(result.text).toBe('answer');
+      } finally {
+        settingsAuthentication.mockRestore();
+      }
+    });
+
     it('rejects Claude launch without explicit developer authentication', async () => {
       const plugin = createMockPlugin({
         getActiveEnvironmentVariables: jest.fn().mockReturnValue(''),
