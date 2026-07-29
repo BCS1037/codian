@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.5 — 2026-07-29
+
+### Claude-compatible chat
+
+- Complete first replies from compatible services, including DeepSeek, when their stream omits Claude Code's final result event.
+- Start a new compatible-service conversation through a reliable first-turn path before reusing its provider session.
+
 ## 1.2.4 — 2026-07-28
 
 ### Chat layout
