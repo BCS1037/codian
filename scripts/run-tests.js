@@ -27,6 +27,7 @@ run([
   path.join(__dirname, 'check-architecture-boundaries.test.mjs'),
   path.join(__dirname, 'check-production-licenses.test.mjs'),
   path.join(__dirname, 'check-provider-inventory.test.mjs'),
+  path.join(__dirname, 'generate-release-notes.test.mjs'),
   path.join(__dirname, 'check-release-version.test.mjs'),
   path.join(__dirname, 'check-secrets.test.mjs'),
   path.join(__dirname, 'check-startup-performance.test.mjs'),
