@@ -527,7 +527,7 @@ describe('PiChatRuntime', () => {
     expect(chunks).toEqual([
       {
         type: 'error',
-        content: 'No Pi model is selected. Enable a discovered model in Claudian settings.',
+        content: 'No Pi model is selected. Enable a discovered model in Codian settings.',
       },
       { type: 'done' },
     ]);

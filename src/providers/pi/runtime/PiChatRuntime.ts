@@ -390,7 +390,7 @@ export class PiChatRuntime implements ChatRuntime {
     if (!this.resolveSelectedModel(this.getProviderSettings(), queryOptions)) {
       yield {
         type: 'error',
-        content: 'No Pi model is selected. Enable a discovered model in Claudian settings.',
+        content: 'No Pi model is selected. Enable a discovered model in Codian settings.',
       };
       yield { type: 'done' };
       return;
@@ -846,11 +846,11 @@ export class PiChatRuntime implements ChatRuntime {
 
     const selectedModel = this.resolveSelectedModel(this.getProviderSettings(), queryOptions);
     if (!selectedModel) {
-      throw new Error('No Pi model is selected. Enable a discovered model in Claudian settings.');
+      throw new Error('No Pi model is selected. Enable a discovered model in Codian settings.');
     }
     const payload = buildPiSetModelPayload(selectedModel);
     if (!payload) {
-      throw new Error('The selected Pi model is invalid. Enable a discovered model in Claudian settings.');
+      throw new Error('The selected Pi model is invalid. Enable a discovered model in Codian settings.');
     }
     if (this.currentModel === selectedModel) {
       return;

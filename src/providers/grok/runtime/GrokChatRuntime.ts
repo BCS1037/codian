@@ -1963,7 +1963,7 @@ export class GrokChatRuntime implements ChatRuntime {
     if (rawModelId) {
       return encodeGrokModelId(rawModelId);
     }
-    throw new Error('No Grok model is selected. Enable a discovered model in Claudian settings.');
+    throw new Error('No Grok model is selected. Enable a discovered model in Codian settings.');
   }
 
   private resolveSelectedEffort(rawModelId: string): string | null {

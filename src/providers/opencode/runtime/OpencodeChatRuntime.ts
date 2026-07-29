@@ -456,7 +456,7 @@ export class OpencodeChatRuntime implements ChatRuntime {
     if (!this.resolveSelectedRawModelId(queryOptions)) {
       yield {
         type: 'error',
-        content: 'No OpenCode model is selected. Enable a discovered model in Claudian settings.',
+        content: 'No OpenCode model is selected. Enable a discovered model in Codian settings.',
       };
       yield { type: 'done' };
       return;
@@ -1032,7 +1032,7 @@ export class OpencodeChatRuntime implements ChatRuntime {
 
     const selectedRawModelId = this.resolveSelectedRawModelId(queryOptions);
     if (!selectedRawModelId) {
-      throw new Error('No OpenCode model is selected. Enable a discovered model in Claudian settings.');
+      throw new Error('No OpenCode model is selected. Enable a discovered model in Codian settings.');
     }
     if (selectedRawModelId === this.currentSessionModelId) {
       return;

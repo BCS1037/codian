@@ -93,7 +93,7 @@
     "welcomeOrb": { "solving": "Resolviendo" }
   },
   "settings": {
-    "title": "Configuración de Claudian",
+    "title": "Configuración de Codian",
     "tabs": {
       "general": "General",
       "claude": "Claude",
@@ -113,7 +113,7 @@
     "experimental": "Experimental",
     "about": { "slogan": "Exploramos las formas más simples de resolver problemas.", "followWeike": "Seguir a Weike", "feedback": "¿Preguntas? Abre un issue o sigue la cuenta oficial de WeChat «维客笔记» para enviar comentarios.", "feedbackPrefix": "¿Preguntas? Abre un ", "feedbackBetweenLinks": " o sigue la cuenta oficial de WeChat «", "feedbackSuffix": "» para enviar comentarios.", "sponsor": "Apoyar a Weike", "sponsorDescription": "Si este complemento te ayuda, apoya el desarrollo y mantenimiento continuos de Weike:", "afdian": "Afdian" },
     "userName": {
-      "name": "¿Cómo debería Claudian llamarte?",
+      "name": "¿Cómo debería Codian llamarte?",
       "desc": "Tu nombre para saludos personalizados (dejar vacío para saludos genéricos)"
     },
     "excludedTags": {
@@ -193,7 +193,7 @@
     },
     "hiddenSlashCommands": {
       "name": "Comandos y habilidades ocultos",
-      "desc": "Oculta comandos y habilidades específicos del menú desplegable. Útil para ocultar entradas de Claude Code que no son relevantes para Claudian. Ingresa los nombres sin la barra inicial, uno por línea.",
+      "desc": "Oculta comandos y habilidades específicos del menú desplegable. Útil para ocultar entradas de Claude Code que no son relevantes para Codian. Ingresa los nombres sin la barra inicial, uno por línea.",
       "placeholder": "commit\nbuild\ntest"
     },
     "mcpServers": {
@@ -341,7 +341,7 @@
       "desc": "Mostrar los diffs de Write y Edit expandidos cuando aparecen por primera vez."
     },
     "chatViewPlacement": {
-      "name": "Abrir Claudian en",
+      "name": "Abrir Codian en",
       "desc": "Elige dónde se abre el panel de chat cuando se crea",
       "rightSidebar": "Barra lateral derecha",
       "leftSidebar": "Barra lateral izquierda",
@@ -369,7 +369,7 @@
     "codex": {
       "installationMethod": {
         "name": "Método de instalación",
-        "desc": "Cómo debe iniciar Claudian Codex en Windows. Windows nativo usa una ruta de ejecutable de Windows. WSL inicia la CLI de Linux dentro de una distribución seleccionada.",
+        "desc": "Cómo debe iniciar Codian Codex en Windows. Windows nativo usa una ruta de ejecutable de Windows. WSL inicia la CLI de Linux dentro de una distribución seleccionada.",
         "nativeWindows": "Windows nativo",
         "wsl": "WSL"
       },

@@ -326,7 +326,7 @@ export class CodexChatRuntime implements ChatRuntime {
     if (!model) {
       yield {
         type: 'error',
-        content: 'No Codex model is selected. Enable a model in Claudian settings.',
+        content: 'No Codex model is selected. Enable a model in Codian settings.',
       };
       yield { type: 'done' };
       return;

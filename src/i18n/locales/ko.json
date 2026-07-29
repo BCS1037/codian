@@ -93,7 +93,7 @@
     "welcomeOrb": { "solving": "해결 중" }
   },
   "settings": {
-    "title": "Claudian 설정",
+    "title": "Codian 설정",
     "tabs": {
       "general": "일반",
       "claude": "Claude",
@@ -113,7 +113,7 @@
     "experimental": "실험적 기능",
     "about": { "slogan": "문제를 해결하는 가장 단순한 방법을 탐구합니다.", "followWeike": "Weike 팔로우", "feedback": "질문이 있으면 issue를 만들거나 WeChat 공식 계정 「维客笔记」를 팔로우해 피드백을 보내 주세요.", "feedbackPrefix": "질문이 있으면 ", "feedbackBetweenLinks": "를 만들거나 WeChat 공식 계정 「", "feedbackSuffix": "」를 팔로우해 피드백을 보내 주세요.", "sponsor": "Weike 후원", "sponsorDescription": "이 플러그인이 도움이 되었다면 Weike의 지속적인 개발과 유지 관리를 후원해 주세요:", "afdian": "Afdian" },
     "userName": {
-      "name": "Claudian이 당신을 어떻게 불러야 합니까?",
+      "name": "Codian이 당신을 어떻게 불러야 합니까?",
       "desc": "개인화된 인사에 사용할 이름 (비워두면 일반 인사)"
     },
     "excludedTags": {
@@ -193,7 +193,7 @@
     },
     "hiddenSlashCommands": {
       "name": "숨겨진 명령어와 스킬",
-      "desc": "드롭다운에서 특정 명령어와 스킬을 숨깁니다. Claudian과 관련 없는 Claude Code 항목을 숨기는 데 유용합니다. 앞의 슬래시 없이 이름을 한 줄에 하나씩 입력하세요.",
+      "desc": "드롭다운에서 특정 명령어와 스킬을 숨깁니다. Codian과 관련 없는 Claude Code 항목을 숨기는 데 유용합니다. 앞의 슬래시 없이 이름을 한 줄에 하나씩 입력하세요.",
       "placeholder": "commit\nbuild\ntest"
     },
     "mcpServers": {
@@ -341,7 +341,7 @@
       "desc": "Write 및 Edit diff가 처음 표시될 때 펼친 상태로 보여줍니다."
     },
     "chatViewPlacement": {
-      "name": "Claudian 열 위치",
+      "name": "Codian 열 위치",
       "desc": "채팅 패널이 생성될 때 열릴 위치를 선택합니다",
       "rightSidebar": "오른쪽 사이드바",
       "leftSidebar": "왼쪽 사이드바",
@@ -369,7 +369,7 @@
     "codex": {
       "installationMethod": {
         "name": "설치 방식",
-        "desc": "Windows에서 Claudian이 Codex를 실행하는 방식입니다. 네이티브 Windows는 Windows 실행 파일 경로를 사용하고, WSL은 선택한 배포판 안에서 Linux CLI를 실행합니다.",
+        "desc": "Windows에서 Codian이 Codex를 실행하는 방식입니다. 네이티브 Windows는 Windows 실행 파일 경로를 사용하고, WSL은 선택한 배포판 안에서 Linux CLI를 실행합니다.",
         "nativeWindows": "네이티브 Windows",
         "wsl": "WSL"
       },
