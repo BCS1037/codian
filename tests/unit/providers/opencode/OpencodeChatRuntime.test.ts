@@ -65,7 +65,7 @@ describe('OpencodeChatRuntime', () => {
     expect(chunks).toEqual([
       {
         type: 'error',
-        content: 'No OpenCode model is selected. Enable a discovered model in Claudian settings.',
+        content: 'No OpenCode model is selected. Enable a discovered model in Codian settings.',
       },
       { type: 'done' },
     ]);

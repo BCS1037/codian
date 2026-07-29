@@ -507,7 +507,7 @@ describe('CodexChatRuntime', () => {
     await expect(collectChunks(emptyRuntime.query(createTurn()))).resolves.toEqual([
       {
         type: 'error',
-        content: 'No Codex model is selected. Enable a model in Claudian settings.',
+        content: 'No Codex model is selected. Enable a model in Codian settings.',
       },
       { type: 'done' },
     ]);

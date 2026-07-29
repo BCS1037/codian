@@ -93,7 +93,7 @@
     "welcomeOrb": { "solving": "Wird gelöst" }
   },
   "settings": {
-    "title": "Claudian Einstellungen",
+    "title": "Codian Einstellungen",
     "tabs": {
       "general": "Allgemein",
       "claude": "Claude",
@@ -113,7 +113,7 @@
     "experimental": "Experimentell",
     "about": { "slogan": "Wir erkunden die einfachsten Wege, Probleme zu lösen.", "followWeike": "Weike folgen", "feedback": "Fragen willkommen: Erstelle ein Issue oder folge dem offiziellen WeChat-Konto „维客笔记“ für Feedback.", "feedbackPrefix": "Fragen willkommen: Erstelle ein ", "feedbackBetweenLinks": " oder folge dem offiziellen WeChat-Konto „", "feedbackSuffix": "“ für Feedback.", "sponsor": "Weike unterstützen", "sponsorDescription": "Wenn dieses Plugin dir hilft, unterstütze Weike bei weiterer Entwicklung und Wartung:", "afdian": "Afdian" },
     "userName": {
-      "name": "Wie soll Claudian dich nennen?",
+      "name": "Wie soll Codian dich nennen?",
       "desc": "Dein Name für personalisierte Begrüßungen (leer lassen für allgemeine Begrüßungen)"
     },
     "excludedTags": {
@@ -193,7 +193,7 @@
     },
     "hiddenSlashCommands": {
       "name": "Ausgeblendete Befehle und Fähigkeiten",
-      "desc": "Bestimmte Befehle und Fähigkeiten aus dem Dropdown ausblenden. Nützlich, um Claude Code-Einträge auszublenden, die für Claudian nicht relevant sind. Gib Namen ohne führenden Schrägstrich ein, einen pro Zeile.",
+      "desc": "Bestimmte Befehle und Fähigkeiten aus dem Dropdown ausblenden. Nützlich, um Claude Code-Einträge auszublenden, die für Codian nicht relevant sind. Gib Namen ohne führenden Schrägstrich ein, einen pro Zeile.",
       "placeholder": "commit\nbuild\ntest"
     },
     "mcpServers": {
@@ -341,7 +341,7 @@
       "desc": "Write- und Edit-Diffs beim ersten Erscheinen ausgeklappt anzeigen."
     },
     "chatViewPlacement": {
-      "name": "Claudian öffnen in",
+      "name": "Codian öffnen in",
       "desc": "Wählen Sie, wo das Chat-Panel beim Erstellen geöffnet wird",
       "rightSidebar": "Rechte Seitenleiste",
       "leftSidebar": "Linke Seitenleiste",
@@ -369,7 +369,7 @@
     "codex": {
       "installationMethod": {
         "name": "Installationsmethode",
-        "desc": "Wie Claudian Codex unter Windows starten soll. Native Windows verwendet einen Windows-Programmpfad. WSL startet die Linux-CLI in einer ausgewählten Distribution.",
+        "desc": "Wie Codian Codex unter Windows starten soll. Native Windows verwendet einen Windows-Programmpfad. WSL startet die Linux-CLI in einer ausgewählten Distribution.",
         "nativeWindows": "Natives Windows",
         "wsl": "WSL"
       },

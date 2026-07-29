@@ -193,7 +193,7 @@
     },
     "hiddenSlashCommands": {
       "name": "隐藏命令与技能",
-      "desc": "从下拉菜单中隐藏特定的命令与技能。适用于隐藏与 Claudian 无关的 Claude Code 条目。每行输入一个名称，无需前导斜杠。",
+      "desc": "从下拉菜单中隐藏特定的命令与技能。适用于隐藏与 Codian 无关的 Claude Code 条目。每行输入一个名称，无需前导斜杠。",
       "placeholder": "commit\nbuild\ntest"
     },
     "mcpServers": {
@@ -369,7 +369,7 @@
     "codex": {
       "installationMethod": {
         "name": "安装方式",
-        "desc": "Claudian 在 Windows 上启动 Codex 的方式。原生 Windows 使用 Windows 可执行文件路径；WSL 会在所选发行版内启动 Linux CLI。",
+        "desc": "Codian 在 Windows 上启动 Codex 的方式。原生 Windows 使用 Windows 可执行文件路径；WSL 会在所选发行版内启动 Linux CLI。",
         "nativeWindows": "原生 Windows",
         "wsl": "WSL"
       },

@@ -93,7 +93,7 @@
     "welcomeOrb": { "solving": "解決中" }
   },
   "settings": {
-    "title": "Claudian 設定",
+    "title": "Codian 設定",
     "tabs": {
       "general": "一般",
       "claude": "Claude",
@@ -113,7 +113,7 @@
     "experimental": "実験的機能",
     "about": { "slogan": "問題を解決する最もシンプルな方法を探求します。", "followWeike": "Weike をフォロー", "feedback": "質問があれば issue を作成するか、WeChat 公式アカウント「维客笔记」をフォローしてフィードバックしてください。", "feedbackPrefix": "質問があれば ", "feedbackBetweenLinks": " を作成するか、WeChat 公式アカウント「", "feedbackSuffix": "」をフォローしてフィードバックしてください。", "sponsor": "Weike を支援", "sponsorDescription": "このプラグインが役立った場合、Weike の継続的な開発と保守を支援してください：", "afdian": "Afdian" },
     "userName": {
-      "name": "Claudian はどのように呼びますか？",
+      "name": "Codian はどのように呼びますか？",
       "desc": "パーソナライズされた挨拶に使用する名前（空欄で一般の挨拶）"
     },
     "excludedTags": {
@@ -193,7 +193,7 @@
     },
     "hiddenSlashCommands": {
       "name": "非表示のコマンドとスキル",
-      "desc": "ドロップダウンから特定のコマンドとスキルを非表示にします。Claudian に関係のない Claude Code の項目を隠すのに便利です。先頭のスラッシュなしで名前を1行に1つ入力してください。",
+      "desc": "ドロップダウンから特定のコマンドとスキルを非表示にします。Codian に関係のない Claude Code の項目を隠すのに便利です。先頭のスラッシュなしで名前を1行に1つ入力してください。",
       "placeholder": "commit\nbuild\ntest"
     },
     "mcpServers": {
@@ -341,7 +341,7 @@
       "desc": "Write と Edit の diff が最初に表示されるとき、展開した状態で表示します。"
     },
     "chatViewPlacement": {
-      "name": "Claudian を開く場所",
+      "name": "Codian を開く場所",
       "desc": "チャットパネルを作成するときに開く場所を選択します",
       "rightSidebar": "右サイドバー",
       "leftSidebar": "左サイドバー",
@@ -369,7 +369,7 @@
     "codex": {
       "installationMethod": {
         "name": "インストール方式",
-        "desc": "Windows で Claudian が Codex を起動する方法。ネイティブ Windows は Windows 実行ファイルパスを使い、WSL は選択したディストリビューション内で Linux CLI を起動します。",
+        "desc": "Windows で Codian が Codex を起動する方法。ネイティブ Windows は Windows 実行ファイルパスを使い、WSL は選択したディストリビューション内で Linux CLI を起動します。",
         "nativeWindows": "ネイティブ Windows",
         "wsl": "WSL"
       },

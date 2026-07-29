@@ -93,7 +93,7 @@
     "welcomeOrb": { "solving": "正在解題" }
   },
   "settings": {
-    "title": "Claudian 設定",
+    "title": "Codian 設定",
     "tabs": {
       "general": "一般",
       "claude": "Claude",
@@ -113,7 +113,7 @@
     "experimental": "實驗性功能",
     "about": { "slogan": "致力於探索解決問題的極簡方式", "followWeike": "關注維客", "feedback": "有問題歡迎提交 issue，或關注微信公眾號「維客筆記」回饋", "feedbackPrefix": "有問題歡迎提交 ", "feedbackBetweenLinks": "，或關注微信公眾號「", "feedbackSuffix": "」回饋", "sponsor": "贊助維客", "sponsorDescription": "如果這個外掛幫助了你，歡迎贊助維客持續開發與維護：", "afdian": "愛發電" },
     "userName": {
-      "name": "Claudian 應該如何稱呼您？",
+      "name": "Codian 應該如何稱呼您？",
       "desc": "用於個人化問候的使用者名稱（留空使用通用問候）"
     },
     "excludedTags": {
@@ -193,7 +193,7 @@
     },
     "hiddenSlashCommands": {
       "name": "隱藏命令與技能",
-      "desc": "從下拉選單中隱藏特定的命令與技能。適用於隱藏與 Claudian 無關的 Claude Code 項目。每行輸入一個名稱，無需前導斜線。",
+      "desc": "從下拉選單中隱藏特定的命令與技能。適用於隱藏與 Codian 無關的 Claude Code 項目。每行輸入一個名稱，無需前導斜線。",
       "placeholder": "commit\nbuild\ntest"
     },
     "mcpServers": {
@@ -341,7 +341,7 @@
       "desc": "Write 和 Edit diff 首次出現時以展開狀態顯示。"
     },
     "chatViewPlacement": {
-      "name": "Claudian 開啟位置",
+      "name": "Codian 開啟位置",
       "desc": "選擇新建聊天面板時的開啟位置",
       "rightSidebar": "右側邊欄",
       "leftSidebar": "左側邊欄",
@@ -369,7 +369,7 @@
     "codex": {
       "installationMethod": {
         "name": "安裝方式",
-        "desc": "Claudian 在 Windows 上啟動 Codex 的方式。原生 Windows 使用 Windows 可執行檔路徑；WSL 會在所選發行版內啟動 Linux CLI。",
+        "desc": "Codian 在 Windows 上啟動 Codex 的方式。原生 Windows 使用 Windows 可執行檔路徑；WSL 會在所選發行版內啟動 Linux CLI。",
         "nativeWindows": "原生 Windows",
         "wsl": "WSL"
       },

@@ -6,6 +6,9 @@ const INTERRUPT_MARKERS = new Set([
 const COMPACTION_CANCELED_STDERR_PATTERN =
   /^<local-command-stderr>\s*Error:\s*Compaction canceled\.?\s*<\/local-command-stderr>$/i;
 
+const INTERRUPT_INDICATOR_HTML =
+  '<span class="claudian-interrupted">Interrupted</span> <span class="claudian-interrupted-hint">· What should Codian do instead?</span>';
+
 const LEGACY_INTERRUPT_INDICATOR_HTML =
   '<span class="claudian-interrupted">Interrupted</span> <span class="claudian-interrupted-hint">· What should Claudian do instead?</span>';
 
@@ -29,16 +32,18 @@ export function stripLegacyInterruptIndicator(text: string): {
   content: string;
   interrupted: boolean;
 } {
-  const markerIndex = text.lastIndexOf(LEGACY_INTERRUPT_INDICATOR_HTML);
-  if (
-    markerIndex === -1
-    || text.slice(markerIndex + LEGACY_INTERRUPT_INDICATOR_HTML.length).trim().length > 0
-  ) {
-    return { content: text, interrupted: false };
+  for (const marker of [INTERRUPT_INDICATOR_HTML, LEGACY_INTERRUPT_INDICATOR_HTML]) {
+    const markerIndex = text.lastIndexOf(marker);
+    if (
+      markerIndex !== -1
+      && text.slice(markerIndex + marker.length).trim().length === 0
+    ) {
+      return {
+        content: text.slice(0, markerIndex).trimEnd(),
+        interrupted: true,
+      };
+    }
   }
 
-  return {
-    content: text.slice(0, markerIndex).trimEnd(),
-    interrupted: true,
-  };
+  return { content: text, interrupted: false };
 }

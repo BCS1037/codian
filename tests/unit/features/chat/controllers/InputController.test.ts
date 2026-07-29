@@ -319,7 +319,7 @@ describe('InputController - Missing provider session', () => {
       'missing-session',
     );
     expect(mockNotice).toHaveBeenLastCalledWith(
-      'The provider session no longer exists. Claudian preserved the recoverable history; send again to rebuild the session.',
+      'The provider session no longer exists. Codian preserved the recoverable history; send again to rebuild the session.',
     );
   });
 
