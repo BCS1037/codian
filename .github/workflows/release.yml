@@ -80,7 +80,7 @@ jobs:
         env:
           RUNTIME_EVIDENCE_SHA256: ${{ inputs.runtime_evidence_sha256 }}
         run: |
-          cp CHANGELOG.md RELEASE_NOTES.md
+          node scripts/generate-release-notes.mjs "${{ inputs.version }}" > RELEASE_NOTES.md
           {
             echo
             echo "## Verification"
