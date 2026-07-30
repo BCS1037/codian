@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.7 — 2026-07-30
+
+### Kimi Code
+
+- Fixed Kimi Code session start error caused by provider model ID prefix decoding and missing fallback on stale session load.
+- Supported dynamic ACP thinking levels (`Low` / `High` / `Max`), automatically adapting the toolbar selector.
+- Omitted redundant `(on)` label from the model selector when a model has a single non-configurable effort state.
+- Added opt-in diagnostic logging (`.codian/kimi-diagnostics.log`) under Kimi Code settings for remote debugging.
+
 ## 1.2.6 — 2026-07-30
 
 ### Claude-compatible services
