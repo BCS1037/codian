@@ -646,6 +646,9 @@
       "piDesc": "聊天欄的權限開關會在唯讀工具與全部工具之間切換，並儲存目前選擇。此設定頁不另設預設值。"
     },
     "kimi": {
+      "advancedHeading": "進階",
+      "diagnosticLoggingDesc": "將 ACP 通訊記錄至 .codian/kimi-diagnostics.log 以便遠端除錯。回報問題時請分享此檔案。",
+      "diagnosticLoggingName": "診斷日誌",
       "permissionDesc": "聊天工具列控制 Kimi Code 的安全、自動和計畫模式。此設定頁不重複提供啟用或權限預設。",
       "sessionSetupRequired": "Kimi Code 無法建立工作階段。請執行 `kimi`，完成 `/login`，並確認模型已設定。"
     },

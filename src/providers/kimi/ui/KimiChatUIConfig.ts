@@ -42,13 +42,25 @@ export const kimiChatUIConfig: ProviderChatUIConfig = {
   isAdaptiveReasoningModel(): boolean {
     return true;
   },
-  getReasoningOptions() {
+  getReasoningOptions(_model, settings) {
+    const kimiSettings = getKimiProviderSettings(settings);
+    if (kimiSettings.discoveredThinkingLevels.length > 0) {
+      return kimiSettings.discoveredThinkingLevels.map(level => ({
+        ...(level.description ? { description: level.description } : {}),
+        label: level.label,
+        value: level.value,
+      }));
+    }
     return [
       { label: 'Off', value: 'off' },
       { label: 'On', value: 'on' },
     ];
   },
-  getDefaultReasoningValue(): string {
+  getDefaultReasoningValue(_model, settings): string {
+    const kimiSettings = getKimiProviderSettings(settings);
+    if (kimiSettings.discoveredThinkingLevels.length > 0) {
+      return kimiSettings.discoveredThinkingLevels[0].value;
+    }
     return 'off';
   },
   getContextWindowSize(model, customLimits): number {

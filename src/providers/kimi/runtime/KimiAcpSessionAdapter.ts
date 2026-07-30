@@ -16,8 +16,10 @@ import {
 import type { NativeAcpSessionAdapter } from '../../native-acp/runtime/types';
 import {
   getKimiProviderSettings,
+  type KimiThinkingLevel,
   updateKimiProviderSettings,
 } from '../settings';
+import type { KimiDiagnosticLogger } from './KimiDiagnosticLogger';
 
 type SessionConfigSource = Pick<AcpNewSessionResponse, 'configOptions' | 'models' | 'modes' | 'sessionId'>;
 
@@ -26,7 +28,10 @@ export class KimiAcpSessionAdapter implements NativeAcpSessionAdapter {
   private currentModelId: string | null = null;
   private currentModeId: string | null = null;
 
-  constructor(private readonly plugin: ProviderHost) {}
+  constructor(
+    private readonly plugin: ProviderHost,
+    private readonly diagnosticLogger?: KimiDiagnosticLogger,
+  ) {}
 
   async syncSessionConfig(source: SessionConfigSource): Promise<void> {
     this.configOptions = source.configOptions ?? [];
@@ -45,7 +50,17 @@ export class KimiAcpSessionAdapter implements NativeAcpSessionAdapter {
       id: mode.id,
       label: mode.name,
     }));
-    if (discoveredModels.length === 0 && availableModes.length === 0) return;
+
+    const discoveredThinkingLevels = this.extractThinkingLevels();
+
+    this.diagnosticLogger?.log('syncSessionConfig', {
+      configOptions: this.configOptions,
+      discoveredModels: discoveredModels.length,
+      discoveredThinkingLevels,
+      sessionId: source.sessionId,
+    });
+
+    if (discoveredModels.length === 0 && availableModes.length === 0 && discoveredThinkingLevels.length === 0) return;
 
     const current = getKimiProviderSettings(this.plugin.settings);
     const visibleModels = current.discoveredModels.length === 0 && current.visibleModels.length === 0
@@ -55,6 +70,7 @@ export class KimiAcpSessionAdapter implements NativeAcpSessionAdapter {
       updateKimiProviderSettings(settings, {
         ...(availableModes.length > 0 ? { availableModes } : {}),
         ...(discoveredModels.length > 0 ? { discoveredModels, visibleModels } : {}),
+        ...(discoveredThinkingLevels.length > 0 ? { discoveredThinkingLevels } : {}),
       });
     });
     this.plugin.notifyProviderChatOptionsChanged?.('kimi');
@@ -65,29 +81,52 @@ export class KimiAcpSessionAdapter implements NativeAcpSessionAdapter {
     model?: string;
     sessionId: string;
   }): Promise<void> {
-    const selected = params.model ? decodeProviderModelSelectionId(params.model) : null;
-    const selectedModelId = selected?.providerId === 'kimi' ? selected.modelId : null;
-    if (selectedModelId && selectedModelId !== this.currentModelId) {
-      await this.setConfigOption(params.connection, {
-        configId: this.findSelectConfig('model')?.id ?? 'model',
-        sessionId: params.sessionId,
-        type: 'select',
-        value: selectedModelId,
-      });
-      this.currentModelId = selectedModelId;
+    const modelConfig = this.findSelectConfig('model');
+    if (params.model && modelConfig) {
+      const options = flattenAcpSessionConfigSelectOptions(modelConfig.options);
+      const decoded = decodeProviderModelSelectionId(params.model);
+      const targetOption = options.find(option => (
+        option.value === params.model ||
+        option.value === decoded?.modelId ||
+        (decoded && option.value === `kimi-code/${decoded.modelId}`)
+      ));
+      const targetModelId = targetOption?.value ?? (decoded?.modelId ?? params.model);
+      if (targetModelId && targetModelId !== this.currentModelId) {
+        await this.setConfigOption(params.connection, {
+          configId: modelConfig.id,
+          sessionId: params.sessionId,
+          type: 'select',
+          value: targetModelId,
+        });
+        this.currentModelId = targetModelId;
+      }
     }
 
     const thinking = this.findThinkingConfig();
     const effort = typeof this.plugin.settings.effortLevel === 'string'
       ? this.plugin.settings.effortLevel
       : '';
-    if (thinking?.type === 'boolean' && (effort === 'on' || effort === 'off')) {
-      await this.setConfigOption(params.connection, {
-        configId: thinking.id,
-        sessionId: params.sessionId,
-        type: 'boolean',
-        value: effort === 'on',
-      });
+
+    if (thinking && effort) {
+      if (thinking.type === 'boolean' && (effort === 'on' || effort === 'off')) {
+        await this.setConfigOption(params.connection, {
+          configId: thinking.id,
+          sessionId: params.sessionId,
+          type: 'boolean',
+          value: effort === 'on',
+        });
+      } else if (thinking.type === 'select') {
+        const options = flattenAcpSessionConfigSelectOptions(thinking.options);
+        const target = options.find(option => option.value === effort);
+        if (target && target.value !== thinking.currentValue) {
+          await this.setConfigOption(params.connection, {
+            configId: thinking.id,
+            sessionId: params.sessionId,
+            type: 'select',
+            value: target.value,
+          });
+        }
+      }
     }
 
     const permissionMode = this.plugin.settings.permissionMode;
@@ -117,10 +156,22 @@ export class KimiAcpSessionAdapter implements NativeAcpSessionAdapter {
 
   formatStartError(error: unknown): string {
     const message = error instanceof Error ? error.message : String(error);
+    this.diagnosticLogger?.log('startError', { message });
     if (/internal error|no model configured|authentication required|auth_required/i.test(message)) {
       return t('settings.kimi.sessionSetupRequired');
     }
     return message;
+  }
+
+  private extractThinkingLevels(): KimiThinkingLevel[] {
+    const thinking = this.findThinkingConfig();
+    if (!thinking || thinking.type !== 'select') return [];
+    const options = flattenAcpSessionConfigSelectOptions(thinking.options);
+    return options.map(option => ({
+      ...(option.description ? { description: option.description } : {}),
+      label: option.name,
+      value: option.value,
+    }));
   }
 
   private findSelectConfig(category: 'model' | 'mode'): Extract<AcpSessionConfigOption, { type: 'select' }> | null {
@@ -141,6 +192,7 @@ export class KimiAcpSessionAdapter implements NativeAcpSessionAdapter {
     connection: AcpClientConnection,
     request: Parameters<AcpClientConnection['setConfigOption']>[0],
   ): Promise<void> {
+    this.diagnosticLogger?.log('setConfigOption', request);
     const response = await connection.setConfigOption(request);
     this.configOptions = response.configOptions;
   }
