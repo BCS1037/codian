@@ -576,21 +576,19 @@ describe('ClaudeSettingsTab', () => {
     expect(createdSettings.map(setting => setting.name)).not.toContain('settings.enableSonnet1M.name');
   });
 
-  it('does not switch the active model while the custom models textarea is mid-edit', async () => {
+  it('hides the legacy custom models textarea while retaining saved selections', () => {
     const plugin = createPlugin();
     const context = createContext(plugin);
 
     claudeSettingsTabRenderer.render(createContainer(), context);
 
-    const customModelsSetting = findSetting('settings.customModels.name');
-    const customModelsTextArea = customModelsSetting.textAreaComponents[0];
-
-    await customModelsTextArea.onChangeCallback?.('claude-opus-4-7');
-
+    expect(createdSettings.map(setting => setting.name)).not.toContain('settings.customModels.name');
     expect(plugin.settings.providerConfigs.claude.customModels).toBe('claude-opus-4-6');
-    expect(plugin.settings.model).toBe('claude-opus-4-6');
-    expect(mockSaveSettings).not.toHaveBeenCalled();
-    expect(context.notifyProviderModelOptionsChanged).not.toHaveBeenCalled();
+
+    const options = mockRenderProviderModelPicker.mock.calls[0][0] as {
+      getState(): { selectedIds: string[] };
+    };
+    expect(options.getState().selectedIds).toEqual(['claude-opus-4-6']);
   });
 
   it('offers auto as a Claude safe mode and persists it', async () => {
@@ -614,24 +612,4 @@ describe('ClaudeSettingsTab', () => {
     expect(mockSaveSettings).toHaveBeenCalledTimes(1);
   });
 
-  it('reconciles removed custom models on blur and clears stale title model selections', async () => {
-    const plugin = createPlugin({
-      titleGenerationModel: 'claude-opus-4-6',
-    });
-    const context = createContext(plugin);
-
-    claudeSettingsTabRenderer.render(createContainer(), context);
-
-    const customModelsSetting = findSetting('settings.customModels.name');
-    const customModelsTextArea = customModelsSetting.textAreaComponents[0];
-
-    await customModelsTextArea.onChangeCallback?.('claude-opus-4-7');
-    await customModelsTextArea.trigger('blur');
-
-    expect(plugin.settings.providerConfigs.claude.customModels).toBe('claude-opus-4-7');
-    expect(plugin.settings.model).toBe('sonnet');
-    expect(plugin.settings.titleGenerationModel).toBe('');
-    expect(mockSaveSettings).toHaveBeenCalledTimes(1);
-    expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('claude');
-  });
 });

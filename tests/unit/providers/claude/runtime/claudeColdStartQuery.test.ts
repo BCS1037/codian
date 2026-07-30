@@ -328,6 +328,46 @@ describe('runColdStartQuery', () => {
       expect(sdkMock.getLastOptions()?.settingSources).toEqual(['user', 'project', 'local']);
     });
 
+    it('excludes user settings for a managed third-party service', async () => {
+      sdkMock.setMockMessages([]);
+
+      await runColdStartQuery(
+        createConfig({
+          plugin: createMockPlugin({
+            app: {
+              secretStorage: { getSecret: jest.fn().mockReturnValue('service-key') },
+            } as any,
+          }),
+          model: 'claude-code/service/service-1/gpt-oss-120b',
+          providerSettings: {
+            model: 'claude-code/service/service-1/gpt-oss-120b',
+            thinkingBudget: 'off',
+            effortLevel: 'medium',
+            loadUserClaudeSettings: true,
+            providerConfigs: {
+              claude: {
+                thirdPartyServices: [{
+                  id: 'service-1',
+                  name: 'Test service',
+                  preset: 'custom',
+                  baseUrl: 'https://gateway.example.com',
+                  authMode: 'api-key',
+                  secretId: 'service-key',
+                  defaultModel: 'gpt-oss-120b',
+                  lightweightModel: 'gpt-oss-120b',
+                  enabled: true,
+                  advancedEnvironmentVariables: '',
+                }],
+              },
+            },
+          },
+        }),
+        'hi',
+      );
+
+      expect(sdkMock.getLastOptions()?.settingSources).toEqual(['project', 'local']);
+    });
+
     it('clamps unsupported xhigh effort before calling the SDK', async () => {
       sdkMock.setMockMessages([]);
 

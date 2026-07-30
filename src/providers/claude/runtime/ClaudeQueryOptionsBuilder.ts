@@ -16,7 +16,7 @@ import { toClaudeRuntimeModelId } from '../modelSelection';
 import {
   type ClaudeSafeMode,
   getClaudeProviderSettings,
-  resolveClaudeSettingSources,
+  resolveClaudeRuntimeSettingSources,
 } from '../settings';
 import {
   resolveEffortLevel,
@@ -112,7 +112,10 @@ export class QueryOptionsBuilder {
     const disallowedToolsKey = ctx.mcpManager.getAllDisallowedMcpTools().join('|');
     const pluginsKey = ctx.pluginManager.getPluginsKey();
 
-    const settingSources = resolveClaudeSettingSources(claudeSettings.loadUserSettings);
+    const settingSources = resolveClaudeRuntimeSettingSources(
+      claudeSettings.loadUserSettings,
+      ctx.settings.model,
+    );
     const runtimeModel = toClaudeRuntimeModelId(ctx.settings.model);
 
     return {
@@ -283,7 +286,10 @@ export class QueryOptionsBuilder {
       model,
       abortController,
       pathToClaudeCodeExecutable: ctx.cliPath,
-      settingSources: resolveClaudeSettingSources(claudeSettings.loadUserSettings),
+      settingSources: resolveClaudeRuntimeSettingSources(
+        claudeSettings.loadUserSettings,
+        ctx.settings.model,
+      ),
       env: {
         ...process.env,
         ...ctx.customEnv,

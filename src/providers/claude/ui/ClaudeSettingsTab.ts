@@ -160,45 +160,7 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
     // --- Models ---
 
     new Setting(container).setName(t('settings.models')).setHeading();
-    let configuredModelPicker: ProviderModelPickerController | null = null;
-
-    new Setting(container)
-      .setName(t('settings.customModels.name'))
-      .setDesc(t('settings.customModels.desc'))
-      .addTextArea((text) => {
-        let pendingCustomModels = claudeSettings.customModels;
-        let savedCustomModels = claudeSettings.customModels;
-
-        const commitCustomModels = async (): Promise<void> => {
-          if (pendingCustomModels === savedCustomModels) {
-            return;
-          }
-
-          const nextCustomModels = pendingCustomModels;
-          await context.plugin.mutateSettings((settings) => {
-            updateClaudeProviderSettings(settings, { customModels: nextCustomModels });
-            reconcileActiveClaudeModelSelection(settings);
-            ProviderSettingsCoordinator.reconcileTitleGenerationModelSelection(settings);
-          });
-          savedCustomModels = nextCustomModels;
-          context.notifyProviderModelOptionsChanged('claude');
-          configuredModelPicker?.refresh();
-        };
-
-        text
-          .setPlaceholder(t('settings.customModels.placeholder'))
-          .setValue(claudeSettings.customModels)
-          .onChange((value) => {
-            pendingCustomModels = value;
-          });
-        text.inputEl.rows = 6;
-        text.inputEl.cols = 40;
-        text.inputEl.addEventListener('blur', () => {
-          void commitCustomModels();
-        });
-      });
-
-    configuredModelPicker = renderConfiguredClaudeModelPicker(
+    renderConfiguredClaudeModelPicker(
       container,
       context,
       settingsBag,

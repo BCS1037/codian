@@ -308,9 +308,35 @@ describe('QueryOptionsBuilder', () => {
 
       expect(config.settingSources).toBe('user,project,local');
     });
+
+    it('excludes user settings for a managed third-party service', () => {
+      const ctx = createMockContext({
+        settings: createMockSettings({
+          loadUserClaudeSettings: true,
+          model: 'claude-code/service/service-1/gpt-oss-120b',
+        }),
+      });
+
+      const config = QueryOptionsBuilder.buildPersistentQueryConfig(ctx);
+
+      expect(config.settingSources).toBe('project,local');
+    });
   });
 
   describe('buildPersistentQueryOptions', () => {
+    it('excludes user settings for a managed third-party service', () => {
+      const ctx = createMockContext({
+        settings: createMockSettings({
+          loadUserClaudeSettings: true,
+          model: 'claude-code/service/service-1/gpt-oss-120b',
+        }),
+      });
+
+      const options = QueryOptionsBuilder.buildPersistentQueryOptions(ctx);
+
+      expect(options.settingSources).toEqual(['project', 'local']);
+    });
+
     it('sets yolo mode options correctly', () => {
       const ctx = {
         ...createMockContext(),

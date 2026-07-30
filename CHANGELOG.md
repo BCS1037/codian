@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.6 — 2026-07-30
+
+### Claude-compatible services
+
+- Kept managed Claude-compatible services on persistent transport from the first turn for more reliable session behavior.
+- Stop interrupted Claude turns immediately, discard late provider output, and rebuild the connection for the next message.
+- Prevent Claude Code user-setting behavior flags from overriding Codian-managed third-party service configurations.
+- Request thinking output from managed third-party services when the endpoint supports it.
+
+### Claude settings and chat feedback
+
+- Removed the redundant manual custom-model input from Claude settings; configured service models remain available in the picker.
+- Replaced random waiting messages with clear model and tool progress states.
+- Show a slow-service notice when a provider has not responded after 45 seconds.
+
 ## 1.2.5 — 2026-07-29
 
 ### Claude-compatible chat

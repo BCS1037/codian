@@ -12,7 +12,7 @@ import { toClaudeRuntimeModelId } from '../modelSelection';
 import { applyClaudeServiceEnvironment } from '../services/ClaudeThirdPartyServices';
 import {
   getClaudeProviderSettings,
-  resolveClaudeSettingSources,
+  resolveClaudeRuntimeSettingSources,
 } from '../settings';
 import {
   resolveEffortLevel,
@@ -110,7 +110,10 @@ export async function runColdStartQuery(
     },
     permissionMode: 'bypassPermissions',
     allowDangerouslySkipPermissions: true,
-    settingSources: resolveClaudeSettingSources(claudeSettings.loadUserSettings),
+    settingSources: resolveClaudeRuntimeSettingSources(
+      claudeSettings.loadUserSettings,
+      selection,
+    ),
     spawnClaudeCodeProcess: createCustomSpawnFunction(enhancedPath),
   };
 
