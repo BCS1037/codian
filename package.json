@@ -51,7 +51,7 @@
     "eslint-plugin-obsidianmd": "^0.3.0",
     "eslint-plugin-simple-import-sort": "^14.0.0",
     "jest": "^30.3.0",
-    "jest-environment-jsdom": "^30.3.0",
+    "jest-environment-jsdom": "^30.4.1",
     "obsidian": "latest",
     "ts-jest": "^29.4.9",
     "tsx": "^4.23.1",
