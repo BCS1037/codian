@@ -111,10 +111,14 @@ export class ModelSelector {
       return model.label;
     }
 
+    const effortOptions = this.getEffortOptions(model.value);
+    if (effortOptions.length <= 1) {
+      return model.label;
+    }
+
     const currentEffort = this.callbacks.getSettings().effortLevel;
-    return this.getEffortOptions(model.value).some(option => option.value === currentEffort)
-      ? `${model.label} (${currentEffort})`
-      : model.label;
+    const activeOption = effortOptions.find(option => option.value === currentEffort);
+    return activeOption ? `${model.label} (${activeOption.label.toLowerCase()})` : model.label;
   }
 
   private render() {

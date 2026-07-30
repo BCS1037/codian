@@ -122,19 +122,25 @@ export class NativeAcpChatRuntime implements ChatRuntime {
       await this.startProcess();
       const cwd = getVaultPath(this.plugin.app) ?? process.cwd();
       if (this.targetSessionId) {
-        const response = await this.connection!.loadSession({
-          cwd,
-          mcpServers: [],
-          sessionId: this.targetSessionId ?? null,
-        });
-        this.sessionId = response.sessionId ?? null;
-        if (this.sessionId) {
-          await this.options.sessionAdapter?.syncSessionConfig({
-            ...response,
-            sessionId: this.sessionId,
+        try {
+          const response = await this.connection!.loadSession({
+            cwd,
+            mcpServers: [],
+            sessionId: this.targetSessionId ?? null,
           });
+          this.sessionId = response.sessionId ?? null;
+          if (this.sessionId) {
+            await this.options.sessionAdapter?.syncSessionConfig({
+              ...response,
+              sessionId: this.sessionId,
+            });
+          }
+        } catch {
+          this.sessionId = null;
         }
-      } else if (options.allowSessionCreation !== false) {
+      }
+
+      if (!this.sessionId && options.allowSessionCreation !== false) {
         const response = await this.connection!.newSession({ cwd, mcpServers: [] });
         this.sessionId = response.sessionId;
         await this.options.sessionAdapter?.syncSessionConfig(response);
@@ -156,9 +162,12 @@ export class NativeAcpChatRuntime implements ChatRuntime {
     queryOptions?: ChatRuntimeQueryOptions,
   ): AsyncGenerator<StreamChunk> {
     if (!(await this.ensureReady()) || !this.connection || !this.sessionId) {
+      const errorMsg = this.lastStartError
+        ? `Failed to start ${this.options.providerId}: ${this.lastStartError}`
+        : `Failed to start ${this.options.providerId}: Could not initialize a valid session.`;
       yield {
         type: 'error',
-        content: `Failed to start ${this.options.providerId}${this.lastStartError ? `: ${this.lastStartError}` : '.'}`,
+        content: errorMsg,
       };
       yield { type: 'done' };
       return;

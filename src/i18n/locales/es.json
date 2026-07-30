@@ -88,9 +88,18 @@
       "notReady": "El chat de Codian no está listo.",
       "failed": "No se pudo añadir el archivo a Codian."
     },
-    "selectionToolbar": { "add": "Añadir al chat", "copy": "Copiar", "limit": "Se alcanzó el límite de selección", "selectedReply": "Respuesta de IA seleccionada" },
-    "navigation": { "jumpToPrompt": "Ir a la solicitud {index}" },
-    "welcomeOrb": { "solving": "Resolviendo" }
+    "selectionToolbar": {
+      "add": "Añadir al chat",
+      "copy": "Copiar",
+      "limit": "Se alcanzó el límite de selección",
+      "selectedReply": "Respuesta de IA seleccionada"
+    },
+    "navigation": {
+      "jumpToPrompt": "Ir a la solicitud {index}"
+    },
+    "welcomeOrb": {
+      "solving": "Resolviendo"
+    }
   },
   "settings": {
     "title": "Configuración de Codian",
@@ -111,7 +120,17 @@
     "setup": "Conexión",
     "models": "Modelos",
     "experimental": "Experimental",
-    "about": { "slogan": "Exploramos las formas más simples de resolver problemas.", "followWeike": "Seguir a Weike", "feedback": "¿Preguntas? Abre un issue o sigue la cuenta oficial de WeChat «维客笔记» para enviar comentarios.", "feedbackPrefix": "¿Preguntas? Abre un ", "feedbackBetweenLinks": " o sigue la cuenta oficial de WeChat «", "feedbackSuffix": "» para enviar comentarios.", "sponsor": "Apoyar a Weike", "sponsorDescription": "Si este complemento te ayuda, apoya el desarrollo y mantenimiento continuos de Weike:", "afdian": "Afdian" },
+    "about": {
+      "slogan": "Exploramos las formas más simples de resolver problemas.",
+      "followWeike": "Seguir a Weike",
+      "feedback": "¿Preguntas? Abre un issue o sigue la cuenta oficial de WeChat «维客笔记» para enviar comentarios.",
+      "feedbackPrefix": "¿Preguntas? Abre un ",
+      "feedbackBetweenLinks": " o sigue la cuenta oficial de WeChat «",
+      "feedbackSuffix": "» para enviar comentarios.",
+      "sponsor": "Apoyar a Weike",
+      "sponsorDescription": "Si este complemento te ayuda, apoya el desarrollo y mantenimiento continuos de Weike:",
+      "afdian": "Afdian"
+    },
     "userName": {
       "name": "¿Cómo debería Codian llamarte?",
       "desc": "Tu nombre para saludos personalizados (dejar vacío para saludos genéricos)"
@@ -647,7 +666,10 @@
     },
     "kimi": {
       "permissionDesc": "The chat toolbar controls Safe, Auto, and Plan behavior for Kimi Code. This settings page has no duplicate enable or permission preset.",
-      "sessionSetupRequired": "Kimi Code could not create a session. Run `kimi`, complete `/login`, and confirm a model is configured."
+      "sessionSetupRequired": "Kimi Code could not create a session. Run `kimi`, complete `/login`, and confirm a model is configured.",
+      "advancedHeading": "Advanced",
+      "diagnosticLoggingDesc": "Log ACP communication to .codian/kimi-diagnostics.log for remote debugging. Share this file when reporting issues.",
+      "diagnosticLoggingName": "Diagnostic logging"
     },
     "opencode": {
       "commandsAndSkills": "Comandos y habilidades",

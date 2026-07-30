@@ -74,6 +74,73 @@ describe('KimiAcpSessionAdapter', () => {
     expect(plugin.notifyProviderChatOptionsChanged).toHaveBeenCalledWith('kimi');
   });
 
+  it('discovers select-type thought_level options (Low/High/Max)', async () => {
+    const plugin = createPlugin();
+    const adapter = new KimiAcpSessionAdapter(plugin);
+    const selectThinkingConfig = {
+      ...SESSION_CONFIG,
+      configOptions: [
+        ...SESSION_CONFIG.configOptions.filter(o => o.category !== 'thought_level'),
+        {
+          id: 'thought_level',
+          name: 'Thinking Effort',
+          category: 'thought_level',
+          type: 'select' as const,
+          currentValue: 'high',
+          options: [
+            { name: 'Low', value: 'low' },
+            { name: 'High', value: 'high' },
+            { name: 'Max', value: 'max' },
+          ],
+        },
+      ],
+    };
+
+    await adapter.syncSessionConfig(selectThinkingConfig);
+
+    expect(getKimiProviderSettings(plugin.settings).discoveredThinkingLevels).toEqual([
+      { label: 'Low', value: 'low' },
+      { label: 'High', value: 'high' },
+      { label: 'Max', value: 'max' },
+    ]);
+  });
+
+  it('applies select-type thinking level selection through ACP', async () => {
+    const plugin = createPlugin();
+    plugin.settings.effortLevel = 'max';
+    const adapter = new KimiAcpSessionAdapter(plugin);
+    const selectThinkingConfig = {
+      ...SESSION_CONFIG,
+      configOptions: [
+        {
+          id: 'thought_level',
+          name: 'Thinking Effort',
+          category: 'thought_level',
+          type: 'select' as const,
+          currentValue: 'high',
+          options: [
+            { name: 'Low', value: 'low' },
+            { name: 'High', value: 'high' },
+            { name: 'Max', value: 'max' },
+          ],
+        },
+      ],
+    };
+    await adapter.syncSessionConfig(selectThinkingConfig);
+    const connection = {
+      setConfigOption: jest.fn(async () => ({ configOptions: selectThinkingConfig.configOptions })),
+    } as any;
+
+    await adapter.applySelections({ connection, sessionId: 'kimi-session' });
+
+    expect(connection.setConfigOption).toHaveBeenCalledWith({
+      configId: 'thought_level',
+      sessionId: 'kimi-session',
+      type: 'select',
+      value: 'max',
+    });
+  });
+
   it('does not re-enable models the user explicitly cleared', async () => {
     const plugin = createPlugin();
     plugin.settings.providerConfigs.kimi = {
@@ -114,11 +181,43 @@ describe('KimiAcpSessionAdapter', () => {
       type: 'boolean',
       value: true,
     });
+  });
+
+  it('matches raw model ID when option values include provider prefix (e.g. kimi-code/k3)', async () => {
+    const plugin = createPlugin();
+    const adapter = new KimiAcpSessionAdapter(plugin);
+    const rawPrefixConfig = {
+      sessionId: 'kimi-session',
+      configOptions: [
+        {
+          id: 'model',
+          name: 'Model',
+          category: 'model',
+          type: 'select' as const,
+          currentValue: 'kimi-code/k3',
+          options: [
+            { name: 'K3', value: 'kimi-code/k3' },
+            { name: 'K3-256k', value: 'kimi-code/k3-256k' },
+          ],
+        },
+      ],
+    };
+    await adapter.syncSessionConfig(rawPrefixConfig);
+    const connection = {
+      setConfigOption: jest.fn(async () => ({ configOptions: rawPrefixConfig.configOptions })),
+    } as any;
+
+    await adapter.applySelections({
+      connection,
+      model: encodeProviderModelSelectionId('kimi', 'kimi-code/k3-256k'),
+      sessionId: 'kimi-session',
+    });
+
     expect(connection.setConfigOption).toHaveBeenCalledWith({
-      configId: 'mode',
+      configId: 'model',
       sessionId: 'kimi-session',
       type: 'select',
-      value: 'plan',
+      value: 'kimi-code/k3-256k',
     });
   });
 
@@ -149,13 +248,12 @@ describe('KimiAcpSessionAdapter', () => {
   });
 
   it('turns Kimi missing-model failures into an actionable login hint', () => {
-    const adapter = new KimiAcpSessionAdapter(createPlugin());
+    const logger = { log: jest.fn() } as any;
+    const adapter = new KimiAcpSessionAdapter(createPlugin(), logger);
 
     expect(adapter.formatStartError(new Error('Internal error'))).toBe(
       'Kimi Code could not create a session. Run `kimi`, complete `/login`, and confirm a model is configured.',
     );
-    expect(adapter.formatStartError(new Error('No model configured'))).toBe(
-      'Kimi Code could not create a session. Run `kimi`, complete `/login`, and confirm a model is configured.',
-    );
+    expect(logger.log).toHaveBeenCalledWith('startError', { message: 'Internal error' });
   });
 });

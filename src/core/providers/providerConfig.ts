@@ -7,9 +7,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function getProviderConfig(
-  settings: Record<string, unknown>,
+  settings: Record<string, unknown> | null | undefined,
   providerId: ProviderId,
 ): Record<string, unknown> {
+  if (!isRecord(settings)) {
+    return {};
+  }
   const candidate = settings.providerConfigs;
   if (!isRecord(candidate)) {
     return {};

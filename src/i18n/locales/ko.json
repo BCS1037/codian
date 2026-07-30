@@ -88,9 +88,18 @@
       "notReady": "Codian 채팅이 아직 준비되지 않았습니다.",
       "failed": "파일을 Codian에 추가하지 못했습니다."
     },
-    "selectionToolbar": { "add": "채팅에 추가", "copy": "복사", "limit": "선택 제한에 도달했습니다", "selectedReply": "선택한 AI 답변" },
-    "navigation": { "jumpToPrompt": "프롬프트 {index}(으)로 이동" },
-    "welcomeOrb": { "solving": "해결 중" }
+    "selectionToolbar": {
+      "add": "채팅에 추가",
+      "copy": "복사",
+      "limit": "선택 제한에 도달했습니다",
+      "selectedReply": "선택한 AI 답변"
+    },
+    "navigation": {
+      "jumpToPrompt": "프롬프트 {index}(으)로 이동"
+    },
+    "welcomeOrb": {
+      "solving": "해결 중"
+    }
   },
   "settings": {
     "title": "Codian 설정",
@@ -111,7 +120,17 @@
     "setup": "연결",
     "models": "모델",
     "experimental": "실험적 기능",
-    "about": { "slogan": "문제를 해결하는 가장 단순한 방법을 탐구합니다.", "followWeike": "Weike 팔로우", "feedback": "질문이 있으면 issue를 만들거나 WeChat 공식 계정 「维客笔记」를 팔로우해 피드백을 보내 주세요.", "feedbackPrefix": "질문이 있으면 ", "feedbackBetweenLinks": "를 만들거나 WeChat 공식 계정 「", "feedbackSuffix": "」를 팔로우해 피드백을 보내 주세요.", "sponsor": "Weike 후원", "sponsorDescription": "이 플러그인이 도움이 되었다면 Weike의 지속적인 개발과 유지 관리를 후원해 주세요:", "afdian": "Afdian" },
+    "about": {
+      "slogan": "문제를 해결하는 가장 단순한 방법을 탐구합니다.",
+      "followWeike": "Weike 팔로우",
+      "feedback": "질문이 있으면 issue를 만들거나 WeChat 공식 계정 「维客笔记」를 팔로우해 피드백을 보내 주세요.",
+      "feedbackPrefix": "질문이 있으면 ",
+      "feedbackBetweenLinks": "를 만들거나 WeChat 공식 계정 「",
+      "feedbackSuffix": "」를 팔로우해 피드백을 보내 주세요.",
+      "sponsor": "Weike 후원",
+      "sponsorDescription": "이 플러그인이 도움이 되었다면 Weike의 지속적인 개발과 유지 관리를 후원해 주세요:",
+      "afdian": "Afdian"
+    },
     "userName": {
       "name": "Codian이 당신을 어떻게 불러야 합니까?",
       "desc": "개인화된 인사에 사용할 이름 (비워두면 일반 인사)"
@@ -647,7 +666,10 @@
     },
     "kimi": {
       "permissionDesc": "The chat toolbar controls Safe, Auto, and Plan behavior for Kimi Code. This settings page has no duplicate enable or permission preset.",
-      "sessionSetupRequired": "Kimi Code could not create a session. Run `kimi`, complete `/login`, and confirm a model is configured."
+      "sessionSetupRequired": "Kimi Code could not create a session. Run `kimi`, complete `/login`, and confirm a model is configured.",
+      "advancedHeading": "Advanced",
+      "diagnosticLoggingDesc": "Log ACP communication to .codian/kimi-diagnostics.log for remote debugging. Share this file when reporting issues.",
+      "diagnosticLoggingName": "Diagnostic logging"
     },
     "opencode": {
       "commandsAndSkills": "명령과 스킬",

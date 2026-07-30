@@ -646,6 +646,9 @@
       "piDesc": "The chat permission toggle switches between read-only tools and all tools, then saves the current selection. This settings page has no separate default preset."
     },
     "kimi": {
+      "advancedHeading": "Advanced",
+      "diagnosticLoggingDesc": "Log ACP communication to .codian/kimi-diagnostics.log for remote debugging. Share this file when reporting issues.",
+      "diagnosticLoggingName": "Diagnostic logging",
       "permissionDesc": "The chat toolbar controls Safe, Auto, and Plan behavior for Kimi Code. This settings page has no duplicate enable or permission preset.",
       "sessionSetupRequired": "Kimi Code could not create a session. Run `kimi`, complete `/login`, and confirm a model is configured."
     },

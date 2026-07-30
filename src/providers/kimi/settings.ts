@@ -13,11 +13,19 @@ export interface KimiMode {
   label: string;
 }
 
+export interface KimiThinkingLevel {
+  description?: string;
+  label: string;
+  value: string;
+}
+
 export interface KimiProviderSettings {
   availableModes: KimiMode[];
   cliPath: string;
   cliPathsByHost: HostnameCliPaths;
+  diagnosticLogging: boolean;
   discoveredModels: KimiDiscoveredModel[];
+  discoveredThinkingLevels: KimiThinkingLevel[];
   enabled: boolean;
   environmentVariables: string;
   modelAliases: Record<string, string>;
@@ -28,15 +36,17 @@ export const DEFAULT_KIMI_PROVIDER_SETTINGS: Readonly<KimiProviderSettings> = Ob
   availableModes: [],
   cliPath: '',
   cliPathsByHost: {},
+  diagnosticLogging: false,
   discoveredModels: [],
+  discoveredThinkingLevels: [],
   enabled: false,
   environmentVariables: '',
   modelAliases: {},
   visibleModels: [],
 });
 
-export function getKimiProviderSettings(settings: Record<string, unknown>): KimiProviderSettings {
-  const config = getProviderConfig(settings, 'kimi');
+export function getKimiProviderSettings(settings: Record<string, unknown> | null | undefined): KimiProviderSettings {
+  const config = getProviderConfig(settings ?? {}, 'kimi');
   const discoveredModels = normalizeDiscoveredModels(config.discoveredModels);
   const discoveredIds = new Set(discoveredModels.map(model => model.rawId));
   const hasVisibleModels = Array.isArray(config.visibleModels);
@@ -47,7 +57,9 @@ export function getKimiProviderSettings(settings: Record<string, unknown>): Kimi
     availableModes: normalizeModes(config.availableModes),
     cliPath: readString(config.cliPath),
     cliPathsByHost: normalizeCliPaths(config.cliPathsByHost),
+    diagnosticLogging: config.diagnosticLogging === true,
     discoveredModels,
+    discoveredThinkingLevels: normalizeThinkingLevels(config.discoveredThinkingLevels),
     enabled: config.enabled === true,
     environmentVariables: readString(config.environmentVariables),
     modelAliases: normalizeAliases(config.modelAliases, discoveredIds),
@@ -68,6 +80,9 @@ export function updateKimiProviderSettings(
     availableModes: normalizeModes(updates.availableModes ?? current.availableModes),
     cliPathsByHost: normalizeCliPaths(updates.cliPathsByHost ?? current.cliPathsByHost),
     discoveredModels: normalizeDiscoveredModels(updates.discoveredModels ?? current.discoveredModels),
+    discoveredThinkingLevels: normalizeThinkingLevels(
+      updates.discoveredThinkingLevels ?? current.discoveredThinkingLevels,
+    ),
     modelAliases: normalizeAliases(
       updates.modelAliases ?? current.modelAliases,
       new Set(normalizeDiscoveredModels(updates.discoveredModels ?? current.discoveredModels).map(model => model.rawId)),
@@ -90,6 +105,20 @@ function normalizeDiscoveredModels(value: unknown): KimiDiscoveredModel[] {
     models.set(rawId, { ...(description ? { description } : {}), label, rawId });
   }
   return [...models.values()];
+}
+
+function normalizeThinkingLevels(value: unknown): KimiThinkingLevel[] {
+  if (!Array.isArray(value)) return [];
+  const levels = new Map<string, KimiThinkingLevel>();
+  for (const entry of value) {
+    if (!isRecord(entry)) continue;
+    const levelValue = readString(entry.value);
+    const label = readString(entry.label);
+    if (!levelValue || !label) continue;
+    const description = readString(entry.description);
+    levels.set(levelValue, { ...(description ? { description } : {}), label, value: levelValue });
+  }
+  return [...levels.values()];
 }
 
 function normalizeModes(value: unknown): KimiMode[] {

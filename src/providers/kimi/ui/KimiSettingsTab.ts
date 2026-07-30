@@ -49,6 +49,19 @@ export function createKimiSettingsTabRenderer(
         new Setting(container)
           .setName(t('settings.providerPermissions.name'))
           .setDesc(t('settings.kimi.permissionDesc'));
+
+        new Setting(container).setName(t('settings.kimi.advancedHeading')).setHeading();
+        new Setting(container)
+          .setName(t('settings.kimi.diagnosticLoggingName'))
+          .setDesc(t('settings.kimi.diagnosticLoggingDesc'))
+          .addToggle(toggle => toggle
+            .setValue(kimiSettings.diagnosticLogging)
+            .onChange(async (value) => {
+              await context.plugin.mutateSettings(settings => {
+                updateKimiProviderSettings(settings, { diagnosticLogging: value });
+              });
+              await context.plugin.recycleProviderRuntimes?.('kimi');
+            }));
       }
 
     },
