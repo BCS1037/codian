@@ -170,6 +170,75 @@ describe('ClaudianService', () => {
         expect.objectContaining({ type: 'done' }),
       ]));
     });
+
+    it('keeps a compatible endpoint first turn on persistent transport', async () => {
+      jest.mocked(mockPlugin.getActiveEnvironmentVariables!).mockReturnValue('');
+      mockPlugin.settings!.model = 'deepseek-v4-flash';
+      mockPlugin.settings!.loadUserClaudeSettings = true;
+      const settingsAuthentication = jest.spyOn(
+        claudeModelSettings,
+        'getClaudeUserSettingsAuthenticationEnvironment',
+      ).mockReturnValue({
+        ANTHROPIC_AUTH_TOKEN: 'settings-token',
+        ANTHROPIC_BASE_URL: 'https://gateway.example.com',
+      });
+      sdkMock.setMockMessages([
+        { type: 'system', subtype: 'init', session_id: 'settings-compatible-session' },
+        { type: 'assistant', message: { content: [{ type: 'text', text: 'DeepSeek reply' }] } },
+      ], { appendResult: false });
+
+      try {
+        const turn = service.prepareTurn({ text: 'hello' });
+        await collectChunks(service.query(turn));
+
+        expect(service.isPersistentQueryActive()).toBe(true);
+      } finally {
+        settingsAuthentication.mockRestore();
+      }
+    });
+
+    it('keeps a managed service first turn on persistent transport', async () => {
+      mockPlugin.settings!.model = 'claude-code/service/deepseek/deepseek-v4-flash';
+      (mockPlugin.settings as Record<string, unknown>).providerConfigs = {
+        claude: {
+          thirdPartyServices: [{
+            id: 'deepseek',
+            name: 'DeepSeek',
+            preset: 'deepseek',
+            baseUrl: 'https://gateway.example.com',
+            authMode: 'auth-token',
+            secretId: 'deepseek-key',
+            defaultModel: 'deepseek-v4-flash',
+            lightweightModel: 'deepseek-v4-flash',
+            enabled: true,
+            advancedEnvironmentVariables: '',
+          }],
+        },
+      };
+      (mockPlugin.app as any).secretStorage = {
+        getSecret: jest.fn().mockReturnValue('service-key'),
+      };
+      sdkMock.setMockMessages([
+        { type: 'system', subtype: 'init', session_id: 'managed-service-session' },
+        { type: 'assistant', message: { content: [{ type: 'text', text: 'DeepSeek reply' }] } },
+      ], { appendResult: false });
+
+      const turn = service.prepareTurn({ text: 'hello' });
+      await collectChunks(service.query(turn));
+
+      expect(service.isPersistentQueryActive()).toBe(true);
+    });
+
+    it('keeps the official Claude first turn on the persistent path', async () => {
+      sdkMock.setMockMessages([
+        { type: 'assistant', message: { content: [{ type: 'text', text: 'Claude reply' }] } },
+      ]);
+
+      const turn = service.prepareTurn({ text: 'hello' });
+      await collectChunks(service.query(turn));
+
+      expect(service.isPersistentQueryActive()).toBe(true);
+    });
   });
 
   describe('Session Management', () => {
@@ -1263,14 +1332,23 @@ describe('ClaudianService', () => {
   });
 
   describe('Cancel with persistent query', () => {
-    it('should interrupt persistent query on cancel', () => {
+    it('should close persistent query and finish active handlers on cancel', () => {
       const interruptMock = jest.fn().mockResolvedValue(undefined);
+      const abortMock = jest.fn();
+      const onDone = jest.fn();
+      const handler = createResponseHandler({ id: 'active-turn', onChunk: jest.fn(), onDone, onError: jest.fn() });
       (service as any).persistentQuery = { interrupt: interruptMock };
+      (service as any).messageChannel = { close: jest.fn() };
+      (service as any).queryAbortController = { abort: abortMock };
+      (service as any).responseHandlers = [handler];
       (service as any).shuttingDown = false;
 
       service.cancel();
 
       expect(interruptMock).toHaveBeenCalled();
+      expect(abortMock).toHaveBeenCalled();
+      expect(onDone).toHaveBeenCalled();
+      expect(service.isPersistentQueryActive()).toBe(false);
     });
 
     it('should not interrupt persistent query when shutting down', () => {

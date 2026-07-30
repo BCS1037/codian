@@ -86,7 +86,6 @@ import {
 import type { TransformEvent } from '../sdk/types';
 import {
   applyClaudeServiceEnvironment,
-  decodeClaudeServiceModelSelection,
 } from '../services/ClaudeThirdPartyServices';
 import { getClaudeProviderSettings } from '../settings';
 import {
@@ -1334,13 +1333,7 @@ export class ClaudianService implements ChatRuntime {
 
     // Rebuild history if needed before choosing persistent vs cold-start
     let promptToSend = prompt;
-    // Some Claude-compatible services omit the final result event from a fresh
-    // persistent transport. Start their first turn cold, then reuse its session.
-    const selectedModel = queryOptions?.model ?? this.getScopedSettings().model;
-    const usesCompatibleService = decodeClaudeServiceModelSelection(selectedModel) !== null;
-    let forceColdStart = usesCompatibleService
-      && !this.sessionManager.getSessionId()
-      && !this.persistentQuery;
+    let forceColdStart = false;
 
     // Clear interrupted flag - persistent query handles interruption gracefully,
     // no need to force cold-start just because user cancelled previous response
@@ -1847,14 +1840,13 @@ export class ClaudianService implements ChatRuntime {
 
     if (this.abortController) {
       this.abortController.abort();
-      this.sessionManager.markInterrupted();
     }
+    this.sessionManager.markInterrupted();
 
-    // Interrupt persistent query (Phase 1.9)
+    // Esc 必须立即结束本地回合，即使第三方端点从不确认中断。
+    // 关闭会唤醒等待中的 handler，并阻止迟到数据写入已取消回合。
     if (this.persistentQuery && !this.shuttingDown) {
-      void this.persistentQuery.interrupt().catch(() => {
-        // Silence abort/interrupt errors
-      });
+      this.closePersistentQuery('user interrupted');
     }
   }
 

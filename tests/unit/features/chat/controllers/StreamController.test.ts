@@ -1170,6 +1170,23 @@ describe('StreamController - Text Content', () => {
   });
 
   describe('Timer lifecycle', () => {
+    it('updates the visible status as a slow provider progresses through a tool turn', () => {
+      deps.state.responseStartTime = performance.now();
+
+      controller.showThinkingIndicator('Waiting for model response…');
+      jest.advanceTimersByTime(500);
+      expect(deps.state.thinkingEl?.children[0]?.textContent).toBe('Waiting for model response…');
+
+      controller.showThinkingIndicator('Running Read…');
+      expect(deps.state.thinkingEl?.children[0]?.textContent).toBe('Running Read…');
+
+      deps.state.responseStartTime = performance.now() - 45_000;
+      controller.showThinkingIndicator('Waiting for model after Read…');
+      expect(deps.state.thinkingEl?.children[0]?.textContent).toBe(
+        'Waiting for model after Read… Service response is slow.',
+      );
+    });
+
     it('should create timer interval when showing thinking indicator', () => {
       deps.state.responseStartTime = performance.now();
 

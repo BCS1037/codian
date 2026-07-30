@@ -44,7 +44,6 @@ import { extractDiffData } from '../../../utils/diff';
 import { hasStreamingMathDelimiters } from '../../../utils/markdownMath';
 import { getVaultPath, normalizePathForVault } from '../../../utils/path';
 import type { FeatureHost } from '../../FeatureHost';
-import { FLAVOR_TEXTS } from '../constants';
 import type { MessageRenderer, RenderContentOptions } from '../rendering/MessageRenderer';
 import { resolveSubagentAdapter } from '../rendering/subagentAdapterResolution';
 import {
@@ -92,6 +91,8 @@ export interface StreamControllerDeps {
 
 export class StreamController {
   private static readonly ASYNC_SUBAGENT_RESULT_RETRY_DELAYS_MS = [200, 600, 1500] as const;
+  private static readonly SLOW_PROVIDER_RESPONSE_MS = 45_000;
+  private static readonly WAITING_FOR_MODEL_TEXT = 'Waiting for model response…';
 
   private deps: StreamControllerDeps;
   private pendingTextRenderFrame: ScheduledAnimationFrame | null = null;
@@ -157,6 +158,7 @@ export class StreamController {
           await this.finalizeCurrentThinkingBlock(msg);
         }
         await this.finalizeCurrentTextBlock(msg);
+        this.showThinkingIndicator(`Running ${getToolName(chunk.name, chunk.input)}…`);
 
         const subagentAdapter = this.getSubagentAdapter(chunk.name);
         if (subagentAdapter?.protocol === 'managed-agent') {
@@ -187,7 +189,13 @@ export class StreamController {
       }
 
       case 'tool_result': {
+        const toolName = msg.toolCalls?.find(toolCall => toolCall.id === chunk.id)?.name;
         await this.handleToolResult(chunk, msg);
+        this.showThinkingIndicator(
+          toolName
+            ? `Waiting for model after ${getToolName(toolName, {})}…`
+            : 'Waiting for model after tool…',
+        );
         break;
       }
 
@@ -1752,8 +1760,11 @@ export class StreamController {
       return;
     }
 
-    // If indicator already exists, just re-append it to the bottom
+    const statusText = overrideText ?? StreamController.WAITING_FOR_MODEL_TEXT;
+
+    // If indicator already exists, update its status and re-append it to the bottom.
     if (state.thinkingEl) {
+      this.setThinkingIndicatorStatus(statusText);
       state.currentContentEl.appendChild(state.thinkingEl);
       this.deps.updateQueueIndicator();
       return;
@@ -1770,8 +1781,11 @@ export class StreamController {
         ? `claudian-thinking ${overrideCls}`
         : 'claudian-thinking';
       state.thinkingEl = state.currentContentEl.createDiv({ cls });
-      const text = overrideText || FLAVOR_TEXTS[Math.floor(Math.random() * FLAVOR_TEXTS.length)];
-      state.thinkingEl.createSpan({ text });
+      state.thinkingEl.createSpan({
+        cls: 'claudian-thinking-status',
+        text: this.formatThinkingIndicatorStatus(statusText),
+      });
+      state.thinkingEl.dataset.thinkingStatus = statusText;
 
       // Create timer span with initial value
       const timerSpan = state.thinkingEl.createSpan({ cls: 'claudian-thinking-hint' });
@@ -1785,6 +1799,7 @@ export class StreamController {
           return;
         }
         const elapsedSeconds = Math.floor((performance.now() - state.responseStartTime) / 1000);
+        this.setThinkingIndicatorStatus(state.thinkingEl?.dataset.thinkingStatus ?? statusText);
         timerSpan.setText(` (esc to interrupt · ${formatDurationMmSs(elapsedSeconds)})`);
       };
       updateTimer(); // Initial update
@@ -1797,6 +1812,22 @@ export class StreamController {
       state.setFlavorTimerInterval(thinkingWindow.setInterval(updateTimer, 1000), thinkingWindow);
 
     }, StreamController.THINKING_INDICATOR_DELAY), timerWindow);
+  }
+
+  private setThinkingIndicatorStatus(status: string): void {
+    const { state } = this.deps;
+    if (!state.thinkingEl) return;
+
+    state.thinkingEl.dataset.thinkingStatus = status;
+    const statusEl = state.thinkingEl.querySelector('.claudian-thinking-status');
+    statusEl?.setText(this.formatThinkingIndicatorStatus(status));
+  }
+
+  private formatThinkingIndicatorStatus(status: string): string {
+    const startedAt = this.deps.state.responseStartTime;
+    const isSlowProviderResponse = startedAt !== null
+      && performance.now() - startedAt >= StreamController.SLOW_PROVIDER_RESPONSE_MS;
+    return isSlowProviderResponse ? `${status} Service response is slow.` : status;
   }
 
   /** Hides the thinking indicator and cancels any pending show timeout. */

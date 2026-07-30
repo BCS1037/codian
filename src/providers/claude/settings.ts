@@ -12,6 +12,7 @@ import {
 } from './modelTiers';
 import {
   type ClaudeThirdPartyService,
+  decodeClaudeServiceModelSelection,
   normalizeClaudeThirdPartyServices,
 } from './services/ClaudeThirdPartyServices';
 
@@ -144,6 +145,19 @@ export function resolveClaudeSettingSources(
   return loadUserSettings
     ? ['user', 'project', 'local']
     : ['project', 'local'];
+}
+
+/**
+ * 托管服务已有 Codian 管理的端点、凭据和模型，不应继承用户 Claude Code
+ * 设置中的行为环境变量。导入的 settings.json 模型保持原有用户设置来源。
+ */
+export function resolveClaudeRuntimeSettingSources(
+  loadUserSettings: boolean,
+  modelSelection: string,
+): ClaudeSettingSource[] {
+  return resolveClaudeSettingSources(
+    loadUserSettings && !decodeClaudeServiceModelSelection(modelSelection),
+  );
 }
 
 export function updateClaudeProviderSettings(
