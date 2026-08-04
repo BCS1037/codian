@@ -51,14 +51,14 @@
     "eslint-plugin-obsidianmd": "^0.3.0",
     "eslint-plugin-simple-import-sort": "^14.0.0",
     "jest": "^30.3.0",
-    "jest-environment-jsdom": "^30.3.0",
+    "jest-environment-jsdom": "^30.4.1",
     "obsidian": "latest",
     "ts-jest": "^29.4.9",
-    "tsx": "^4.21.0",
+    "tsx": "^4.23.1",
     "typescript": "^6.0.2"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.3.209",
+    "@anthropic-ai/claude-agent-sdk": "^0.3.220",
     "@codemirror/commands": "6.8.1",
     "@codemirror/state": "^6.5.0",
     "@codemirror/view": "^6.38.6",
