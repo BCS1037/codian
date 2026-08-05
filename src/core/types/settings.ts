@@ -158,6 +158,14 @@ export interface ClaudianSettings {
   // Provider command visibility
   hiddenProviderCommands: HiddenProviderCommands;
 
+  // Local, editable memory and awareness. Both awareness switches are opt-in
+  // because their contents are included in provider prompts.
+  memoryEnabled: boolean;
+  memoryFilePath: string;
+  memoryMaxInjectionChars: number;
+  consciousnessEnabled: boolean;
+  consciousnessAutoMemory: boolean;
+
   // Allow provider-specific extension fields
   [key: string]: unknown;
 }

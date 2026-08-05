@@ -40,6 +40,8 @@ export interface ProviderHost {
     providerId: ProviderId,
     context?: ProviderCliResolutionContext,
   ): Promise<string | null>;
+  getMemoryInjectionText?(): Promise<string | null>;
+  getConsciousnessInjectionText?(): Promise<string | null>;
 
   notifyProviderChatOptionsChanged?(providerId: ProviderId): void;
   broadcastToActiveViewRuntimes?(

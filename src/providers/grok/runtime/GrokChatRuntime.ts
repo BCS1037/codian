@@ -1218,7 +1218,7 @@ export class GrokChatRuntime implements ChatRuntime {
     }
     const environment = buildGrokRuntimeEnv(this.plugin.settings, cliPath);
     const environmentHash = computeGrokEnvironmentHash(this.plugin.settings);
-    const promptSettings = this.getPromptSettings(cwd);
+    const promptSettings = await this.getPromptSettings(cwd);
     const settings = this.getProviderSettings();
     const yoloMode = resolveGrokBasePermissionMode(settings) === 'yolo';
     const nextLaunchKey = JSON.stringify({
@@ -1981,12 +1981,17 @@ export class GrokChatRuntime implements ChatRuntime {
     this.currentConversationModel = normalized || null;
   }
 
-  private getPromptSettings(cwd: string): GrokSystemPromptSettings {
+  private async getPromptSettings(cwd: string): Promise<GrokSystemPromptSettings> {
+    const [memoryAppendix, consciousnessAppendix] = await Promise.all([
+      this.plugin.getMemoryInjectionText?.() ?? Promise.resolve(null),
+      this.plugin.getConsciousnessInjectionText?.() ?? Promise.resolve(null),
+    ]);
     return {
       customPrompt: this.plugin.settings.systemPrompt,
       mediaFolder: this.plugin.settings.mediaFolder,
       userName: this.plugin.settings.userName,
       vaultPath: cwd,
+      memoryAppendix: [memoryAppendix, consciousnessAppendix].filter(Boolean).join('\n\n') || undefined,
     };
   }
 
