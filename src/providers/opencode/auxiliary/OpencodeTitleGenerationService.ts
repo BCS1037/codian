@@ -1,4 +1,5 @@
 import { QueryBackedTitleGenerationService } from '../../../core/auxiliary/QueryBackedTitleGenerationService';
+import { resolveTitleGenerationLocale } from '../../../core/prompt/titleGeneration';
 import type { ProviderHost } from '../../../core/providers/ProviderHost';
 import { decodeOpencodeModelId } from '../models';
 import { OpencodeAuxQueryRunner } from '../runtime/OpencodeAuxQueryRunner';
@@ -22,6 +23,7 @@ export class OpencodeTitleGenerationService extends QueryBackedTitleGenerationSe
 
         return decodeOpencodeModelId(titleModel) ?? undefined;
       },
+      resolveLocale: () => resolveTitleGenerationLocale(plugin.settings),
     });
   }
 }

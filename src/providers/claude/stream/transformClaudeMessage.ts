@@ -8,6 +8,7 @@ import {
   getClaudeModelTierDefinition,
   isClaudeModelTier,
 } from '../modelTiers';
+import type { ClaudeTaskToolNormalizer } from '../normalization/ClaudeTaskToolNormalizer';
 import { isBlockedMessage } from '../sdk/messages';
 import { extractToolResultContent } from '../sdk/toolResultContent';
 import type { ClaudeAsyncSubagentCompletionEvent, TransformEvent } from '../sdk/types';
@@ -39,6 +40,48 @@ function emitToolResult(parentToolUseId: string | null, fields: ToolResultFields
     return { type: 'tool_result', ...fields };
   }
   return { type: 'subagent_tool_result', subagentId: parentToolUseId, ...fields };
+}
+
+function normalizeTaskToolChunk(
+  chunk: StreamChunk,
+  normalizer: ClaudeTaskToolNormalizer | undefined,
+): StreamChunk[] {
+  if (!normalizer) return [chunk];
+
+  if (chunk.type === 'tool_use') {
+    const normalized = normalizer.normalizeToolUse(chunk.id, chunk.name, chunk.input);
+    if (!normalized) return [chunk];
+    return [{
+      ...chunk,
+      name: normalized.name,
+      input: normalized.input,
+      providerPayload: normalized.providerPayload,
+    }];
+  }
+
+  if (chunk.type === 'tool_result') {
+    const normalized = normalizer.normalizeToolResult(
+      chunk.id,
+      chunk.toolUseResult,
+      {
+        fallbackContent: chunk.content,
+        isError: chunk.isError,
+      },
+    );
+    if (!normalized) return [chunk];
+    return [
+      {
+        type: 'tool_use',
+        id: chunk.id,
+        name: normalized.name,
+        input: normalized.input,
+        providerPayload: normalized.providerPayload,
+      },
+      chunk,
+    ];
+  }
+
+  return [chunk];
 }
 
 function normalizeTaskNotificationStatus(status: unknown): AsyncSubagentCompletionStatus {
@@ -92,6 +135,8 @@ export interface TransformOptions {
   streamState?: TransformStreamState;
   /** Tracks prompt-token usage across Anthropic-compatible stream events. */
   usageState?: TransformUsageState;
+  /** Normalizes Claude's native task tools into provider-neutral TodoWrite snapshots. */
+  taskToolNormalizer?: ClaudeTaskToolNormalizer;
 }
 
 export interface MessageUsage {
@@ -436,11 +481,11 @@ export function* transformSDKMessage(
               yield { type: 'text', content: block.text };
             }
           } else if (block.type === 'tool_use') {
-            yield emitToolUse(parentToolUseId, {
+            yield* normalizeTaskToolChunk(emitToolUse(parentToolUseId, {
               id: block.id || `tool-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
               name: block.name || 'unknown',
               input: getToolInput(block.input),
-            });
+            }), options?.taskToolNormalizer);
           }
         }
       }
@@ -479,24 +524,24 @@ export function* transformSDKMessage(
       // User messages can contain tool results
       if (message.tool_use_result !== undefined && message.parent_tool_use_id) {
         const toolUseResult = (message.tool_use_result ?? undefined) as SDKToolUseResult | undefined;
-        yield emitToolResult(parentToolUseId, {
-          id: message.parent_tool_use_id,
-          content: extractToolResultContent(message.tool_use_result, { fallbackIndent: 2 }),
-          isError: false,
-          ...(toolUseResult !== undefined ? { toolUseResult } : {}),
-        });
+        yield* normalizeTaskToolChunk(emitToolResult(parentToolUseId, {
+         id: message.parent_tool_use_id,
+         content: extractToolResultContent(message.tool_use_result, { fallbackIndent: 2 }),
+         isError: false,
+         ...(toolUseResult !== undefined ? { toolUseResult } : {}),
+        }), options?.taskToolNormalizer);
       }
       // Also check message.message.content for tool_result blocks
       if (message.message?.content && Array.isArray(message.message.content)) {
         for (const block of message.message.content) {
           if (block.type === 'tool_result') {
             const toolUseResult = (message.tool_use_result ?? undefined) as SDKToolUseResult | undefined;
-            yield emitToolResult(parentToolUseId, {
-              id: block.tool_use_id || message.parent_tool_use_id || '',
-              content: extractToolResultContent(block.content, { fallbackIndent: 2 }),
-              isError: block.is_error || false,
-              ...(toolUseResult !== undefined ? { toolUseResult } : {}),
-            });
+            yield* normalizeTaskToolChunk(emitToolResult(parentToolUseId, {
+             id: block.tool_use_id || message.parent_tool_use_id || '',
+             content: extractToolResultContent(block.content, { fallbackIndent: 2 }),
+             isError: block.is_error || false,
+             ...(toolUseResult !== undefined ? { toolUseResult } : {}),
+            }), options?.taskToolNormalizer);
           }
         }
       }
@@ -546,7 +591,10 @@ export function* transformSDKMessage(
         if (typeof event.index === 'number') {
           options?.streamState?.registerToolUse(parentToolUseId, event.index, toolUseFields);
         }
-        yield emitToolUse(parentToolUseId, toolUseFields);
+        yield* normalizeTaskToolChunk(
+          emitToolUse(parentToolUseId, toolUseFields),
+          options?.taskToolNormalizer,
+        );
       } else if (event?.type === 'content_block_start' && event.content_block?.type === 'thinking') {
         if (parentToolUseId === null && event.content_block.thinking) {
           yield { type: 'thinking', content: event.content_block.thinking };
@@ -563,7 +611,10 @@ export function* transformSDKMessage(
             event.delta.partial_json,
           );
           if (toolUseFields) {
-            yield emitToolUse(parentToolUseId, toolUseFields);
+            yield* normalizeTaskToolChunk(
+              emitToolUse(parentToolUseId, toolUseFields),
+              options?.taskToolNormalizer,
+            );
           }
         } else if (parentToolUseId === null && event.delta?.type === 'thinking_delta' && event.delta.thinking) {
           yield { type: 'thinking', content: event.delta.thinking };

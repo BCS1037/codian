@@ -1,6 +1,10 @@
 import { getRuntimeEnvironmentVariables } from '../../core/providers/providerEnvironment';
 import type { ProviderUIOption } from '../../core/providers/types';
-import { getCodexModelsInPickerOrder, getDefaultCodexModel } from './models';
+import {
+  getCodexModelsInPickerOrder,
+  getDefaultCodexModel,
+  isCodexModelAvailable,
+} from './models';
 import {
   encodeCodexModelSelectionId,
   toCodexRuntimeModelId,
@@ -55,14 +59,18 @@ export function getCodexModelOptions(settings: Record<string, unknown>): Provide
     codexSettings.discoveredModels,
   ));
   const pickerOrderedModels = getCodexModelsInPickerOrder(codexSettings.discoveredModels);
+  const discoveredModelIds = new Set(codexSettings.discoveredModels.map(model => model.model));
   const visibleDiscoveredModels = pickerOrderedModels
-    .filter(model => visibleModelIds.has(model.model));
+    .filter(model =>
+      visibleModelIds.has(model.model)
+      && isCodexModelAvailable(model, codexSettings.enableUltraEffort)
+    );
   const models: ProviderUIOption[] = visibleDiscoveredModels.map(model => ({
     value: model.model,
     label: getModelLabel(model.model, model.displayName),
     description: model.description || undefined,
   }));
-  const seenModelIds = new Set(visibleDiscoveredModels.map(model => model.model));
+  const seenModelIds = new Set(discoveredModelIds);
 
   const persistedVisibleModels = codexSettings.visibleModels === null
     ? []
@@ -138,7 +146,10 @@ export function resolveCodexModelSelection(
     codexSettings.discoveredModels,
   ));
   const defaultModel = getDefaultCodexModel(
-    codexSettings.discoveredModels.filter(model => visibleModelIds.has(model.model)),
+    codexSettings.discoveredModels.filter(model =>
+      visibleModelIds.has(model.model)
+      && isCodexModelAvailable(model, codexSettings.enableUltraEffort)
+    ),
   );
   return defaultModel?.model ?? modelOptions[0]?.value ?? null;
 }

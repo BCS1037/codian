@@ -1,4 +1,5 @@
 import { QueryBackedTitleGenerationService } from '../../../core/auxiliary/QueryBackedTitleGenerationService';
+import { resolveTitleGenerationLocale } from '../../../core/prompt/titleGeneration';
 import type { ProviderHost } from '../../../core/providers/ProviderHost';
 import { isGrokModelSelectionId } from '../models';
 import { GrokAuxQueryRunner } from '../runtime/GrokAuxQueryRunner';
@@ -15,6 +16,7 @@ export class GrokTitleGenerationService extends QueryBackedTitleGenerationServic
           : '';
         return model && isGrokModelSelectionId(model) ? model : undefined;
       },
+      resolveLocale: () => resolveTitleGenerationLocale(plugin.settings),
     });
   }
 }

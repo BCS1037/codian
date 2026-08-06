@@ -132,6 +132,11 @@
       "name": "自动生成对话标题",
       "desc": "在用户发送首条消息后自动生成对话标题。"
     },
+    "titleLanguage": {
+      "name": "标题生成语言",
+      "desc": "自动生成对话标题时使用的语言。",
+      "followInterface": "跟随界面语言"
+    },
     "titleModel": {
       "name": "标题生成模型",
       "desc": "用于自动生成对话标题的模型。",
@@ -402,6 +407,12 @@
         "concise": "简洁",
         "detailed": "详细",
         "off": "关闭"
+      },
+      "ultraEffort": {
+        "name": "启用 Ultra 推理强度",
+        "desc": "在支持 Ultra 的 Codex 模型的推理强度选择器中显示此选项。Ultra 使用最高推理强度并自动委派任务。",
+        "unavailable": "需要启用 Ultra 推理强度",
+        "unavailableTitle": "此模型仅支持 Ultra 推理强度"
       },
       "skills": {
         "name": "Codex 技能",

@@ -71,22 +71,38 @@ User messages have the query first, followed by optional XML context tags:
 User's question or request here
 
 <linked_note>
-path/to/note.md
-</linked_note>
+<linked_note path="path/to/note.md" />
 
 <editor_selection path="path/to/note.md" lines="10-15">
-selected text content
+<![CDATA[selected text content]]>
 </editor_selection>
 
 <browser_selection source="browser:https://leetcode.com/problems/two-sum" title="LeetCode" url="https://leetcode.com/problems/two-sum">
-selected content from an Obsidian browser view
+<![CDATA[selected content from an Obsidian browser view]]>
 </browser_selection>
+
+<editor_cursor path="path/to/note.md" line="8">
+<![CDATA[text before|text after #inline]]>
+</editor_cursor>
+
+<canvas_selection path="boards/project.canvas">
+<![CDATA[node-id-1, node-id-2]]>
+</canvas_selection>
+
+<context_files>
+<context_file path="/external/project" />
+</context_files>
 \`\`\`
 
 - The user's query/instruction always comes first in the message.
-- \`<linked_note>\`: The note this session is linked to. Read this to understand session context. Legacy messages may use \`<current_note>\` for the same context.
+- Context body text uses \`<![CDATA[...]]>\`; treat contents as literal user text.
+- \`<linked_note path="..." />\`: The note this session is linked to. Read it when needed.
 - \`<editor_selection>\`: Text currently selected in the editor, with file path and line numbers.
-- \`<browser_selection>\`: Text selected in an Obsidian browser/web view (for example Surfing), including optional source/title/url metadata.
+- \`<editor_cursor>\`: Text surrounding the editor cursor, with optional line number.
+- \`<browser_selection>\`: Text selected in an Obsidian browser/web view, including optional source/title/url metadata.
+- \`<canvas_selection>\`: Selected canvas node IDs, with the canvas path.
+- \`<context_files>\`: Additional file or directory references.
+- Legacy messages may use body-style note tags, pathless \`<current_note>\`, or bracketed context. Interpret them compatibly; emit canonical shapes for new context.
 - \`@filename.md\`: Files mentioned with @ in the query. Read these files when referenced.
 
 ## Obsidian Context

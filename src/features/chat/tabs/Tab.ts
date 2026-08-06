@@ -1618,6 +1618,20 @@ export function initializeTabControllers(
       }
     },
   });
+  tab.controllers.streamController.setTabActive(
+    !dom.contentEl.hasClass('claudian-hidden'),
+  );
+
+  const renderWindow = dom.messagesEl.ownerDocument.defaultView;
+  const IntersectionObserverConstructor = renderWindow?.IntersectionObserver;
+  if (IntersectionObserverConstructor) {
+    const renderVisibilityObserver = new IntersectionObserverConstructor((entries) => {
+      const entry = entries.find(candidate => candidate.target === dom.messagesEl) ?? entries[0];
+      tab.controllers.streamController?.setViewportVisible(entry?.isIntersecting ?? true);
+    });
+    renderVisibilityObserver.observe(dom.messagesEl);
+    dom.eventCleanups.push(() => renderVisibilityObserver.disconnect());
+  }
 
   // Wire subagent callback now that StreamController exists
   // DOM updates for async subagents are handled by SubagentManager directly;
@@ -1934,6 +1948,7 @@ export function wireTabInputEvents(tab: TabData, plugin: FeatureHost): void {
  */
 export function activateTab(tab: TabData): void {
   tab.dom.contentEl.removeClass('claudian-hidden');
+  tab.controllers.streamController?.setTabActive(true);
   tab.controllers.selectionController?.start();
   tab.controllers.browserSelectionController?.start();
   tab.controllers.canvasSelectionController?.start();
@@ -1945,6 +1960,7 @@ export function activateTab(tab: TabData): void {
  * Deactivates a tab (hides it and stops services).
  */
 export function deactivateTab(tab: TabData): void {
+  tab.controllers.streamController?.setTabActive(false);
   tab.dom.contentEl.addClass('claudian-hidden');
   tab.controllers.selectionController?.stop();
   tab.controllers.browserSelectionController?.stop();
@@ -2051,6 +2067,7 @@ export async function destroyTab(tab: TabData): Promise<void> {
   tab.ui.statusPanel = null;
   tab.ui.navigationSidebar?.destroy();
   tab.ui.navigationSidebar = null;
+  tab.controllers.streamController?.dispose();
   tab.ui.inputToolbarLayoutController?.destroy();
   tab.ui.inputToolbarLayoutController = null;
 

@@ -14,7 +14,7 @@ describe('formatBrowserContext', () => {
     };
 
     expect(formatBrowserContext(context)).toBe(
-      '<browser_selection source="surfing-view" title="LeetCode" url="https://leetcode.com/problems/two-sum">\nselected web content\n</browser_selection>'
+      '<browser_selection source="surfing-view" title="LeetCode" url="https://leetcode.com/problems/two-sum">\n<![CDATA[selected web content]]>\n</browser_selection>'
     );
   });
 
@@ -35,9 +35,17 @@ describe('formatBrowserContext', () => {
     };
 
     const result = formatBrowserContext(context);
-    expect(result).not.toContain('</browser_selection>injected');
-    expect(result).toContain('before&lt;/browser_selection&gt;injected');
+    expect(result).toContain('<![CDATA[before</browser_selection>injected]]>');
     expect(result).toMatch(/<browser_selection[^>]*>\n[\s\S]*\n<\/browser_selection>$/);
+  });
+
+  it('uses CDATA for literal closing tags and splits CDATA terminators', () => {
+    const result = formatBrowserContext({
+      source: 'webview&"',
+      selectedText: 'literal </browser_selection> and ]]> text',
+    });
+    expect(result).toContain('source="webview&amp;&quot;"');
+    expect(result).toContain('<![CDATA[literal </browser_selection> and ]]]]><![CDATA[> text]]>');
   });
 
   it('returns empty string for blank selection text', () => {
@@ -58,7 +66,7 @@ describe('appendBrowserContext', () => {
     };
 
     expect(appendBrowserContext('Summarize this', context)).toBe(
-      'Summarize this\n\n<browser_selection source="surfing-view">\nselected text\n</browser_selection>'
+      'Summarize this\n\n<browser_selection source="surfing-view">\n<![CDATA[selected text]]>\n</browser_selection>'
     );
   });
 

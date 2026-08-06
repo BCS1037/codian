@@ -1,4 +1,4 @@
-import { appendCanvasContext, type CanvasSelectionContext,formatCanvasContext } from '../../../src/utils/canvas';
+import { appendCanvasContext, type CanvasSelectionContext, formatCanvasContext } from '../../../src/utils/canvas';
 
 describe('canvas utilities', () => {
   describe('formatCanvasContext', () => {
@@ -8,7 +8,7 @@ describe('canvas utilities', () => {
         nodeIds: ['abc123'],
       };
       expect(formatCanvasContext(context)).toBe(
-        '<canvas_selection path="my-canvas.canvas">\nabc123\n</canvas_selection>'
+        '<canvas_selection path="my-canvas.canvas">\n<![CDATA[abc123]]>\n</canvas_selection>'
       );
     });
 
@@ -18,7 +18,7 @@ describe('canvas utilities', () => {
         nodeIds: ['node1', 'node2', 'node3'],
       };
       expect(formatCanvasContext(context)).toBe(
-        '<canvas_selection path="folder/design.canvas">\nnode1, node2, node3\n</canvas_selection>'
+        '<canvas_selection path="folder/design.canvas">\n<![CDATA[node1, node2, node3]]>\n</canvas_selection>'
       );
     });
 
@@ -39,8 +39,15 @@ describe('canvas utilities', () => {
       };
       const result = appendCanvasContext('hello world', context);
       expect(result).toBe(
-        'hello world\n\n<canvas_selection path="my-canvas.canvas">\nabc123\n</canvas_selection>'
+        'hello world\n\n<canvas_selection path="my-canvas.canvas">\n<![CDATA[abc123]]>\n</canvas_selection>'
       );
+    });
+
+    it('escapes canvas paths', () => {
+      expect(formatCanvasContext({
+        canvasPath: 'folder/a&b"<c>.canvas',
+        nodeIds: ['node-1'],
+      })).toContain('path="folder/a&amp;b&quot;&lt;c&gt;.canvas"');
     });
 
     it('returns original prompt when no nodes selected', () => {

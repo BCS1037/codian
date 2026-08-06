@@ -104,7 +104,7 @@ describe('ClaudianService', () => {
         text: 'explain this',
         currentNotePath: 'notes/test.md',
       });
-      expect(result.persistedContent).toContain('<linked_note>');
+      expect(result.persistedContent).toContain('<linked_note path="notes/test.md" />');
       expect(result.persistedContent).toContain('notes/test.md');
     });
 

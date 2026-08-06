@@ -76,6 +76,7 @@ import { getClaudeUserSettingsAuthenticationEnvironment } from '../config/Claude
 import { loadSubagentFinalResult, loadSubagentToolCalls } from '../history/ClaudeHistoryStore';
 import { loadClaudeAgentQuery } from '../loadClaudeAgentSdk';
 import { toClaudeRuntimeModelId } from '../modelSelection';
+import { ClaudeTaskToolNormalizer } from '../normalization/ClaudeTaskToolNormalizer';
 import { encodeClaudeTurn } from '../prompt/ClaudeTurnEncoder';
 import {
   isAsyncSubagentCompletion,
@@ -214,6 +215,7 @@ export class ClaudianService implements ChatRuntime {
   private bufferedUsageChunk: StreamChunk & { type: 'usage' } | null = null;
   private streamTransformState = createTransformStreamState();
   private usageTransformState = createTransformUsageState();
+  private taskToolNormalizer = new ClaudeTaskToolNormalizer();
 
   private toProviderSessionMissingChunk(error: unknown): (StreamChunk & { type: 'error' }) | null {
     if (!isSessionMissingError(error, this.sessionManager.getSessionId() ?? undefined)) {
@@ -756,6 +758,7 @@ export class ClaudianService implements ChatRuntime {
     this.cachedSdkCommands = [];
     this.streamTransformState.clearAll();
     this.usageTransformState.clear();
+    this.taskToolNormalizer.reset();
     this._autoTurnBuffer = [];
     this._autoTurnSawStreamText = false;
     this._autoTurnSawStreamThinking = false;
@@ -994,6 +997,7 @@ export class ClaudianService implements ChatRuntime {
     modelOverride?: string,
     streamState = this.streamTransformState,
     usageState = this.usageTransformState,
+    taskToolNormalizer = this.taskToolNormalizer,
   ) {
     const settings = this.getScopedSettings();
     const intendedModel = toClaudeRuntimeModelId(modelOverride ?? settings.model);
@@ -1007,6 +1011,7 @@ export class ClaudianService implements ChatRuntime {
       authoritativeContextWindow,
       streamState,
       usageState,
+      taskToolNormalizer,
     };
   }
 
@@ -1761,6 +1766,7 @@ export class ClaudianService implements ChatRuntime {
     let sawStreamThinking = false;
     const streamState = createTransformStreamState();
     const usageState = createTransformUsageState();
+    const taskToolNormalizer = new ClaudeTaskToolNormalizer();
     try {
       const agentQuery = await loadClaudeAgentQuery();
       if (ctx.abortController?.signal.aborted) {
@@ -1776,7 +1782,10 @@ export class ClaudianService implements ChatRuntime {
           break;
         }
 
-        for (const event of transformSDKMessage(message, this.getTransformOptions(selectedModel, streamState, usageState))) {
+        for (const event of transformSDKMessage(
+          message,
+          this.getTransformOptions(selectedModel, streamState, usageState, taskToolNormalizer),
+        )) {
           this.noteVisibleStreamContent(message, event, {
             onText: () => {
               sawStreamText = true;

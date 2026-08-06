@@ -151,6 +151,11 @@
       "name": "Gerar automaticamente títulos de conversa",
       "desc": "Gera automaticamente títulos de conversa após a primeira mensagem do usuário."
     },
+    "titleLanguage": {
+      "name": "Idioma de geração de títulos",
+      "desc": "Idioma usado para títulos de conversa gerados automaticamente.",
+      "followInterface": "Igual ao idioma da interface"
+    },
     "titleModel": {
       "name": "Modelo de geração de título",
       "desc": "Modelo usado para gerar automaticamente títulos de conversa.",
@@ -421,6 +426,12 @@
         "concise": "Conciso",
         "detailed": "Detalhado",
         "off": "Desativado"
+      },
+      "ultraEffort": {
+        "name": "Ativar esforço ultra",
+        "desc": "Exibe Ultra no seletor de esforço para modelos Codex compatíveis. Ultra usa o raciocínio máximo com delegação automática de tarefas.",
+        "unavailable": "É necessário ativar o esforço ultra",
+        "unavailableTitle": "Este modelo só oferece suporte ao esforço ultra"
       },
       "skills": {
         "name": "Habilidades Codex",

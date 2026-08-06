@@ -17,7 +17,7 @@ import type { AgentSkillListResult } from '../../core/skills/AgentSkill';
 import { AgentSkillRepository } from '../../core/skills/AgentSkillRepository';
 import { DiscoveredAgentSkillRepository } from '../../core/skills/DiscoveredAgentSkillRepository';
 import type { ChatNavigationMode, ChatViewPlacement } from '../../core/types/settings';
-import { t } from '../../i18n/i18n';
+import { getAvailableLocales, getLocaleDisplayName, t } from '../../i18n/i18n';
 import { syncLocaleWithObsidian } from '../../i18n/obsidianLocale';
 import type { TranslationKey } from '../../i18n/types';
 import { AgentSkillSettings } from '../../shared/settings/AgentSkillSettings';
@@ -825,6 +825,23 @@ export class ClaudianSettingTab extends PluginSettingTab {
       );
 
     if (this.plugin.settings.enableAutoTitleGeneration) {
+      new Setting(container)
+        .setName(t('settings.titleLanguage.name'))
+        .setDesc(t('settings.titleLanguage.desc'))
+        .addDropdown((dropdown) => {
+          dropdown.addOption('', t('settings.titleLanguage.followInterface'));
+          for (const locale of getAvailableLocales()) {
+            dropdown.addOption(locale, getLocaleDisplayName(locale));
+          }
+          dropdown
+            .setValue(this.plugin.settings.titleGenerationLocale || '')
+            .onChange(async (value) => {
+              await this.plugin.mutateSettings((settings) => {
+                settings.titleGenerationLocale = value;
+              });
+            });
+        });
+
       new Setting(container)
         .setName(t('settings.titleModel.name'))
         .setDesc(t('settings.titleModel.desc'))

@@ -36,10 +36,10 @@ describe('buildPiPrompt', () => {
     });
 
     expect(prompt).toContain('Summarize this');
-    expect(prompt).toContain('<linked_note>\nNotes/today.md\n</linked_note>');
-    expect(prompt).toContain('<editor_selection path="Notes/today.md" lines="4-5">\nSelected text\n</editor_selection>');
-    expect(prompt).toContain('<browser_selection source="browser" title="Docs" url="https://example.com">\nBrowser text\n</browser_selection>');
-    expect(prompt).toContain('<canvas_selection path="Board.canvas">\nnode-a, node-b\n</canvas_selection>');
+    expect(prompt).toContain('<linked_note path="Notes/today.md" />');
+    expect(prompt).toContain('<editor_selection path="Notes/today.md" lines="4-5">\n<![CDATA[Selected text]]>\n</editor_selection>');
+    expect(prompt).toContain('<browser_selection source="browser" title="Docs" url="https://example.com">\n<![CDATA[Browser text]]>\n</browser_selection>');
+    expect(prompt).toContain('<canvas_selection path="Board.canvas">\n<![CDATA[node-a, node-b]]>\n</canvas_selection>');
     expect(prompt).not.toContain('base64-image');
   });
 

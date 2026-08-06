@@ -1,4 +1,5 @@
 import { QueryBackedTitleGenerationService } from '../../../core/auxiliary/QueryBackedTitleGenerationService';
+import { resolveTitleGenerationLocale } from '../../../core/prompt/titleGeneration';
 import type { ProviderHost } from '../../../core/providers/ProviderHost';
 import { PiAuxQueryRunner } from '../runtime/PiAuxQueryRunner';
 import { piChatUIConfig } from '../ui/PiChatUIConfig';
@@ -14,6 +15,7 @@ export class PiTitleGenerationService extends QueryBackedTitleGenerationService 
           : '';
         return piChatUIConfig.ownsModel(titleModel, settings) ? titleModel : undefined;
       },
+      resolveLocale: () => resolveTitleGenerationLocale(plugin.settings),
     });
   }
 }

@@ -132,6 +132,11 @@
       "name": "Auto-generate conversation titles",
       "desc": "Automatically generate conversation titles after the first user message is sent."
     },
+    "titleLanguage": {
+      "name": "Title generation language",
+      "desc": "Language used for auto-generated conversation titles.",
+      "followInterface": "Same as interface language"
+    },
     "titleModel": {
       "name": "Title generation model",
       "desc": "Model used for auto-generating conversation titles.",
@@ -402,6 +407,12 @@
         "concise": "Concise",
         "detailed": "Detailed",
         "off": "Off"
+      },
+      "ultraEffort": {
+        "name": "Enable ultra effort",
+        "desc": "Allow Ultra in the effort selector for Codex models that advertise support. Ultra uses maximum reasoning with automatic task delegation.",
+        "unavailable": "Requires Ultra effort to be enabled",
+        "unavailableTitle": "This model only supports Ultra effort"
       },
       "skills": {
         "name": "Codex skills",

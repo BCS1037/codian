@@ -2212,6 +2212,27 @@ describe('CodexChatRuntime', () => {
       rt.cleanup();
     });
 
+    it('sends ultra reasoning effort only after explicit opt-in', async () => {
+      const plugin = createMockPlugin({ effortLevel: 'ultra' });
+      const codexConfig = plugin.settings.providerConfigs.codex;
+      codexConfig.enableUltraEffort = true;
+      codexConfig.discoveredModels[0].supportedReasoningEfforts.push({
+        value: 'ultra',
+        description: 'Automatic task delegation',
+      });
+      const rt = new CodexChatRuntime(plugin);
+      captureHandlers();
+      setupDefaultRequestMock();
+
+      await collectChunks(rt.query(createTurn('delegate this')));
+
+      const turnStartCall = findCall('turn/start');
+      expect(turnStartCall[1].effort).toBe('ultra');
+      expect(turnStartCall[1].collaborationMode.settings.reasoning_effort).toBe('ultra');
+
+      rt.cleanup();
+    });
+
     it('includes collaborationMode in turn/start when permissionMode is plan', async () => {
       const plugin = createMockPlugin({ permissionMode: 'plan' });
       const rt = new CodexChatRuntime(plugin);

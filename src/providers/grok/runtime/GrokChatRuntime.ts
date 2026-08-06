@@ -68,9 +68,9 @@ import {
   resolveGrokDefaultReasoningEffort,
 } from '../models';
 import {
-  buildGrokToolProviderPayload,
   normalizeGrokToolCall,
   normalizeGrokToolName,
+  normalizeGrokToolUseResult,
   resolveGrokRawToolName,
 } from '../normalization/grokToolNormalization';
 import {
@@ -2071,13 +2071,12 @@ function createGrokToolStreamAdapter(): AcpToolStreamAdapter {
       return normalizeGrokToolName(rawName ?? 'tool');
     },
     normalizeToolUseResult(rawName, _input, rawOutput, rawInput) {
-      return {
-        providerPayload: buildGrokToolProviderPayload({
-          rawInput,
-          rawName: rawName ?? 'tool',
-          rawOutput,
-        }),
-      };
+      return normalizeGrokToolUseResult(
+        rawName ?? 'tool',
+        _input,
+        rawOutput,
+        rawInput,
+      );
     },
     resolveRawToolName(currentRawName, update) {
       return resolveGrokRawToolName(currentRawName, update);
