@@ -37,7 +37,10 @@ import {
   findCodexSessionFile,
 } from '../history/CodexHistoryStore';
 import { getCodexModelOptions } from '../modelOptions';
-import { findCodexModel } from '../models';
+import {
+  findCodexModel,
+  resolveCodexReasoningEffort,
+} from '../models';
 import { toCodexRuntimeModelId } from '../modelSelection';
 import { encodeCodexTurn } from '../prompt/encodeCodexTurn';
 import {
@@ -516,11 +519,16 @@ export class CodexChatRuntime implements ChatRuntime {
         this.registerActiveInputBundle(turnInputBundle);
 
         // Start turn
+        const resolvedModel = model;
+        const codexSettings = getCodexProviderSettings(providerSettings);
         const selectedEffort = typeof providerSettings.effortLevel === 'string'
           ? providerSettings.effortLevel.trim()
           : '';
-        const effort = selectedEffort || 'medium';
-        const resolvedModel = model;
+        const effort = resolveCodexReasoningEffort(
+          findCodexModel(codexSettings.discoveredModels, resolvedModel),
+          codexSettings.enableUltraEffort,
+          selectedEffort || null,
+        ) ?? 'medium';
         const isPlanMode = providerSettings.permissionMode === 'plan';
         const externalContextPaths = this.resolveExternalContextPaths(turn, queryOptions);
         const permissionMode = this.resolveSandboxConfig();

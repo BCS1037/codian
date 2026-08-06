@@ -93,6 +93,7 @@ describe('Pi settings normalization', () => {
       'pi:openai/gpt-5': 'xhigh',
     }, discoveredModels)).toEqual({
       'pi:anthropic/claude-sonnet-4': 'high',
+      'pi:openai/gpt-5': 'medium',
     });
   });
 

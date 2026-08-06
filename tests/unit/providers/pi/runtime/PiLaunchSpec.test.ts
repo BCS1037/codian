@@ -89,4 +89,20 @@ describe('PiLaunchSpec', () => {
 
     expect(first.launchKey).not.toBe(second.launchKey);
   });
+
+  it('passes max thinking through to Pi', () => {
+    expect(buildPiLaunchSpec({
+      command: 'pi',
+      cwd: '/vault',
+      noSession: true,
+      settings: baseSettings,
+      thinkingLevel: 'max',
+    }).args).toEqual([
+      '--mode',
+      'rpc',
+      '--no-session',
+      '--thinking',
+      'max',
+    ]);
+  });
 });

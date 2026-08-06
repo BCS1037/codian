@@ -12,13 +12,19 @@ import {
 describe('formatCurrentNote', () => {
   it('formats note path in XML tags', () => {
     expect(formatCurrentNote('notes/test.md')).toBe(
-      '<linked_note>\nnotes/test.md\n</linked_note>'
+      '<linked_note path="notes/test.md" />'
     );
   });
 
   it('handles paths with special characters', () => {
     expect(formatCurrentNote('notes/my file (1).md')).toBe(
-      '<linked_note>\nnotes/my file (1).md\n</linked_note>'
+      '<linked_note path="notes/my file (1).md" />'
+    );
+  });
+
+  it('escapes note paths', () => {
+    expect(formatCurrentNote('notes/a&b"<c>.md')).toBe(
+      '<linked_note path="notes/a&amp;b&quot;&lt;c&gt;.md" />',
     );
   });
 });
@@ -27,7 +33,7 @@ describe('appendCurrentNote', () => {
   it('appends current note to prompt with double newline separator', () => {
     const result = appendCurrentNote('Hello', 'notes/test.md');
     expect(result).toBe(
-      'Hello\n\n<linked_note>\nnotes/test.md\n</linked_note>'
+      'Hello\n\n<linked_note path="notes/test.md" />'
     );
   });
 
@@ -39,7 +45,7 @@ describe('appendCurrentNote', () => {
 
 describe('stripCurrentNoteContext', () => {
   describe('prefix format', () => {
-    it('strips linked_note from start of prompt', () => {
+  it('strips linked_note from start of prompt', () => {
       const prompt = '<linked_note>\nnotes/test.md\n</linked_note>\n\nUser query here';
       expect(stripCurrentNoteContext(prompt)).toBe('User query here');
     });
@@ -50,8 +56,13 @@ describe('stripCurrentNoteContext', () => {
     });
   });
 
+    it('strips canonical self-closing linked_note from start', () => {
+      const prompt = '<linked_note path="notes/test.md" />\n\nUser query here';
+      expect(stripCurrentNoteContext(prompt)).toBe('User query here');
+    });
+
   describe('suffix format', () => {
-    it('strips linked_note from end of prompt', () => {
+  it('strips linked_note from end of prompt', () => {
       const prompt = 'User query here\n\n<linked_note>\nnotes/test.md\n</linked_note>';
       expect(stripCurrentNoteContext(prompt)).toBe('User query here');
     });
@@ -61,6 +72,11 @@ describe('stripCurrentNoteContext', () => {
       expect(stripCurrentNoteContext(prompt)).toBe('Query');
     });
   });
+
+    it('strips canonical self-closing linked_note from end', () => {
+      const prompt = 'User query here\n\n<linked_note path="notes/test.md" />';
+      expect(stripCurrentNoteContext(prompt)).toBe('User query here');
+    });
 
   describe('legacy current_note compatibility', () => {
     it('strips current_note from start of prompt', () => {
@@ -88,7 +104,7 @@ describe('stripCurrentNoteContext', () => {
 
 describe('XML_CONTEXT_PATTERN', () => {
   it('matches linked_note tag', () => {
-    const text = 'Query\n\n<linked_note>\ntest.md\n</linked_note>';
+    const text = 'Query\n\n<linked_note path="test.md" />';
     expect(XML_CONTEXT_PATTERN.test(text)).toBe(true);
   });
 
@@ -153,7 +169,7 @@ describe('extractContentBeforeXmlContext', () => {
 
   describe('current format with user content first', () => {
     it('extracts content before linked_note tag', () => {
-      const prompt = 'User query\n\n<linked_note>\ntest.md\n</linked_note>';
+      const prompt = 'User query\n\n<linked_note path="test.md" />';
       expect(extractContentBeforeXmlContext(prompt)).toBe('User query');
     });
 
@@ -210,8 +226,8 @@ describe('extractContentBeforeXmlContext', () => {
 });
 
 describe('extractUserDisplayContent', () => {
-  it('extracts display content before XML context tags', () => {
-    expect(extractUserDisplayContent('Summarize this\n\n<linked_note>\nnotes/today.md\n</linked_note>'))
+    it('extracts display content before XML context tags', () => {
+    expect(extractUserDisplayContent('Summarize this\n\n<linked_note path="notes/today.md" />'))
       .toBe('Summarize this');
   });
 
@@ -233,7 +249,7 @@ describe('extractUserQuery', () => {
     });
 
     it('extracts content before XML context tags', () => {
-      const prompt = 'User query\n\n<linked_note>\ntest.md\n</linked_note>';
+      const prompt = 'User query\n\n<linked_note path="test.md" />';
       expect(extractUserQuery(prompt)).toBe('User query');
     });
   });
@@ -300,12 +316,12 @@ describe('extractUserQuery', () => {
 describe('appendContextFiles', () => {
   it('appends context files in XML format', () => {
     const result = appendContextFiles('Query', ['file1.md', 'file2.md']);
-    expect(result).toBe('Query\n\n<context_files>\nfile1.md, file2.md\n</context_files>');
+    expect(result).toBe('Query\n\n<context_files>\n<context_file path="file1.md" />\n<context_file path="file2.md" />\n</context_files>');
   });
 
   it('handles single file', () => {
     const result = appendContextFiles('Query', ['single.md']);
-    expect(result).toBe('Query\n\n<context_files>\nsingle.md\n</context_files>');
+    expect(result).toBe('Query\n\n<context_files>\n<context_file path="single.md" />\n</context_files>');
   });
 
   it('handles empty file array', () => {

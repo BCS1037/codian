@@ -8,6 +8,7 @@ const mockRenderEnvironmentSettingsSection = jest.fn();
 const mockSaveSettings = jest.fn().mockResolvedValue(undefined);
 const mockRecycleProviderRuntimes = jest.fn().mockResolvedValue(undefined);
 const mockRenderCodexModelPicker = jest.fn();
+const mockRefreshCodexModelPicker = jest.fn();
 const mockRefreshModelCatalog = jest.fn().mockResolvedValue({ changed: false });
 
 jest.mock('fs');
@@ -28,6 +29,7 @@ jest.mock('@/core/providers/ProviderSettingsCoordinator', () => ({
       }
       return false;
     }),
+    normalizeAllModelVariants: jest.fn(),
   },
 }));
 jest.mock('obsidian', () => {
@@ -117,7 +119,10 @@ jest.mock('@/providers/codex/app/CodexWorkspaceServices', () => ({
 }));
 
 jest.mock('@/providers/codex/ui/CodexModelPicker', () => ({
-  renderCodexModelPicker: (...args: unknown[]) => mockRenderCodexModelPicker(...args),
+  renderCodexModelPicker: (...args: unknown[]) => {
+    mockRenderCodexModelPicker(...args);
+    return { refresh: mockRefreshCodexModelPicker };
+  },
 }));
 
 jest.mock('@/providers/codex/ui/CodexSkillSettings', () => ({
@@ -471,6 +476,24 @@ describe('CodexSettingsTab', () => {
       context,
       expect.objectContaining({ commandCatalog: null }),
     );
+  });
+
+  it('persists the explicit ultra effort opt-in and refreshes model controls', async () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    const plugin = createPlugin();
+    const context = createContext(plugin);
+
+    codexSettingsTabRenderer.render(createContainer(), context);
+
+    const setting = findSetting('Enable ultra effort');
+    const toggle = setting.toggleComponents[0];
+    expect(toggle.value).toBe(false);
+
+    await toggle.onChangeCallback?.(true);
+
+    expect(plugin.settings.providerConfigs.codex.enableUltraEffort).toBe(true);
+    expect(mockRefreshCodexModelPicker).toHaveBeenCalledTimes(1);
+    expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('codex');
   });
 
   it('uses host-native CLI path behavior on non-Windows even when WSL is saved', async () => {

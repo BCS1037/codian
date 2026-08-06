@@ -1,7 +1,7 @@
 {
   "id": "codianz",
   "name": "Codian",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "minAppVersion": "1.11.4",
   "description": "A multi-provider AI agent workspace: connect local coding agents with your vault, conversations, skills, and tools while preserving provider-native sessions and permissions.",
   "author": "BCS",

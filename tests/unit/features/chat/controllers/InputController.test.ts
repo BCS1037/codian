@@ -1355,8 +1355,8 @@ describe('InputController - Message Queue', () => {
       inputEl.value = 'Second message';
       await controller.sendMessage();
 
-      expect(prompts[0]).toContain('<linked_note>');
-      expect(prompts[1]).not.toContain('<linked_note>');
+      expect(prompts[0]).toContain('<linked_note path="notes/session.md" />');
+      expect(prompts[1]).not.toContain('<linked_note path="notes/session.md" />');
     });
 
     it('should not persist currentNote metadata for /compact turns', async () => {
@@ -2676,7 +2676,7 @@ describe('InputController - Message Queue', () => {
 
       const queryCall = ((deps as any).mockAgentService.query as jest.Mock).mock.calls[0];
       const promptSent = queryCall[0].prompt;
-      expect(promptSent).toContain('<editor_selection path="test/note.md">\n  selected text\nsecond line  \n</editor_selection>');
+      expect(promptSent).toContain('<editor_selection path="test/note.md">\n<![CDATA[  selected text\nsecond line  ]]>\n</editor_selection>');
       expect(promptSent).not.toContain('lines=');
     });
   });

@@ -212,7 +212,12 @@ let mockMessageRenderer: { scrollToBottomIfNeeded: jest.Mock; setAsyncSubagentCl
 let mockSelectionController: ReturnType<typeof createMockSelectionController>;
 let mockBrowserSelectionController: ReturnType<typeof createMockBrowserSelectionController>;
 let mockCanvasSelectionController: ReturnType<typeof createMockCanvasSelectionController>;
-let mockStreamController: { onAsyncSubagentStateChange: jest.Mock };
+let mockStreamController: {
+  onAsyncSubagentStateChange: jest.Mock;
+  setTabActive: jest.Mock;
+  setViewportVisible: jest.Mock;
+  dispose: jest.Mock;
+};
 let mockConversationController: { save: jest.Mock; rewind: jest.Mock };
 let mockInputController: ReturnType<typeof createMockInputController>;
 let mockNavigationController: { initialize: jest.Mock; dispose: jest.Mock };
@@ -347,7 +352,12 @@ jest.mock('@/features/chat/controllers/CanvasSelectionController', () => ({
 
 jest.mock('@/features/chat/controllers/StreamController', () => ({
   StreamController: jest.fn().mockImplementation(() => {
-    mockStreamController = { onAsyncSubagentStateChange: jest.fn() };
+    mockStreamController = {
+      onAsyncSubagentStateChange: jest.fn(),
+      setTabActive: jest.fn(),
+      setViewportVisible: jest.fn(),
+      dispose: jest.fn(),
+    };
     return mockStreamController;
   }),
 }));

@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.2.8 — 2026-08-06
+
+### Prompt and context safety
+
+- Hardened prompt context encoding with safe XML attributes, CDATA content, invalid-character normalization, and backward-compatible context parsing.
+- Unified editor, browser, canvas, linked-note, chat-selection, and Codex prompt context formatting.
+
+### Models and thinking
+
+- Added Pi `max` thinking effort support with model-aware fallback handling.
+- Added opt-in Codex `ultra` reasoning effort support; existing defaults remain unchanged.
+- Added title-generation language selection, including interface-language follow mode, across supported Providers.
+
+### Tools, agents, and history
+
+- Normalized task-management tools into stable Todo snapshots across live Claude streams and history replay.
+- Improved ACP diff preservation, Pi web-tool rendering, Codex subagent lifecycle handling, Grok tool-result normalization, and provider-native diff replay.
+- Restored Pi Skill command replay from persisted history.
+
+### Chat rendering
+
+- Coordinated streaming Markdown renders with snapshot coalescing, visibility-aware throttling, final flushes, and improved thinking-block rendering performance.
+
+### Dependencies and security
+
+- Updated Claude Agent SDK, MCP SDK, development tooling, and release-attestation dependencies, including security maintenance updates.
+
 ## 1.2.7 — 2026-07-30
 
 ### Kimi Code

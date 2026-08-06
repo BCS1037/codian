@@ -1,4 +1,7 @@
-import { TITLE_GENERATION_SYSTEM_PROMPT } from '../../../core/prompt/titleGeneration';
+import {
+  buildTitleGenerationSystemPrompt,
+  resolveTitleGenerationLocale,
+} from '../../../core/prompt/titleGeneration';
 import type { ProviderHost } from '../../../core/providers/ProviderHost';
 import type {
   TitleGenerationCallback,
@@ -40,7 +43,9 @@ export class TitleGenerationService {
     try {
       const result = await runColdStartQuery({
         plugin: this.plugin,
-        systemPrompt: TITLE_GENERATION_SYSTEM_PROMPT,
+        systemPrompt: buildTitleGenerationSystemPrompt(
+          resolveTitleGenerationLocale(this.plugin.settings),
+        ),
         tools: [],
         model: this.resolveTitleModel(),
         thinking: { disabled: true },

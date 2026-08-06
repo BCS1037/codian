@@ -1,4 +1,8 @@
 import type { ChatTurnRequest, PreparedChatTurn } from '../../../core/runtime/types';
+import { appendBrowserContext } from '../../../utils/browser';
+import { appendCanvasContext } from '../../../utils/canvas';
+import { appendChatSelections, appendCurrentNote } from '../../../utils/context';
+import { appendEditorContext } from '../../../utils/editor';
 
 function isCompactCommand(text: string): boolean {
   return /^\/compact(\s|$)/i.test(text);
@@ -17,47 +21,30 @@ export function encodeCodexTurn(request: ChatTurnRequest): PreparedChatTurn {
     };
   }
 
-  const sections: string[] = [];
-  sections.push(request.text);
-
+  let prompt = request.text;
   if (request.currentNotePath) {
-    sections.push(`\n[Current note: ${request.currentNotePath}]`);
+    prompt = appendCurrentNote(prompt, request.currentNotePath);
   }
 
-  if (request.editorSelection?.selectedText) {
-    sections.push(
-      `\n[Editor selection from ${request.editorSelection.notePath || 'current note'}:\n${request.editorSelection.selectedText}\n]`,
-    );
+  if (request.editorSelection && request.editorSelection.mode !== 'none') {
+    prompt = appendEditorContext(prompt, request.editorSelection);
   }
 
-  if (request.browserSelection?.selectedText) {
-    sections.push(
-      `\n[Browser selection from ${request.browserSelection.url ?? 'unknown page'}:\n${request.browserSelection.selectedText}\n]`,
-    );
+  if (request.browserSelection) {
+    prompt = appendBrowserContext(prompt, request.browserSelection);
   }
 
   if (request.canvasSelection) {
-    const nodeList = request.canvasSelection.nodeIds.join(', ');
-    if (nodeList) {
-      sections.push(
-        `\n[Canvas selection from ${request.canvasSelection.canvasPath}:\n${nodeList}\n]`,
-      );
-    }
+    prompt = appendCanvasContext(prompt, request.canvasSelection);
   }
 
-  for (const selection of request.chatSelections ?? []) {
-    if (selection.text.trim()) {
-      sections.push(`\n[Selected AI reply:\n${selection.text}\n]`);
-    }
-  }
-
-  const prompt = sections.join('');
+  prompt = appendChatSelections(prompt, request.chatSelections);
 
   return {
-    request,
-    persistedContent: request.text,
-    prompt,
-    isCompact: false,
+      request,
+      persistedContent: request.text,
+      prompt,
+      isCompact: false,
     mcpMentions: new Set(),
   };
 }

@@ -1,5 +1,6 @@
 import { buildSDKMessage } from '@test/helpers/sdkMessages';
 
+import { ClaudeTaskToolNormalizer } from '@/providers/claude/normalization/ClaudeTaskToolNormalizer';
 import {
   createTransformStreamState,
   createTransformUsageState,
@@ -200,6 +201,78 @@ describe('transformSDKMessage', () => {
           id: 'tool-123',
           name: 'Read',
           input: { file_path: '/test/file.ts' },
+        },
+      ]);
+    });
+
+    it('normalizes native Claude task tools into TodoWrite snapshots', () => {
+      const taskToolNormalizer = new ClaudeTaskToolNormalizer();
+      const createResults = [...transformSDKMessage(msg({
+        type: 'assistant',
+        message: {
+          content: [{
+            type: 'tool_use',
+            id: 'create-1',
+            name: 'TaskCreate',
+            input: { subject: 'Implement fix', activeForm: 'Implementing fix' },
+          }],
+        },
+      }), { taskToolNormalizer })];
+
+      expect(createResults).toEqual([{
+        type: 'tool_use',
+        id: 'create-1',
+        name: 'TodoWrite',
+        input: {
+          todos: [{
+            content: 'Implement fix',
+            activeForm: 'Implementing fix',
+            status: 'pending',
+          }],
+        },
+        providerPayload: {
+          rawName: 'TaskCreate',
+          rawInput: { subject: 'Implement fix', activeForm: 'Implementing fix' },
+        },
+      }]);
+
+      const resultResults = [...transformSDKMessage(msg({
+        type: 'user',
+        tool_use_result: { task: { id: '1', subject: 'Implement fix' } },
+        message: {
+          content: [{
+            type: 'tool_result',
+            tool_use_id: 'create-1',
+            content: 'Task #1 created successfully: Implement fix',
+          }],
+        },
+      }), { taskToolNormalizer })];
+
+      expect(resultResults).toEqual([
+        {
+          type: 'tool_use',
+          id: 'create-1',
+          name: 'TodoWrite',
+          input: {
+            todos: [{
+              id: '1',
+              content: 'Implement fix',
+              activeForm: 'Implementing fix',
+              status: 'pending',
+            }],
+          },
+          providerPayload: {
+            rawName: 'TaskCreate',
+            rawInput: { subject: 'Implement fix', activeForm: 'Implementing fix' },
+            rawOutput: { task: { id: '1', subject: 'Implement fix' } },
+          },
+        },
+        {
+          type: 'tool_result',
+          id: 'create-1',
+          content: 'Task #1 created successfully: Implement fix',
+          isError: false,
+          toolUseResult: { task: { id: '1', subject: 'Implement fix' } },
         },
       ]);
     });

@@ -40,7 +40,7 @@ export const DEFAULT_LOCALE: Locale = 'en';
 /**
  * Get locale info by code
  */
-export function getLocaleInfo(code: Locale): LocaleInfo | undefined {
+export function getLocaleInfo(code: string): LocaleInfo | undefined {
   return SUPPORTED_LOCALES.find(locale => locale.code === code);
 }
 

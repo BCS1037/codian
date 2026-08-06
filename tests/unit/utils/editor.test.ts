@@ -108,7 +108,7 @@ describe('formatEditorContext', () => {
       lineCount: 3,
     };
     const result = formatEditorContext(context);
-    expect(result).toBe('<editor_selection path="test.md" lines="5-7">\nselected content\n</editor_selection>');
+    expect(result).toBe('<editor_selection path="test.md" lines="5-7">\n<![CDATA[selected content]]>\n</editor_selection>');
   });
 
   it('formats selection without line info', () => {
@@ -118,7 +118,7 @@ describe('formatEditorContext', () => {
       selectedText: 'selected',
     };
     const result = formatEditorContext(context);
-    expect(result).toBe('<editor_selection path="test.md">\nselected\n</editor_selection>');
+    expect(result).toBe('<editor_selection path="test.md">\n<![CDATA[selected]]>\n</editor_selection>');
   });
 
   it('formats inline cursor context', () => {
@@ -134,7 +134,7 @@ describe('formatEditorContext', () => {
       },
     };
     const result = formatEditorContext(context);
-    expect(result).toBe('<editor_cursor path="test.md">\nhello| world #inline\n</editor_cursor>');
+    expect(result).toBe('<editor_cursor path="test.md">\n<![CDATA[hello| world #inline]]>\n</editor_cursor>');
   });
 
   it('formats inbetween cursor context', () => {
@@ -150,7 +150,7 @@ describe('formatEditorContext', () => {
       },
     };
     const result = formatEditorContext(context);
-    expect(result).toBe('<editor_cursor path="test.md">\nabove\n| #inbetween\nbelow\n</editor_cursor>');
+    expect(result).toBe('<editor_cursor path="test.md">\n<![CDATA[above\n| #inbetween\nbelow]]>\n</editor_cursor>');
   });
 
   it('formats inbetween cursor with no before content', () => {
@@ -166,7 +166,7 @@ describe('formatEditorContext', () => {
       },
     };
     const result = formatEditorContext(context);
-    expect(result).toBe('<editor_cursor path="test.md">\n| #inbetween\nbelow\n</editor_cursor>');
+    expect(result).toBe('<editor_cursor path="test.md">\n<![CDATA[| #inbetween\nbelow]]>\n</editor_cursor>');
   });
 
   it('formats inbetween cursor with no after content', () => {
@@ -182,7 +182,7 @@ describe('formatEditorContext', () => {
       },
     };
     const result = formatEditorContext(context);
-    expect(result).toBe('<editor_cursor path="test.md">\nabove\n| #inbetween\n</editor_cursor>');
+    expect(result).toBe('<editor_cursor path="test.md">\n<![CDATA[above\n| #inbetween]]>\n</editor_cursor>');
   });
 
   it('formats inbetween cursor with no before and no after content', () => {
@@ -198,7 +198,7 @@ describe('formatEditorContext', () => {
       },
     };
     const result = formatEditorContext(context);
-    expect(result).toBe('<editor_cursor path="test.md">\n| #inbetween\n</editor_cursor>');
+    expect(result).toBe('<editor_cursor path="test.md">\n<![CDATA[| #inbetween]]>\n</editor_cursor>');
   });
 
   it('returns empty string for none mode', () => {
@@ -215,6 +215,19 @@ describe('formatEditorContext', () => {
       mode: 'selection',
     };
     expect(formatEditorContext(context)).toBe('');
+  });
+
+  it('escapes paths and literal XML in editor content', () => {
+    const result = formatEditorContext({
+      notePath: 'notes/a&b"<c>.md',
+      mode: 'selection',
+      selectedText: 'literal </editor_selection> and ]]> text',
+    });
+    expect(result).toBe(
+      '<editor_selection path="notes/a&amp;b&quot;&lt;c&gt;.md">\n'
+      + '<![CDATA[literal </editor_selection> and ]]]]><![CDATA[> text]]>\n'
+      + '</editor_selection>',
+    );
   });
 
   it('returns empty string for cursor mode without cursorContext', () => {
@@ -236,7 +249,7 @@ describe('appendEditorContext', () => {
       lineCount: 1,
     };
     const result = appendEditorContext('Fix this', context);
-    expect(result).toBe('Fix this\n\n<editor_selection path="test.md" lines="1-1">\ntext\n</editor_selection>');
+    expect(result).toBe('Fix this\n\n<editor_selection path="test.md" lines="1-1">\n<![CDATA[text]]>\n</editor_selection>');
   });
 
   it('returns prompt unchanged when context is none', () => {

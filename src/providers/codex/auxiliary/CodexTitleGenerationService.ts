@@ -1,4 +1,5 @@
 import { QueryBackedTitleGenerationService } from '../../../core/auxiliary/QueryBackedTitleGenerationService';
+import { resolveTitleGenerationLocale } from '../../../core/prompt/titleGeneration';
 import type { ProviderHost } from '../../../core/providers/ProviderHost';
 import { toCodexRuntimeModelId } from '../modelSelection';
 import { CodexAuxQueryRunner } from '../runtime/CodexAuxQueryRunner';
@@ -17,6 +18,7 @@ export class CodexTitleGenerationService extends QueryBackedTitleGenerationServi
           ? toCodexRuntimeModelId(titleModel)
           : undefined;
       },
+      resolveLocale: () => resolveTitleGenerationLocale(plugin.settings),
     });
   }
 }

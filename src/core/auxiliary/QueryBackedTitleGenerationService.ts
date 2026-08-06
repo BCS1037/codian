@@ -1,7 +1,7 @@
 import {
   buildTitleGenerationPrompt,
+  buildTitleGenerationSystemPrompt,
   parseTitleGenerationResponse,
-  TITLE_GENERATION_SYSTEM_PROMPT,
 } from '../prompt/titleGeneration';
 import type {
   TitleGenerationCallback,
@@ -18,6 +18,7 @@ interface ActiveGeneration {
 export interface QueryBackedTitleGenerationServiceOptions {
   createRunner: () => AuxQueryRunner;
   resolveModel?: () => string | undefined;
+  resolveLocale?: () => string | undefined;
 }
 
 export class QueryBackedTitleGenerationService implements TitleGenerationService {
@@ -45,7 +46,7 @@ export class QueryBackedTitleGenerationService implements TitleGenerationService
       const text = await runner.query({
         abortController,
         model: this.options.resolveModel?.(),
-        systemPrompt: TITLE_GENERATION_SYSTEM_PROMPT,
+        systemPrompt: buildTitleGenerationSystemPrompt(this.options.resolveLocale?.()),
       }, buildTitleGenerationPrompt(userMessage));
       const title = parseTitleGenerationResponse(text);
       await this.safeCallback(

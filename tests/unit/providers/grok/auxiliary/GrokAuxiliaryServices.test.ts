@@ -182,11 +182,11 @@ describe('Grok auxiliary services', () => {
     expect(MockRunner).toHaveBeenCalledTimes(1);
     expect(runner.reset).toHaveBeenCalledTimes(1);
     expect(query).toHaveBeenNthCalledWith(1, expect.any(Object), expect.stringContaining(
-      '<editor_selection path="notes/draft.md">\nDraft text\n</editor_selection>',
+      '<editor_selection path="notes/draft.md">\n<![CDATA[Draft text]]>\n</editor_selection>',
     ));
     expect(query.mock.calls[0][1]).toContain('<context_files>');
     expect(query).toHaveBeenNthCalledWith(2, expect.any(Object), expect.stringContaining(
-      'Make it shorter\n\n<context_files>\nnotes/style.md\n</context_files>',
+      'Make it shorter\n\n<context_files>\n<context_file path="notes/style.md" />\n</context_files>',
     ));
   });
 
