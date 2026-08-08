@@ -149,6 +149,6 @@ export function renderCodexModelPicker(
     providerName: 'Codex',
     searchPlaceholder: t('settings.providerModels.searchPlaceholder'),
   });
-  refreshPicker = picker.refresh;
+  refreshPicker = () => picker.refresh();
   return picker;
 }

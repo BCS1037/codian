@@ -30,7 +30,7 @@ export class LivePreviewInputBridge {
     private readonly hostEl: HTMLElement,
     private readonly options: LivePreviewInputBridgeOptions = {},
   ) {
-    this.originalFocus = sourceEl.focus;
+    this.originalFocus = sourceEl.focus.bind(sourceEl);
     this.composer = new LivePreviewComposer(hostEl, {
       initialValue: sourceEl.value,
       placeholder: sourceEl.placeholder,
@@ -38,7 +38,7 @@ export class LivePreviewInputBridge {
       onChange: value => this.syncToSource(value),
       onSelectionChange: (start, end) => this.syncSelectionToSource(start, end),
       onKeydown: event => this.handleComposerKeydown(event),
-      onOpenReference: options.onOpenReference,
+      onOpenReference: reference => options.onOpenReference?.(reference),
     });
     sourceEl.classList.add('claudian-live-preview-source');
     hostEl.classList.add('claudian-live-preview-host');

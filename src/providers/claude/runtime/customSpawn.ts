@@ -1,5 +1,5 @@
 import type { SpawnedProcess, SpawnOptions } from '@anthropic-ai/claude-agent-sdk';
-import { type ChildProcess, spawn } from 'child_process';
+import { type ChildProcess, type ChildProcessWithoutNullStreams, spawn } from 'child_process';
 
 import { cliPathRequiresNode, findNodeExecutable } from '../../../utils/env';
 import {
@@ -60,12 +60,16 @@ export function createCustomSpawnFunction(
       child.stderr.on('data', () => {});
     }
 
-    if (!child.stdin || !child.stdout) {
+    if (!hasProcessStreams(child)) {
       throw new Error('Failed to create process streams');
     }
 
-    return child as unknown as SpawnedProcess;
+    return child;
   };
+}
+
+function hasProcessStreams(child: ChildProcess): child is ChildProcessWithoutNullStreams {
+  return child.stdin !== null && child.stdout !== null;
 }
 
 function installTreeAwareKill(child: ChildProcess, spawnSpec: WindowsCmdShimSpawnSpec): void {

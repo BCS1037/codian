@@ -38,11 +38,11 @@ export class ImageContextManager {
     this.containerEl = containerEl;
     this.inputEl = inputEl;
     this.callbacks = callbacks;
-    const ownedTrayContainer = contextTray
-      ? null
-      : (previewContainerEl ?? containerEl).createDiv({ cls: 'claudian-context-row' });
-    this.contextTray = contextTray ?? new ComposerContextTray(ownedTrayContainer!);
-    if (!contextTray) {
+    if (contextTray) {
+      this.contextTray = contextTray;
+    } else {
+      const ownedTrayContainer = (previewContainerEl ?? containerEl).createDiv({ cls: 'claudian-context-row' });
+      this.contextTray = new ComposerContextTray(ownedTrayContainer);
       this.ownedContextTray = this.contextTray;
     }
 
@@ -93,19 +93,18 @@ export class ImageContextManager {
 
     this.dropOverlay = inputWrapper.createDiv({ cls: 'claudian-drop-overlay' });
     const dropContent = this.dropOverlay.createDiv({ cls: 'claudian-drop-content' });
-    const ownerDocument = inputWrapper.ownerDocument ?? window.document;
-    const svg = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const svg = dropContent.createSvg('svg');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('width', '32');
     svg.setAttribute('height', '32');
     svg.setAttribute('fill', 'none');
     svg.setAttribute('stroke', 'currentColor');
     svg.setAttribute('stroke-width', '2');
-    const pathEl = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const pathEl = svg.createSvg('path');
     pathEl.setAttribute('d', 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4');
-    const polyline = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    const polyline = svg.createSvg('polyline');
     polyline.setAttribute('points', '17 8 12 3 7 8');
-    const line = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'line');
+    const line = svg.createSvg('line');
     line.setAttribute('x1', '12');
     line.setAttribute('y1', '3');
     line.setAttribute('x2', '12');

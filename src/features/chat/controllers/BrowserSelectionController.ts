@@ -1,4 +1,4 @@
-import type { App, ItemView } from 'obsidian';
+import type { App, View } from 'obsidian';
 
 import type { BrowserSelectionContext } from '../../../utils/browser';
 import type { ComposerContextTray } from '../ui/ComposerContextTray';
@@ -72,10 +72,10 @@ export class BrowserSelectionController {
     }
   }
 
-  private getActiveBrowserView(): { view: ItemView; viewType: string; containerEl: HTMLElement } | null {
+  private getActiveBrowserView(): { view: View; viewType: string; containerEl: HTMLElement } | null {
     const activeLeaf = this.app.workspace.getMostRecentLeaf?.();
-    const activeView = activeLeaf?.view as ItemView | undefined;
-    const containerEl = (activeView as unknown as { containerEl?: HTMLElement }).containerEl;
+    const activeView = activeLeaf?.view;
+    const containerEl = activeView?.containerEl;
     if (!activeView || !containerEl) return null;
 
     const viewType = activeView.getViewType?.() ?? '';
@@ -171,7 +171,7 @@ export class BrowserSelectionController {
   }
 
   private buildContext(
-    view: ItemView,
+    view: View,
     viewType: string,
     containerEl: HTMLElement,
     selectedText: string
@@ -188,7 +188,7 @@ export class BrowserSelectionController {
     };
   }
 
-  private extractViewTitle(view: ItemView): string | undefined {
+  private extractViewTitle(view: View): string | undefined {
     const displayText = view.getDisplayText?.();
     if (displayText?.trim()) return displayText.trim();
 
@@ -196,7 +196,7 @@ export class BrowserSelectionController {
     return typeof title === 'string' && title.trim() ? title.trim() : undefined;
   }
 
-  private extractViewUrl(view: ItemView, containerEl: HTMLElement): string | undefined {
+  private extractViewUrl(view: View, containerEl: HTMLElement): string | undefined {
     const rawView = view as unknown as Record<string, unknown>;
     const directCandidates = [
       rawView.url,

@@ -1526,22 +1526,21 @@ describe('ConversationController', () => {
       (mockInput as any).focus = jest.fn();
       (mockInput as any).select = jest.fn();
 
+      const createInput = jest.spyOn(item, 'createEl').mockReturnValue(mockInput);
+
       const titleEl = item.querySelector('.claudian-history-item-title');
       if (titleEl) {
         (titleEl as any).replaceWith = jest.fn();
       }
 
-      const origDocument = global.document;
-      global.document = { createElement: jest.fn().mockReturnValue(mockInput) } as any;
-
       try {
         clickHandlers![0]({ stopPropagation: jest.fn() });
 
-        expect(global.document.createElement).toHaveBeenCalledWith('input');
+        expect(createInput).toHaveBeenCalledWith('input');
         expect((mockInput as any).value).toBe('Test Title');
         expect(titleEl!.replaceWith).toHaveBeenCalledWith(mockInput);
       } finally {
-        global.document = origDocument;
+        createInput.mockRestore();
       }
     });
 
