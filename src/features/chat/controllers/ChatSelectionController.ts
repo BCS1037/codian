@@ -64,11 +64,12 @@ export class ChatSelectionController {
     this.hideToolbar();
     const rect = range.getBoundingClientRect();
     if (!rect.width && !rect.height) return;
-    const toolbar = this.messagesEl.ownerDocument.createElement('div');
-    toolbar.className = 'claudian-selection-toolbar';
+    const toolbar = this.messagesEl.ownerDocument.createDiv({ cls: 'claudian-selection-toolbar' });
     toolbar.setAttribute('role', 'toolbar');
-    toolbar.style.left = `${Math.max(8, rect.left + rect.width / 2)}px`;
-    toolbar.style.top = `${Math.max(8, rect.top - 8)}px`;
+    toolbar.setCssProps({
+      left: `${Math.max(8, rect.left + rect.width / 2)}px`,
+      top: `${Math.max(8, rect.top - 8)}px`,
+    });
     const add = this.createButton(toolbar, 'plus', t('chat.selectionToolbar.add'), () => this.addSelection());
     if (!this.canAdd(this.selectedText)) {
       add.disabled = true;

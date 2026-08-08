@@ -241,6 +241,14 @@ export class ClaudianSettingTab extends PluginSettingTab {
     );
   }
 
+  /**
+   * Keep the imperative settings canvas while registering the 1.13+ search contract.
+   * Obsidian falls back to display() when this list is empty.
+   */
+  getSettingDefinitions(): unknown[] {
+    return [];
+  }
+
   display(): void {
     const displayGeneration = ++this.displayGeneration;
     this.agentSkillCoordinator.resetSubscriptions();

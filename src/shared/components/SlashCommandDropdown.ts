@@ -224,7 +224,7 @@ export class SlashCommandDropdown {
     this.providerDiscoveryState = null;
   }
 
-  /** @deprecated Alias for resetProviderViewState */
+  /** Compatibility alias for older tab state integrations. */
   resetSdkSkillsCache(): void {
     this.resetProviderViewState();
   }

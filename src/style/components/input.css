@@ -203,9 +203,7 @@
 
 .claudian-live-preview-link {
   color: var(--link-color);
-  text-decoration: underline;
-  text-decoration-color: var(--link-color);
-  text-underline-offset: 2px;
+  border-bottom: 1px solid var(--link-color);
 }
 
 .claudian-live-preview-unordered-marker,

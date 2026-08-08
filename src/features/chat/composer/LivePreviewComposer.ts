@@ -47,7 +47,7 @@ class InlineCodeWidget extends WidgetType {
   }
 
   toDOM(view: EditorView): HTMLElement {
-    const element = view.dom.ownerDocument.createElement('code');
+    const element = view.dom.createEl('code');
     element.classList.add('claudian-live-preview-inline-code');
     element.textContent = this.text;
     return element;
@@ -64,7 +64,7 @@ class LinkWidget extends WidgetType {
   }
 
   toDOM(view: EditorView): HTMLElement {
-    const element = view.dom.ownerDocument.createElement('span');
+    const element = view.dom.createSpan();
     element.classList.add('claudian-live-preview-link');
     element.dataset.href = this.href;
     element.title = this.href;
@@ -83,7 +83,7 @@ class ListMarkerWidget extends WidgetType {
   }
 
   toDOM(view: EditorView): HTMLElement {
-    const element = view.dom.ownerDocument.createElement('span');
+    const element = view.dom.createSpan();
     element.classList.add(this.ordered
       ? 'claudian-live-preview-ordered-marker'
       : 'claudian-live-preview-unordered-marker');
@@ -112,10 +112,9 @@ class VaultReferenceWidget extends WidgetType {
   }
 
   toDOM(view: EditorView): HTMLElement {
-    const ownerDocument = view.dom.ownerDocument;
-    const element = ownerDocument.createElement('span');
-    const icon = ownerDocument.createElement('span');
-    const label = ownerDocument.createElement('span');
+    const element = view.dom.createSpan();
+    const icon = element.createSpan();
+    const label = element.createSpan();
     const token = `@${this.reference.path}${this.reference.kind === 'folder' ? '/' : ''}`;
 
     element.classList.add('claudian-live-preview-reference');

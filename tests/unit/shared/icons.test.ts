@@ -27,6 +27,13 @@ describe('createProviderIconSvg', () => {
     expect(path?.getAttribute('fill')).toBe('currentColor');
   });
 
+  it('builds root SVG outside document', () => {
+    const svg = createProviderIconSvg(OPENAI_PROVIDER_ICON, { ownerDocument: document });
+
+    expect(svg.parentNode).not.toBe(document);
+    expect(document.documentElement.contains(svg)).toBe(false);
+  });
+
   it('renders composite provider icons with theme variants', () => {
     const svg = createProviderIconSvg(OPENCODE_PROVIDER_ICON, {
       dataProvider: 'opencode',

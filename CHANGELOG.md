@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.9 — 2026-08-08
+
+### Marketplace and runtime compatibility
+
+- Synchronized the Bun lockfile with the published dependency graph for Community scanner validation.
+- Replaced native DOM factory paths with Obsidian DOM APIs and fixed provider SVG construction during view startup.
+- Fixed a blank Codian chat view caused by provider icon creation attaching an SVG root to the document.
+
+### Documentation
+
+- Refreshed the README preview image.
+
 ## 1.2.8 — 2026-08-06
 
 ### Prompt and context safety

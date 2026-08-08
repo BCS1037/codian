@@ -777,8 +777,6 @@ export class ConversationController {
       conversations,
       emptyText,
       highlightedConversationId,
-      renderTitle,
-      renderPreview,
     } = presentation;
 
     if (conversations.length === 0) {
@@ -825,9 +823,9 @@ export class ConversationController {
 
       const content = item.createDiv({ cls: 'claudian-history-item-content' });
       const titleEl = content.createDiv({ cls: 'claudian-history-item-title' });
-      renderTitle(titleEl, conv);
+      presentation.renderTitle(titleEl, conv);
       titleEl.setAttribute('title', conv.title);
-      renderPreview(content, conv);
+      presentation.renderPreview(content, conv);
       content.createDiv({
         cls: 'claudian-history-item-date',
         text: this.getHistoryItemStatusText(conversationStatus, conv.lastResponseAt ?? conv.createdAt),
@@ -1112,7 +1110,7 @@ export class ConversationController {
     const titleEl = item.querySelector('.claudian-history-item-title') as HTMLElement;
     if (!titleEl) return;
 
-    const input = (item.ownerDocument ?? window.document).createElement('input');
+    const input = item.createEl('input');
     input.type = 'text';
     input.className = 'claudian-rename-input';
     input.value = currentTitle;

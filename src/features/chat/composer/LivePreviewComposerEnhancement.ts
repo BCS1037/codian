@@ -14,14 +14,14 @@ export class LivePreviewComposerEnhancement implements ComposerEnhancement {
     const hostEl = context.inputWrapperEl.createDiv({ cls: 'claudian-live-preview-host' });
     const bridge = new LivePreviewInputBridge(context.sourceEl, hostEl, {
       references: context.initialReferences,
-      onOpenReference: context.onOpenReference,
+      onOpenReference: reference => context.onOpenReference(reference),
     });
     const dropController = new VaultContextDropController(
       context.app,
       context.dropZoneEl,
       context.sourceEl,
       {
-        onReferencesDropped: context.onReferencesDropped,
+        onReferencesDropped: references => context.onReferencesDropped(references),
         onInvalidDrop: () => new Notice(t('chat.drop.invalid')),
       },
     );
