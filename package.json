@@ -53,7 +53,7 @@
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.4.1",
     "obsidian": "latest",
-    "ts-jest": "^29.4.9",
+    "ts-jest": "^29.4.12",
     "tsx": "^4.23.1",
     "typescript": "^6.0.2"
   },
