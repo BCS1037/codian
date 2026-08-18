@@ -55,11 +55,14 @@ describe('CodexServerRequestRouter', () => {
 
     it('maps "deny" to "decline"', async () => {
       mockApprovalCallback.mockResolvedValue('deny');
+      const onToolBlocked = jest.fn();
+      router.setToolBlockedCallback(onToolBlocked);
       const result = await router.handleServerRequest(
         'item/commandExecution/requestApproval',
         { ...baseParams, command: 'rm -rf /' },
       );
       expect(result).toEqual({ decision: 'decline' });
+      expect(onToolBlocked).toHaveBeenCalledWith('call_abc');
     });
 
     it('maps "cancel" to "cancel"', async () => {

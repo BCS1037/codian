@@ -65,9 +65,11 @@ import type {
   SkillsListResult,
   ThreadCompactStartResult,
   ThreadForkResult,
+  ThreadReadResult,
   ThreadResumeResult,
   ThreadRollbackResult,
   ThreadStartResult,
+  ThreadStatusChangedNotification,
   TurnStartedNotification,
   TurnStartResult,
   TurnSteerResult,
@@ -129,6 +131,20 @@ const LEGACY_WORKSPACE_DEPENDENCY_NOTICE =
 const LEGACY_WORKSPACE_DEPENDENCY_INSTRUCTIONS =
   'This thread predates Claudian client-hosted workspace dependency tools. If the user requests a skill that requires load_workspace_dependencies, explain that they must start a new conversation in Claudian. Do not emulate the tool, search for dependency paths, or install replacement dependencies.';
 
+const MISSED_TURN_COMPLETION_GRACE_MS = 1_000;
+const MISSED_TURN_COMPLETION_MAX_ATTEMPTS = 3;
+const MISSED_TURN_COMPLETION_RETRY_BASE_MS = 500;
+const THREAD_READ_RECOVERY_TIMEOUT_MS = 5_000;
+
+interface CompletionRecovery {
+  threadId: string;
+  turnId: string;
+  generation: number;
+  attempt: number;
+  inFlight: boolean;
+  timer: number | null;
+}
+
 export class CodexChatRuntime implements ChatRuntime {
   readonly providerId: ProviderId = 'codex';
 
@@ -140,6 +156,7 @@ export class CodexChatRuntime implements ChatRuntime {
   private runtimeContext: CodexRuntimeContext | null = null;
   private notificationRouter: CodexNotificationRouter | null = null;
   private serverRequestRouter = new CodexServerRequestRouter();
+  private blockedToolIds = new Set<string>();
   private dynamicToolRegistry = new CodexDynamicToolRegistry();
   private ready = false;
   private readinessFlight: { key: string; promise: Promise<boolean> } | null = null;
@@ -154,6 +171,8 @@ export class CodexChatRuntime implements ChatRuntime {
   private workspaceDependencyToolVersion: number | null = null;
   private legacyWorkspaceDependencyNoticeKeys = new Set<string>();
   private pendingTurnNotifications: Array<{ method: string; params: unknown }> = [];
+  private completionRecovery: CompletionRecovery | null = null;
+  private pendingIdleThreadId: string | null = null;
 
   // Chunk buffer: notifications push here, query() drains
   private chunkBuffer: StreamChunk[] = [];
@@ -178,6 +197,7 @@ export class CodexChatRuntime implements ChatRuntime {
 
   constructor(plugin: ProviderHost) {
     this.plugin = plugin;
+    this.serverRequestRouter.setToolBlockedCallback(itemId => this.blockedToolIds.add(itemId));
   }
 
   getCapabilities(): Readonly<ProviderCapabilities> {
@@ -342,22 +362,21 @@ export class CodexChatRuntime implements ChatRuntime {
     this.chunkResolve = null;
     this.currentQueryThreadId = null;
     this.pendingTurnNotifications = [];
+    this.pendingIdleThreadId = null;
+    this.blockedToolIds.clear();
 
     const promptSettings = this.getSystemPromptSettings();
     const promptText = buildSystemPrompt(promptSettings);
 
     const enqueueChunk = (chunk: StreamChunk): void => {
-      this.chunkBuffer.push(chunk);
-      if (this.chunkResolve) {
-        this.chunkResolve();
-        this.chunkResolve = null;
-      }
+      this.enqueueChunk(chunk);
     };
 
     // Set up notification router to push chunks
     this.notificationRouter = new CodexNotificationRouter(
       (chunk) => enqueueChunk(chunk),
       (update) => this.recordTurnMetadata(update),
+      toolId => this.blockedToolIds.has(toolId),
     );
 
     this.wireTransportHandlers();
@@ -575,6 +594,10 @@ export class CodexChatRuntime implements ChatRuntime {
           wasSent: true,
         });
         this.flushPendingTurnNotifications();
+        if (this.pendingIdleThreadId === threadId) {
+          this.pendingIdleThreadId = null;
+          this.observeThreadIdle(threadId);
+        }
       }
 
       // Yield chunks until done or canceled
@@ -618,6 +641,7 @@ export class CodexChatRuntime implements ChatRuntime {
       yield { type: 'done' };
       return;
     } finally {
+      this.cancelMissedTurnCompletionRecovery();
       this.notificationRouter?.endTurn();
 
       this.cleanupActiveInputBundles();
@@ -680,6 +704,7 @@ export class CodexChatRuntime implements ChatRuntime {
   cancel(): void {
     this.canceled = true;
     this.dismissAllPendingPrompts();
+    this.cancelMissedTurnCompletionRecovery();
 
     const threadId = this.session.getThreadId();
     const turnId = this.currentTurnId;
@@ -722,6 +747,14 @@ export class CodexChatRuntime implements ChatRuntime {
       ...this.turnMetadata,
       ...update,
     };
+  }
+
+  private enqueueChunk(chunk: StreamChunk): void {
+    this.chunkBuffer.push(chunk);
+    if (this.chunkResolve) {
+      this.chunkResolve();
+      this.chunkResolve = null;
+    }
   }
 
   async getSupportedCommands(): Promise<SlashCommand[]> {
@@ -840,6 +873,7 @@ export class CodexChatRuntime implements ChatRuntime {
 
   private teardownState(): void {
     this.cleanupActiveInputBundles();
+    this.cancelMissedTurnCompletionRecovery();
     this.session.reset();
     this.launchSpec = null;
     this.runtimeContext = null;
@@ -849,6 +883,7 @@ export class CodexChatRuntime implements ChatRuntime {
     this.legacyWorkspaceDependencyNoticeKeys.clear();
     this.currentTurnId = null;
     this.currentQueryThreadId = null;
+    this.pendingIdleThreadId = null;
     this.pendingTurnNotifications = [];
     this.pendingFork = null;
     this.clientConfigKey = null;
@@ -1036,6 +1071,14 @@ export class CodexChatRuntime implements ChatRuntime {
           this.handleServerRequestResolved(params as ServerRequestResolvedNotification);
           return;
         }
+        if (method === 'thread/status/changed') {
+          this.handleThreadStatusChanged(params as ThreadStatusChangedNotification);
+          return;
+        }
+        if (method === 'turn/completed') {
+          this.pendingIdleThreadId = null;
+          this.cancelMissedTurnCompletionRecovery();
+        }
         if (!this.routeNotification(method, params)) {
           return;
         }
@@ -1060,6 +1103,9 @@ export class CodexChatRuntime implements ChatRuntime {
   }
 
   private async shutdownProcess(): Promise<void> {
+    this.cancelMissedTurnCompletionRecovery();
+    this.pendingIdleThreadId = null;
+    this.blockedToolIds.clear();
     if (this.transport) {
       this.transport.dispose();
       this.transport = null;
@@ -1149,6 +1195,165 @@ export class CodexChatRuntime implements ChatRuntime {
     this.serverRequestRouter.abortPendingAskUser(params.requestId, params.threadId);
   }
 
+  private handleThreadStatusChanged(params: ThreadStatusChangedNotification): void {
+    const threadId = params.threadId;
+    if (!threadId || threadId !== this.currentQueryThreadId) {
+      return;
+    }
+
+    if (params.status?.type === 'idle') {
+      if (!this.currentTurnId) {
+        this.pendingIdleThreadId = threadId;
+        return;
+      }
+      this.observeThreadIdle(threadId);
+      return;
+    }
+
+    this.pendingIdleThreadId = null;
+    this.cancelMissedTurnCompletionRecovery();
+  }
+
+  private observeThreadIdle(threadId: string): void {
+    if (
+      threadId !== this.currentQueryThreadId
+      || !this.currentTurnId
+      || this.canceled
+    ) {
+      return;
+    }
+
+    let recovery = this.completionRecovery;
+    if (
+      !recovery
+      || recovery.threadId !== threadId
+      || recovery.turnId !== this.currentTurnId
+      || recovery.generation !== this.lifecycleGeneration
+    ) {
+      this.cancelMissedTurnCompletionRecovery();
+      recovery = {
+        threadId,
+        turnId: this.currentTurnId,
+        generation: this.lifecycleGeneration,
+        attempt: 0,
+        inFlight: false,
+        timer: null,
+      };
+      this.completionRecovery = recovery;
+    }
+
+    this.scheduleMissedTurnCompletionRecovery(recovery, MISSED_TURN_COMPLETION_GRACE_MS);
+  }
+
+  private scheduleMissedTurnCompletionRecovery(
+    recovery: CompletionRecovery,
+    delayMs: number,
+  ): void {
+    if (
+      this.completionRecovery !== recovery
+      || recovery.timer !== null
+      || recovery.inFlight
+      || !this.isCompletionRecoveryCurrent(recovery)
+    ) {
+      return;
+    }
+
+    recovery.timer = window.setTimeout(() => {
+      recovery.timer = null;
+      void this.recoverMissedTurnCompletion(recovery);
+    }, delayMs);
+  }
+
+  private cancelMissedTurnCompletionRecovery(): void {
+    const recovery = this.completionRecovery;
+    if (recovery?.timer !== null && recovery?.timer !== undefined) {
+      window.clearTimeout(recovery.timer);
+    }
+    this.completionRecovery = null;
+  }
+
+  private async recoverMissedTurnCompletion(recovery: CompletionRecovery): Promise<void> {
+    const transport = this.transport;
+    if (!transport || !this.isCompletionRecoveryCurrent(recovery)) {
+      return;
+    }
+
+    recovery.attempt += 1;
+    recovery.inFlight = true;
+
+    let result: ThreadReadResult;
+    try {
+      result = await transport.request<ThreadReadResult>(
+        'thread/read',
+        { threadId: recovery.threadId, includeTurns: true },
+        THREAD_READ_RECOVERY_TIMEOUT_MS,
+      );
+    } catch {
+      recovery.inFlight = false;
+      this.retryOrFailMissedTurnCompletion(recovery);
+      return;
+    }
+
+    if (!this.isCompletionRecoveryCurrent(recovery)) {
+      return;
+    }
+    recovery.inFlight = false;
+
+    const thread = result?.thread;
+    const turn = thread?.turns?.find(candidate => candidate.id === recovery.turnId);
+    if (
+      !thread
+      || thread.id !== recovery.threadId
+      || !turn
+      || turn.status === 'inProgress'
+    ) {
+      this.retryOrFailMissedTurnCompletion(recovery);
+      return;
+    }
+
+    this.cancelMissedTurnCompletionRecovery();
+    for (const item of turn.items) {
+      this.notificationRouter?.handleNotification('item/completed', {
+        threadId: recovery.threadId,
+        turnId: recovery.turnId,
+        item,
+      });
+    }
+    this.notificationRouter?.handleNotification('turn/completed', {
+      threadId: recovery.threadId,
+      turn,
+    });
+  }
+
+  private retryOrFailMissedTurnCompletion(recovery: CompletionRecovery): void {
+    if (!this.isCompletionRecoveryCurrent(recovery)) {
+      return;
+    }
+
+    if (recovery.attempt < MISSED_TURN_COMPLETION_MAX_ATTEMPTS) {
+      const retryDelay = MISSED_TURN_COMPLETION_RETRY_BASE_MS
+        * (2 ** (recovery.attempt - 1));
+      this.scheduleMissedTurnCompletionRecovery(recovery, retryDelay);
+      return;
+    }
+
+    this.cancelMissedTurnCompletionRecovery();
+    this.enqueueChunk({
+      type: 'error',
+      content: 'Codex became idle, but its completed turn could not be recovered.',
+    });
+    this.enqueueChunk({ type: 'done' });
+  }
+
+  private isCompletionRecoveryCurrent(recovery: CompletionRecovery): boolean {
+    return this.completionRecovery === recovery
+      && !this.disposed
+      && !this.canceled
+      && recovery.generation === this.lifecycleGeneration
+      && recovery.threadId === this.currentQueryThreadId
+      && recovery.turnId === this.currentTurnId;
+  }
+
   private routeNotification(
     method: string,
     params: unknown,
@@ -1197,6 +1402,10 @@ export class CodexChatRuntime implements ChatRuntime {
     if (!this.currentTurnId) {
       this.currentTurnId = turnId;
       this.flushPendingTurnNotifications();
+      if (this.pendingIdleThreadId === threadId) {
+        this.pendingIdleThreadId = null;
+        this.observeThreadIdle(threadId);
+      }
     }
   }
 

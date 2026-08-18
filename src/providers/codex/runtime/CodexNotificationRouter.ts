@@ -44,11 +44,23 @@ type TurnMetadataListener = (update: Partial<ChatTurnMetadata>) => void;
 interface RawToolResult {
   content: string;
   isError: boolean;
+  isBlocked?: boolean;
 }
 
 interface WrappedWaitCall {
   commandCallId: string;
   cellId: string;
+}
+
+interface RawCommandProjection {
+  callId: string;
+  visibleId: string;
+  command: string;
+}
+
+interface CanonicalCommandProjection {
+  itemId: string;
+  commands: string[];
 }
 
 const COLLAB_AGENT_TOOL_MAP: Record<string, string> = {
@@ -66,7 +78,9 @@ export class CodexNotificationRouter {
   private sawPlanDelta = false;
   private startedUserMessageIds = new Set<string>();
   private startedAgentMessageIds = new Set<string>();
-  private agentMessageDeltaIds = new Set<string>();
+  private streamedAgentMessageTextById = new Map<string, string>();
+  private startedCanonicalToolItemIds = new Set<string>();
+  private completedCanonicalToolItemIds = new Set<string>();
   private streamedAssistantTurnText = '';
   private currentAssistantSegmentId: string | undefined;
   private currentAssistantSegmentText = '';
@@ -81,11 +95,19 @@ export class CodexNotificationRouter {
   private wrappedWaitCallsByCallId = new Map<string, WrappedWaitCall>();
   private suppressedRawCallIds = new Set<string>();
   private fileChangeInputsById = new Map<string, Record<string, unknown>>();
+  private unmatchedRawCommands: RawCommandProjection[] = [];
+  private unmatchedCanonicalCommands: CanonicalCommandProjection[] = [];
+  private rawCommandByCanonicalId = new Map<string, RawCommandProjection>();
+  private ignoredLateRawOutputCallIds = new Set<string>();
+  private readonly isToolBlocked: ((toolId: string) => boolean) | undefined;
 
   constructor(
     private readonly emit: ChunkEmitter,
     private readonly onTurnMetadata?: TurnMetadataListener,
-  ) {}
+    isToolBlocked?: (toolId: string) => boolean,
+  ) {
+    this.isToolBlocked = isToolBlocked;
+  }
 
   private resetAssistantTextTracking(): void {
     this.streamedAssistantTurnText = '';
@@ -137,7 +159,9 @@ export class CodexNotificationRouter {
     this.sawPlanDelta = false;
     this.startedUserMessageIds.clear();
     this.startedAgentMessageIds.clear();
-    this.agentMessageDeltaIds.clear();
+    this.streamedAgentMessageTextById.clear();
+    this.startedCanonicalToolItemIds.clear();
+    this.completedCanonicalToolItemIds.clear();
     this.resetAssistantTextTracking();
     this.rawStartedCallIds.clear();
     this.rawToolNamesByCallId.clear();
@@ -150,6 +174,10 @@ export class CodexNotificationRouter {
     this.wrappedWaitCallsByCallId.clear();
     this.suppressedRawCallIds.clear();
     this.fileChangeInputsById.clear();
+    this.unmatchedRawCommands = [];
+    this.unmatchedCanonicalCommands = [];
+    this.rawCommandByCanonicalId.clear();
+    this.ignoredLateRawOutputCallIds.clear();
   }
 
   endTurn(): void {
@@ -157,7 +185,9 @@ export class CodexNotificationRouter {
     this.sawPlanDelta = false;
     this.startedUserMessageIds.clear();
     this.startedAgentMessageIds.clear();
-    this.agentMessageDeltaIds.clear();
+    this.streamedAgentMessageTextById.clear();
+    this.startedCanonicalToolItemIds.clear();
+    this.completedCanonicalToolItemIds.clear();
     this.resetAssistantTextTracking();
     this.rawStartedCallIds.clear();
     this.rawToolNamesByCallId.clear();
@@ -170,6 +200,10 @@ export class CodexNotificationRouter {
     this.wrappedWaitCallsByCallId.clear();
     this.suppressedRawCallIds.clear();
     this.fileChangeInputsById.clear();
+    this.unmatchedRawCommands = [];
+    this.unmatchedCanonicalCommands = [];
+    this.rawCommandByCanonicalId.clear();
+    this.ignoredLateRawOutputCallIds.clear();
   }
 
   handleNotification(method: string, params: unknown): void {
@@ -225,7 +259,8 @@ export class CodexNotificationRouter {
   }
 
   private onAgentMessageDelta(params: AgentMessageDeltaNotification): void {
-    this.agentMessageDeltaIds.add(params.itemId);
+    const previousText = this.streamedAgentMessageTextById.get(params.itemId) ?? '';
+    this.streamedAgentMessageTextById.set(params.itemId, previousText + params.delta);
     this.appendAssistantText(params.delta, params.itemId);
     this.emit({ type: 'text', content: params.delta });
   }
@@ -246,8 +281,21 @@ export class CodexNotificationRouter {
   private onItemStarted(params: ItemStartedNotification): void {
     const item = params.item;
     const itemId = getItemId(item);
+    if (item.type === 'commandExecution') {
+      const rawCommand = this.claimPendingRawCommand(item);
+      if (rawCommand) {
+        this.startedCanonicalToolItemIds.add(item.id);
+        return;
+      }
+    }
     if (itemId && this.rawStartedCallIds.has(itemId)) {
       return;
+    }
+    if (itemId && isCanonicalToolItem(item.type)) {
+      if (this.startedCanonicalToolItemIds.has(itemId)) {
+        return;
+      }
+      this.startedCanonicalToolItemIds.add(itemId);
     }
 
     switch (item.type) {
@@ -264,6 +312,10 @@ export class CodexNotificationRouter {
 
       case 'commandExecution':
         this.emitToolUseFromCommand(item);
+        this.unmatchedCanonicalCommands.push({
+          itemId: item.id,
+          commands: readCanonicalCommandCandidates(item),
+        });
         break;
 
       case 'fileChange':
@@ -298,7 +350,15 @@ export class CodexNotificationRouter {
   private onItemCompleted(params: ItemCompletedNotification): void {
     const item = params.item;
     const itemId = getItemId(item);
-    const rawResult = itemId ? this.consumeRawToolOutput(itemId) : undefined;
+    if (itemId && isCanonicalToolItem(item.type)) {
+      if (this.completedCanonicalToolItemIds.has(itemId)) {
+        return;
+      }
+      this.completedCanonicalToolItemIds.add(itemId);
+    }
+    const rawResult = item.type !== 'commandExecution' && itemId
+      ? this.consumeRawToolOutput(itemId)
+      : undefined;
 
     switch (item.type) {
       case 'userMessage':
@@ -312,7 +372,7 @@ export class CodexNotificationRouter {
         break;
 
       case 'commandExecution':
-        this.emitToolResultFromCommand(item, rawResult);
+        this.completeCommand(item);
         break;
 
       case 'fileChange':
@@ -466,6 +526,27 @@ export class CodexNotificationRouter {
     this.rawToolNamesByCallId.set(callId, normalized.name);
     this.rawToolInputsByCallId.set(callId, normalized.input);
 
+    if (normalized.name === 'Bash') {
+      const command = firstString(normalized.input.command);
+      if (command) {
+        const canonicalCommand = this.takeUniqueCanonicalCommand(command);
+        const projection: RawCommandProjection = {
+          callId,
+          visibleId: canonicalCommand?.itemId ?? callId,
+          command,
+        };
+        if (canonicalCommand) {
+          this.rawCommandByCanonicalId.set(canonicalCommand.itemId, projection);
+          return;
+        }
+        this.unmatchedRawCommands.push(projection);
+      }
+    }
+
+    if (this.startedCanonicalToolItemIds.has(callId)) {
+      return;
+    }
+
     this.resetAssistantSegmentText();
     this.emit({
       type: 'tool_use',
@@ -478,6 +559,9 @@ export class CodexNotificationRouter {
   private handleRawToolOutput(item: Record<string, unknown>): void {
     const callId = readRawCallId(item);
     if (!callId) {
+      return;
+    }
+    if (this.ignoredLateRawOutputCallIds.has(callId)) {
       return;
     }
 
@@ -507,6 +591,7 @@ export class CodexNotificationRouter {
     const result = {
       content,
       isError: isCodexToolOutputError(rawOutputText),
+      ...(this.isToolBlocked?.(callId) ? { isBlocked: true } : {}),
     };
 
     if (this.immediateRawOutputCallIds.delete(callId)) {
@@ -521,7 +606,7 @@ export class CodexNotificationRouter {
 
       if (!this.emittedImmediateToolResultIds.has(callId)) {
         this.emittedImmediateToolResultIds.add(callId);
-        this.emit({ type: 'tool_result', id: callId, ...result });
+        this.emit({ type: 'tool_result', id: this.visibleRawCallId(callId), ...result });
       }
       return;
     }
@@ -578,17 +663,37 @@ export class CodexNotificationRouter {
 
   private emitMissingAssistantSegmentText(text: string, itemId?: string): void {
     this.claimAssistantSegment(itemId);
+    const segmentId = itemId ?? this.currentAssistantSegmentId;
     const missingText = normalizeAgentMessageCompletionText(
       text,
       this.currentAssistantSegmentText,
     );
     if (text) {
       this.currentAssistantSegmentText = text;
+      if (segmentId) {
+        this.streamedAgentMessageTextById.set(segmentId, text);
+      }
     }
     if (!missingText) {
       return;
     }
 
+    this.streamedAssistantTurnText += missingText;
+    this.emit({ type: 'text', content: missingText });
+  }
+
+  private emitMissingAgentMessageText(text: string, itemId: string): void {
+    const streamedText = this.streamedAgentMessageTextById.get(itemId) ?? '';
+    const missingText = normalizeAgentMessageCompletionText(text, streamedText);
+    if (text) {
+      this.streamedAgentMessageTextById.set(itemId, text);
+    }
+    if (!missingText) {
+      return;
+    }
+
+    this.claimAssistantSegment(itemId);
+    this.currentAssistantSegmentText = text;
     this.streamedAssistantTurnText += missingText;
     this.emit({ type: 'text', content: missingText });
   }
@@ -604,7 +709,81 @@ export class CodexNotificationRouter {
 
     this.streamedAssistantTurnText += missingText;
     this.currentAssistantSegmentText += missingText;
+    if (this.currentAssistantSegmentId) {
+      this.streamedAgentMessageTextById.set(
+        this.currentAssistantSegmentId,
+        this.currentAssistantSegmentText,
+      );
+    }
     this.emit({ type: 'text', content: missingText });
+  }
+
+  private claimPendingRawCommand(item: CommandExecutionItem): RawCommandProjection | undefined {
+    const commands = readCanonicalCommandCandidates(item);
+    let index = this.unmatchedRawCommands.findIndex(command => command.callId === item.id);
+    if (index === -1) {
+      const matches = this.unmatchedRawCommands
+        .map((command, commandIndex) => ({ command, commandIndex }))
+        .filter(({ command }) => commands.includes(command.command));
+      if (matches.length === 1) {
+        index = matches[0].commandIndex;
+      }
+    }
+    if (index === -1) {
+      return undefined;
+    }
+
+    const [rawCommand] = this.unmatchedRawCommands.splice(index, 1);
+    if (!rawCommand) {
+      return undefined;
+    }
+
+    this.rawCommandByCanonicalId.set(item.id, rawCommand);
+    return rawCommand;
+  }
+
+  private takeUniqueCanonicalCommand(command: string): CanonicalCommandProjection | undefined {
+    const matches = this.unmatchedCanonicalCommands
+      .map((projection, index) => ({ projection, index }))
+      .filter(({ projection }) => projection.commands.includes(command));
+    if (matches.length !== 1) {
+      return undefined;
+    }
+
+    const [{ projection, index }] = matches;
+    this.unmatchedCanonicalCommands.splice(index, 1);
+    return projection;
+  }
+
+  private visibleRawCallId(callId: string): string {
+    for (const projection of this.rawCommandByCanonicalId.values()) {
+      if (projection.callId === callId) {
+        return projection.visibleId;
+      }
+    }
+    return callId;
+  }
+
+  private completeCommand(item: CommandExecutionItem): void {
+    const rawCommand = this.rawCommandByCanonicalId.get(item.id) ?? this.claimPendingRawCommand(item);
+    const unmatchedIndex = this.unmatchedCanonicalCommands
+      .findIndex(projection => projection.itemId === item.id);
+    if (unmatchedIndex !== -1) {
+      this.unmatchedCanonicalCommands.splice(unmatchedIndex, 1);
+    }
+
+    if (rawCommand && this.emittedImmediateToolResultIds.has(rawCommand.callId)) {
+      this.ignoredLateRawOutputCallIds.add(rawCommand.callId);
+      return;
+    }
+
+    const rawResult = rawCommand
+      ? this.consumeRawToolOutput(rawCommand.callId)
+      : this.consumeRawToolOutput(item.id);
+    this.emitToolResultFromCommand(item, rawResult, rawCommand?.visibleId ?? item.id);
+    if (rawCommand) {
+      this.ignoredLateRawOutputCallIds.add(rawCommand.callId);
+    }
   }
 
   private consumeRawToolOutput(callId: string): RawToolResult | undefined {
@@ -631,7 +810,11 @@ export class CodexNotificationRouter {
     this.emit({ type: 'tool_use', id: item.id, name: normalizedName, input });
   }
 
-  private emitToolResultFromCommand(item: CommandExecutionItem, rawResult?: RawToolResult): void {
+  private emitToolResultFromCommand(
+    item: CommandExecutionItem,
+    rawResult?: RawToolResult,
+    resultId = item.id,
+  ): void {
     const normalizedName = normalizeCodexToolName('command_execution');
     const output = item.aggregatedOutput ?? '';
     const content = rawResult?.content ?? normalizeCodexToolResult(normalizedName, output);
@@ -639,7 +822,13 @@ export class CodexNotificationRouter {
       ? item.exitCode !== 0
       : rawResult?.isError ?? isCodexToolOutputError(output);
 
-    this.emit({ type: 'tool_result', id: item.id, content, isError });
+    this.emit({
+      type: 'tool_result',
+      id: resultId,
+      content,
+      isError,
+      ...(item.status === 'declined' || this.isToolBlocked?.(item.id) ? { isBlocked: true } : {}),
+    });
   }
 
   // -- fileChange -------------------------------------------------------------
@@ -674,6 +863,7 @@ export class CodexNotificationRouter {
       id: item.id,
       content: paths || 'File change completed',
       isError: item.status === 'failed' || item.status === 'declined',
+      ...(item.status === 'declined' || this.isToolBlocked?.(item.id) ? { isBlocked: true } : {}),
     });
   }
 
@@ -881,11 +1071,11 @@ export class CodexNotificationRouter {
       this.emitAgentMessageBoundary(item);
     }
 
-    if (this.agentMessageDeltaIds.has(item.id) || !item.text) {
+    if (!item.text) {
       return;
     }
 
-    this.emitMissingAssistantSegmentText(item.text, item.id);
+    this.emitMissingAgentMessageText(item.text, item.id);
   }
 
   private extractUserMessageText(content: UserInput[]): string {
@@ -986,8 +1176,24 @@ function getItemId(item: { id?: string } | Record<string, unknown>): string | un
   return typeof item.id === 'string' ? item.id : undefined;
 }
 
+function isCanonicalToolItem(type: string): boolean {
+  return type === 'commandExecution'
+    || type === 'fileChange'
+    || type === 'imageView'
+    || type === 'webSearch'
+    || type === 'collabAgentToolCall'
+    || type === 'mcpToolCall';
+}
+
 function readRawCallId(item: Record<string, unknown>): string {
   return firstString(item.call_id, item.id);
+}
+
+function readCanonicalCommandCandidates(item: CommandExecutionItem): string[] {
+  return [...new Set([
+    item.command,
+    ...item.commandActions.map(action => action.command),
+  ].filter(Boolean))];
 }
 
 function parseRawArguments(item: Record<string, unknown>): Record<string, unknown> {

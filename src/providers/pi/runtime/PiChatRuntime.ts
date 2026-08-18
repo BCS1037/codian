@@ -56,9 +56,11 @@ import {
 } from '../normalizations/piEventNormalization';
 import { getPiProviderSettings } from '../settings';
 import {
+  addPiPreviousSession,
   buildPersistedPiState,
   getPiState,
   type PiForkSource,
+  type PiPreviousSession,
   type PiProviderState,
 } from '../types';
 import { buildPiPromptImages, buildPiPromptText } from './buildPiPrompt';
@@ -143,6 +145,7 @@ export class PiChatRuntime implements ChatRuntime {
   private parentSession: string | null = null;
   private pendingFork: PiForkSource | null = null;
   private pendingForkSourceSessionFile: string | null = null;
+  private previousSessions: PiPreviousSession[] = [];
   private process: PiSubprocess | null = null;
   private ready = false;
   private readinessFlight: { key: string; promise: Promise<boolean> } | null = null;
@@ -230,6 +233,7 @@ export class PiChatRuntime implements ChatRuntime {
     this.parentSession = isPendingFork ? null : state.parentSession ?? null;
     this.pendingFork = nextPendingFork;
     this.pendingForkSourceSessionFile = nextPendingForkSourceSessionFile;
+    this.previousSessions = (state.previousSessions ?? []).map(session => ({ ...session }));
     this.sessionInvalidated = false;
     if (currentTargetKey !== nextTargetKey) {
       this.conversationGeneration += 1;
@@ -505,6 +509,11 @@ export class PiChatRuntime implements ChatRuntime {
     if (this.readinessFlight) {
       void this.shutdownProcess();
     }
+    this.previousSessions = addPiPreviousSession(this.previousSessions, {
+      ...(this.leafEntryId ? { leafEntryId: this.leafEntryId } : {}),
+      ...(this.sessionFile ? { sessionFile: this.sessionFile } : {}),
+      ...(this.sessionId ? { sessionId: this.sessionId } : {}),
+    });
     this.sessionInvalidated = true;
     this.sessionId = null;
     this.sessionFile = null;
@@ -615,7 +624,7 @@ export class PiChatRuntime implements ChatRuntime {
       sessionId: this.sessionId,
     };
 
-    if (params.sessionInvalidated && !this.sessionId) {
+    if (params.sessionInvalidated && !this.sessionId && this.previousSessions.length === 0) {
       updates.providerState = undefined;
       updates.sessionId = null;
     }
@@ -631,6 +640,8 @@ export class PiChatRuntime implements ChatRuntime {
       ?? state.sessionId
       ?? conversation?.sessionId
       ?? state.forkSource?.sessionId
+      ?? state.previousSessions?.at(-1)?.sessionFile
+      ?? state.previousSessions?.at(-1)?.sessionId
       ?? null;
   }
 
@@ -1133,12 +1144,18 @@ export class PiChatRuntime implements ChatRuntime {
         ...(this.pendingForkSourceSessionFile
           ? { forkSourceSessionFile: this.pendingForkSourceSessionFile }
           : {}),
+        ...(this.previousSessions.length > 0
+          ? { previousSessions: this.previousSessions.map(session => ({ ...session })) }
+          : {}),
       };
     }
 
     return {
       ...(this.leafEntryId ? { leafEntryId: this.leafEntryId } : {}),
       ...(this.parentSession ? { parentSession: this.parentSession } : {}),
+      ...(this.previousSessions.length > 0
+        ? { previousSessions: this.previousSessions.map(session => ({ ...session })) }
+        : {}),
       ...(this.sessionFile ? { sessionFile: this.sessionFile } : {}),
       ...(this.sessionId ? { sessionId: this.sessionId } : {}),
     };

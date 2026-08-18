@@ -43,6 +43,7 @@ import {
   AcpSubprocess,
   type AcpWriteTextFileRequest,
 } from '../../acp';
+import { isAcpApprovalDecisionBlocked } from '../../acp/AcpPermissionAdapter';
 import type { NativeAcpRuntimeOptions, NativeAcpSubprocess } from './types';
 
 export class NativeAcpChatRuntime implements ChatRuntime {
@@ -57,13 +58,16 @@ export class NativeAcpChatRuntime implements ChatRuntime {
   private ready = false;
   private runtimeCwd: string | null = null;
   private readonly readyListeners = new Set<(ready: boolean) => void>();
+  private readonly blockedToolIds = new Set<string>();
   private sessionId: string | null = null;
   private sessionInvalidated = false;
   private sessionSyncRequired = false;
   private supportedCommands: SlashCommand[] = [];
   private targetSessionId: string | null = null;
   private transport: AcpJsonRpcTransport | null = null;
-  private readonly updateNormalizer = new AcpSessionUpdateNormalizer();
+  private readonly updateNormalizer = new AcpSessionUpdateNormalizer({
+    isToolBlocked: toolCallId => this.blockedToolIds.has(toolCallId),
+  });
 
   constructor(
     private readonly plugin: ProviderHost,
@@ -173,6 +177,7 @@ export class NativeAcpChatRuntime implements ChatRuntime {
       return;
     }
 
+    this.blockedToolIds.clear();
     this.updateNormalizer.reset();
     const queue = new StreamChunkQueue();
     this.activeQueue = queue;
@@ -382,6 +387,9 @@ export class NativeAcpChatRuntime implements ChatRuntime {
   ): Promise<AcpRequestPermissionResponse> {
     const reject = request.options.find(option => option.kind.startsWith('reject'));
     if (!this.approvalCallback) {
+      if (reject && request.toolCall.toolCallId) {
+        this.blockedToolIds.add(request.toolCall.toolCallId);
+      }
       return { outcome: reject ? { outcome: 'selected', optionId: reject.optionId } : { outcome: 'cancelled' } };
     }
 
@@ -394,6 +402,9 @@ export class NativeAcpChatRuntime implements ChatRuntime {
       request.toolCall.title ?? 'Tool permission requested',
       { decisionOptions: buildAcpApprovalDecisionOptions(request.options) },
     );
+    if (request.toolCall.toolCallId && isAcpApprovalDecisionBlocked(decision, request.options)) {
+      this.blockedToolIds.add(request.toolCall.toolCallId);
+    }
     return mapApprovalDecision(decision, request.options);
   }
 
@@ -433,6 +444,7 @@ export class NativeAcpChatRuntime implements ChatRuntime {
   }
 
   private async shutdownProcess(): Promise<void> {
+    this.blockedToolIds.clear();
     this.setReady(false);
     this.connection?.dispose();
     this.connection = null;

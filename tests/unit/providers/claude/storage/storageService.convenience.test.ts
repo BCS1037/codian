@@ -461,5 +461,20 @@ describe('StorageService convenience methods', () => {
         storage.setTabManagerState({ openTabs: [], activeTabId: null }),
       ).resolves.toBeUndefined();
     });
+
+    it('does not overwrite plugin data for invalid state', async () => {
+      const existingData = {
+        tabManagerState: {
+          openTabs: [{ tabId: 'tab-existing', conversationId: 'conv-existing' }],
+          activeTabId: 'tab-existing',
+        },
+      };
+      const { plugin } = createMockPlugin({ dataJson: existingData });
+      const storage = new StorageService(plugin);
+
+      await expect(storage.setTabManagerState(undefined as never)).resolves.toBeUndefined();
+
+      expect(plugin.saveData).not.toHaveBeenCalled();
+    });
   });
 });

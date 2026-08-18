@@ -11,6 +11,7 @@ import {
   type AcpRequestPermissionRequest,
   type AcpRequestPermissionResponse,
   buildAcpApprovalDecisionOptions,
+  isAcpApprovalDecisionBlocked,
   mapAcpApprovalDecision,
 } from '../../acp';
 import { normalizeGrokToolCall } from '../normalization/grokToolNormalization';
@@ -91,6 +92,7 @@ export class GrokServerRequestRouter {
   private exitPlanModeCallback: ExitPlanModeCallback | null = null;
   private pendingInteraction: PendingInteraction | null = null;
   private permissionModeSyncCallback: ((mode: GrokPermissionMode) => void) | null = null;
+  private toolBlockedCallback: ((toolCallId: string) => void) | null = null;
 
   setActiveSessionId(sessionId: string | null): void {
     const normalized = normalizeOpaqueString(sessionId);
@@ -122,6 +124,10 @@ export class GrokServerRequestRouter {
     this.permissionModeSyncCallback = callback;
   }
 
+  setToolBlockedCallback(callback: ((toolCallId: string) => void) | null): void {
+    this.toolBlockedCallback = callback;
+  }
+
   async handlePermissionRequest(
     request: AcpRequestPermissionRequest,
     signal?: AbortSignal,
@@ -146,6 +152,9 @@ export class GrokServerRequestRouter {
       ]);
       if (decision === null) {
         return CANCELLED_PERMISSION_RESPONSE;
+      }
+      if (isAcpApprovalDecisionBlocked(decision, parsed.options)) {
+        this.toolBlockedCallback?.(request.toolCall.toolCallId);
       }
       return mapAcpApprovalDecision(decision, parsed.options);
     } catch {

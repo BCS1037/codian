@@ -80,6 +80,31 @@ test('rejects incomplete provider L4 evidence', () => {
   assert.match(result.stderr, /missing passing scenario: rollback/);
 });
 
+test('accepts explicit unsupported-provider scenarios as not applicable', () => {
+  const repo = createRepo();
+  const scenarios = [
+    'authentication',
+    'request',
+    'streaming',
+    'tool',
+    'resume',
+    'switching',
+    'rollback',
+  ].map(scenario);
+  scenarios.at(-1).result = 'not-applicable';
+  scenarios.at(-1).evidence = 'Provider does not support rewind; rollback is not applicable.';
+  const { result } = run(repo, {
+    kind: 'provider-e2e',
+    provider: 'codex',
+    evidenceLevel: 'L4',
+    cli: { path: '/usr/local/bin/codex', version: '1.2.3' },
+    vault: '/tmp/test-vault',
+    scenarios,
+    assets: [],
+  });
+  assert.equal(result.status, 0, result.stderr);
+});
+
 test('rejects runtime-smoke evidence without required assets', () => {
   const repo = createRepo();
   const { result } = run(repo, {

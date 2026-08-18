@@ -520,6 +520,40 @@ describe('TabManager - Tab Lifecycle', () => {
       expect(tab!.controllers.conversationController!.initializeWelcome).toHaveBeenCalledTimes(1);
     });
 
+    it('bounds provider initialization while hydrating a conversation tab', async () => {
+      const manager = createManager();
+      const tab1 = await manager.createTab();
+      await manager.createTab();
+
+      jest.useFakeTimers();
+      try {
+        tab1!.conversationId = 'conv-1';
+        tab1!.hydrationState = 'idle';
+        tab1!.state.messages = [];
+
+        const pendingInitialization = new Promise<void>(() => {});
+        (ProviderWorkspaceRegistry.ensureInitialized as jest.Mock)
+          .mockReturnValueOnce(pendingInitialization);
+
+        const switchPromise = manager.switchToTab(tab1!.id);
+        const settled = Promise.race([
+          switchPromise.then(() => true),
+          new Promise<boolean>(resolve => {
+            window.setTimeout(() => resolve(false), 30_000);
+          }),
+        ]);
+
+        await jest.advanceTimersByTimeAsync(30_001);
+
+        expect(await settled).toBe(true);
+        expect(tab1!.hydrationState).toBe('failed');
+        expect(tab1!.dom.messagesEl.querySelector('.claudian-tab-hydration-error')?.textContent)
+          .toContain('timed out');
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
     it('does not refresh or hydrate a tab closed during provider initialization', async () => {
       const manager = createManager();
       const tab1 = await manager.createTab();

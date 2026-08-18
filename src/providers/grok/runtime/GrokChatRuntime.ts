@@ -45,6 +45,7 @@ import {
   type AcpUsageUpdate,
   buildAcpUsageInfo,
   extractAcpSessionModelState,
+  JsonRpcErrorResponse,
   normalizeAcpAvailableCommands,
 } from '../../acp';
 import type { GrokAuxiliaryLifecycleCoordinator } from '../auxiliary/GrokAuxiliaryLifecycleCoordinator';
@@ -290,6 +291,8 @@ export class GrokChatRuntime implements ChatRuntime {
   private currentSessionEffort: string | null = null;
   private currentSessionModeId: 'default' | 'plan' | null = null;
   private currentSessionModelId: string | null = null;
+  private modelFallbackNotice: string | null = null;
+  private reportedModelFallback: string | null = null;
   private currentTurnMetadata: ChatTurnMetadata = {};
   private disposed = false;
   private lastError: Error | null = null;
@@ -303,6 +306,7 @@ export class GrokChatRuntime implements ChatRuntime {
   private requestedSessionModeId: 'default' | 'plan' | null = null;
   private rewindOperation: symbol | null = null;
   private readonly requestRouter = new GrokServerRequestRouter();
+  private readonly blockedToolIds = new Set<string>();
   private readonly notificationMirrorDeduplicator = new GrokSessionNotificationMirrorDeduplicator();
   private readonly sessionModelContextWindows = new Map<string, number>();
   private readonly sessionModels = new Map<string, GrokDiscoveredModel>();
@@ -311,7 +315,9 @@ export class GrokChatRuntime implements ChatRuntime {
   private pendingForkSourceSessionDirectory: string | null = null;
   private sessionId: string | null = null;
   private sessionInvalidated = false;
-  private readonly sessionUpdateNormalizer = new AcpSessionUpdateNormalizer();
+  private readonly sessionUpdateNormalizer = new AcpSessionUpdateNormalizer({
+    isToolBlocked: toolCallId => this.blockedToolIds.has(toolCallId),
+  });
   private shutdownFlight: Promise<void> | null = null;
   private readonly supportedCommandListeners = new Set<(
     commands: readonly SlashCommand[],
@@ -341,6 +347,7 @@ export class GrokChatRuntime implements ChatRuntime {
     this.lifecycle = options.lifecycle ?? null;
     this.processFactory = options.processFactory ?? (spec => new AcpSubprocess(spec));
     this.resolveSessionDirectory = options.resolveSessionDirectory ?? resolveGrokSessionDirectory;
+    this.requestRouter.setToolBlockedCallback(toolCallId => this.blockedToolIds.add(toolCallId));
   }
 
   getCapabilities(): Readonly<ProviderCapabilities> {
@@ -523,6 +530,10 @@ export class GrokChatRuntime implements ChatRuntime {
       yield { type: 'done' };
       return;
     }
+    const modelFallbackNotice = this.consumeModelFallbackNotice();
+    if (modelFallbackNotice) {
+      yield { type: 'notice', content: modelFallbackNotice, level: 'info' };
+    }
     const connection = this.connection;
     if (!connection) {
       yield { type: 'error', content: 'The Grok runtime is not ready.' };
@@ -548,6 +559,7 @@ export class GrokChatRuntime implements ChatRuntime {
     this.currentPromptUsage = null;
     this.currentTurnMetadata = {};
     this.notificationMirrorDeduplicator.reset();
+    this.blockedToolIds.clear();
     this.sessionUpdateNormalizer.reset();
     this.toolStreamAdapter.reset();
 
@@ -1414,6 +1426,7 @@ export class GrokChatRuntime implements ChatRuntime {
       if (this.cancelDeliveryFlight === cancelDelivery) this.cancelDeliveryFlight = null;
     }
     this.connectionGeneration += 1;
+    this.blockedToolIds.clear();
     this.notificationMirrorDeduplicator.reset();
     this.setReady(false);
     this.requestRouter.abortPending();
@@ -1601,9 +1614,19 @@ export class GrokChatRuntime implements ChatRuntime {
     queryOptions?: ChatRuntimeQueryOptions,
   ): Promise<string> {
     if (!this.connection) return sessionId;
-    const rawModelId = decodeGrokModelId(this.resolveSelectedModel(queryOptions));
-    if (!rawModelId) {
+    this.modelFallbackNotice = null;
+    const requestedRawModelId = decodeGrokModelId(this.resolveSelectedModel(queryOptions));
+    if (!requestedRawModelId) {
       return sessionId;
+    }
+    const rawModelId = this.resolveAvailableSessionModel(requestedRawModelId);
+    if (rawModelId !== requestedRawModelId) {
+      this.setCurrentConversationModel(encodeGrokModelId(rawModelId));
+      const fallbackKey = `${requestedRawModelId}->${rawModelId}`;
+      if (this.reportedModelFallback !== fallbackKey) {
+        this.reportedModelFallback = fallbackKey;
+        this.modelFallbackNotice = `Grok model "${requestedRawModelId}" is unavailable in the current CLI session; using "${rawModelId}".`;
+      }
     }
     const effort = this.resolveSelectedEffort(rawModelId);
     if (
@@ -1622,6 +1645,23 @@ export class GrokChatRuntime implements ChatRuntime {
     this.currentSessionEffort = effort;
     await this.mergeSetModelMetadata(response._meta);
     return sessionId;
+  }
+
+  private resolveAvailableSessionModel(requestedRawModelId: string): string {
+    if (this.sessionModels.has(requestedRawModelId)) {
+      return requestedRawModelId;
+    }
+    const currentRawModelId = this.currentSessionModelId;
+    if (currentRawModelId && this.sessionModels.has(currentRawModelId)) {
+      return currentRawModelId;
+    }
+    return requestedRawModelId;
+  }
+
+  private consumeModelFallbackNotice(): string | null {
+    const notice = this.modelFallbackNotice;
+    this.modelFallbackNotice = null;
+    return notice;
   }
 
   private async handleSessionNotification(
@@ -2019,7 +2059,7 @@ export class GrokChatRuntime implements ChatRuntime {
   }
 
   private formatModelSelectionError(error: unknown): string {
-    const message = toError(error, 'Grok model selection failed.').message;
+    const message = formatGrokErrorMessage(error, 'Grok model selection failed.');
     if (/agent\s*type|agenttype|incompatible/i.test(message)) {
       return 'This model uses an agent type that is incompatible with the current Grok session. Start a new conversation with that model.';
     }
@@ -2027,7 +2067,7 @@ export class GrokChatRuntime implements ChatRuntime {
   }
 
   private formatRuntimeError(error: unknown): string {
-    const baseMessage = toError(error ?? this.lastError, 'Grok request failed.').message;
+    const baseMessage = formatGrokErrorMessage(error ?? this.lastError, 'Grok request failed.');
     const redactedBaseMessage = redactDiagnostic(baseMessage);
     if (redactedBaseMessage !== baseMessage) {
       return redactedBaseMessage;
@@ -2237,6 +2277,16 @@ function redactAssignedValue(value: string): string {
   return (quote === '"' || quote === "'") && value.at(-1) === quote
     ? `${quote}<redacted>${quote}`
     : '<redacted>';
+}
+
+function formatGrokErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof JsonRpcErrorResponse) {
+    const detail = typeof error.data === 'string' && error.data.trim()
+      ? `: ${error.data.trim()}`
+      : '';
+    return redactDiagnostic(`${error.method} failed (${error.code}): ${error.message}${detail}`);
+  }
+  return toError(error, fallback).message;
 }
 
 function toError(error: unknown, fallback: string): Error {

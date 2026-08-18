@@ -30,6 +30,8 @@
       "invalid": "Keine unterstützten Vault-Notizen oder -Ordner gefunden.",
       "removedUnavailable": "Nicht verfügbaren Kontext entfernt: {path}"
     },
+    "providerRetry": "Claude-API wird erneut versucht (Versuch {attempt}/{maxRetries}; Grund: {reason}).",
+    "providerWorkspaceInitializationTimeout": "Die Initialisierung von Provider {provider} ist nach {seconds} s abgelaufen. Tabwechsel erneut versuchen.",
     "historySearch": {
       "placeholder": "Unterhaltungen durchsuchen",
       "noMatches": "Keine passenden Unterhaltungen",

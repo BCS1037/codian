@@ -1,4 +1,5 @@
 import type {
+  SDKAPIRetryMessage,
   SDKAssistantMessage,
   SDKAuthStatusMessage,
   SDKCompactBoundaryMessage,
@@ -45,6 +46,11 @@ export type SystemStatusMessageInput = {
   subtype: 'status';
 } & Partial<Omit<SDKStatusMessage, 'type' | 'subtype'>>;
 
+export type SystemApiRetryMessageInput = {
+  type: 'system';
+  subtype: 'api_retry';
+} & Partial<Omit<SDKAPIRetryMessage, 'type' | 'subtype'>>;
+
 export type CompactBoundaryMessageInput = {
   type: 'system';
   subtype: 'compact_boundary';
@@ -85,6 +91,7 @@ export type AuthStatusMessageInput = {
 export type SDKTestMessageInput =
   | SystemInitMessageInput
   | SystemStatusMessageInput
+  | SystemApiRetryMessageInput
   | CompactBoundaryMessageInput
   | AssistantMessageInput
   | UserMessageInput
@@ -120,6 +127,23 @@ export function buildSystemStatusMessage(overrides: Partial<Omit<SDKStatusMessag
     type: 'system',
     subtype: 'status',
     status: null,
+    uuid: TEST_UUID,
+    session_id: TEST_SESSION_ID,
+    ...overrides,
+  };
+}
+
+export function buildSystemApiRetryMessage(
+  overrides: Partial<Omit<SDKAPIRetryMessage, 'type' | 'subtype'>> = {},
+): SDKAPIRetryMessage {
+  return {
+    type: 'system',
+    subtype: 'api_retry',
+    attempt: 1,
+    error: 'unknown',
+    error_status: null,
+    max_retries: 10,
+    retry_delay_ms: 1000,
     uuid: TEST_UUID,
     session_id: TEST_SESSION_ID,
     ...overrides,
@@ -262,6 +286,7 @@ export function buildSDKMessage(input: SDKTestMessageInput): SDKMessage {
     case 'system':
       if (input.subtype === 'init') return buildSystemInitMessage(input);
       if (input.subtype === 'status') return buildSystemStatusMessage(input);
+      if (input.subtype === 'api_retry') return buildSystemApiRetryMessage(input);
       return buildCompactBoundaryMessage(input);
     case 'assistant':
       return buildAssistantMessage(input);

@@ -1,5 +1,6 @@
 import {
   buildAcpApprovalDecisionOptions,
+  isAcpApprovalDecisionBlocked,
   mapAcpApprovalDecision,
 } from '../../../../src/providers/acp/AcpPermissionAdapter';
 import type { AcpPermissionOption } from '../../../../src/providers/acp/types';
@@ -31,6 +32,13 @@ describe('AcpPermissionAdapter', () => {
     )).toEqual({
       outcome: { optionId: 'reject-always', outcome: 'selected' },
     });
+  });
+
+  it('identifies only explicit reject outcomes as blocked', () => {
+    expect(isAcpApprovalDecisionBlocked('deny', OPTIONS)).toBe(true);
+    expect(isAcpApprovalDecisionBlocked({ type: 'select-option', value: 'reject-always' }, OPTIONS)).toBe(true);
+    expect(isAcpApprovalDecisionBlocked({ type: 'select-option', value: 'allow-once' }, OPTIONS)).toBe(false);
+    expect(isAcpApprovalDecisionBlocked('cancel', OPTIONS)).toBe(false);
   });
 
   it('falls back within the same decision family', () => {

@@ -31,6 +31,7 @@ export interface ParsedPiSessionEntries {
 export interface ParsePiSessionContentOptions {
   leafEntryId?: string;
   requireLeafEntryId?: boolean;
+  syntheticIdNamespace?: string;
 }
 
 export interface CreatePiForkSessionFileOptions {
@@ -60,10 +61,10 @@ export function parsePiSessionContent(
     return [];
   }
 
-  return mapPiSessionEntries(resolvePiActivePath(
-    parsed.entries,
-    leafEntryId,
-  ));
+  return mapPiSessionEntries(
+    resolvePiActivePath(parsed.entries, leafEntryId),
+    options.syntheticIdNamespace,
+  );
 }
 
 export function parsePiSessionEntries(content: string): ParsedPiSessionEntries {
@@ -338,11 +339,11 @@ export function derivePiSessionsRootFromSessionPath(sessionPath: string): string
   return path.dirname(normalized);
 }
 
-function mapPiSessionEntries(entries: PiSessionEntry[]): ChatMessage[] {
+function mapPiSessionEntries(entries: PiSessionEntry[], syntheticIdNamespace?: string): ChatMessage[] {
   const messages: ChatMessage[] = [];
 
   for (const entry of entries) {
-    const mapped = mapPiSessionEntry(entry, messages);
+    const mapped = mapPiSessionEntry(entry, messages, syntheticIdNamespace);
     if (mapped) {
       const previous = messages[messages.length - 1];
       if (isAssistantMessageEntry(entry) && canMergeAssistantContinuation(previous, mapped)) {
@@ -401,6 +402,7 @@ function mergeAssistantContinuation(target: ChatMessage, source: ChatMessage): v
 function mapPiSessionEntry(
   entry: PiSessionEntry,
   messages: ChatMessage[],
+  syntheticIdNamespace?: string,
 ): ChatMessage | null {
   const message = entry.message ?? entry.raw;
   const role = getString(message.role) ?? inferRole(entry.type);
@@ -409,11 +411,12 @@ function mapPiSessionEntry(
   if (role === 'user') {
     const content = extractTextContent(message.content ?? message.text ?? message.message);
     const displayContent = extractPiSkillDisplayContent(content);
-    const images = extractUserImages(message.content ?? message.parts ?? message.blocks, entry.id ?? `pi-user-${messages.length}`);
+    const messageId = entry.id ?? createSyntheticPiMessageId('user', messages.length, syntheticIdNamespace);
+    const images = extractUserImages(message.content ?? message.parts ?? message.blocks, messageId);
     return {
       content,
       ...(displayContent ? { displayContent } : {}),
-      id: entry.id ?? `pi-user-${messages.length}`,
+      id: messageId,
       ...(images.length > 0 ? { images } : {}),
       role: 'user',
       timestamp,
@@ -433,7 +436,7 @@ function mapPiSessionEntry(
       assistantMessageId: entry.id,
       content: text,
       ...(contentBlocks.length > 0 ? { contentBlocks } : {}),
-      id: entry.id ?? `pi-assistant-${messages.length}`,
+      id: entry.id ?? createSyntheticPiMessageId('assistant', messages.length, syntheticIdNamespace),
       role: 'assistant',
       timestamp,
       ...(toolCalls.length > 0 ? { toolCalls } : {}),
@@ -449,7 +452,7 @@ function mapPiSessionEntry(
     return {
       content: '',
       contentBlocks: [{ type: 'context_compacted' }],
-      id: entry.id ?? `pi-compaction-${messages.length}`,
+      id: entry.id ?? createSyntheticPiMessageId('compaction', messages.length, syntheticIdNamespace),
       role: 'assistant',
       timestamp,
     };
@@ -466,13 +469,22 @@ function mapPiSessionEntry(
     return {
       content,
       contentBlocks: [{ type: 'text', content }],
-      id: entry.id ?? `pi-notice-${messages.length}`,
+      id: entry.id ?? createSyntheticPiMessageId('notice', messages.length, syntheticIdNamespace),
       role: 'assistant',
       timestamp,
     };
   }
 
   return null;
+}
+
+function createSyntheticPiMessageId(
+  kind: string,
+  index: number,
+  namespace?: string,
+): string {
+  const localId = `pi-${kind}-${index}`;
+  return namespace ? `${namespace}:${localId}` : localId;
 }
 
 function extractPiSkillDisplayContent(content: string): string | undefined {

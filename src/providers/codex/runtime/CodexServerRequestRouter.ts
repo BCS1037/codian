@@ -30,6 +30,7 @@ export class CodexServerRequestRouter {
   private pendingAskUserRequestId: RequestId | null = null;
   private pendingAskUserThreadId: string | null = null;
   private dynamicToolRegistry: CodexDynamicToolRegistry | null = null;
+  private toolBlockedCallback: ((itemId: string) => void) | null = null;
 
   setApprovalCallback(callback: ApprovalCallback | null): void {
     this.approvalCallback = callback;
@@ -41,6 +42,10 @@ export class CodexServerRequestRouter {
 
   setDynamicToolRegistry(registry: CodexDynamicToolRegistry | null): void {
     this.dynamicToolRegistry = registry;
+  }
+
+  setToolBlockedCallback(callback: ((itemId: string) => void) | null): void {
+    this.toolBlockedCallback = callback;
   }
 
   async handleServerRequest(
@@ -120,7 +125,11 @@ export class CodexServerRequestRouter {
         ...(params.additionalPermissions ? { additionalPermissions: params.additionalPermissions } : {}),
         decisionOptions: buildCommandApprovalDecisionOptions(params),
       });
-      return { decision: mapCommandApprovalDecision(decision) };
+      const mappedDecision = mapCommandApprovalDecision(decision);
+      if (mappedDecision === 'decline') {
+        this.toolBlockedCallback?.(params.itemId);
+      }
+      return { decision: mappedDecision };
     } finally {
       if (requestId !== undefined) {
         this.pendingApprovalRequests.delete(requestId);
@@ -145,7 +154,11 @@ export class CodexServerRequestRouter {
 
     try {
       const decision = await this.approvalCallback(toolName, input, description, {});
-      return { decision: mapFileChangeApprovalDecision(decision) };
+      const mappedDecision = mapFileChangeApprovalDecision(decision);
+      if (mappedDecision === 'decline') {
+        this.toolBlockedCallback?.(params.itemId);
+      }
+      return { decision: mappedDecision };
     } finally {
       if (requestId !== undefined) {
         this.pendingApprovalRequests.delete(requestId);
@@ -182,6 +195,10 @@ export class CodexServerRequestRouter {
     }
     if (decision === 'allow-always') {
       return { permissions: requestedPermissions, scope: 'session' };
+    }
+
+    if (decision === 'deny') {
+      this.toolBlockedCallback?.(params.itemId);
     }
 
     return { permissions: {}, scope: 'turn' };

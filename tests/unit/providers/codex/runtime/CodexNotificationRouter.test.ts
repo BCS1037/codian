@@ -41,6 +41,30 @@ describe('CodexNotificationRouter', () => {
       ]);
     });
 
+    it('emits only missing suffix when canonical completion follows streamed deltas', () => {
+      router.handleNotification('item/started', {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: { type: 'agentMessage', id: 'msg1', text: '', phase: 'commentary', memoryCitation: null },
+      });
+      router.handleNotification('item/agentMessage/delta', {
+        threadId: 't1',
+        turnId: 'turn1',
+        itemId: 'msg1',
+        delta: 'Hel',
+      });
+      router.handleNotification('item/completed', {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: { type: 'agentMessage', id: 'msg1', text: 'Hello', phase: 'commentary', memoryCitation: null },
+      });
+
+      expect(chunks.filter(chunk => chunk.type === 'text')).toEqual([
+        { type: 'text', content: 'Hel' },
+        { type: 'text', content: 'lo' },
+      ]);
+    });
+
     it('emits only missing assistant text from raw completed messages', () => {
       router.handleNotification('item/agentMessage/delta', {
         threadId: 't1',
@@ -220,6 +244,209 @@ describe('CodexNotificationRouter', () => {
   });
 
   describe('tool use', () => {
+    it('deduplicates canonical tool use when raw event has same call id', () => {
+      router.beginTurn({ isPlanTurn: false });
+
+      router.handleNotification('item/started', {
+        item: {
+          type: 'commandExecution',
+          id: 'call_same',
+          command: 'pwd',
+          cwd: '/workspace',
+          processId: '123',
+          source: 'unifiedExecStartup',
+          status: 'inProgress',
+          commandActions: [{ type: 'unknown', command: 'pwd' }],
+          aggregatedOutput: null,
+          exitCode: null,
+          durationMs: null,
+        },
+        threadId: 't1',
+        turnId: 'turn1',
+      });
+      router.handleNotification('rawResponseItem/completed', {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: {
+          type: 'function_call',
+          name: 'exec_command',
+          call_id: 'call_same',
+          arguments: '{"cmd":"pwd"}',
+        },
+      });
+      router.handleNotification('rawResponseItem/completed', {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: {
+          type: 'function_call_output',
+          call_id: 'call_same',
+          output: 'Exit code: 0\nOutput:\n/workspace',
+        },
+      });
+      router.handleNotification('item/completed', {
+        item: {
+          type: 'commandExecution',
+          id: 'call_same',
+          command: 'pwd',
+          cwd: '/workspace',
+          processId: '123',
+          source: 'unifiedExecStartup',
+          status: 'completed',
+          commandActions: [{ type: 'unknown', command: 'pwd' }],
+          aggregatedOutput: '/workspace',
+          exitCode: 0,
+          durationMs: 10,
+        },
+        threadId: 't1',
+        turnId: 'turn1',
+      });
+
+      expect(chunks.filter(chunk => chunk.type === 'tool_use')).toHaveLength(1);
+      expect(chunks.filter(chunk => chunk.type === 'tool_result')).toHaveLength(1);
+    });
+
+    it('correlates raw and canonical command events with different ids', () => {
+      router.beginTurn({ isPlanTurn: false });
+
+      router.handleNotification('rawResponseItem/completed', {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: {
+          type: 'function_call',
+          name: 'exec_command',
+          call_id: 'raw_command_id',
+          arguments: '{"cmd":"printf correlation"}',
+        },
+      });
+      router.handleNotification('item/started', {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: {
+          type: 'commandExecution',
+          id: 'canonical_command_id',
+          command: 'printf correlation',
+          cwd: '/workspace',
+          processId: '123',
+          source: 'unifiedExecStartup',
+          status: 'inProgress',
+          commandActions: [{ type: 'unknown', command: 'printf correlation' }],
+          aggregatedOutput: null,
+          exitCode: null,
+          durationMs: null,
+        },
+      });
+      router.handleNotification('rawResponseItem/completed', {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: {
+          type: 'function_call_output',
+          call_id: 'raw_command_id',
+          output: 'Exit code: 0\nOutput:\ncorrelation',
+        },
+      });
+      router.handleNotification('item/completed', {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: {
+          type: 'commandExecution',
+          id: 'canonical_command_id',
+          command: 'printf correlation',
+          cwd: '/workspace',
+          processId: '123',
+          source: 'unifiedExecStartup',
+          status: 'completed',
+          commandActions: [{ type: 'unknown', command: 'printf correlation' }],
+          aggregatedOutput: 'correlation',
+          exitCode: 0,
+          durationMs: 10,
+        },
+      });
+
+      expect(chunks.filter(chunk => chunk.type === 'tool_use')).toEqual([{
+        type: 'tool_use',
+        id: 'raw_command_id',
+        name: 'Bash',
+        input: { command: 'printf correlation' },
+      }]);
+      expect(chunks.filter(chunk => chunk.type === 'tool_result')).toEqual([{
+        type: 'tool_result',
+        id: 'raw_command_id',
+        content: 'correlation',
+        isError: false,
+      }]);
+    });
+
+    it('correlates canonical-first command events with different ids', () => {
+      router.beginTurn({ isPlanTurn: false });
+
+      router.handleNotification('item/started', {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: {
+          type: 'commandExecution',
+          id: 'canonical_first_id',
+          command: 'printf canonical-first',
+          cwd: '/workspace',
+          processId: '123',
+          source: 'unifiedExecStartup',
+          status: 'inProgress',
+          commandActions: [{ type: 'unknown', command: 'printf canonical-first' }],
+          aggregatedOutput: null,
+          exitCode: null,
+          durationMs: null,
+        },
+      });
+      router.handleNotification('rawResponseItem/completed', {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: {
+          type: 'function_call',
+          name: 'exec_command',
+          call_id: 'raw_canonical_first_id',
+          arguments: '{"cmd":"printf canonical-first"}',
+        },
+      });
+      router.handleNotification('rawResponseItem/completed', {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: {
+          type: 'function_call_output',
+          call_id: 'raw_canonical_first_id',
+          output: 'Exit code: 0\nOutput:\ncanonical-first',
+        },
+      });
+      router.handleNotification('item/completed', {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: {
+          type: 'commandExecution',
+          id: 'canonical_first_id',
+          command: 'printf canonical-first',
+          cwd: '/workspace',
+          processId: '123',
+          source: 'unifiedExecStartup',
+          status: 'completed',
+          commandActions: [{ type: 'unknown', command: 'printf canonical-first' }],
+          aggregatedOutput: 'canonical-first',
+          exitCode: 0,
+          durationMs: 10,
+        },
+      });
+
+      expect(chunks.filter(chunk => chunk.type === 'tool_use')).toEqual([{
+        type: 'tool_use',
+        id: 'canonical_first_id',
+        name: 'Bash',
+        input: { command: 'printf canonical-first' },
+      }]);
+      expect(chunks.filter(chunk => chunk.type === 'tool_result')).toEqual([{
+        type: 'tool_result',
+        id: 'canonical_first_id',
+        content: 'canonical-first',
+        isError: false,
+      }]);
+    });
+
     it('maps commandExecution item/started to tool_use chunk', () => {
       router.handleNotification('item/started', {
         item: {
@@ -298,6 +525,32 @@ describe('CodexNotificationRouter', () => {
       expect(chunks[0]).toMatchObject({
         type: 'tool_result',
         isError: true,
+      });
+    });
+
+    it('marks an explicitly declined command as blocked', () => {
+      router.handleNotification('item/completed', {
+        item: {
+          type: 'commandExecution',
+          id: 'call_declined',
+          command: 'echo denied',
+          cwd: '/workspace',
+          processId: '123',
+          source: 'unifiedExecStartup',
+          status: 'declined',
+          commandActions: [],
+          aggregatedOutput: '',
+          exitCode: null,
+          durationMs: 0,
+        },
+        threadId: 't1',
+        turnId: 'turn1',
+      });
+
+      expect(chunks[0]).toMatchObject({
+        id: 'call_declined',
+        isBlocked: true,
+        type: 'tool_result',
       });
     });
 

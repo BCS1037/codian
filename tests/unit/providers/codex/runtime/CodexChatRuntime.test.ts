@@ -636,6 +636,59 @@ describe('CodexChatRuntime', () => {
       expect(chunks).toContainEqual({ type: 'done' });
     });
 
+    it('recovers completed turn when Codex becomes idle without turn/completed', async () => {
+      const threadId = 'thread-recovery';
+      const turnId = 'turn-recovery';
+      mockTransportRequest.mockImplementation(async (method: string) => {
+        if (method === 'initialize') {
+          return { userAgent: 'test/0.1', codexHome: '/tmp', platformFamily: 'unix', platformOs: 'macos' };
+        }
+        if (method === 'thread/start') {
+          return threadStartResponse(threadId);
+        }
+        if (method === 'turn/start') {
+          setTimeout(() => {
+            emitNotification('thread/status/changed', {
+              threadId,
+              status: { type: 'idle' },
+            });
+          }, 0);
+          return turnStartResponse(turnId);
+        }
+        if (method === 'thread/read') {
+          return {
+            thread: {
+              ...threadStartResponse(threadId).thread,
+              id: threadId,
+              turns: [{
+                id: turnId,
+                status: 'completed',
+                error: null,
+                items: [{
+                  type: 'agentMessage',
+                  id: 'recovered-message',
+                  text: 'Recovered first response',
+                  phase: 'commentary',
+                  memoryCitation: null,
+                }],
+              }],
+            },
+          };
+        }
+        return {};
+      });
+
+      const chunks = await collectChunks(runtime.query(createTurn('recover this')));
+
+      expect(findCall('thread/read')).toEqual(expect.arrayContaining([
+        'thread/read',
+        { threadId, includeTurns: true },
+        5000,
+      ]));
+      expect(chunks).toContainEqual({ type: 'text', content: 'Recovered first response' });
+      expect(chunks).toContainEqual({ type: 'done' });
+    });
+
     it('registers the workspace dependency tool when the bundled runtime is available', async () => {
       const workspaceRuntime = createTestWorkspaceRuntime();
       useTestWorkspaceRuntime(workspaceRuntime);

@@ -30,6 +30,8 @@
       "invalid": "找不到支援的庫內筆記或資料夾。",
       "removedUnavailable": "已移除無法使用的上下文：{path}"
     },
+    "providerRetry": "Claude API 正在重試（第 {attempt}/{maxRetries} 次；原因：{reason}）。",
+    "providerWorkspaceInitializationTimeout": "Provider {provider} 初始化在 {seconds} 秒後逾時。請重試分頁切換。",
     "historySearch": {
       "placeholder": "搜尋對話",
       "noMatches": "沒有相符的對話",

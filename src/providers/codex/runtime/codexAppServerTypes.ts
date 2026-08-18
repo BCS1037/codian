@@ -558,6 +558,10 @@ export interface ThreadStatusChangedNotification {
   status: ThreadStatus;
 }
 
+export interface ThreadReadResult {
+  thread: Thread;
+}
+
 export interface TurnStartedNotification {
   threadId: string;
   turn: Turn;

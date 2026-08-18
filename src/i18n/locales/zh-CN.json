@@ -30,6 +30,8 @@
       "invalid": "未找到支持的库内笔记或文件夹。",
       "removedUnavailable": "已移除不可用上下文：{path}"
     },
+    "providerRetry": "Claude API 正在重试（第 {attempt}/{maxRetries} 次；原因：{reason}）。",
+    "providerWorkspaceInitializationTimeout": "Provider {provider} 初始化在 {seconds} 秒后超时。请重试标签页切换。",
     "historySearch": {
       "placeholder": "搜索会话",
       "noMatches": "没有匹配的会话",

@@ -122,4 +122,33 @@ describe('SharedStorageService', () => {
     })).rejects.toBe(error);
     expect(Notice).toHaveBeenCalledWith('Failed to save tab layout');
   });
+
+  it('rejects invalid tab state without overwriting existing plugin data', async () => {
+    const existingData = {
+      tabManagerState: {
+        openTabs: [{ tabId: 'tab-existing', conversationId: 'conv-existing' }],
+        activeTabId: 'tab-existing',
+      },
+      unrelated: 'preserve',
+    };
+    const plugin = {
+      app: { vault: { adapter: {} } },
+      loadData: jest.fn().mockResolvedValue(existingData),
+      saveData: jest.fn().mockResolvedValue(undefined),
+    } as any;
+    const storage = new SharedStorageService(plugin);
+
+    await expect(storage.setTabManagerState(undefined as never))
+      .rejects.toThrow('Invalid tab manager state');
+
+    expect(plugin.saveData).not.toHaveBeenCalled();
+    expect(existingData).toEqual({
+      tabManagerState: {
+        openTabs: [{ tabId: 'tab-existing', conversationId: 'conv-existing' }],
+        activeTabId: 'tab-existing',
+      },
+      unrelated: 'preserve',
+    });
+    expect(Notice).toHaveBeenCalledWith('Failed to save tab layout');
+  });
 });
