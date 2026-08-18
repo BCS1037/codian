@@ -60,6 +60,7 @@ import {
 } from '../../acp';
 import {
   buildAcpApprovalDecisionOptions,
+  isAcpApprovalDecisionBlocked,
   mapAcpApprovalDecision,
 } from '../../acp/AcpPermissionAdapter';
 import { OPENCODE_PROVIDER_CAPABILITIES } from '../capabilities';
@@ -196,7 +197,10 @@ export class OpencodeChatRuntime implements ChatRuntime {
   private supportedCommands: SlashCommand[] = [];
   private sessionCwds = new Map<string, string>();
   private sessionId: string | null = null;
-  private readonly sessionUpdateNormalizer = new AcpSessionUpdateNormalizer();
+  private readonly blockedToolIds = new Set<string>();
+  private readonly sessionUpdateNormalizer = new AcpSessionUpdateNormalizer({
+    isToolBlocked: toolCallId => this.blockedToolIds.has(toolCallId),
+  });
   private readonly toolStreamAdapter = createOpencodeToolStreamAdapter();
   private transport: AcpJsonRpcTransport | null = null;
   private unregisterTransportClose: (() => void) | null = null;
@@ -508,6 +512,7 @@ export class OpencodeChatRuntime implements ChatRuntime {
     this.currentTurnMetadata = {};
     this.contextUsage = null;
     this.promptUsage = null;
+    this.blockedToolIds.clear();
     this.sessionUpdateNormalizer.reset();
     this.toolStreamAdapter.reset();
 
@@ -818,6 +823,7 @@ export class OpencodeChatRuntime implements ChatRuntime {
   }
 
   private async shutdownProcess(options?: { preserveCommandWaiters?: boolean }): Promise<void> {
+    this.blockedToolIds.clear();
     this.connectionGeneration += 1;
     this.setReady(false);
     this.settleActiveTurn();
@@ -1579,6 +1585,9 @@ export class OpencodeChatRuntime implements ChatRuntime {
       },
     );
 
+    if (isAcpApprovalDecisionBlocked(decision, request.options)) {
+      this.blockedToolIds.add(request.toolCall.toolCallId);
+    }
     return mapAcpApprovalDecision(decision, request.options);
   }
 

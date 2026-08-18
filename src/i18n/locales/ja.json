@@ -30,6 +30,8 @@
       "invalid": "対応する保管庫のノートまたはフォルダーが見つかりません。",
       "removedUnavailable": "利用できないコンテキストを削除しました: {path}"
     },
+    "providerRetry": "Claude API を再試行中（{attempt}/{maxRetries} 回目、理由: {reason}）。",
+    "providerWorkspaceInitializationTimeout": "Provider {provider} の初期化が {seconds} 秒でタイムアウトしました。タブ切り替えを再試行してください。",
     "historySearch": {
       "placeholder": "会話を検索",
       "noMatches": "一致する会話がありません",

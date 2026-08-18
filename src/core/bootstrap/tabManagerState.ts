@@ -4,6 +4,37 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
+/**
+ * Validates state before it crosses the persistence boundary.
+ *
+ * Reads stay tolerant through normalizeTabManagerState(); writes must reject
+ * invalid input so an accidental undefined state cannot erase plugin data.
+ */
+export function isValidTabManagerState(data: unknown): data is AppTabManagerState {
+  if (!isRecord(data) || !Array.isArray(data.openTabs)) {
+    return false;
+  }
+  if (data.activeTabId !== null && typeof data.activeTabId !== 'string') {
+    return false;
+  }
+  if (
+    data.expandedTitleTabIds !== undefined
+    && (!Array.isArray(data.expandedTitleTabIds)
+      || !data.expandedTitleTabIds.every(tabId => typeof tabId === 'string'))
+  ) {
+    return false;
+  }
+
+  return data.openTabs.every(tab => (
+    isRecord(tab)
+    && typeof tab.tabId === 'string'
+    && (tab.conversationId === null || typeof tab.conversationId === 'string')
+    && (tab.draftModel === undefined
+      || tab.draftModel === null
+      || typeof tab.draftModel === 'string')
+  ));
+}
+
 export function normalizeTabManagerState(data: unknown): AppTabManagerState | null {
   if (!isRecord(data) || !Array.isArray(data.openTabs)) {
     return null;

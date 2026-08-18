@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0 — 2026-08-18
+
+- Updated selected provider runtime, history, and compatibility behavior.
+- Improved Claude-compatible cancellation and tab-switch recovery.
+- Added regression coverage for cross-provider runtime changes.
+
 ## 1.2.9 — 2026-08-08
 
 ### Marketplace and runtime compatibility

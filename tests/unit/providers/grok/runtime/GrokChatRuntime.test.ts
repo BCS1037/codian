@@ -740,6 +740,46 @@ describe('GrokChatRuntime', () => {
     });
   });
 
+  it('falls back to the session model when the saved model is no longer advertised', async () => {
+    const harness = createHarness({
+      handlers: {
+        newSession(message, process) {
+          const response = sessionResponse('session-new');
+          const models = record(response.models);
+          models.currentModelId = 'grok-4.6';
+          models.availableModels = [{
+            _meta: {
+              agentType: 'grok-build-plan',
+              reasoningEffort: 'high',
+              supportsReasoningEffort: true,
+              totalContextTokens: 500_000,
+            },
+            modelId: 'grok-4.6',
+            name: 'Grok 4.6',
+          }];
+          process.respond(message, response);
+        },
+      },
+    });
+
+    const chunks = await collect(harness.runtime, 'First');
+
+    expect(chunks).toContainEqual({
+      content: 'Grok model "grok-4.5" is unavailable in the current CLI session; using "grok-4.6".',
+      level: 'info',
+      type: 'notice',
+    });
+    expect(harness.process.requests.filter(request => request.method === 'session/set_model'))
+      .toEqual([expect.objectContaining({
+        params: expect.objectContaining({ modelId: 'grok-4.6' }),
+      })]);
+    expect(harness.process.requests.some(request => (
+      request.method === 'session/set_model'
+      && record(request.params).modelId === 'grok-4.5'
+    ))).toBe(false);
+    expect(harness.process.requests.some(request => request.method === 'session/prompt')).toBe(true);
+  });
+
   it('does not send a stale cross-provider effort to Grok', async () => {
     const harness = createHarness({
       host: createHost({ settings: { effortLevel: 'max' } }),
@@ -1166,6 +1206,30 @@ describe('GrokChatRuntime', () => {
     ]);
     expect(harness.runtime.getSessionId()).toBe('session-new');
     expect(harness.runtime.consumeSessionInvalidation()).toBe(false);
+  });
+
+  it('preserves ACP method and data in model-selection errors', async () => {
+    const harness = createHarness({
+      handlers: {
+        setModel(message, process) {
+          process.stdout.write(`${JSON.stringify({
+            error: { code: -32602, data: 'unknown model id', message: 'Invalid params' },
+            id: message.id,
+            jsonrpc: '2.0',
+          })}\n`);
+        },
+      },
+    });
+
+    const chunks = await collect(harness.runtime);
+
+    expect(chunks).toEqual([
+      expect.objectContaining({
+        content: expect.stringContaining('session/set_model failed (-32602): Invalid params: unknown model id'),
+        type: 'error',
+      }),
+      { type: 'done' },
+    ]);
   });
 
   it.each([

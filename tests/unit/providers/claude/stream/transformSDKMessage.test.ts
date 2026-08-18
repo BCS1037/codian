@@ -42,6 +42,27 @@ describe('transformSDKMessage', () => {
       expect(results).toEqual([]);
     });
 
+    it('surfaces API retry diagnostics as info notices', () => {
+      const message = msg({
+        type: 'system',
+        subtype: 'api_retry',
+        attempt: 2,
+        error: 'overloaded',
+        error_status: 529,
+        max_retries: 10,
+        retry_delay_ms: 2000,
+        session_id: 'test-session',
+      });
+
+      const results = [...transformSDKMessage(message)];
+
+      expect(results).toEqual([{
+        content: 'Claude API retrying (attempt 2/10; reason: overloaded (529)).',
+        level: 'info',
+        type: 'notice',
+      }]);
+    });
+
     it('yields context_compacted event for compact_boundary subtype', () => {
       const message = msg({
         type: 'system',
@@ -448,6 +469,27 @@ describe('transformSDKMessage', () => {
 
       expect(results).toEqual([
         { type: 'notice', content: 'Command blocked: rm -rf /', level: 'warning' },
+      ]);
+    });
+
+    it('marks SDK permission denial as an authoritative blocked tool result', () => {
+      const message = msg({
+        type: 'system',
+        subtype: 'permission_denied',
+        tool_use_id: 'tool-123',
+        message: 'User denied this action.',
+      } as any);
+
+      const results = [...transformSDKMessage(message)];
+
+      expect(results).toEqual([
+        {
+          type: 'tool_result',
+          id: 'tool-123',
+          content: 'User denied this action.',
+          isError: true,
+          isBlocked: true,
+        },
       ]);
     });
 

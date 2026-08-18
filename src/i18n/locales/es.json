@@ -30,6 +30,8 @@
       "invalid": "No se encontraron notas ni carpetas compatibles en la bóveda.",
       "removedUnavailable": "Contexto no disponible eliminado: {path}"
     },
+    "providerRetry": "Reintentando la API de Claude (intento {attempt}/{maxRetries}; motivo: {reason}).",
+    "providerWorkspaceInitializationTimeout": "La inicialización del Provider {provider} agotó el tiempo tras {seconds} s. Intenta cambiar de pestaña de nuevo.",
     "historySearch": {
       "placeholder": "Buscar conversaciones",
       "noMatches": "No hay conversaciones coincidentes",

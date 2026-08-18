@@ -24,6 +24,7 @@ import {
 } from './app/settings/SettingsCoordinator';
 import { SharedStorageService } from './app/storage/SharedStorageService';
 import type { SharedAppStorage } from './core/bootstrap/storage';
+import { isValidTabManagerState } from './core/bootstrap/tabManagerState';
 import {
   getEnvironmentVariablesForScope as getScopedEnvironmentVariables,
   getRuntimeEnvironmentText,
@@ -1253,6 +1254,9 @@ export default class ClaudianPlugin extends Plugin {
   }
 
   async persistTabManagerState(state: AppTabManagerState): Promise<void> {
+    if (!isValidTabManagerState(state)) {
+      throw new TypeError('Invalid tab manager state');
+    }
     this.lastKnownTabManagerState = state;
     await this.storage.setTabManagerState(state);
   }

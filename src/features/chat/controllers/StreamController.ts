@@ -15,7 +15,6 @@ import { extractResolvedAnswers, extractResolvedAnswersFromResultText } from '..
 import {
   isEditTool,
   isWriteEditTool,
-  skipsBlockedDetection,
   TOOL_APPLY_PATCH,
   TOOL_ASK_USER_QUESTION,
   TOOL_SUBAGENT,
@@ -63,7 +62,6 @@ import {
 import {
   getToolName,
   getToolSummary,
-  isBlockedToolResult,
   renderToolCall,
   updateToolCallResult,
 } from '../rendering/ToolCallRenderer';
@@ -926,7 +924,14 @@ export class StreamController {
   }
 
   private async handleToolResult(
-    chunk: { type: 'tool_result'; id: string; content: string; isError?: boolean; toolUseResult?: SDKToolUseResult },
+    chunk: {
+      type: 'tool_result';
+      id: string;
+      content: string;
+      isError?: boolean;
+      isBlocked?: boolean;
+      toolUseResult?: SDKToolUseResult;
+    },
     msg: ChatMessage
   ): Promise<void> {
     const { state, subagentManager } = this.deps;
@@ -976,8 +981,9 @@ export class StreamController {
 
     const existingToolCall = msg.toolCalls?.find(tc => tc.id === chunk.id);
 
-    // Regular tool result
-    const isBlocked = isBlockedToolResult(normalizedContent, chunk.isError);
+    // Completion outcomes come from the provider boundary. Result content is
+    // arbitrary user/tool data and must never be interpreted as status metadata.
+    const isBlocked = chunk.isBlocked === true;
 
     if (existingToolCall) {
       const providerPayload = extractToolProviderPayload(chunk.toolUseResult);
@@ -987,16 +993,10 @@ export class StreamController {
           ...providerPayload,
         };
       }
-      // Tools that resolve via dedicated callbacks (not content-based) skip
-      // blocked detection — their status is determined solely by isError
-      if (chunk.isError) {
-        existingToolCall.status = 'error';
-      } else if (
-        lifecycleAdapter?.protocol !== 'lifecycle'
-        && !skipsBlockedDetection(existingToolCall.name)
-        && isBlocked
-      ) {
+      if (isBlocked) {
         existingToolCall.status = 'blocked';
+      } else if (chunk.isError) {
+        existingToolCall.status = 'error';
       } else {
         existingToolCall.status = 'completed';
       }
@@ -1313,8 +1313,9 @@ export class StreamController {
         const toolCall = subagentState.info.toolCalls.find((tc: ToolCallInfo) => tc.id === chunk.id);
         if (toolCall) {
           const normalizedContent = this.normalizeToolResultContent(chunk.content);
-          const isBlocked = isBlockedToolResult(normalizedContent, chunk.isError);
-          toolCall.status = isBlocked ? 'blocked' : (chunk.isError ? 'error' : 'completed');
+          toolCall.status = chunk.isBlocked
+            ? 'blocked'
+            : (chunk.isError ? 'error' : 'completed');
           toolCall.result = normalizedContent;
           subagentManager.updateSyncToolResult(parentToolUseId, chunk.id, toolCall);
         }

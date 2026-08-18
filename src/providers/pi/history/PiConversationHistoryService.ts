@@ -4,8 +4,12 @@ import type {
   ProviderConversationHistoryService,
   ProviderHistoryPathContext,
 } from '../../../core/providers/types';
-import type { Conversation } from '../../../core/types';
-import { buildPersistedPiState, getPiState } from '../types';
+import type { ChatMessage, Conversation } from '../../../core/types';
+import {
+  buildPersistedPiState,
+  getPiState,
+  type PiPreviousSession,
+} from '../types';
 import { resolvePiSessionFileHint } from './PiHistoryPathResolver';
 import { parsePiSessionContent } from './PiHistoryStore';
 
@@ -58,30 +62,56 @@ export class PiConversationHistoryService implements ProviderConversationHistory
       return;
     }
 
-    const sessionTarget = state.sessionId ?? conversation.sessionId;
-    if (!state.sessionFile && !sessionTarget) {
+    const currentSession: PiPreviousSession = {
+      ...(state.leafEntryId ? { leafEntryId: state.leafEntryId } : {}),
+      ...(state.sessionFile ? { sessionFile: state.sessionFile } : {}),
+      ...((state.sessionId ?? conversation.sessionId)
+        ? { sessionId: state.sessionId ?? conversation.sessionId! }
+        : {}),
+    };
+    const sourceSpecs: Array<{
+      kind: 'current' | 'previous';
+      source: PiPreviousSession;
+    }> = [
+      ...(state.previousSessions ?? []).map(source => ({ kind: 'previous' as const, source })),
+      ...(currentSession.sessionFile || currentSession.sessionId
+        ? [{ kind: 'current' as const, source: currentSession }]
+        : []),
+    ];
+    if (sourceSpecs.length === 0) {
       this.hydratedKeys.delete(conversation.id);
       return;
     }
 
-    const sessionFile = resolvePiSessionFileHint(
-      state.sessionFile,
-      sessionTarget,
-      vaultPath,
-      pathContext,
-    );
-    this.replaceResolvedPath(
-      conversation,
-      'sessionFile',
-      state.sessionFile,
+    const resolvedSources = sourceSpecs.flatMap(({ kind, source }) => {
+      const sessionFile = resolvePiSessionFileHint(
+        source.sessionFile,
+        source.sessionId,
+        vaultPath,
+        pathContext,
+      );
+      if (kind === 'current') {
+        this.replaceResolvedPath(
+          conversation,
+          'sessionFile',
+          source.sessionFile,
+          sessionFile,
+        );
+      }
+      return sessionFile
+        ? [{ kind, sessionFile, source }]
+        : [];
+    });
+    if (resolvedSources.length === 0) {
+      this.hydratedKeys.delete(conversation.id);
+      return;
+    }
+
+    const hydrationKey = JSON.stringify(resolvedSources.map(({ kind, sessionFile, source }) => ({
+      kind,
+      leafEntryId: source.leafEntryId ?? null,
       sessionFile,
-    );
-    if (!sessionFile) {
-      this.hydratedKeys.delete(conversation.id);
-      return;
-    }
-
-    const hydrationKey = `${sessionFile}::${state.leafEntryId ?? ''}`;
+    })));
     if (
       conversation.messages.length > 0
       && this.hydratedKeys.get(conversation.id) === hydrationKey
@@ -90,16 +120,25 @@ export class PiConversationHistoryService implements ProviderConversationHistory
     }
 
     try {
-      const content = await fs.readFile(sessionFile, 'utf-8');
-      const messages = parsePiSessionContent(content, {
-        leafEntryId: state.leafEntryId,
-      });
+      const messages: ChatMessage[] = [];
+      for (const { kind, sessionFile, source } of resolvedSources) {
+        try {
+          const content = await fs.readFile(sessionFile, 'utf-8');
+          messages.push(...parsePiSessionContent(content, {
+            leafEntryId: source.leafEntryId,
+            requireLeafEntryId: kind === 'previous' && !!source.leafEntryId,
+            syntheticIdNamespace: sessionFile,
+          }));
+        } catch {
+          // Ignore unavailable historical segments; current segment may still hydrate.
+        }
+      }
       if (messages.length === 0) {
         this.hydratedKeys.delete(conversation.id);
         return;
       }
 
-      conversation.messages = messages;
+      conversation.messages = dedupeMessages(messages);
       this.hydratedKeys.set(conversation.id, hydrationKey);
     } catch {
       this.hydratedKeys.delete(conversation.id);
@@ -119,6 +158,8 @@ export class PiConversationHistoryService implements ProviderConversationHistory
       ?? state.sessionId
       ?? conversation?.sessionId
       ?? state.forkSource?.sessionId
+      ?? state.previousSessions?.at(-1)?.sessionFile
+      ?? state.previousSessions?.at(-1)?.sessionId
       ?? null;
   }
 
@@ -164,4 +205,16 @@ export class PiConversationHistoryService implements ProviderConversationHistory
     }
     conversation.providerState = buildPersistedPiState(nextState) as Record<string, unknown> | undefined;
   }
+
+}
+
+function dedupeMessages(messages: ChatMessage[]): ChatMessage[] {
+  const seen = new Set<string>();
+  return messages.filter((message) => {
+    if (seen.has(message.id)) {
+      return false;
+    }
+    seen.add(message.id);
+    return true;
+  });
 }

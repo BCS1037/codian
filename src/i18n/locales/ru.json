@@ -30,6 +30,8 @@
       "invalid": "Поддерживаемые заметки или папки хранилища не найдены.",
       "removedUnavailable": "Недоступный контекст удалён: {path}"
     },
+    "providerRetry": "Повторная попытка Claude API (попытка {attempt}/{maxRetries}; причина: {reason}).",
+    "providerWorkspaceInitializationTimeout": "Инициализация Provider {provider} превысила время ожидания ({seconds} с). Повторите переключение вкладки.",
     "historySearch": {
       "placeholder": "Поиск разговоров",
       "noMatches": "Подходящих разговоров нет",

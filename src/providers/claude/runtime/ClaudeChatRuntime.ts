@@ -191,6 +191,7 @@ export class ClaudianService implements ChatRuntime {
 
   // Current allowed tools for canUseTool enforcement (null = no restriction)
   private currentAllowedTools: string[] | null = null;
+  private blockedToolIds = new Set<string>();
 
   private pendingResumeAt?: string;
   private pendingForkSession = false;
@@ -308,6 +309,7 @@ export class ClaudianService implements ChatRuntime {
     this.turnMetadata = {};
     this.bufferedUsageChunk = null;
     this.usageTransformState.clear();
+    this.blockedToolIds.clear();
   }
 
   private recordTurnMetadata(update: Partial<ChatTurnMetadata>): void {
@@ -1012,6 +1014,7 @@ export class ClaudianService implements ChatRuntime {
       streamState,
       usageState,
       taskToolNormalizer,
+      blockedToolIds: this.blockedToolIds,
     };
   }
 
@@ -1403,7 +1406,8 @@ export class ClaudianService implements ChatRuntime {
             const retryRequest = this.buildHistoryRebuildRequest(prompt, conversationHistory);
 
             this.coldStartInProgress = true;
-            this.abortController = new AbortController();
+            const retryAbortController = new AbortController();
+            this.abortController = retryAbortController;
 
             try {
               yield* this.queryViaSDK(
@@ -1421,8 +1425,10 @@ export class ClaudianService implements ChatRuntime {
                 content: retryError instanceof Error ? retryError.message : 'Unknown error',
               };
             } finally {
-              this.coldStartInProgress = false;
-              this.abortController = null;
+              if (this.abortController === retryAbortController) {
+                this.coldStartInProgress = false;
+                this.abortController = null;
+              }
             }
             return;
           }
@@ -1441,7 +1447,8 @@ export class ClaudianService implements ChatRuntime {
     // Cold-start path (existing logic)
     // Set flag to prevent consumer error restarts from interfering
     this.coldStartInProgress = true;
-    this.abortController = new AbortController();
+    const queryAbortController = new AbortController();
+    this.abortController = queryAbortController;
 
     try {
       yield* this.queryViaSDK(promptToSend, vaultPath, resolvedClaudePath, images, effectiveQueryOptions);
@@ -1478,8 +1485,10 @@ export class ClaudianService implements ChatRuntime {
       const msg = error instanceof Error ? error.message : 'Unknown error';
       yield { type: 'error', content: msg };
     } finally {
-      this.coldStartInProgress = false;
-      this.abortController = null;
+      if (this.abortController === queryAbortController) {
+        this.coldStartInProgress = false;
+        this.abortController = null;
+      }
     }
   }
 
@@ -1731,6 +1740,7 @@ export class ClaudianService implements ChatRuntime {
     queryOptions?: QueryOptions
   ): AsyncGenerator<StreamChunk> {
     this.resetTurnMetadata();
+    const abortController = this.abortController;
     const selectedModel = toClaudeRuntimeModelId(queryOptions?.model || this.getScopedSettings().model);
 
     this.sessionManager.setPendingModel(selectedModel);
@@ -1749,7 +1759,7 @@ export class ClaudianService implements ChatRuntime {
 
     const ctx: ColdStartQueryContext = {
       ...baseContext,
-      abortController: this.abortController ?? undefined,
+      abortController: abortController ?? undefined,
       sessionId: this.sessionManager.getSessionId() ?? undefined,
       modelOverride: queryOptions?.model,
       canUseTool: this.createApprovalCallback(),
@@ -1769,7 +1779,7 @@ export class ClaudianService implements ChatRuntime {
     const taskToolNormalizer = new ClaudeTaskToolNormalizer();
     try {
       const agentQuery = await loadClaudeAgentQuery();
-      if (ctx.abortController?.signal.aborted) {
+      if (abortController?.signal.aborted) {
         return;
       }
       const response = agentQuery({ prompt: queryPrompt, options });
@@ -1777,7 +1787,7 @@ export class ClaudianService implements ChatRuntime {
       let streamSessionId: string | null = this.sessionManager.getSessionId();
 
       for await (const message of response) {
-        if (this.abortController?.signal.aborted) {
+        if (abortController?.signal.aborted) {
           await response.interrupt();
           break;
         }
@@ -2041,6 +2051,9 @@ export class ClaudianService implements ChatRuntime {
       },
       notifyAlwaysAppliedOnce: () => {
         new Notice('Always approval could only be applied once because no permission scope was available.');
+      },
+      onToolBlocked: (toolUseId) => {
+        this.blockedToolIds.add(toolUseId);
       },
     });
   }

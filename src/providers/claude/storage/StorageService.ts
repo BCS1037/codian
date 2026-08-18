@@ -4,7 +4,10 @@ import { Notice } from 'obsidian';
 import { ClaudianSettingsStorage, type StoredClaudianSettings } from '../../../app/settings/ClaudianSettingsStorage';
 import { SESSIONS_PATH, SessionStorage } from '../../../core/bootstrap/SessionStorage';
 import { CLAUDIAN_STORAGE_PATH } from '../../../core/bootstrap/StoragePaths';
-import { normalizeTabManagerState } from '../../../core/bootstrap/tabManagerState';
+import {
+  isValidTabManagerState,
+  normalizeTabManagerState,
+} from '../../../core/bootstrap/tabManagerState';
 import type { AppTabManagerState } from '../../../core/providers/types';
 import { VaultFileAdapter } from '../../../core/storage/VaultFileAdapter';
 import type {
@@ -138,6 +141,9 @@ export class StorageService {
 
   async setTabManagerState(state: TabManagerPersistedState): Promise<void> {
     try {
+      if (!isValidTabManagerState(state)) {
+        throw new TypeError('Invalid tab manager state');
+      }
       const loaded: unknown = await this.plugin.loadData();
       const data = isRecord(loaded) ? loaded : {};
       data.tabManagerState = state;

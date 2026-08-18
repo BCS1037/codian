@@ -30,6 +30,8 @@
       "invalid": "Aucune note ou dossier pris en charge n’a été trouvé dans le coffre.",
       "removedUnavailable": "Contexte indisponible supprimé : {path}"
     },
+    "providerRetry": "Nouvelle tentative de l’API Claude (tentative {attempt}/{maxRetries} ; raison : {reason}).",
+    "providerWorkspaceInitializationTimeout": "L’initialisation du Provider {provider} a expiré après {seconds} s. Réessayez de changer d’onglet.",
     "historySearch": {
       "placeholder": "Rechercher des conversations",
       "noMatches": "Aucune conversation correspondante",

@@ -103,7 +103,9 @@ function resolveClaudeFromPathEntries(
     return unixCandidate;
   }
 
-  const exeCandidate = findFirstExistingPath(entries, ['claude.exe', 'claude']);
+  // An extension-less `claude` on a Windows PATH entry is npm's POSIX sh shim, which
+  // cannot be spawned directly. Skip it like the .cmd shim and use the Node entrypoint.
+  const exeCandidate = findFirstExistingPath(entries, ['claude.exe']);
   if (exeCandidate) {
     return exeCandidate;
   }

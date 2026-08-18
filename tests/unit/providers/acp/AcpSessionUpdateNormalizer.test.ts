@@ -112,6 +112,37 @@ describe('AcpSessionUpdateNormalizer', () => {
     });
   });
 
+  it('marks an explicitly blocked tool result without inspecting result text', () => {
+    const normalizer = new AcpSessionUpdateNormalizer({
+      isToolBlocked: toolCallId => toolCallId === 'tool-blocked',
+    });
+
+    const result = normalizer.normalize({
+      content: [{
+        content: { text: 'User denied this request', type: 'text' },
+        type: 'content',
+      }],
+      sessionUpdate: 'tool_call',
+      status: 'failed',
+      title: 'run command',
+      toolCallId: 'tool-blocked',
+    });
+
+    expect(result).toMatchObject({
+      streamChunks: [
+        { type: 'tool_use' },
+        {
+          content: 'User denied this request',
+          id: 'tool-blocked',
+          isBlocked: true,
+          isError: true,
+          type: 'tool_result',
+        },
+      ],
+      type: 'tool_call',
+    });
+  });
+
   it('preserves native diff content through a status-only completion', () => {
     const normalizer = new AcpSessionUpdateNormalizer();
 

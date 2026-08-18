@@ -3573,6 +3573,57 @@ describe('ClaudianService', () => {
       // interrupt should have been called
       expect(interruptCalled).toBe(true);
     });
+
+    it('does not process a late cold-start message after cancellation and a new turn', async () => {
+      let releaseFirstResponse!: () => void;
+      const firstResponseReady = new Promise<void>(resolve => {
+        releaseFirstResponse = resolve;
+      });
+      let queryNumber = 0;
+
+      jest.spyOn(sdkModule, 'query' as any).mockImplementation(() => {
+        queryNumber += 1;
+        const currentQuery = queryNumber;
+        const response = (async function* () {
+          if (currentQuery === 1) {
+            await firstResponseReady;
+            yield {
+              type: 'assistant',
+              message: { content: [{ type: 'text', text: 'late old turn' }] },
+            };
+            return;
+          }
+
+          yield {
+            type: 'assistant',
+            message: { content: [{ type: 'text', text: 'new turn' }] },
+          };
+        })() as any;
+        response.interrupt = jest.fn().mockResolvedValue(undefined);
+        return response;
+      });
+
+      const firstTurn = collectChunks(
+        service.query('first', undefined, undefined, { forceColdStart: true }),
+      );
+      await new Promise(resolve => setImmediate(resolve));
+      service.cancel();
+
+      const secondTurn = collectChunks(
+        service.query('second', undefined, undefined, { forceColdStart: true }),
+      );
+      const secondChunks = await secondTurn;
+
+      releaseFirstResponse();
+      const firstChunks = await firstTurn;
+
+      expect(firstChunks).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ content: 'late old turn' })]),
+      );
+      expect(secondChunks).toEqual(
+        expect.arrayContaining([expect.objectContaining({ content: 'new turn' })]),
+      );
+    });
   });
 
   describe('startResponseConsumer - crash recovery', () => {

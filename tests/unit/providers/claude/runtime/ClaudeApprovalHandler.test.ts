@@ -47,6 +47,23 @@ describe('createClaudeApprovalCallback', () => {
     expect(deps.notifyAlwaysAppliedOnce).not.toHaveBeenCalled();
   });
 
+  it('reports denied tool IDs to the provider boundary', async () => {
+    const onToolBlocked = jest.fn();
+    const deps = {
+      ...createDeps('allow'),
+      getApprovalCallback: () => jest.fn().mockResolvedValue('cancel'),
+      onToolBlocked,
+    };
+    const callback = createClaudeApprovalCallback(deps);
+
+    await expect(callback('Bash', {}, {
+      ...options,
+      toolUseID: 'tool-denied',
+    })).resolves.toMatchObject({ behavior: 'deny' });
+
+    expect(onToolBlocked).toHaveBeenCalledWith('tool-denied');
+  });
+
   it('keeps one-time approvals unchanged when no scope can be derived', async () => {
     const deps = createDeps('allow');
     const callback = createClaudeApprovalCallback(deps);

@@ -1,6 +1,9 @@
 // Mock for Obsidian API
 
 export const addIcon = jest.fn();
+export const loadPrism = jest.fn().mockResolvedValue({
+  highlightElement: jest.fn(),
+});
 
 export class Plugin {
   app: any;

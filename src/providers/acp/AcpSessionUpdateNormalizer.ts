@@ -71,6 +71,10 @@ export interface AcpToolCallSnapshot {
   toolUseResult?: SDKToolUseResult;
 }
 
+export interface AcpSessionUpdateNormalizerOptions {
+  isToolBlocked?: (toolCallId: string) => boolean;
+}
+
 type MessageRole = 'assistant' | 'thinking' | 'user';
 
 // Sentinel key for anonymous (messageId-less) streams so we only emit one start per role.
@@ -79,6 +83,8 @@ const ANONYMOUS_MESSAGE_KEY = '\u0000anonymous';
 export class AcpSessionUpdateNormalizer {
   private readonly seenMessages = new Map<MessageRole, Set<string>>();
   private readonly toolCalls = new Map<string, AcpToolCallSnapshot>();
+
+  constructor(private readonly options: AcpSessionUpdateNormalizerOptions = {}) {}
 
   reset(): void {
     this.seenMessages.clear();
@@ -177,6 +183,7 @@ export class AcpSessionUpdateNormalizer {
       streamChunks.push({
         content: toolState.output || defaultToolResultText(toolState.status),
         id: toolCall.toolCallId,
+        ...(this.options.isToolBlocked?.(toolCall.toolCallId) ? { isBlocked: true } : {}),
         isError: toolState.status === 'failed',
         ...(toolState.toolUseResult ? { toolUseResult: toolState.toolUseResult } : {}),
         type: 'tool_result',
@@ -250,6 +257,7 @@ export class AcpSessionUpdateNormalizer {
       streamChunks.push({
         content: current.output || defaultToolResultText(current.status),
         id: toolCallUpdate.toolCallId,
+        ...(this.options.isToolBlocked?.(toolCallUpdate.toolCallId) ? { isBlocked: true } : {}),
         isError: current.status === 'failed',
         ...(current.toolUseResult ? { toolUseResult: current.toolUseResult } : {}),
         type: 'tool_result',

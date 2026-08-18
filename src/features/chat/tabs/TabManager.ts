@@ -99,6 +99,29 @@ type RuntimeCommandSubscription = {
   unsubscribe: () => void;
 };
 
+export const PROVIDER_WORKSPACE_INITIALIZATION_TIMEOUT_MS = 15_000;
+
+function waitForProviderWorkspaceInitialization(
+  initialization: Promise<void>,
+  providerId: ProviderId,
+): Promise<void> {
+  let timeoutId: number | null = null;
+  const timeout = new Promise<void>((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new Error(t('chat.providerWorkspaceInitializationTimeout', {
+        provider: providerId,
+        seconds: PROVIDER_WORKSPACE_INITIALIZATION_TIMEOUT_MS / 1000,
+      })));
+    }, PROVIDER_WORKSPACE_INITIALIZATION_TIMEOUT_MS);
+  });
+
+  return Promise.race([initialization, timeout]).finally(() => {
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+    }
+  });
+}
+
 /**
  * TabManager coordinates multiple chat tabs.
  */
@@ -995,10 +1018,13 @@ export class TabManager implements TabManagerInterface {
     reason: string,
   ): Promise<boolean> {
     if (!ProviderWorkspaceRegistry.getIfInitialized(providerId)) {
-      await ProviderWorkspaceRegistry.ensureInitialized(
-        this.plugin.providerHost,
+      await waitForProviderWorkspaceInitialization(
+        ProviderWorkspaceRegistry.ensureInitialized(
+          this.plugin.providerHost,
+          providerId,
+          reason,
+        ),
         providerId,
-        reason,
       );
     }
     if (!this.isTabAlive(tab)) {

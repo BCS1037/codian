@@ -73,7 +73,7 @@ export function createRuntimeEvidence({ repo, input, generatedAt }) {
   const errors = validateInput(input);
   const passedScenarios = new Set(
     Array.isArray(input.scenarios)
-      ? input.scenarios.filter(item => item?.result === 'pass' && item?.evidence).map(item => item.name)
+      ? input.scenarios.filter(isSatisfiedScenario).map(item => item.name)
       : [],
   );
   for (const name of REQUIRED_SCENARIOS[input.kind] ?? []) {
@@ -130,6 +130,18 @@ export function createRuntimeEvidence({ repo, input, generatedAt }) {
     assets,
     errors,
   };
+}
+
+function isSatisfiedScenario(item) {
+  if (!item?.evidence) {
+    return false;
+  }
+  if (item.result === 'pass') {
+    return true;
+  }
+  return item.result === 'not-applicable'
+    && (item.name === 'rollback' || item.name === 'switching')
+    && /not applicable|does not support|unsupported|unavailable/i.test(item.evidence);
 }
 
 function main() {

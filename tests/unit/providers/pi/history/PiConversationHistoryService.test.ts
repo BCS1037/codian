@@ -92,6 +92,81 @@ describe('PiConversationHistoryService', () => {
     expect(conversation.providerState).toEqual({ sessionFile });
   });
 
+  it('hydrates previous and active Pi session segments in chronological order', async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'pi-history-segments-'));
+    const trustedDir = path.join(home, '.pi', 'agent', 'sessions');
+    await fs.mkdir(trustedDir, { recursive: true });
+    const previousFile = path.join(trustedDir, 'previous.jsonl');
+    const activeFile = path.join(trustedDir, 'active.jsonl');
+    await fs.writeFile(previousFile, [
+      JSON.stringify({ type: 'session', id: 'previous-session' }),
+      JSON.stringify({
+        id: 'previous-user',
+        message: { content: 'Previous', role: 'user', timestamp: 1 },
+        type: 'message',
+      }),
+    ].join('\n'));
+    await fs.writeFile(activeFile, [
+      JSON.stringify({ type: 'session', id: 'active-session' }),
+      JSON.stringify({
+        id: 'active-user',
+        message: { content: 'Active', role: 'user', timestamp: 2 },
+        type: 'message',
+      }),
+    ].join('\n'));
+    const conversation = createConversation(activeFile);
+    conversation.providerState = {
+      previousSessions: [{
+        leafEntryId: 'previous-user',
+        sessionFile: previousFile,
+        sessionId: 'previous-session',
+      }],
+      sessionFile: activeFile,
+      sessionId: 'active-session',
+    };
+
+    await new PiConversationHistoryService().hydrateConversationHistory(
+      conversation,
+      null,
+      { environment: { HOME: home } },
+    );
+
+    expect(conversation.messages.map(message => message.content)).toEqual(['Previous', 'Active']);
+  });
+
+  it('preserves id-less messages from different session segments', async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'pi-history-idless-segments-'));
+    const trustedDir = path.join(home, '.pi', 'agent', 'sessions');
+    await fs.mkdir(trustedDir, { recursive: true });
+    const previousFile = path.join(trustedDir, 'previous.jsonl');
+    const activeFile = path.join(trustedDir, 'active.jsonl');
+    await fs.writeFile(previousFile, [
+      JSON.stringify({ type: 'session', id: 'previous-session' }),
+      JSON.stringify({ type: 'custom_message', content: 'Previous notice' }),
+    ].join('\n'));
+    await fs.writeFile(activeFile, [
+      JSON.stringify({ type: 'session', id: 'active-session' }),
+      JSON.stringify({ type: 'custom_message', content: 'Active notice' }),
+    ].join('\n'));
+    const conversation = createConversation(activeFile);
+    conversation.providerState = {
+      previousSessions: [{ sessionFile: previousFile, sessionId: 'previous-session' }],
+      sessionFile: activeFile,
+      sessionId: 'active-session',
+    };
+
+    await new PiConversationHistoryService().hydrateConversationHistory(
+      conversation,
+      null,
+      { environment: { HOME: home } },
+    );
+
+    expect(conversation.messages.map(message => message.content)).toEqual([
+      'Previous notice',
+      'Active notice',
+    ]);
+  });
+
   it('accepts a metadata path under the explicitly configured session directory', async () => {
     const configuredDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pi-history-configured-'));
     const sessionFile = path.join(configuredDir, 'session.jsonl');

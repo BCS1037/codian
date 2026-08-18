@@ -697,6 +697,32 @@ describe('OpencodeChatRuntime', () => {
     });
   });
 
+  it('records explicit ACP reject selections for the later tool result', async () => {
+    const runtime = new OpencodeChatRuntime(createMockPlugin());
+    runtime.setApprovalCallback(jest.fn().mockResolvedValue({
+      type: 'select-option',
+      value: 'deny-now',
+    }));
+
+    await expect((runtime as any).handlePermissionRequest({
+      options: [
+        { kind: 'allow_once', name: 'Allow once', optionId: 'approve-now' },
+        { kind: 'reject_once', name: 'Deny', optionId: 'deny-now' },
+      ],
+      sessionId: 'session-1',
+      toolCall: {
+        kind: 'other',
+        rawInput: { command: 'rm -rf /tmp/example' },
+        title: 'run_command',
+        toolCallId: 'tool-blocked',
+      },
+    })).resolves.toEqual({
+      outcome: { optionId: 'deny-now', outcome: 'selected' },
+    });
+
+    expect((runtime as any).blockedToolIds).toEqual(new Set(['tool-blocked']));
+  });
+
   it('syncs OpenCode session modes into provider settings without clobbering an explicit user choice', async () => {
     const refreshModelSelector = jest.fn();
     const plugin = createMockPlugin({

@@ -30,6 +30,8 @@
       "invalid": "지원되는 볼트 노트나 폴더를 찾을 수 없습니다.",
       "removedUnavailable": "사용할 수 없는 컨텍스트를 제거했습니다: {path}"
     },
+    "providerRetry": "Claude API 재시도 중 ({attempt}/{maxRetries}회차, 이유: {reason}).",
+    "providerWorkspaceInitializationTimeout": "Provider {provider} 초기화가 {seconds}초 후 시간 초과되었습니다. 탭 전환을 다시 시도하세요.",
     "historySearch": {
       "placeholder": "대화 검색",
       "noMatches": "일치하는 대화가 없습니다",

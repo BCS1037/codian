@@ -31,22 +31,30 @@ export interface ClaudeApprovalHandlerDeps {
   resolveSDKPermissionMode: (mode: PermissionMode) => SDKPermissionMode;
   syncPermissionMode: (mode: PermissionMode, sdkMode: SDKPermissionMode) => void;
   notifyAlwaysAppliedOnce: () => void;
+  onToolBlocked?: (toolUseId: string) => void;
 }
 
 export function createClaudeApprovalCallback(
   deps: ClaudeApprovalHandlerDeps,
 ): CanUseTool {
   return async (toolName, input, options): Promise<PermissionResult> => {
+    const deny = (result: PermissionResult): PermissionResult => {
+      if (typeof options.toolUseID === 'string') {
+        deps.onToolBlocked?.(options.toolUseID);
+      }
+      return result;
+    };
+
     const currentAllowedTools = deps.getAllowedTools();
     if (currentAllowedTools !== null) {
       if (!currentAllowedTools.includes(toolName) && toolName !== TOOL_SKILL) {
         const allowedList = currentAllowedTools.length > 0
           ? ` Allowed tools: ${currentAllowedTools.join(', ')}.`
           : ' No tools are allowed for this query type.';
-        return {
+        return deny({
           behavior: 'deny',
           message: `Tool "${toolName}" is not allowed for this query.${allowedList}`,
-        };
+        });
       }
     }
 
@@ -55,13 +63,13 @@ export function createClaudeApprovalCallback(
       try {
         const decision: ExitPlanModeDecision | null = await exitPlanModeCallback(input, options.signal);
         if (decision === null) {
-          return { behavior: 'deny', message: 'User cancelled.', interrupt: true };
+          return deny({ behavior: 'deny', message: 'User cancelled.', interrupt: true });
         }
         if (decision.type === 'feedback') {
-          return { behavior: 'deny', message: decision.text, interrupt: false };
+          return deny({ behavior: 'deny', message: decision.text, interrupt: false });
         }
         if (decision.type === 'abandon') {
-          return { behavior: 'deny', message: 'User abandoned the plan.', interrupt: true };
+          return deny({ behavior: 'deny', message: 'User abandoned the plan.', interrupt: true });
         }
 
         const permissionMode = deps.getPermissionMode();
@@ -75,11 +83,11 @@ export function createClaudeApprovalCallback(
           ],
         };
       } catch (error) {
-        return {
+        return deny({
           behavior: 'deny',
           message: `Failed to handle plan mode exit: ${error instanceof Error ? error.message : 'Unknown error'}`,
           interrupt: true,
-        };
+        });
       }
     }
 
@@ -100,21 +108,21 @@ export function createClaudeApprovalCallback(
         }
         const answers = await askUserQuestionCallback(input, options.signal);
         if (answers === null) {
-          return { behavior: 'deny', message: 'User declined to answer.', interrupt: true };
+          return deny({ behavior: 'deny', message: 'User declined to answer.', interrupt: true });
         }
         return { behavior: 'allow', updatedInput: { ...input, answers } };
       } catch (error) {
-        return {
+        return deny({
           behavior: 'deny',
           message: `Failed to get user answers: ${error instanceof Error ? error.message : 'Unknown error'}`,
           interrupt: true,
-        };
+        });
       }
     }
 
     const approvalCallback = deps.getApprovalCallback();
     if (!approvalCallback) {
-      return { behavior: 'deny', message: 'No approval handler available.' };
+      return deny({ behavior: 'deny', message: 'No approval handler available.' });
     }
 
     try {
@@ -128,7 +136,7 @@ export function createClaudeApprovalCallback(
       );
 
       if (decision === 'cancel') {
-        return { behavior: 'deny', message: 'User interrupted.', interrupt: true };
+        return deny({ behavior: 'deny', message: 'User interrupted.', interrupt: true });
       }
 
       if (decision === 'allow' || decision === 'allow-always') {
@@ -145,13 +153,13 @@ export function createClaudeApprovalCallback(
         return { behavior: 'allow', updatedInput: input, updatedPermissions };
       }
 
-      return { behavior: 'deny', message: 'User denied this action.', interrupt: false };
+      return deny({ behavior: 'deny', message: 'User denied this action.', interrupt: false });
     } catch (error) {
-      return {
+      return deny({
         behavior: 'deny',
         message: `Approval request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
         interrupt: false,
-      };
+      });
     }
   };
 }

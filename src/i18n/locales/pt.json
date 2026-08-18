@@ -30,6 +30,8 @@
       "invalid": "Nenhuma nota ou pasta compatível do cofre foi encontrada.",
       "removedUnavailable": "Contexto indisponível removido: {path}"
     },
+    "providerRetry": "Tentando novamente a API do Claude (tentativa {attempt}/{maxRetries}; motivo: {reason}).",
+    "providerWorkspaceInitializationTimeout": "A inicialização do Provider {provider} excedeu {seconds}s. Tente alternar a aba novamente.",
     "historySearch": {
       "placeholder": "Pesquisar conversas",
       "noMatches": "Nenhuma conversa correspondente",

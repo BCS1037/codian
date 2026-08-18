@@ -30,6 +30,8 @@
       "invalid": "No supported vault notes or folders found.",
       "removedUnavailable": "Removed unavailable context: {path}"
     },
+    "providerRetry": "Claude API retrying (attempt {attempt}/{maxRetries}; reason: {reason}).",
+    "providerWorkspaceInitializationTimeout": "Provider {provider} initialization timed out after {seconds}s. Retry tab switch.",
     "historySearch": {
       "placeholder": "Search conversations",
       "noMatches": "No matching conversations",

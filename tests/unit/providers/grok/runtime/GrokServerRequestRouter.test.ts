@@ -43,6 +43,8 @@ describe('GrokServerRequestRouter', () => {
     it('normalizes a terminal approval for presentation and preserves reject option ids', async () => {
       const request = createPermissionRequest();
       const router = createRouter();
+      const onToolBlocked = jest.fn();
+      router.setToolBlockedCallback(onToolBlocked);
       const callback: ApprovalCallback = jest.fn(async (_tool, _input, _description, options) => {
         expect(options?.decisionOptions).toEqual([
           { decision: 'allow', label: 'Allow once', value: 'allow-once' },
@@ -64,6 +66,7 @@ describe('GrokServerRequestRouter', () => {
         expect.any(Object),
       );
       expect(request).toEqual(createPermissionRequest());
+      expect(onToolBlocked).toHaveBeenCalledWith('<permission-tool-call-id>');
     });
 
     it('normalizes read_file and preserves allow decisions', async () => {

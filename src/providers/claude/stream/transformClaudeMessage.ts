@@ -2,6 +2,7 @@ import type { SDKMessage, SDKResultError } from '@anthropic-ai/claude-agent-sdk'
 
 import type { AsyncSubagentCompletion } from '../../../core/runtime/types';
 import type { SDKToolUseResult, StreamChunk, UsageInfo } from '../../../core/types';
+import { t } from '../../../i18n/i18n';
 import {
   CLAUDE_MODEL_TIER_PATTERN,
   type ClaudeModelTier,
@@ -16,7 +17,13 @@ import { isDefaultClaudeModel, resolveContextWindowSize } from '../types/models'
 import { createTransformStreamState, type TransformStreamState } from './toolInputStreamState';
 
 type ToolUseFields = { id: string; name: string; input: Record<string, unknown> };
-type ToolResultFields = { id: string; content: string; isError?: boolean; toolUseResult?: SDKToolUseResult };
+type ToolResultFields = {
+  id: string;
+  content: string;
+  isError?: boolean;
+  isBlocked?: boolean;
+  toolUseResult?: SDKToolUseResult;
+};
 type AsyncSubagentCompletionStatus = AsyncSubagentCompletion['status'];
 
 export { createTransformStreamState };
@@ -137,6 +144,8 @@ export interface TransformOptions {
   usageState?: TransformUsageState;
   /** Normalizes Claude's native task tools into provider-neutral TodoWrite snapshots. */
   taskToolNormalizer?: ClaudeTaskToolNormalizer;
+  /** Tool IDs denied by the host approval boundary during the active turn. */
+  blockedToolIds?: ReadonlySet<string>;
 }
 
 export interface MessageUsage {
@@ -459,6 +468,26 @@ export function* transformSDKMessage(
         if (notification) {
           yield notification;
         }
+      } else if (message.subtype === 'api_retry') {
+        const reason = message.error_status === null
+          ? message.error
+          : `${message.error} (${message.error_status})`;
+        yield {
+          type: 'notice',
+          content: t('chat.providerRetry', {
+            attempt: message.attempt,
+            maxRetries: message.max_retries,
+            reason,
+          }),
+          level: 'info',
+        };
+      } else if (message.subtype === 'permission_denied') {
+        yield emitToolResult(message.agent_id ?? null, {
+          id: message.tool_use_id,
+          content: message.message,
+          isError: true,
+          isBlocked: true,
+        });
       }
       break;
 
@@ -524,10 +553,12 @@ export function* transformSDKMessage(
       // User messages can contain tool results
       if (message.tool_use_result !== undefined && message.parent_tool_use_id) {
         const toolUseResult = (message.tool_use_result ?? undefined) as SDKToolUseResult | undefined;
+        const toolUseId = message.parent_tool_use_id;
         yield* normalizeTaskToolChunk(emitToolResult(parentToolUseId, {
-         id: message.parent_tool_use_id,
+         id: toolUseId,
          content: extractToolResultContent(message.tool_use_result, { fallbackIndent: 2 }),
          isError: false,
+         ...(options?.blockedToolIds?.has(toolUseId) ? { isBlocked: true } : {}),
          ...(toolUseResult !== undefined ? { toolUseResult } : {}),
         }), options?.taskToolNormalizer);
       }
@@ -536,10 +567,12 @@ export function* transformSDKMessage(
         for (const block of message.message.content) {
           if (block.type === 'tool_result') {
             const toolUseResult = (message.tool_use_result ?? undefined) as SDKToolUseResult | undefined;
+            const toolUseId = block.tool_use_id || message.parent_tool_use_id || '';
             yield* normalizeTaskToolChunk(emitToolResult(parentToolUseId, {
-             id: block.tool_use_id || message.parent_tool_use_id || '',
+             id: toolUseId,
              content: extractToolResultContent(block.content, { fallbackIndent: 2 }),
              isError: block.is_error || false,
+             ...(options?.blockedToolIds?.has(toolUseId) ? { isBlocked: true } : {}),
              ...(toolUseResult !== undefined ? { toolUseResult } : {}),
             }), options?.taskToolNormalizer);
           }

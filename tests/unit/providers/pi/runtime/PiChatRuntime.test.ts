@@ -1073,7 +1073,14 @@ describe('PiChatRuntime', () => {
       conversation,
       sessionInvalidated: false,
     }).updates).toEqual({
-      providerState: { sessionId: 'new-session' },
+      providerState: {
+        previousSessions: [{
+          leafEntryId: 'old-leaf',
+          sessionFile: '/tmp/old-pi-session.jsonl',
+          sessionId: 'old-session',
+        }],
+        sessionId: 'new-session',
+      },
       sessionId: 'new-session',
     });
   });

@@ -34,6 +34,21 @@ export function mapAcpApprovalDecision(
   return CANCELLED_RESPONSE;
 }
 
+export function isAcpApprovalDecisionBlocked(
+  decision: ApprovalDecision,
+  options: readonly AcpPermissionOption[],
+): boolean {
+  if (decision === 'deny') {
+    return true;
+  }
+
+  if (typeof decision !== 'object' || decision.type !== 'select-option') {
+    return false;
+  }
+
+  return options.find(option => option.optionId === decision.value)?.kind.startsWith('reject') ?? false;
+}
+
 export function buildAcpApprovalDecisionOptions(
   options: readonly AcpPermissionOption[],
 ): ApprovalDecisionOption[] {
