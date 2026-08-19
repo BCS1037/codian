@@ -31,6 +31,13 @@ export type McpServerConfig =
 /** Server type identifier. */
 export type McpServerType = 'stdio' | 'sse' | 'http';
 
+/** Describes which system owns an MCP server definition and whether Codian may mutate it. */
+export interface McpServerProvenance {
+  owner: 'codian' | 'provider-cli';
+  source: string;
+  readOnly: boolean;
+}
+
 /** Managed MCP server configuration with UI/runtime metadata. */
 export interface ManagedMcpServer {
   /** Unique server name (key in mcpServers record). */
@@ -42,6 +49,7 @@ export interface ManagedMcpServer {
   /** Tool names disabled for this server. */
   disabledTools?: string[];
   description?: string;
+  provenance?: McpServerProvenance;
 }
 
 /** MCP configuration file format used by the current CLI integrations. */

@@ -35,7 +35,17 @@
     "historySearch": {
       "placeholder": "Rechercher des conversations",
       "noMatches": "Aucune conversation correspondante",
-      "clear": "Effacer la recherche"
+      "clear": "Effacer la recherche",
+      "filterActive": "Actives",
+      "filterArchived": "Archivées",
+      "filterAll": "Toutes",
+      "pin": "Épingler",
+      "unpin": "Désépingler",
+      "archive": "Archiver",
+      "unarchive": "Désarchiver",
+      "pinned": "Épinglée",
+      "archived": "Archivée",
+      "updateFailed": "Impossible de mettre à jour l’index des conversations"
     },
     "rewind": {
       "confirmMessage": "Rembobiner jusqu'à ce point ? Les modifications de fichiers postérieures à ce message peuvent être écrasées ou supprimées. Cette action est irréversible.",

@@ -3,7 +3,7 @@ import { Menu, Notice, setIcon } from 'obsidian';
 import type { TitleGenerationService } from '../../../core/providers/types';
 import type { ChatRuntime } from '../../../core/runtime/ChatRuntime';
 import type { ChatRewindConflict, ChatRewindMode } from '../../../core/runtime/types';
-import type { ChatMessage, Conversation } from '../../../core/types';
+import { type ChatMessage, compareConversationIndexOrder, type Conversation } from '../../../core/types';
 import { t } from '../../../i18n/i18n';
 import { confirm } from '../../../shared/modals/ConfirmModal';
 import { extractUserDisplayContent } from '../../../utils/context';
@@ -106,10 +106,13 @@ type HistoryRenderOptions = {
   visibleCount?: number;
 };
 
+type HistoryConversationFilter = 'active' | 'archived' | 'all';
+
 export class ConversationController {
   private deps: ConversationControllerDeps;
   private callbacks: ConversationCallbacks;
   private conversationBrowserSession: ConversationBrowserSession | null;
+  private historyFilter: HistoryConversationFilter = 'active';
 
   constructor(deps: ConversationControllerDeps, callbacks: ConversationCallbacks = {}) {
     this.deps = deps;
@@ -704,6 +707,7 @@ export class ConversationController {
 
   resetHistorySearch(): void {
     this.conversationBrowserSession?.reset();
+    this.historyFilter = 'active';
   }
 
   updateHistoryDropdown(): void {
@@ -731,13 +735,16 @@ export class ConversationController {
 
     const dropdownHeader = container.createDiv({ cls: 'claudian-history-header' });
     dropdownHeader.createSpan({ text: 'Conversations' });
+    this.renderHistoryFilters(dropdownHeader, options.onRerender);
 
     const list = container.createDiv({ cls: 'claudian-history-list' });
-    const allConversations = [...plugin.getConversationList()].sort((a, b) => (
-      (b.lastResponseAt ?? b.createdAt) - (a.lastResponseAt ?? a.createdAt)
+    const allConversations = [...plugin.getConversationList()].sort(compareConversationIndexOrder);
+    const indexedConversations = allConversations.filter(conversation => (
+      this.historyFilter === 'all'
+      || (this.historyFilter === 'archived' ? conversation.archived === true : conversation.archived !== true)
     ));
     let presentation: ConversationBrowserListPresentation = {
-      conversations: allConversations,
+      conversations: indexedConversations,
       emptyText: 'No conversations',
       highlightedConversationId: null,
       renderTitle: (title, conversation) => title.setText(conversation.title),
@@ -747,7 +754,7 @@ export class ConversationController {
     this.conversationBrowserSession?.render({
       container,
       header: dropdownHeader,
-      conversations: allConversations,
+      conversations: indexedConversations,
       rerender: options.onRerender,
       close: () => container.removeClass('visible'),
       selectConversation: (id) => {
@@ -807,12 +814,16 @@ export class ConversationController {
           isCurrent ? 'active' : '',
           isOpen ? 'open' : '',
           isRunning ? 'running' : '',
+          conv.pinned ? 'pinned' : '',
+          conv.archived ? 'archived' : '',
           conv.id === highlightedConversationId ? 'keyboard-selected' : '',
         ].filter(Boolean).join(' '),
       });
       item.setAttribute('data-conversation-id', conv.id);
       item.setAttribute('data-open-state', openState);
       item.setAttribute('data-running', isRunning ? 'true' : 'false');
+      item.setAttribute('data-pinned', conv.pinned === true ? 'true' : 'false');
+      item.setAttribute('data-archived', conv.archived === true ? 'true' : 'false');
       item.setAttribute('data-tab-location', conversationStatus.location ?? 'current-view');
       if (typeof conversationStatus.tabIndex === 'number') {
         item.setAttribute('data-tab-index', String(conversationStatus.tabIndex));
@@ -824,6 +835,14 @@ export class ConversationController {
       const content = item.createDiv({ cls: 'claudian-history-item-content' });
       const titleEl = content.createDiv({ cls: 'claudian-history-item-title' });
       presentation.renderTitle(titleEl, conv);
+      if (conv.pinned) {
+        const pinEl = titleEl.createSpan({
+          cls: 'claudian-history-item-pin',
+          text: ` ${t('chat.historySearch.pinned')}`,
+        });
+        setIcon(pinEl, 'pin');
+        pinEl.setAttribute('aria-label', t('chat.historySearch.pinned'));
+      }
       titleEl.setAttribute('title', conv.title);
       presentation.renderPreview(content, conv);
       content.createDiv({
@@ -874,7 +893,16 @@ export class ConversationController {
       item.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        this.showHistoryContextMenu(item, conv.id, conv.title, isCurrent, options, e);
+        this.showHistoryContextMenu(
+          item,
+          conv.id,
+          conv.title,
+          isCurrent,
+          conv.pinned === true,
+          conv.archived === true,
+          options,
+          e,
+        );
       });
 
       const actions = item.createDiv({ cls: 'claudian-history-item-actions' });
@@ -1036,6 +1064,8 @@ export class ConversationController {
     conversationId: string,
     title: string,
     isCurrent: boolean,
+    pinned: boolean,
+    archived: boolean,
     options: HistoryRenderOptions,
     event: MouseEvent,
   ): void {
@@ -1074,6 +1104,23 @@ export class ConversationController {
     }
 
     menu.addItem((menuItem) => menuItem
+      .setTitle(t(pinned ? 'chat.historySearch.unpin' : 'chat.historySearch.pin'))
+      .onClick(() => {
+        void this.runHistoryAction(
+          () => this.updateHistoryIndexFlag(conversationId, 'pinned', !pinned, options),
+          t('chat.historySearch.updateFailed'),
+        );
+      }));
+    menu.addItem((menuItem) => menuItem
+      .setTitle(t(archived ? 'chat.historySearch.unarchive' : 'chat.historySearch.archive'))
+      .onClick(() => {
+        void this.runHistoryAction(
+          () => this.updateHistoryIndexFlag(conversationId, 'archived', !archived, options),
+          t('chat.historySearch.updateFailed'),
+        );
+      }));
+
+    menu.addItem((menuItem) => menuItem
       .setTitle('Rename')
       .onClick(() => {
         this.showRenameInput(item, conversationId, title);
@@ -1088,6 +1135,46 @@ export class ConversationController {
       }));
 
     menu.showAtMouseEvent(event);
+  }
+
+  private async updateHistoryIndexFlag(
+    conversationId: string,
+    field: 'pinned' | 'archived',
+    value: boolean,
+    options: HistoryRenderOptions,
+  ): Promise<void> {
+    if (field === 'pinned') {
+      await this.deps.plugin.updateConversation(conversationId, { pinned: value });
+    } else {
+      await this.deps.plugin.updateConversation(conversationId, { archived: value });
+    }
+    options.onRerender();
+  }
+
+  private renderHistoryFilters(header: HTMLElement, onRerender: () => void): void {
+    const filters = header.createDiv({ cls: 'claudian-history-filters' });
+    const filterOptions: Array<{ id: HistoryConversationFilter; label: string; cls: string }> = [
+      { id: 'active', label: t('chat.historySearch.filterActive'), cls: 'claudian-history-filter-active' },
+      { id: 'archived', label: t('chat.historySearch.filterArchived'), cls: 'claudian-history-filter-archived' },
+      { id: 'all', label: t('chat.historySearch.filterAll'), cls: 'claudian-history-filter-all' },
+    ];
+
+    for (const option of filterOptions) {
+      const button = filters.createEl('button', {
+        cls: `claudian-history-filter ${option.cls}`,
+        text: option.label,
+        attr: {
+          type: 'button',
+          'aria-pressed': this.historyFilter === option.id ? 'true' : 'false',
+        },
+      });
+      button.addEventListener('click', event => {
+        event.stopPropagation();
+        if (this.historyFilter === option.id) return;
+        this.historyFilter = option.id;
+        onRerender();
+      });
+    }
   }
 
   private async deleteHistoryConversation(

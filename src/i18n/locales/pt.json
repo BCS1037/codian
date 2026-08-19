@@ -35,7 +35,17 @@
     "historySearch": {
       "placeholder": "Pesquisar conversas",
       "noMatches": "Nenhuma conversa correspondente",
-      "clear": "Limpar pesquisa"
+      "clear": "Limpar pesquisa",
+      "filterActive": "Ativas",
+      "filterArchived": "Arquivadas",
+      "filterAll": "Todas",
+      "pin": "Fixar",
+      "unpin": "Desafixar",
+      "archive": "Arquivar",
+      "unarchive": "Desarquivar",
+      "pinned": "Fixada",
+      "archived": "Arquivada",
+      "updateFailed": "Falha ao atualizar o índice de conversas"
     },
     "rewind": {
       "confirmMessage": "Retroceder até este ponto? As alterações de arquivos após esta mensagem podem ser sobrescritas ou removidas. Esta ação não pode ser desfeita.",

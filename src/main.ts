@@ -48,6 +48,7 @@ import type {
   ConversationMeta,
   SessionMetadata,
 } from './core/types';
+import { compareConversationIndexOrder } from './core/types';
 import {
   VIEW_TYPE_CLAUDIAN,
 } from './core/types';
@@ -462,9 +463,7 @@ export default class ClaudianPlugin extends Plugin {
     );
     this.conversationRepository.replaceAll(initialMetadata.map(meta => (
       this.createConversationMetadataShell(meta)
-    )).sort(
-      (a, b) => (b.lastResponseAt ?? b.updatedAt) - (a.lastResponseAt ?? a.updatedAt)
-    ));
+    )).sort(compareConversationIndexOrder));
     syncLocaleWithObsidian();
     if (migratedLegacyPluginData) {
       new Notice(t('common.legacyPluginDataMigrated'));
@@ -772,6 +771,8 @@ export default class ClaudianPlugin extends Plugin {
       usage: meta.usage,
       titleGenerationStatus: meta.titleGenerationStatus,
       resumeAtMessageId: meta.resumeAtMessageId,
+      pinned: meta.pinned,
+      archived: meta.archived,
     };
   }
 

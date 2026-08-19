@@ -4,7 +4,7 @@ import { ProviderRegistry } from '../../core/providers/ProviderRegistry';
 import { ProviderSettingsCoordinator } from '../../core/providers/ProviderSettingsCoordinator';
 import type { AppSessionStorage, ProviderHistoryPathContext } from '../../core/providers/types';
 import { DEFAULT_CHAT_PROVIDER_ID, type ProviderId } from '../../core/providers/types';
-import type { Conversation, ConversationMeta } from '../../core/types';
+import { compareConversationIndexOrder, type Conversation, type ConversationMeta } from '../../core/types';
 
 export interface ConversationRepositoryDeps {
   getSettings: () => Record<string, unknown>;
@@ -27,7 +27,7 @@ export class ConversationRepository {
     for (const conversation of this.conversations) {
       this.invalidateConversation(conversation.id);
     }
-    this.conversations = conversations;
+    this.conversations = [...conversations].sort(compareConversationIndexOrder);
     this.deletedConversationIds.clear();
     this.hydratedConversationIds = new Set(
       conversations.filter((conversation) => conversation.messages.length > 0).map(({ id }) => id),
@@ -45,11 +45,7 @@ export class ConversationRepository {
     }
 
     this.conversations.push(...added);
-    this.conversations.sort(
-      (left, right) => (
-        (right.lastResponseAt ?? right.updatedAt) - (left.lastResponseAt ?? left.updatedAt)
-      ),
-    );
+    this.conversations.sort(compareConversationIndexOrder);
     for (const conversation of added) {
       if (conversation.messages.length > 0) {
         this.hydratedConversationIds.add(conversation.id);
@@ -327,7 +323,9 @@ export class ConversationRepository {
       messageCount: conversation.messages.length,
       preview: conversation.preview,
       titleGenerationStatus: conversation.titleGenerationStatus,
-    }));
+      pinned: conversation.pinned,
+      archived: conversation.archived,
+    })).sort(compareConversationIndexOrder);
   }
 
   private async reconcileProviderSession(conversation: Conversation): Promise<void> {

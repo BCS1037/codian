@@ -12,6 +12,7 @@ export {
   type UsageInfo,
   VIEW_TYPE_CLAUDIAN,
 } from './chat';
+export { compareConversationIndexOrder } from './chat';
 export { type ProviderId } from './provider';
 
 // Settings and command types
@@ -73,6 +74,7 @@ export {
   type McpConfigFile,
   type McpHttpServerConfig,
   type McpServerConfig,
+  type McpServerProvenance,
   type McpServerType,
   type McpSSEServerConfig,
   type McpStdioServerConfig,

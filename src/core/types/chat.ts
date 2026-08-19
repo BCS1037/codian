@@ -91,6 +91,10 @@ export interface Conversation {
   enabledMcpServers?: string[];
   /** Assistant checkpoint identifier for resumeAtMessageId after rewind. */
   resumeAtMessageId?: string;
+  /** Keeps the conversation at the top of the session index. */
+  pinned?: boolean;
+  /** Hides the conversation from the default active session index. */
+  archived?: boolean;
 }
 
 /** Lightweight conversation metadata for the history dropdown. */
@@ -106,6 +110,10 @@ export interface ConversationMeta {
   preview?: string;
   /** Status of AI title generation. */
   titleGenerationStatus?: 'pending' | 'success' | 'failed';
+  /** Keeps the conversation at the top of the session index. */
+  pinned?: boolean;
+  /** Hides the conversation from the default active session index. */
+  archived?: boolean;
 }
 
 /**
@@ -134,6 +142,23 @@ export interface SessionMetadata {
   usage?: UsageInfo;
   /** Assistant checkpoint identifier for resumeAtMessageId after rewind. */
   resumeAtMessageId?: string;
+  /** Keeps the conversation at the top of the session index. */
+  pinned?: boolean;
+  /** Hides the conversation from the default active session index. */
+  archived?: boolean;
+}
+
+export function compareConversationIndexOrder(
+  left: Pick<ConversationMeta, 'pinned' | 'lastResponseAt' | 'updatedAt' | 'createdAt'>,
+  right: Pick<ConversationMeta, 'pinned' | 'lastResponseAt' | 'updatedAt' | 'createdAt'>,
+): number {
+  const pinnedDifference = Number(right.pinned === true) - Number(left.pinned === true);
+  if (pinnedDifference !== 0) return pinnedDifference;
+
+  return (
+    (right.lastResponseAt ?? right.updatedAt ?? right.createdAt)
+    - (left.lastResponseAt ?? left.updatedAt ?? left.createdAt)
+  );
 }
 
 /**

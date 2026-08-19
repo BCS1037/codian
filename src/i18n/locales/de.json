@@ -35,7 +35,17 @@
     "historySearch": {
       "placeholder": "Unterhaltungen durchsuchen",
       "noMatches": "Keine passenden Unterhaltungen",
-      "clear": "Suche löschen"
+      "clear": "Suche löschen",
+      "filterActive": "Aktiv",
+      "filterArchived": "Archiviert",
+      "filterAll": "Alle",
+      "pin": "Anheften",
+      "unpin": "Lösen",
+      "archive": "Archivieren",
+      "unarchive": "Aus Archiv holen",
+      "pinned": "Angeheftet",
+      "archived": "Archiviert",
+      "updateFailed": "Unterhaltungsindex konnte nicht aktualisiert werden"
     },
     "rewind": {
       "confirmMessage": "Zu diesem Punkt zurückspulen? Dateiänderungen nach dieser Nachricht können überschrieben oder entfernt werden. Dies kann nicht rückgängig gemacht werden.",

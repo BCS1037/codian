@@ -35,7 +35,17 @@
     "historySearch": {
       "placeholder": "会話を検索",
       "noMatches": "一致する会話がありません",
-      "clear": "検索をクリア"
+      "clear": "検索をクリア",
+      "filterActive": "アクティブ",
+      "filterArchived": "アーカイブ済み",
+      "filterAll": "すべて",
+      "pin": "ピン留め",
+      "unpin": "ピン留めを解除",
+      "archive": "アーカイブ",
+      "unarchive": "アーカイブを解除",
+      "pinned": "ピン留め済み",
+      "archived": "アーカイブ済み",
+      "updateFailed": "会話インデックスの更新に失敗しました"
     },
     "rewind": {
       "confirmMessage": "この時点に巻き戻しますか？このメッセージ以降のファイル変更は上書きまたは削除される可能性があります。この操作は元に戻せません。",

@@ -35,7 +35,17 @@
     "historySearch": {
       "placeholder": "搜尋對話",
       "noMatches": "沒有相符的對話",
-      "clear": "清除搜尋"
+      "clear": "清除搜尋",
+      "filterActive": "進行中",
+      "filterArchived": "已封存",
+      "filterAll": "全部",
+      "pin": "置頂",
+      "unpin": "取消置頂",
+      "archive": "封存",
+      "unarchive": "取消封存",
+      "pinned": "已置頂",
+      "archived": "已封存",
+      "updateFailed": "更新對話索引失敗"
     },
     "rewind": {
       "confirmMessage": "回退到此處？此訊息之後的檔案變更可能被覆寫或刪除。此操作無法復原。",

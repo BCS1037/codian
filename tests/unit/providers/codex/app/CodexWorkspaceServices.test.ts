@@ -143,7 +143,9 @@ describe('CodexWorkspaceServices', () => {
     const services = await createCodexWorkspaceServices(plugin, {} as any, homeAdapter as any);
     await services.prepareSettings?.();
 
-    expect(services.mcpSourcePath).toBe('~/.codex/config.toml');
+    expect(services.mcpSourcePath).toBe(
+      'codex mcp list --json (fallback: ~/.codex/config.toml)',
+    );
     expect(services.mcpManager.getServers()).toEqual([
       expect.objectContaining({ name: 'local', enabled: true }),
     ]);

@@ -42,6 +42,36 @@
   padding-inline: 2px;
 }
 
+.claudian-history-filters {
+  display: flex;
+  gap: 4px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.claudian-history-filter {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.claudian-history-filter:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.claudian-history-filter[aria-pressed="true"] {
+  border-color: var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
 .claudian-history-search {
   position: relative;
   display: flex;
@@ -202,6 +232,10 @@
   font-weight: 500;
 }
 
+.claudian-history-item.pinned .claudian-history-item-icon {
+  color: var(--interactive-accent);
+}
+
 .claudian-history-item-content {
   flex: 1;
   min-width: 0;
@@ -215,6 +249,21 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.claudian-history-item-pin {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: 4px;
+  color: var(--interactive-accent);
+  font-size: 10px;
+  font-weight: 400;
+  vertical-align: middle;
+}
+
+.claudian-history-item-pin svg {
+  width: 11px;
+  height: 11px;
 }
 
 .claudian-history-item-preview {

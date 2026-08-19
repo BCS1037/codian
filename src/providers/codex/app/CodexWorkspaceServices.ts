@@ -16,6 +16,7 @@ import { getVaultPath } from '../../../utils/path';
 import { CodexAgentMentionProvider } from '../agents/CodexAgentMentionProvider';
 import { CodexSkillCatalog, CodexVaultSkillRepository } from '../commands/CodexSkillCatalog';
 import { CodexCliResolver } from '../runtime/CodexCliResolver';
+import { CodexMcpCatalogService } from '../runtime/CodexMcpCatalogService';
 import { CodexModelCatalogCoordinator } from '../runtime/CodexModelCatalogCoordinator';
 import { CodexModelDiscoveryService } from '../runtime/CodexModelDiscoveryService';
 import { getCodexProviderSettings } from '../settings';
@@ -47,10 +48,11 @@ export async function createCodexWorkspaceServices(
   vaultAdapter: VaultFileAdapter,
   homeAdapter?: HomeFileAdapter,
 ): Promise<CodexWorkspaceServices> {
+  const cliMcpCatalog = new CodexMcpCatalogService(plugin);
   const mcpStorage = new CodexMcpStorage(homeAdapter ?? {
     exists: async () => false,
     read: async () => '',
-  });
+  }, cliMcpCatalog);
   const mcpManager = new McpServerManager(mcpStorage);
   const subagentStorage = new CodexSubagentStorage(vaultAdapter);
   const agentMentionProvider = new CodexAgentMentionProvider(subagentStorage);
@@ -73,7 +75,7 @@ export async function createCodexWorkspaceServices(
 
   return {
     mcpServerManager: mcpManager,
-    mcpSourcePath: '~/.codex/config.toml',
+    mcpSourcePath: 'codex mcp list --json (fallback: ~/.codex/config.toml)',
     mcpManager,
     subagentStorage,
     commandCatalog,

@@ -3,16 +3,36 @@ import { parse as parseToml } from 'smol-toml';
 import type { McpStorageAdapter } from '../../../core/mcp/McpServerManager';
 import type { HomeFileAdapter } from '../../../core/storage/HomeFileAdapter';
 import type { ManagedMcpServer, McpServerConfig } from '../../../core/types';
+import type { CodexMcpCatalogResult } from '../runtime/CodexMcpCatalogService';
 
 export const CODEX_MCP_CONFIG_PATH = '.codex/config.toml';
+export const CODEX_MCP_CONFIG_SOURCE = '~/.codex/config.toml';
+
+export interface CodexMcpCatalogReader {
+  discoverCatalog(): Promise<CodexMcpCatalogResult>;
+}
 
 type CodexMcpConfig = Record<string, unknown>;
 
 /** Read-only catalog for MCP servers owned by the Codex CLI. */
 export class CodexMcpStorage implements McpStorageAdapter {
-  constructor(private readonly homeAdapter: Pick<HomeFileAdapter, 'exists' | 'read'>) {}
+  constructor(
+    private readonly homeAdapter: Pick<HomeFileAdapter, 'exists' | 'read'>,
+    private readonly cliCatalog?: CodexMcpCatalogReader,
+  ) {}
 
   async load(): Promise<ManagedMcpServer[]> {
+    if (this.cliCatalog) {
+      const cliResult = await this.cliCatalog.discoverCatalog().catch(() => null);
+      if (cliResult?.kind === 'available') {
+        return cliResult.servers;
+      }
+    }
+
+    return this.loadFromConfigFile();
+  }
+
+  private async loadFromConfigFile(): Promise<ManagedMcpServer[]> {
     try {
       if (!(await this.homeAdapter.exists(CODEX_MCP_CONFIG_PATH))) {
         return [];
@@ -24,10 +44,18 @@ export class CodexMcpStorage implements McpStorageAdapter {
         return [];
       }
 
-      return Object.entries(configuredServers).flatMap(([name, rawConfig]) => {
+      const servers = Object.entries(configuredServers).flatMap(([name, rawConfig]) => {
         const config = parseMcpServer(rawConfig);
         return config ? [{ name, config, enabled: true, contextSaving: false }] : [];
       });
+      return servers.map(server => ({
+        ...server,
+        provenance: {
+          owner: 'provider-cli' as const,
+          source: CODEX_MCP_CONFIG_SOURCE,
+          readOnly: true,
+        },
+      }));
     } catch {
       return [];
     }
