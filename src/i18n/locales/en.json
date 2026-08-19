@@ -35,7 +35,17 @@
     "historySearch": {
       "placeholder": "Search conversations",
       "noMatches": "No matching conversations",
-      "clear": "Clear search"
+      "clear": "Clear search",
+      "filterActive": "Active",
+      "filterArchived": "Archived",
+      "filterAll": "All",
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "archive": "Archive",
+      "unarchive": "Unarchive",
+      "pinned": "Pinned",
+      "archived": "Archived",
+      "updateFailed": "Failed to update conversation index"
     },
     "rewind": {
       "confirmMessage": "Rewind to this point? File changes after this message may be overwritten or removed. This cannot be undone.",

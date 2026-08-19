@@ -35,7 +35,17 @@
     "historySearch": {
       "placeholder": "대화 검색",
       "noMatches": "일치하는 대화가 없습니다",
-      "clear": "검색 지우기"
+      "clear": "검색 지우기",
+      "filterActive": "활성",
+      "filterArchived": "보관됨",
+      "filterAll": "모두",
+      "pin": "고정",
+      "unpin": "고정 해제",
+      "archive": "보관",
+      "unarchive": "보관 해제",
+      "pinned": "고정됨",
+      "archived": "보관됨",
+      "updateFailed": "대화 색인을 업데이트하지 못했습니다"
     },
     "rewind": {
       "confirmMessage": "이 시점으로 되감으시겠습니까? 이 메시지 이후의 파일 변경 사항이 덮어쓰이거나 삭제될 수 있습니다. 이 작업은 실행 취소할 수 없습니다.",

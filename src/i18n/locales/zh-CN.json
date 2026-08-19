@@ -35,7 +35,17 @@
     "historySearch": {
       "placeholder": "搜索会话",
       "noMatches": "没有匹配的会话",
-      "clear": "清除搜索"
+      "clear": "清除搜索",
+      "filterActive": "进行中",
+      "filterArchived": "已归档",
+      "filterAll": "全部",
+      "pin": "置顶",
+      "unpin": "取消置顶",
+      "archive": "归档",
+      "unarchive": "取消归档",
+      "pinned": "已置顶",
+      "archived": "已归档",
+      "updateFailed": "更新会话索引失败"
     },
     "rewind": {
       "confirmMessage": "回退到此处？此消息之后的文件更改可能被覆盖或删除。此操作无法撤销。",

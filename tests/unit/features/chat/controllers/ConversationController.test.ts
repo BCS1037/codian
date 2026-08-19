@@ -695,6 +695,32 @@ describe('ConversationController', () => {
         expect(firstTitle?.textContent).toBe('New');
       });
 
+      it('keeps pinned conversations first and hides archived conversations by default', () => {
+        const container = createMockEl();
+        (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
+          { id: 'regular', title: 'Regular', createdAt: 1000, updatedAt: 3000, lastResponseAt: 3000 },
+          { id: 'pinned', title: 'Pinned', createdAt: 1000, updatedAt: 1000, lastResponseAt: 1000, pinned: true },
+          { id: 'archived', title: 'Archived', createdAt: 1000, updatedAt: 4000, lastResponseAt: 4000, archived: true },
+        ]);
+
+        controller.renderHistoryDropdown(container, {
+          onSelectConversation: jest.fn(),
+        });
+
+        let list = container.children[1];
+        expect(list.children.map((item: any) => item.getAttribute('data-conversation-id'))).toEqual([
+          'pinned',
+          'regular',
+        ]);
+
+        container.querySelector('.claudian-history-filter-archived')?.click();
+
+        list = container.children[1];
+        expect(list.children.map((item: any) => item.getAttribute('data-conversation-id'))).toEqual([
+          'archived',
+        ]);
+      });
+
       it('should mark current conversation as active', () => {
         deps.state.currentConversationId = 'conv-1';
 
@@ -1367,6 +1393,8 @@ describe('ConversationController', () => {
         expect(menu.items.map(item => item.title)).toEqual([
           'Open in new tab',
           'Open in background tab',
+          'Pin',
+          'Archive',
           'Rename',
           'Delete',
         ]);
@@ -1398,9 +1426,68 @@ describe('ConversationController', () => {
         const menu = (Menu as typeof Menu & { instances: Array<{ items: Array<{ title: string }> }> }).instances[0];
         expect(menu.items.map(item => item.title)).toEqual([
           'Switch to open session',
+          'Pin',
+          'Archive',
           'Rename',
           'Delete',
         ]);
+      });
+
+      it('should expose pin and archive actions in the context menu', () => {
+        const container = createMockEl();
+
+        (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
+          { id: 'conv-1', title: 'Other', createdAt: 1000, lastResponseAt: 2000 },
+        ]);
+
+        controller.renderHistoryDropdown(container, {
+          onSelectConversation: jest.fn(),
+        });
+
+        const item = container.children[1].children[0];
+        item.dispatchEvent({
+          type: 'contextmenu',
+          stopPropagation: jest.fn(),
+          preventDefault: jest.fn(),
+        });
+
+        const menu = (Menu as typeof Menu & { instances: Array<{ items: Array<{ title: string }> }> }).instances[0];
+        expect(menu.items.map(item => item.title)).toEqual([
+          'Pin',
+          'Archive',
+          'Rename',
+          'Delete',
+        ]);
+      });
+
+      it('should persist pin and archive changes from the context menu', async () => {
+        const container = createMockEl();
+
+        (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
+          { id: 'conv-1', title: 'Other', createdAt: 1000, lastResponseAt: 2000 },
+        ]);
+
+        controller.renderHistoryDropdown(container, {
+          onSelectConversation: jest.fn(),
+        });
+
+        const item = container.children[1].children[0];
+        item.dispatchEvent({
+          type: 'contextmenu',
+          stopPropagation: jest.fn(),
+          preventDefault: jest.fn(),
+        });
+
+        const menu = (Menu as typeof Menu & { instances: Array<{ items: Array<{ clickHandler?: () => void }> }> }).instances[0];
+        menu.items[0].clickHandler?.();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(deps.plugin.updateConversation).toHaveBeenCalledWith('conv-1', { pinned: true });
+
+        menu.items[1].clickHandler?.();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(deps.plugin.updateConversation).toHaveBeenCalledWith('conv-1', { archived: true });
       });
 
       it('should derive context menu open state from conversation status', () => {
@@ -1431,6 +1518,8 @@ describe('ConversationController', () => {
         const menu = (Menu as typeof Menu & { instances: Array<{ items: Array<{ title: string }> }> }).instances[0];
         expect(menu.items.map(item => item.title)).toEqual([
           'Switch to open session',
+          'Pin',
+          'Archive',
           'Rename',
           'Delete',
         ]);

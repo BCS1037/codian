@@ -11,6 +11,7 @@ import type {
   ConversationMeta,
   SessionMetadata,
 } from '../types';
+import { compareConversationIndexOrder } from '../types';
 import { LEGACY_SESSIONS_PATH, SESSIONS_PATH } from './StoragePaths';
 
 export {
@@ -177,11 +178,11 @@ export class SessionStorage {
       messageCount: 0,
       preview: meta.preview ?? 'SDK session',
       titleGenerationStatus: meta.titleGenerationStatus,
+      pinned: meta.pinned,
+      archived: meta.archived,
     }));
 
-    return metas.sort((a, b) =>
-      (b.lastResponseAt ?? b.createdAt) - (a.lastResponseAt ?? a.createdAt)
-    );
+    return metas.sort(compareConversationIndexOrder);
   }
 
   toSessionMetadata(conversation: Conversation): SessionMetadata {
@@ -207,6 +208,8 @@ export class SessionStorage {
       enabledMcpServers: conversation.enabledMcpServers,
       usage: conversation.usage,
       resumeAtMessageId: conversation.resumeAtMessageId,
+      pinned: conversation.pinned,
+      archived: conversation.archived,
     };
   }
 

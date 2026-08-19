@@ -17,8 +17,12 @@ export interface BuildCodexLaunchSpecOptions {
 
 const CODEX_APP_SERVER_ARGS = Object.freeze(['app-server', '--listen', 'stdio://']);
 
-export function buildCodexLaunchSpec(
-  options: BuildCodexLaunchSpecOptions,
+export interface BuildCodexCommandLaunchSpecOptions extends BuildCodexLaunchSpecOptions {
+  args: readonly string[];
+}
+
+export function buildCodexCommandLaunchSpec(
+  options: BuildCodexCommandLaunchSpecOptions,
 ): CodexLaunchSpec {
   const target = options.executionTarget ?? resolveCodexExecutionTarget({
     settings: options.settings,
@@ -60,7 +64,7 @@ export function buildCodexLaunchSpec(
       '--cd',
       targetCwd,
       resolvedCliCommand,
-      ...CODEX_APP_SERVER_ARGS,
+      ...options.args,
     ];
 
     return {
@@ -77,10 +81,19 @@ export function buildCodexLaunchSpec(
   return {
     target,
     command: resolvedCliCommand,
-    args: [...CODEX_APP_SERVER_ARGS],
+    args: [...options.args],
     spawnCwd,
     targetCwd,
     env: options.env,
     pathMapper,
   };
+}
+
+export function buildCodexLaunchSpec(
+  options: BuildCodexLaunchSpecOptions,
+): CodexLaunchSpec {
+  return buildCodexCommandLaunchSpec({
+    ...options,
+    args: CODEX_APP_SERVER_ARGS,
+  });
 }

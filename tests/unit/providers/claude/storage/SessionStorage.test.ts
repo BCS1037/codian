@@ -346,6 +346,32 @@ describe('SessionStorage', () => {
       });
     });
 
+    it('round-trips session index flags without loading a transcript', async () => {
+      const conversation: Conversation = {
+        id: 'conv-index-flags',
+        providerId: 'claude',
+        title: 'Indexed conversation',
+        createdAt: 1700000000,
+        updatedAt: 1700001000,
+        sessionId: 'sdk-session',
+        pinned: true,
+        archived: true,
+        messages: [],
+      };
+
+      const metadata = storage.toSessionMetadata(conversation);
+      await storage.saveMetadata(metadata);
+
+      const writtenContent = mockAdapter.write.mock.calls[0][1];
+      mockAdapter.exists.mockResolvedValue(true);
+      mockAdapter.read.mockResolvedValue(writtenContent);
+
+      const loaded = await storage.loadMetadata('conv-index-flags');
+
+      expect(loaded?.pinned).toBe(true);
+      expect(loaded?.archived).toBe(true);
+    });
+
     it('round-trips non-Claude providerId', async () => {
       const conversation: Conversation = {
         id: 'conv-codex-rt',

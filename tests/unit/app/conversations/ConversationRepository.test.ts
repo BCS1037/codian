@@ -204,4 +204,20 @@ describe('ConversationRepository hydration', () => {
     expect(merged).toEqual([]);
     expect(repository.getCachedConversation(conversation.id)).toBeNull();
   });
+
+  it('keeps pinned conversations first in the session index', () => {
+    const regular = createConversation('regular');
+    regular.updatedAt = 300;
+    const pinned = createConversation('pinned');
+    pinned.updatedAt = 100;
+    pinned.pinned = true;
+    const { repository } = createRepository(regular);
+
+    repository.replaceAll([regular, pinned]);
+
+    expect(repository.list().map(conversation => conversation.id)).toEqual([
+      'pinned',
+      'regular',
+    ]);
+  });
 });

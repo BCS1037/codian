@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.1 — 2026-08-19
+
+- Added pin/archive controls and filtering for conversation history.
+- Added read-only Codex CLI MCP discovery with safe config fallback.
+
 ## 1.3.0 — 2026-08-18
 
 - Updated selected provider runtime, history, and compatibility behavior.
