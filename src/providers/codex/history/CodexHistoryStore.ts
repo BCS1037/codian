@@ -14,6 +14,7 @@ import {
   extractCodexUserVisibleText,
   joinCodexUserTextParts,
 } from '../codexUserText';
+import { stripCodexMemoryCitationMarkup } from '../normalization/CodexMemoryCitation';
 import {
   appendCodexCommandOutput,
   decodeCodexExecEnvelope,
@@ -568,8 +569,9 @@ function processLegacyItem(
     case 'agent_message':
       if (eventType === 'item.completed' || eventType === 'item.updated') {
         if (item.text) {
-          turn.assistantText = item.text;
-          setTextBlock(turn, item.text);
+          const visibleText = stripCodexMemoryCitationMarkup(item.text);
+          turn.assistantText = visibleText;
+          setTextBlock(turn, visibleText);
         }
       }
       break;
@@ -1119,7 +1121,9 @@ function processPersistedPayload(
         }
         appendUserImages(turn, messagePayload.content, timestamp);
       } else if (messagePayload.role === 'assistant') {
-        const text = extractMessageText(messagePayload.content);
+        const text = stripCodexMemoryCitationMarkup(
+          extractMessageText(messagePayload.content),
+        );
         const turn = ensureTurn(ctx.turns, ctx.turnOrder, nextTurnId(ctx), ctx.currentTurnId, timestamp);
         const bubble = ensureAssistantBubble(turn, timestamp);
         if (text) {
@@ -1239,7 +1243,11 @@ function processEventMsg(
       const bubble = ensureAssistantBubble(turn, timestamp);
       const msg = payload.message;
       if (typeof msg === 'string') {
-        appendOrderedTextChunk(bubble, 'text', msg);
+        appendOrderedTextChunk(
+          bubble,
+          'text',
+          stripCodexMemoryCitationMarkup(msg),
+        );
       }
       break;
     }
@@ -1781,7 +1789,11 @@ function processLegacyItemInModernContext(
       if ((eventType === 'item.updated' || eventType === 'item.completed') && item.text) {
         const turn = ensureTurn(ctx.turns, ctx.turnOrder, nextTurnId(ctx), ctx.currentTurnId, timestamp);
         const bubble = ensureAssistantBubble(turn, timestamp);
-        replaceLatestOrderedTextChunk(bubble, 'text', item.text);
+        replaceLatestOrderedTextChunk(
+          bubble,
+          'text',
+          stripCodexMemoryCitationMarkup(item.text),
+        );
       }
       break;
     }

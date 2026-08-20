@@ -1,6 +1,7 @@
 import type { ChatTurnMetadata } from '../../../core/runtime/types';
 import type { StreamChunk, UsageInfo } from '../../../core/types';
 import { extractCodexUserVisibleText, joinCodexUserTextParts } from '../codexUserText';
+import { stripCodexMemoryCitationMarkup } from '../normalization/CodexMemoryCitation';
 import {
   appendCodexCommandOutput,
   extractCodexExecCellId,
@@ -454,7 +455,9 @@ export class CodexNotificationRouter {
       return;
     }
 
-    const text = firstString(payload.text, payload.message);
+    const text = stripCodexMemoryCitationMarkup(
+      firstString(payload.text, payload.message),
+    );
     this.emitMissingAssistantTurnText(text);
   }
 
@@ -655,9 +658,10 @@ export class CodexNotificationRouter {
   }
 
   private emitMissingRawAgentMessageText(item: Record<string, unknown>): void {
-    const text = item.type === 'message'
+    const rawText = item.type === 'message'
       ? readAssistantMessageText(item)
       : firstString(item.text, item.message);
+    const text = stripCodexMemoryCitationMarkup(rawText);
     this.emitMissingAssistantSegmentText(text);
   }
 
@@ -1071,11 +1075,12 @@ export class CodexNotificationRouter {
       this.emitAgentMessageBoundary(item);
     }
 
-    if (!item.text) {
+    const visibleText = stripCodexMemoryCitationMarkup(item.text);
+    if (!visibleText) {
       return;
     }
 
-    this.emitMissingAgentMessageText(item.text, item.id);
+    this.emitMissingAgentMessageText(visibleText, item.id);
   }
 
   private extractUserMessageText(content: UserInput[]): string {
