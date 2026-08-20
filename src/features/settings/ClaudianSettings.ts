@@ -1,4 +1,4 @@
-import type { App, Plugin } from 'obsidian';
+import type { App, Plugin, SettingDefinitionItem } from 'obsidian';
 import { Modal, Notice, Platform, PluginSettingTab, Setting } from 'obsidian';
 
 import {
@@ -245,7 +245,7 @@ export class ClaudianSettingTab extends PluginSettingTab {
    * Keep the imperative settings canvas while registering the 1.13+ search contract.
    * Obsidian falls back to display() when this list is empty.
    */
-  getSettingDefinitions(): unknown[] {
+  getSettingDefinitions(): SettingDefinitionItem[] {
     return [];
   }
 
