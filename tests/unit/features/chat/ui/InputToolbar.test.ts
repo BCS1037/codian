@@ -131,6 +131,7 @@ function createMockUIConfig() {
           inactiveLabel: 'Standard',
           activeValue: 'fast',
           activeLabel: 'Fast',
+          isActive: settings.serviceTier === 'fast',
           description: '1.5x speed, 2x credits',
         }
         : null
@@ -760,13 +761,14 @@ describe('ServiceTierToggle', () => {
     jest.clearAllMocks();
     parentEl = createMockEl();
     const uiConfig = createMockUIConfig();
-    uiConfig.getServiceTierToggle.mockReturnValue({
+    uiConfig.getServiceTierToggle.mockImplementation((settings: Record<string, unknown>) => ({
       inactiveValue: 'default',
       inactiveLabel: 'Standard',
       activeValue: 'fast',
       activeLabel: 'Fast',
+      isActive: settings.serviceTier === 'fast',
       description: '1.5x speed, 2x credits',
-    });
+    }));
     callbacks = createMockCallbacks({
       getUIConfig: jest.fn().mockReturnValue(uiConfig),
       getSettings: jest.fn().mockReturnValue({
@@ -792,7 +794,7 @@ describe('ServiceTierToggle', () => {
     const container = parentEl.querySelector('.claudian-service-tier-toggle');
     expect(button?.hasClass('active')).toBe(false);
     expect(icon).not.toBeNull();
-    expect(container?.getAttribute('title')).toBe('Toggle on/off fast mode');
+    expect(container?.getAttribute('title')).toBe('Fast mode: Standard');
   });
 
   it('renders the icon button in the active state when fast mode is on', () => {
@@ -809,7 +811,7 @@ describe('ServiceTierToggle', () => {
     const button = parentEl2.querySelector('.claudian-service-tier-button');
     const container = parentEl2.querySelector('.claudian-service-tier-toggle');
     expect(button?.hasClass('active')).toBe(true);
-    expect(container?.getAttribute('title')).toBe('Toggle on/off fast mode');
+    expect(container?.getAttribute('title')).toBe('Fast mode: Fast');
   });
 
   it('toggles from Standard to Fast on click', async () => {

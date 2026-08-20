@@ -32,6 +32,13 @@ export interface PendingToolCall {
   parentEl: HTMLElement | null;
 }
 
+export type TabAttentionKind = 'review' | 'action-required';
+
+export type TabAttention = {
+  kind: TabAttentionKind;
+  since: number;
+} | null;
+
 /** Stored selection state from editor polling. */
 export interface StoredSelection {
   notePath: string;
@@ -92,8 +99,8 @@ export interface ChatStateData {
   // Current todo items for the persistent bottom panel
   currentTodos: TodoItem[] | null;
 
-  // Attention state (approval pending, error, etc.)
-  needsAttention: boolean;
+  // Runtime-only attention state
+  attention: TabAttention;
 
   // Auto-scroll control during streaming
   autoScrollEnabled: boolean;
@@ -120,7 +127,7 @@ export interface ChatStateCallbacks {
   onConversationChanged?: (id: string | null) => void;
   onUsageChanged?: (usage: UsageInfo | null) => void;
   onTodosChanged?: (todos: TodoItem[] | null) => void;
-  onAttentionChanged?: (needsAttention: boolean) => void;
+  onAttentionChanged?: (attention: TabAttention) => void;
   onAutoScrollChanged?: (enabled: boolean) => void;
 }
 

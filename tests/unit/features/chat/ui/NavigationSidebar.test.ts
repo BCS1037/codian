@@ -552,6 +552,24 @@ describe('NavigationSidebar', () => {
       expect(messagesEl.scrollToCalls[0].top).toBe(1000);
       expect(messagesEl.scrollToCalls[0].behavior).toBe('smooth');
     });
+
+    it('reports bottom and away navigation intent', () => {
+      messagesEl.scrollHeight = 1000;
+      messagesEl.clientHeight = 500;
+      sidebar = new NavigationSidebar(
+        parentEl as unknown as HTMLElement,
+        messagesEl as unknown as HTMLElement,
+      );
+      const onScrollIntent = jest.fn();
+      sidebar.setOnScrollIntent(onScrollIntent);
+
+      const container = parentEl.querySelector('.claudian-nav-sidebar');
+      container!.children[4].click();
+      container!.children[0].click();
+
+      expect(onScrollIntent).toHaveBeenNthCalledWith(1, 'bottom');
+      expect(onScrollIntent).toHaveBeenNthCalledWith(2, 'away');
+    });
   });
 
   describe('previous/next message navigation', () => {

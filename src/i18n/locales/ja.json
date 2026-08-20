@@ -236,6 +236,11 @@
       "name": "MCP サーバー",
       "desc": ".claude/mcp.json に保存された Vault レベルの MCP サーバー設定を管理します。コンテキスト保存モードのサーバーは @mention でアクティブにする必要があります。"
     },
+    "nativeMcp": {
+      "descriptionBeforeCommand": "{provider} はネイティブ CLI で MCP サーバーを管理します。",
+      "descriptionAfterCommand": " を使って設定すると、Codian で利用できます。",
+      "learnMore": "詳しく見る"
+    },
     "plugins": {
       "name": "Claude Code プラグイン",
       "desc": "~/.claude/plugins から検出された Claude Code プラグインを管理します。有効化されたプラグインは Vault ごとに .claude/settings.json に保存されます。",

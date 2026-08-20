@@ -5,6 +5,7 @@ import {
   getDefaultCodexModel,
   isCodexModelAvailable,
   normalizeCodexDiscoveredModels,
+  resolveCodexModelServiceTier,
   resolveCodexReasoningEffort,
 } from '@/providers/codex/models';
 
@@ -118,6 +119,17 @@ describe('Codex models', () => {
     expect(models[0].serviceTiers).toEqual([
       { id: 'priority', name: 'Fast', description: '1.5x speed' },
     ]);
+  });
+
+  it('distinguishes explicit Standard from the catalog default and resolves legacy Fast', () => {
+    const model = normalizeCodexDiscoveredModels([{
+      ...rawModels[0],
+      defaultServiceTier: 'priority',
+    }])[0];
+
+    expect(resolveCodexModelServiceTier(model, 'default')).toBe('default');
+    expect(resolveCodexModelServiceTier(model, 'fast')).toBe('priority');
+    expect(resolveCodexModelServiceTier(model, undefined)).toBe('priority');
   });
 
   it('uses the app-server default marker and model id for lookup', () => {

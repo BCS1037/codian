@@ -652,6 +652,7 @@ describe('CodexChatUIConfig', () => {
         inactiveLabel: 'Standard',
         activeValue: 'priority',
         activeLabel: 'Fast',
+        isActive: false,
         description: '1.5x speed',
       });
     });

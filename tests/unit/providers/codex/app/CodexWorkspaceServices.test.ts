@@ -33,6 +33,7 @@ jest.mock('@/providers/codex/storage/CodexSubagentStorage', () => ({
   CodexSubagentStorage: jest.fn(),
 }));
 
+import { McpServerManager } from '@/core/mcp/McpServerManager';
 import { createCodexWorkspaceServices } from '@/providers/codex/app/CodexWorkspaceServices';
 import { getCodexProviderSettings } from '@/providers/codex/settings';
 
@@ -135,20 +136,23 @@ describe('CodexWorkspaceServices', () => {
 
   it('loads the Codex CLI MCP catalog when preparing settings', async () => {
     const plugin = createPlugin(false);
-    const homeAdapter = {
-      exists: jest.fn().mockResolvedValue(true),
-      read: jest.fn().mockResolvedValue('[mcp_servers.local]\ncommand = "node"'),
+    const homeAccess = {
+      readMcpConfig: jest.fn().mockResolvedValue('[mcp_servers.local]\ncommand = "node"'),
+      listSkillNames: jest.fn().mockResolvedValue([]),
+      readSkill: jest.fn(),
     };
 
-    const services = await createCodexWorkspaceServices(plugin, {} as any, homeAdapter as any);
+    const services = await createCodexWorkspaceServices(plugin, {} as any, homeAccess);
     await services.prepareSettings?.();
 
     expect(services.mcpSourcePath).toBe(
       'codex mcp list --json (fallback: ~/.codex/config.toml)',
     );
-    expect(services.mcpManager.getServers()).toEqual([
+    expect(services.mcpCatalog.getServers()).toEqual([
       expect.objectContaining({ name: 'local', enabled: true }),
     ]);
+    expect(services.mcpCatalog).not.toBeInstanceOf(McpServerManager);
+    expect(services.mcpCatalog).not.toHaveProperty('getActiveServers');
   });
 
   it('does not run deferred layout discovery after workspace disposal', async () => {

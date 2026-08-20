@@ -12,6 +12,8 @@ import { formatConversationDirectoryTitle } from '../utils/conversationDirectory
 const PREVIEW_CARD_HALF_HEIGHT = 40;
 const USER_MESSAGE_SELECTOR = '.claudian-message-user, [data-role="user"]';
 
+type NavigationScrollIntent = 'away' | 'bottom';
+
 /**
  * Floating sidebar for navigating chat history.
  * Provides quick access to top/bottom and previous/next user messages.
@@ -31,6 +33,7 @@ export class NavigationSidebar {
   private mutationObserver: MutationObserver | null = null;
   private pendingVisibilityFrame: ScheduledAnimationFrame | null = null;
   private isVisible: boolean | null = null;
+  private onScrollIntent: ((intent: NavigationScrollIntent) => void) | null = null;
   private mode: ChatNavigationMode;
 
   constructor(
@@ -84,13 +87,21 @@ export class NavigationSidebar {
     this.bottomBtn = this.createButton('claudian-nav-btn-bottom', 'chevrons-down', 'Scroll to bottom');
 
     this.topBtn.addEventListener('click', () => {
+      this.onScrollIntent?.('away');
       this.messagesEl.scrollTo({ top: 0, behavior: 'smooth' });
     });
     this.bottomBtn.addEventListener('click', () => {
+      this.onScrollIntent?.('bottom');
       this.messagesEl.scrollTo({ top: this.messagesEl.scrollHeight, behavior: 'smooth' });
     });
-    this.prevBtn.addEventListener('click', () => this.scrollToMessage('prev'));
-    this.nextBtn.addEventListener('click', () => this.scrollToMessage('next'));
+    this.prevBtn.addEventListener('click', () => {
+      this.onScrollIntent?.('away');
+      this.scrollToMessage('prev');
+    });
+    this.nextBtn.addEventListener('click', () => {
+      this.onScrollIntent?.('away');
+      this.scrollToMessage('next');
+    });
     this.tocBtn.addEventListener('click', (event) => {
       event.stopPropagation();
       this.toggleDirectory();
@@ -232,7 +243,10 @@ export class NavigationSidebar {
       });
       if (index === entries.length - 1) marker.classList.add('is-latest');
 
-      const jump = () => this.scrollToElement(entry.userEl);
+      const jump = () => {
+        this.onScrollIntent?.('away');
+        this.scrollToElement(entry.userEl);
+      };
       marker.addEventListener('click', jump);
       marker.addEventListener('keydown', (event: KeyboardEvent) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -294,6 +308,10 @@ export class NavigationSidebar {
   private closePreviewCard(): void {
     this.previewCard?.remove();
     this.previewCard = null;
+  }
+
+  setOnScrollIntent(callback: ((intent: NavigationScrollIntent) => void) | null): void {
+    this.onScrollIntent = callback;
   }
 
   private getDirectoryEntries(): Array<{ el: HTMLElement; title: string }> {
@@ -454,6 +472,7 @@ export class NavigationSidebar {
     }
     this.mutationObserver?.disconnect();
     this.mutationObserver = null;
+    this.onScrollIntent = null;
     this.messagesEl.removeEventListener('scroll', this.scrollHandler);
     this.parentEl.classList.remove('claudian-conversation-rail-host');
     this.container.remove();

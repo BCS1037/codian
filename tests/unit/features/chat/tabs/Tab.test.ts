@@ -510,7 +510,7 @@ function createMockOptions(overrides: Partial<TestTabCreateOptions> = {}): TestT
   const plugin = options.plugin as any;
   ProviderWorkspaceRegistry.setServices('claude', {
     mcpManager: plugin.mcpManager,
-    mcpServerManager: plugin.mcpManager,
+    mcpCatalog: plugin.mcpManager,
     agentMentionProvider: plugin.agentManager,
   } as any);
   ProviderWorkspaceRegistry.setServices('codex', {
@@ -1462,7 +1462,55 @@ describe('Tab - Event Wiring', () => {
 
       wireTabInputEvents(tab, options.plugin);
 
-      expect(tab.dom.eventCleanups.length).toBe(3); // keydown, input, scroll
+      expect(tab.dom.eventCleanups.length).toBe(4); // keydown, input, user scroll intent, scroll
+    });
+
+    it('keeps auto-scroll enabled during bottom navigation until user intent changes', () => {
+      const options = createMockOptions();
+      const tab = createTab(options);
+      const scrollIntentRef: { current: ((intent: 'away' | 'bottom') => void) | null } = { current: null };
+      tab.ui.navigationSidebar = {
+        setOnScrollIntent: jest.fn((callback: ((intent: 'away' | 'bottom') => void) | null) => {
+          scrollIntentRef.current = callback;
+        }),
+      } as any;
+      tab.controllers.inputController = { sendMessage: jest.fn() } as any;
+      tab.controllers.selectionController = { showHighlight: jest.fn() } as any;
+      (tab.dom.messagesEl as any).scrollHeight = 1200;
+      (tab.dom.messagesEl as any).clientHeight = 500;
+      tab.dom.messagesEl.scrollTop = 100;
+      tab.state.autoScrollEnabled = false;
+
+      wireTabInputEvents(tab, options.plugin);
+
+      expect(scrollIntentRef.current).not.toBeNull();
+      scrollIntentRef.current?.('bottom');
+      expect(tab.state.autoScrollEnabled).toBe(true);
+
+      (tab.dom.messagesEl as any).dispatchEvent('scroll');
+      expect(tab.state.autoScrollEnabled).toBe(true);
+
+      (tab.dom.messagesEl as any).dispatchEvent({ type: 'wheel' });
+      expect(tab.state.autoScrollEnabled).toBe(false);
+    });
+
+    it('does not re-enable auto-scroll from bottom navigation when disabled by settings', () => {
+      const options = createMockOptions();
+      options.plugin.settings.enableAutoScroll = false;
+      const tab = createTab(options);
+      const scrollIntentRef: { current: ((intent: 'away' | 'bottom') => void) | null } = { current: null };
+      tab.ui.navigationSidebar = {
+        setOnScrollIntent: jest.fn((callback: ((intent: 'away' | 'bottom') => void) | null) => {
+          scrollIntentRef.current = callback;
+        }),
+      } as any;
+      tab.controllers.inputController = { sendMessage: jest.fn() } as any;
+      tab.controllers.selectionController = { showHighlight: jest.fn() } as any;
+
+      wireTabInputEvents(tab, options.plugin);
+      scrollIntentRef.current?.('bottom');
+
+      expect(tab.state.autoScrollEnabled).toBe(false);
     });
   });
 });
@@ -2760,9 +2808,9 @@ describe('Tab - ChatState Callback Integration', () => {
     const tab = createTab(options);
 
     // Trigger the callback through ChatState
-    tab.state.callbacks.onAttentionChanged?.(true);
+    tab.state.callbacks.onAttentionChanged?.({ kind: 'action-required', since: 1 });
 
-    expect(onAttentionChanged).toHaveBeenCalledWith(true);
+    expect(onAttentionChanged).toHaveBeenCalledWith({ kind: 'action-required', since: 1 });
   });
 
   it('should invoke onConversationIdChanged callback when conversation changes', () => {
@@ -5067,6 +5115,7 @@ describe('Tab - InputController getTabProviderId wiring', () => {
       inactiveLabel: 'Standard',
       activeValue: 'priority',
       activeLabel: 'Fast',
+      isActive: false,
       tooltip: 'Toggle Fast Mode',
     });
     jest.spyOn(ProviderRegistry, 'getChatUIConfig').mockImplementation((providerId?: string) => {

@@ -486,6 +486,30 @@ describe('OpencodeSettingsTab', () => {
     expect(mockRenderEnvironmentSettingsSection).not.toHaveBeenCalled();
   });
 
+  it('directs MCP setup to the native OpenCode CLI', () => {
+    const plugin = createPlugin();
+
+    opencodeSettingsTabRenderer.render(createContainer(), createContext(plugin));
+
+    expect(findSetting('MCP Servers').heading).toBe(true);
+    const notice = findElement('div', 'claudian-mcp-settings-desc');
+    const description = notice.createEl.mock.results[0].value;
+    expect(description.appendText).toHaveBeenNthCalledWith(
+      1,
+      'OpenCode manages MCP servers through its native CLI. Configure them with ',
+    );
+    expect(description.createEl.mock.results[0].value.appendText)
+      .toHaveBeenCalledWith('opencode mcp add');
+    expect(description.appendText).toHaveBeenNthCalledWith(
+      2,
+      ' and they will be available in Codian. ',
+    );
+    expect(description.createEl).toHaveBeenCalledWith('a', {
+      href: 'https://opencode.ai/docs/mcp-servers/',
+      text: 'Learn more',
+    });
+  });
+
   it('does not duplicate provider enablement inside the detail panel', () => {
     const plugin = createPlugin();
     const context = createContext(plugin);

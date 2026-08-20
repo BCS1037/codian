@@ -113,6 +113,10 @@ export class ConversationController {
   private callbacks: ConversationCallbacks;
   private conversationBrowserSession: ConversationBrowserSession | null;
   private historyFilter: HistoryConversationFilter = 'active';
+  private activeInlineRename: {
+    cancel: () => void;
+    input: HTMLInputElement;
+  } | null = null;
 
   constructor(deps: ConversationControllerDeps, callbacks: ConversationCallbacks = {}) {
     this.deps = deps;
@@ -705,6 +709,19 @@ export class ConversationController {
     }
   }
 
+  cancelInlineRename(): boolean {
+    const activeInlineRename = this.activeInlineRename;
+    if (!activeInlineRename) return false;
+    if (activeInlineRename.input.isConnected === false) {
+      this.activeInlineRename = null;
+      return false;
+    }
+
+    this.activeInlineRename = null;
+    activeInlineRename.cancel();
+    return true;
+  }
+
   resetHistorySearch(): void {
     this.conversationBrowserSession?.reset();
     this.historyFilter = 'active';
@@ -730,6 +747,13 @@ export class ConversationController {
   ): void {
     const { plugin, state } = this.deps;
     if (options.signal?.aborted) return;
+
+    if (
+      this.activeInlineRename
+      && container.contains(this.activeInlineRename.input)
+    ) {
+      this.activeInlineRename = null;
+    }
 
     container.empty();
 
@@ -948,7 +972,7 @@ export class ConversationController {
       renameBtn.setAttribute('aria-label', 'Rename');
       renameBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.showRenameInput(item, conv.id, conv.title);
+        this.showRenameInput(item, conv.id, conv.title, options);
       });
 
       const deleteBtn = actions.createEl('button', { cls: 'claudian-action-btn claudian-delete-btn' });
@@ -1123,7 +1147,7 @@ export class ConversationController {
     menu.addItem((menuItem) => menuItem
       .setTitle('Rename')
       .onClick(() => {
-        this.showRenameInput(item, conversationId, title);
+        this.showRenameInput(item, conversationId, title, options);
       }));
     menu.addItem((menuItem) => menuItem
       .setTitle('Delete')
@@ -1193,7 +1217,12 @@ export class ConversationController {
   }
 
   /** Shows inline rename input for a conversation. */
-  private showRenameInput(item: HTMLElement, convId: string, currentTitle: string): void {
+  private showRenameInput(
+    item: HTMLElement,
+    convId: string,
+    currentTitle: string,
+    options: HistoryRenderOptions,
+  ): void {
     const titleEl = item.querySelector('.claudian-history-item-title') as HTMLElement;
     if (!titleEl) return;
 
@@ -1206,17 +1235,36 @@ export class ConversationController {
     input.focus();
     input.select();
 
+    let isFinishing = false;
+    const cancelRename = () => {
+      input.value = currentTitle;
+      input.blur();
+    };
+    this.activeInlineRename = { cancel: cancelRename, input };
     const finishRename = async () => {
+      if (isFinishing) return;
+      isFinishing = true;
+      const newTitle = input.value.trim();
+      if (!newTitle || newTitle === currentTitle) {
+        isFinishing = false;
+        options.onRerender();
+        return;
+      }
+
       try {
-        const newTitle = input.value.trim() || currentTitle;
         await this.deps.plugin.renameConversation(convId, newTitle);
-        this.updateHistoryDropdown();
+        options.onRerender();
       } catch {
         new Notice('Failed to rename conversation');
+      } finally {
+        isFinishing = false;
       }
     };
 
     input.addEventListener('blur', () => {
+      if (this.activeInlineRename?.input === input) {
+        this.activeInlineRename = null;
+      }
       runConversationAction(finishRename, 'Failed to rename conversation');
     });
     input.addEventListener('keydown', (e) => {
@@ -1224,8 +1272,9 @@ export class ConversationController {
       if (e.key === 'Enter' && !e.isComposing) {
         input.blur();
       } else if (e.key === 'Escape' && !e.isComposing) {
-        input.value = currentTitle;
-        input.blur();
+        e.preventDefault();
+        e.stopPropagation();
+        cancelRename();
       }
     });
   }

@@ -761,8 +761,9 @@ export class ClaudianView extends ItemView {
     this.scope = new Scope(this.app.scope);
     this.scope.register([], 'Escape', (e: KeyboardEvent) => {
       if (e.isComposing) return;
+      const activeTab = this.tabManager?.getActiveTab();
+      if (activeTab?.controllers.conversationController?.cancelInlineRename?.()) return false;
       if (!e.defaultPrevented) {
-        const activeTab = this.tabManager?.getActiveTab();
         if (activeTab?.state.isStreaming) {
           activeTab.controllers.inputController?.cancelStreaming();
         }

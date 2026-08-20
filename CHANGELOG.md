@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.2 — 2026-08-20
+
+- Improved Provider workspace and Codex resource handling.
+- Added clearer chat navigation, model-tier feedback, and tab attention indicators.
+- Tightened permission prompts, plan approvals, and runtime cleanup.
+
 ## 1.3.1 — 2026-08-19
 
 - Added pin/archive controls and filtering for conversation history.

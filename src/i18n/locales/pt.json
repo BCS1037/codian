@@ -236,6 +236,11 @@
       "name": "Servidores MCP",
       "desc": "Gerencie configurações de servidores MCP a nível de vault armazenadas em .claude/mcp.json. Servidores com modo de salvamento de contexto exigem @mention para ativar."
     },
+    "nativeMcp": {
+      "descriptionBeforeCommand": "{provider} gerencia servidores MCP pela própria CLI. Configure-os com ",
+      "descriptionAfterCommand": " e eles ficarão disponíveis no Codian. ",
+      "learnMore": "Saiba mais"
+    },
     "plugins": {
       "name": "Plugins do Claude Code",
       "desc": "Gerencie plugins do Claude Code descobertos em ~/.claude/plugins. Plugins ativados são armazenados por vault em .claude/settings.json.",
