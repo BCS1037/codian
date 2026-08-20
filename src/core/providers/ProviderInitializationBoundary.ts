@@ -213,14 +213,11 @@ export class ProviderInitializationBoundary {
 
     const storage = plugin.storage;
     const vaultAdapter = storage.getAdapter();
-    const { HomeFileAdapter } = await import('../storage/HomeFileAdapter');
-    const homeAdapter = new HomeFileAdapter();
 
     const context: ProviderWorkspaceInitContext = {
       plugin,
       storage,
       vaultAdapter,
-      homeAdapter,
     };
 
     const services = await registration.initialize(context);

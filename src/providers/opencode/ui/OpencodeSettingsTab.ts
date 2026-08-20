@@ -6,6 +6,7 @@ import type {
   ProviderSettingsTabRendererContext,
 } from '../../../core/providers/types';
 import { t } from '../../../i18n/i18n';
+import { renderNativeMcpSettingsSection } from '../../../shared/settings/NativeMcpSettingsSection';
 import {
   type ProviderModelPickerModel,
   type ProviderModelPickerState,
@@ -116,6 +117,17 @@ export const opencodeSettingsTabRenderer: ProviderSettingsTabRenderer = {
     new Setting(container)
       .setName(t('settings.providerPermissions.name'))
       .setDesc(t('settings.providerPermissions.opencodeDesc'));
+
+    renderNativeMcpSettingsSection(container, {
+      descriptionAfterCommand: t('settings.nativeMcp.descriptionAfterCommand'),
+      descriptionBeforeCommand: t('settings.nativeMcp.descriptionBeforeCommand', {
+        provider: 'OpenCode',
+      }),
+      documentationLabel: t('settings.nativeMcp.learnMore'),
+      documentationUrl: 'https://opencode.ai/docs/mcp-servers/',
+      heading: t('settings.mcpServers.name'),
+      setupCommand: 'opencode mcp add',
+    });
     }
 
     if (showSection('skills') || showSection('commands')) {

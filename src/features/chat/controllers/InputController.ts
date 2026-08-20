@@ -1511,6 +1511,19 @@ export class InputController {
   // Approval Dialogs
   // ============================================
 
+  private withActionRequired<T>(task: () => Promise<T>): Promise<T> {
+    const interactionId = this.deps.generateId();
+    this.deps.state.beginActionRequired(interactionId);
+    try {
+      return task().finally(() => {
+        this.deps.state.endActionRequired(interactionId);
+      });
+    } catch (error) {
+      this.deps.state.endActionRequired(interactionId);
+      return Promise.reject(error);
+    }
+  }
+
   async handleApprovalRequest(
     toolName: string,
     _input: Record<string, unknown>,
@@ -1567,32 +1580,34 @@ export class InputController {
       }],
     };
 
-    const result = await this.showInlineQuestion(
-      parentEl,
-      inputContainerEl,
-      input,
-      (inline) => { this.pendingApprovalInline = inline; },
-      undefined,
-      { title: 'Permission required', headerEl, showCustomInput: false, immediateSelect: true },
-    );
+    return this.withActionRequired(async () => {
+      const result = await this.showInlineQuestion(
+        parentEl,
+        inputContainerEl,
+        input,
+        (inline) => { this.pendingApprovalInline = inline; },
+        undefined,
+        { title: 'Permission required', headerEl, showCustomInput: false, immediateSelect: true },
+      );
 
-    if (!result) return 'cancel';
-    const selected = Object.values(result)[0];
-    const selectedValue = Array.isArray(selected) ? selected[0] : selected;
-    if (typeof selectedValue !== 'string') {
-      new Notice(`Unexpected approval selection: "${String(selectedValue)}"`);
-      return 'cancel';
-    }
+      if (!result) return 'cancel';
+      const selected = Object.values(result)[0];
+      const selectedValue = Array.isArray(selected) ? selected[0] : selected;
+      if (typeof selectedValue !== 'string') {
+        new Notice(`Unexpected approval selection: "${String(selectedValue)}"`);
+        return 'cancel';
+      }
 
-    const decision = optionDecisionMap.get(selectedValue);
-    if (decision) {
-      return decision;
-    }
+      const decision = optionDecisionMap.get(selectedValue);
+      if (decision) {
+        return decision;
+      }
 
-    return {
-      type: 'select-option',
-      value: selectedValue,
-    };
+      return {
+        type: 'select-option',
+        value: selectedValue,
+      };
+    });
   }
 
   async handleAskUserQuestion(
@@ -1605,13 +1620,13 @@ export class InputController {
       throw new Error('Input container is detached from DOM');
     }
 
-    return this.showInlineQuestion(
+    return this.withActionRequired(() => this.showInlineQuestion(
       parentEl,
       inputContainerEl,
       input,
       (inline) => { this.pendingAskInline = inline; },
       signal,
-    );
+    ));
   }
 
   private showInlineQuestion(
@@ -1672,7 +1687,7 @@ export class InputController {
 
     const planPathPrefix = this.getActiveCapabilities().planPathPrefix;
 
-    return new Promise<ExitPlanModeDecision | null>((resolve, reject) => {
+    return this.withActionRequired(() => new Promise<ExitPlanModeDecision | null>((resolve, reject) => {
       const inline = new InlineExitPlanMode(
         parentEl,
         enrichedInput,
@@ -1694,7 +1709,7 @@ export class InputController {
         this.restoreInputContainer(inputContainerEl);
         reject(toError(err));
       }
-    });
+    }));
   }
 
   dismissPendingApprovalPrompt(): void {
@@ -1728,7 +1743,7 @@ export class InputController {
     this.hideInputContainer(inputContainerEl);
     this.pendingPlanApprovalInvalidated = false;
 
-    return new Promise<{ decision: PlanApprovalDecision | null; invalidated: boolean }>((resolve, reject) => {
+    return this.withActionRequired(() => new Promise<{ decision: PlanApprovalDecision | null; invalidated: boolean }>((resolve, reject) => {
       const inline = new InlinePlanApproval(
         parentEl,
         (decision: PlanApprovalDecision | null) => {
@@ -1748,7 +1763,7 @@ export class InputController {
         this.restoreInputContainer(inputContainerEl);
         reject(toError(err));
       }
-    });
+    }));
   }
 
   private dismissPendingPlanApproval(invalidated: boolean): void {

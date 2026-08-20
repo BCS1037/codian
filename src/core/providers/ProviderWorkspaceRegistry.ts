@@ -147,8 +147,8 @@ export class ProviderWorkspaceRegistry {
     return this.getServices(providerId)?.tabWarmupPolicy ?? null;
   }
 
-  static getMcpServerManager(providerId: ProviderId) {
-    return this.getServices(providerId)?.mcpServerManager ?? null;
+  static getMcpCatalog(providerId: ProviderId) {
+    return this.getServices(providerId)?.mcpCatalog ?? null;
   }
 
   static getSettingsTabRenderer(providerId: ProviderId): ProviderSettingsTabRenderer | null {

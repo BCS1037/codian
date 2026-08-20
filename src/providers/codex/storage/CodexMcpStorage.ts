@@ -1,12 +1,15 @@
 import { parse as parseToml } from 'smol-toml';
 
-import type { McpStorageAdapter } from '../../../core/mcp/McpServerManager';
-import type { HomeFileAdapter } from '../../../core/storage/HomeFileAdapter';
+import type { McpStorageAdapter } from '../../../core/mcp/McpServerCatalog';
 import type { ManagedMcpServer, McpServerConfig } from '../../../core/types';
 import type { CodexMcpCatalogResult } from '../runtime/CodexMcpCatalogService';
+import {
+  CODEX_MCP_CONFIG_SOURCE,
+  type CodexHomeAccess,
+} from './CodexHomeAccess';
 
-export const CODEX_MCP_CONFIG_PATH = '.codex/config.toml';
-export const CODEX_MCP_CONFIG_SOURCE = '~/.codex/config.toml';
+export { CODEX_MCP_CONFIG_PATH, CODEX_MCP_CONFIG_SOURCE } from './CodexHomeAccess';
+
 
 export interface CodexMcpCatalogReader {
   discoverCatalog(): Promise<CodexMcpCatalogResult>;
@@ -17,7 +20,7 @@ type CodexMcpConfig = Record<string, unknown>;
 /** Read-only catalog for MCP servers owned by the Codex CLI. */
 export class CodexMcpStorage implements McpStorageAdapter {
   constructor(
-    private readonly homeAdapter: Pick<HomeFileAdapter, 'exists' | 'read'>,
+    private readonly homeAccess: Pick<CodexHomeAccess, 'readMcpConfig'>,
     private readonly cliCatalog?: CodexMcpCatalogReader,
   ) {}
 
@@ -34,11 +37,12 @@ export class CodexMcpStorage implements McpStorageAdapter {
 
   private async loadFromConfigFile(): Promise<ManagedMcpServer[]> {
     try {
-      if (!(await this.homeAdapter.exists(CODEX_MCP_CONFIG_PATH))) {
+      const content = await this.homeAccess.readMcpConfig();
+      if (content === null) {
         return [];
       }
 
-      const parsed = parseToml(await this.homeAdapter.read(CODEX_MCP_CONFIG_PATH)) as CodexMcpConfig;
+      const parsed = parseToml(content) as CodexMcpConfig;
       const configuredServers = asRecord(parsed.mcp_servers);
       if (!configuredServers) {
         return [];

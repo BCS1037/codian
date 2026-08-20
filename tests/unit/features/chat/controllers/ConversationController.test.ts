@@ -1633,6 +1633,78 @@ describe('ConversationController', () => {
       }
     });
 
+    it('should rerender the supplied history surface after inline rename', async () => {
+      const container = createMockEl();
+      deps.getHistoryDropdown = () => null;
+      (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
+        { id: 'conv-1', title: 'Test Title', createdAt: 1000, lastResponseAt: 1000 },
+      ]);
+      const renderHistoryDropdown = jest.spyOn(controller, 'renderHistoryDropdown');
+
+      controller.renderHistoryDropdown(container, { onSelectConversation: jest.fn() });
+      const initialRenderCount = renderHistoryDropdown.mock.calls.length;
+      const item = container.children[1].children[0];
+      const renameButton = item.querySelector('.claudian-history-item-actions')!.children[0];
+      item.querySelector('.claudian-history-item-title')!.replaceWith = jest.fn();
+      renameButton._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+
+      const input = item.querySelector('.claudian-rename-input')!;
+      (input as any).value = 'Renamed';
+      input.dispatchEvent({ type: 'blur' });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(deps.plugin.renameConversation).toHaveBeenCalledWith('conv-1', 'Renamed');
+      expect(renderHistoryDropdown.mock.calls.length).toBe(initialRenderCount + 1);
+    });
+
+    it('should not persist an empty inline rename', async () => {
+      const container = createMockEl();
+      deps.getHistoryDropdown = () => null;
+      (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
+        { id: 'conv-1', title: 'Test Title', createdAt: 1000, lastResponseAt: 1000 },
+      ]);
+      const renderHistoryDropdown = jest.spyOn(controller, 'renderHistoryDropdown');
+
+      controller.renderHistoryDropdown(container, { onSelectConversation: jest.fn() });
+      const initialRenderCount = renderHistoryDropdown.mock.calls.length;
+      const item = container.children[1].children[0];
+      const renameButton = item.querySelector('.claudian-history-item-actions')!.children[0];
+      item.querySelector('.claudian-history-item-title')!.replaceWith = jest.fn();
+      renameButton._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+
+      const input = item.querySelector('.claudian-rename-input')!;
+      (input as any).value = '   ';
+      input.dispatchEvent({ type: 'blur' });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(deps.plugin.renameConversation).not.toHaveBeenCalled();
+      expect(renderHistoryDropdown.mock.calls.length).toBe(initialRenderCount + 1);
+    });
+
+    it('should cancel active inline rename without persisting edits', async () => {
+      (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
+        { id: 'conv-1', title: 'Test Title', createdAt: 1000, lastResponseAt: 1000 },
+      ]);
+
+      controller.updateHistoryDropdown();
+      const item = dropdown.children[1].children[0];
+      const renameButton = item.querySelector('.claudian-history-item-actions')!.children[0];
+      item.querySelector('.claudian-history-item-title')!.replaceWith = jest.fn();
+      renameButton._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+
+      const input = item.querySelector('.claudian-rename-input')!;
+      (input as any).value = 'Discarded';
+
+      expect(controller.cancelInlineRename()).toBe(true);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect((input as any).value).toBe('Test Title');
+      expect(deps.plugin.renameConversation).not.toHaveBeenCalled();
+    });
+
     it('should delete conversation and reload active when deleting current conversation', async () => {
       deps.state.currentConversationId = 'conv-1';
 

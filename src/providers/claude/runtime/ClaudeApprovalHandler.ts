@@ -20,7 +20,7 @@ import type {
   ExitPlanModeDecision,
 } from '../../../core/types';
 import type { PermissionMode } from '../../../core/types/settings';
-import { buildPermissionUpdates } from '../security/ClaudePermissionUpdates';
+import { buildPersistentPermissionUpdates } from '../security/ClaudePermissionUpdates';
 
 export interface ClaudeApprovalHandlerDeps {
   getAllowedTools: () => string[] | null;
@@ -139,18 +139,34 @@ export function createClaudeApprovalCallback(
         return deny({ behavior: 'deny', message: 'User interrupted.', interrupt: true });
       }
 
-      if (decision === 'allow' || decision === 'allow-always') {
-        const updatedPermissions = buildPermissionUpdates(
+      if (decision === 'allow') {
+        return {
+          behavior: 'allow',
+          updatedInput: input,
+          decisionClassification: 'user_temporary',
+        };
+      }
+
+      if (decision === 'allow-always') {
+        const updatedPermissions = buildPersistentPermissionUpdates(
           toolName,
           input,
-          decision,
           options.suggestions,
         );
-        if (decision === 'allow-always' && updatedPermissions.length === 0) {
+        if (updatedPermissions.length === 0) {
           deps.notifyAlwaysAppliedOnce();
-          return { behavior: 'allow', updatedInput: input };
+          return {
+            behavior: 'allow',
+            updatedInput: input,
+            decisionClassification: 'user_permanent',
+          };
         }
-        return { behavior: 'allow', updatedInput: input, updatedPermissions };
+        return {
+          behavior: 'allow',
+          updatedInput: input,
+          updatedPermissions,
+          decisionClassification: 'user_permanent',
+        };
       }
 
       return deny({ behavior: 'deny', message: 'User denied this action.', interrupt: false });

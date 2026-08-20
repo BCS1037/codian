@@ -1,4 +1,5 @@
 import type { VaultFileAdapter } from '@/core/storage/VaultFileAdapter';
+import type { CodexHomeAccess, CodexSkillRootId } from '@/providers/codex/storage/CodexHomeAccess';
 import {
   CodexSkillStorage,
   createCodexSkillPersistenceKey,
@@ -39,9 +40,34 @@ function createMockAdapter(files: Record<string, string> = {}): VaultFileAdapter
   } as unknown as VaultFileAdapter;
 }
 
-/** Simulates a home-level adapter with separate files. */
-function createMockHomeAdapter(files: Record<string, string> = {}): VaultFileAdapter {
-  return createMockAdapter(files);
+/** Simulates Codex-owned read-only Home access with separate files. */
+function createMockHomeAccess(files: Record<string, string> = {}): Pick<
+  CodexHomeAccess,
+  'listSkillNames' | 'readSkill'
+> {
+  const rootPathById: Record<CodexSkillRootId, string> = {
+    'vault-codex': '.codex/skills',
+    'vault-agents': '.agents/skills',
+  };
+
+  return {
+    listSkillNames: jest.fn(async (rootId: CodexSkillRootId) => {
+      const prefix = `${rootPathById[rootId]}/`;
+      return Array.from(new Set(
+        Object.keys(files)
+          .filter(filePath => filePath.startsWith(prefix))
+          .map(filePath => filePath.slice(prefix.length).split('/')[0])
+          .filter(Boolean),
+      ));
+    }),
+    readSkill: jest.fn(async (rootId: CodexSkillRootId, name: string) => {
+      const filePath = `${rootPathById[rootId]}/${name}/SKILL.md`;
+      if (!(filePath in files)) {
+        throw new Error(`File not found: ${filePath}`);
+      }
+      return files[filePath];
+    }),
+  };
 }
 
 describe('CodexSkillStorage', () => {
@@ -84,7 +110,7 @@ Agent task`,
 
     it('scans skills from home .codex/skills and .agents/skills', async () => {
       const vaultAdapter = createMockAdapter({});
-      const homeAdapter = createMockHomeAdapter({
+      const homeAccess = createMockHomeAccess({
         '.codex/skills/home-skill/SKILL.md': `---
 description: Home codex skill
 ---
@@ -95,7 +121,7 @@ description: Home agent skill
 Home agent task`,
       });
 
-      const storage = new CodexSkillStorage(vaultAdapter, homeAdapter);
+      const storage = new CodexSkillStorage(vaultAdapter, homeAccess);
       const skills = await storage.scanAll();
 
       expect(skills).toHaveLength(2);
@@ -109,14 +135,14 @@ description: Vault version
 ---
 Vault prompt`,
       });
-      const homeAdapter = createMockHomeAdapter({
+      const homeAccess = createMockHomeAccess({
         '.codex/skills/shared/SKILL.md': `---
 description: Home version
 ---
 Home prompt`,
       });
 
-      const storage = new CodexSkillStorage(vaultAdapter, homeAdapter);
+      const storage = new CodexSkillStorage(vaultAdapter, homeAccess);
       const skills = await storage.scanAll();
 
       expect(skills).toHaveLength(1);
@@ -143,14 +169,14 @@ description: Vault skill
 ---
 Task`,
       });
-      const homeAdapter = createMockHomeAdapter({
+      const homeAccess = createMockHomeAccess({
         '.codex/skills/home-skill/SKILL.md': `---
 description: Home skill
 ---
 Task`,
       });
 
-      const storage = new CodexSkillStorage(vaultAdapter, homeAdapter);
+      const storage = new CodexSkillStorage(vaultAdapter, homeAccess);
       const vaultSkills = await storage.scanVault();
 
       expect(vaultSkills).toHaveLength(1);

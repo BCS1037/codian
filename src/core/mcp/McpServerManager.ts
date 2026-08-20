@@ -1,57 +1,11 @@
 import { extractMcpMentions, transformMcpMentions } from '../../utils/mcp';
 import type { ManagedMcpServer, McpServerConfig } from '../types';
+import { McpServerCatalog } from './McpServerCatalog';
 
-/** Storage interface for loading MCP servers. */
-export interface McpStorageAdapter {
-  load(): Promise<ManagedMcpServer[]>;
-}
+export type { McpStorageAdapter } from './McpServerCatalog';
 
-export class McpServerManager {
-  private servers: ManagedMcpServer[] = [];
-  private storage: McpStorageAdapter;
-  private loadPromise: Promise<void> | null = null;
-  private loaded = false;
-
-  constructor(storage: McpStorageAdapter) {
-    this.storage = storage;
-  }
-
-  async loadServers(): Promise<void> {
-    if (this.loadPromise) {
-      return this.loadPromise;
-    }
-    const promise = this.storage.load().then((servers) => {
-      this.servers = servers;
-      this.loaded = true;
-    });
-    this.loadPromise = promise;
-    try {
-      await promise;
-    } finally {
-      if (this.loadPromise === promise) {
-        this.loadPromise = null;
-      }
-    }
-  }
-
-  async ensureLoaded(): Promise<void> {
-    if (this.loaded) {
-      return;
-    }
-    await this.loadServers();
-  }
-
-  isLoaded(): boolean {
-    return this.loaded;
-  }
-
-  getServers(): ManagedMcpServer[] {
-    return this.servers;
-  }
-
-  getEnabledCount(): number {
-    return this.servers.filter((s) => s.enabled).length;
-  }
+/** Claude execution manager built on top of provider-owned read-only catalog state. */
+export class McpServerManager extends McpServerCatalog {
 
   /**
    * Get servers to include in SDK options.
@@ -65,7 +19,7 @@ export class McpServerManager {
   getActiveServers(mentionedNames: Set<string>): Record<string, McpServerConfig> {
     const result: Record<string, McpServerConfig> = {};
 
-    for (const server of this.servers) {
+    for (const server of this.getServers()) {
       if (!server.enabled) continue;
 
       // If context-saving is enabled, only include if @-mentioned
@@ -105,7 +59,7 @@ export class McpServerManager {
   private collectDisallowedTools(filter?: (server: ManagedMcpServer) => boolean): string[] {
     const disallowed = new Set<string>();
 
-    for (const server of this.servers) {
+    for (const server of this.getServers()) {
       if (!server.enabled) continue;
       if (filter && !filter(server)) continue;
       if (!server.disabledTools || server.disabledTools.length === 0) continue;
@@ -118,14 +72,6 @@ export class McpServerManager {
     }
 
     return Array.from(disallowed);
-  }
-
-  hasServers(): boolean {
-    return this.servers.length > 0;
-  }
-
-  getContextSavingServers(): ManagedMcpServer[] {
-    return this.servers.filter((s) => s.enabled && s.contextSaving);
   }
 
   private getContextSavingNames(): Set<string> {

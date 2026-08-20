@@ -236,6 +236,11 @@
       "name": "MCP серверы",
       "desc": "Управление конфигурациями MCP-серверов на уровне хранилища в .claude/mcp.json. Серверы с режимом сохранения контекста требуют @mention для активации."
     },
+    "nativeMcp": {
+      "descriptionBeforeCommand": "{provider} управляет MCP-серверами через собственный CLI. Настройте их с помощью ",
+      "descriptionAfterCommand": " — они будут доступны в Codian. ",
+      "learnMore": "Подробнее"
+    },
     "plugins": {
       "name": "Плагины Claude Code",
       "desc": "Управление плагинами Claude Code из ~/.claude/plugins. Включенные плагины сохраняются для каждого хранилища в .claude/settings.json.",

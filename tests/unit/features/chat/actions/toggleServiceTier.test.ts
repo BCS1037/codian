@@ -12,6 +12,7 @@ describe('toggleServiceTier', () => {
           inactiveLabel: 'Standard',
           activeValue: 'priority',
           activeLabel: 'Fast',
+          isActive: false,
         }),
       }),
       onServiceTierChange,
@@ -43,9 +44,30 @@ describe('toggleServiceTier', () => {
           inactiveLabel: 'Standard',
           activeValue: 'priority',
           activeLabel: 'Fast',
+          isActive: false,
         }),
       }),
       onServiceTierChange: jest.fn().mockRejectedValue(failure),
     })).rejects.toBe(failure);
+  });
+
+  it('uses provider-resolved active state for legacy aliases', async () => {
+    const onServiceTierChange = jest.fn().mockResolvedValue(undefined);
+
+    await toggleServiceTier({
+      getSettings: () => ({ serviceTier: 'fast' }),
+      getUIConfig: () => ({
+        getServiceTierToggle: () => ({
+          inactiveValue: 'default',
+          inactiveLabel: 'Standard',
+          activeValue: 'priority',
+          activeLabel: 'Fast',
+          isActive: true,
+        }),
+      }),
+      onServiceTierChange,
+    });
+
+    expect(onServiceTierChange).toHaveBeenCalledWith('default');
   });
 });

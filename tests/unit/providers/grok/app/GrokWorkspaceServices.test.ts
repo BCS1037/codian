@@ -72,7 +72,7 @@ describe('GrokWorkspaceServices', () => {
     expect(services.tabWarmupPolicy?.resolveMode({} as any)).toBe('none');
     expect(services.runtimeCommandLoader).toBeInstanceOf(GrokRuntimeCommandLoader);
     expect(services.agentMentionProvider).toBeUndefined();
-    expect(services.mcpServerManager).toBeUndefined();
+    expect(services.mcpCatalog).toBeUndefined();
     expect(mockDiscoverCatalog).not.toHaveBeenCalled();
   });
 

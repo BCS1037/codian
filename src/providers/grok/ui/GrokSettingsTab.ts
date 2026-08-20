@@ -11,6 +11,7 @@ import type {
 } from '../../../core/providers/types';
 import type { ClaudianSettings } from '../../../core/types';
 import { t } from '../../../i18n/i18n';
+import { renderNativeMcpSettingsSection } from '../../../shared/settings/NativeMcpSettingsSection';
 import {
   type ProviderModelPickerModel,
   type ProviderModelPickerState,
@@ -153,6 +154,17 @@ export const grokSettingsTabRenderer: ProviderSettingsTabRenderer = {
 
       new Setting(container).setName('Models').setHeading();
       renderGrokModelPicker(container, context, settingsBag, refreshModelCatalog);
+
+      renderNativeMcpSettingsSection(container, {
+        descriptionAfterCommand: t('settings.nativeMcp.descriptionAfterCommand'),
+        descriptionBeforeCommand: t('settings.nativeMcp.descriptionBeforeCommand', {
+          provider: 'Grok Build',
+        }),
+        documentationLabel: t('settings.nativeMcp.learnMore'),
+        documentationUrl: 'https://docs.x.ai/build/features/mcp-servers',
+        heading: t('settings.mcpServers.name'),
+        setupCommand: 'grok mcp add',
+      });
     }
 
     if (showSection('skills')) {

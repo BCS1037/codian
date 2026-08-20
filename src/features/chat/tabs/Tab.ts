@@ -46,6 +46,7 @@ import { findRewindContext } from '../rewind';
 import { BangBashService } from '../services/BangBashService';
 import { SubagentManager } from '../services/SubagentManager';
 import { ChatState } from '../state/ChatState';
+import type { TabAttention } from '../state/types';
 import { BangBashModeManager as BangBashModeManagerClass } from '../ui/BangBashModeManager';
 import { ComposerContextTray } from '../ui/ComposerContextTray';
 import { FileContextManager } from '../ui/FileContext';
@@ -57,6 +58,7 @@ import { StatusPanel } from '../ui/StatusPanel';
 import { autoResizeTextarea } from '../ui/textareaResize';
 import { recalculateUsageForModel } from '../utils/usageInfo';
 import { getTabProviderId } from './providerResolution';
+import { TabRuntimeFactory } from './TabRuntimeFactory';
 import { TabSession } from './TabSession';
 import type {
   ProviderCatalogInfo,
@@ -148,7 +150,7 @@ export interface TabCreateOptions {
   onStreamingChanged?: (isStreaming: boolean) => void;
   onRewindingChanged?: (isRewinding: boolean) => void;
   onTitleChanged?: (title: string) => void;
-  onAttentionChanged?: (needsAttention: boolean) => void;
+  onAttentionChanged?: (attention: TabAttention) => void;
   onConversationIdChanged?: (conversationId: string | null) => void;
   onRuntimeInstalled?: (runtime: ChatRuntime) => void;
   onPersistedStateChanged?: () => void;
@@ -350,8 +352,8 @@ function getRegistryProviderCatalogInfo(providerId: ProviderId): ProviderCatalog
   };
 }
 
-function getProviderMcpManager(providerId: ProviderId) {
-  return ProviderWorkspaceRegistry.getMcpServerManager(providerId);
+function getProviderMcpCatalog(providerId: ProviderId) {
+  return ProviderWorkspaceRegistry.getMcpCatalog(providerId);
 }
 
 function syncSlashCommandDropdownForProvider(
@@ -453,8 +455,8 @@ function applyProviderUIGating(tab: TabData, plugin: FeatureHost): void {
   const capabilities = getTabCapabilities(tab, plugin);
   const uiConfig = getTabChatUIConfig(tab, plugin);
   const showsMcpSelector = capabilities.supportsMcpTools || capabilities.mcpSelectorMode === 'display-only';
-  const mcpManager = showsMcpSelector
-    ? getProviderMcpManager(capabilities.providerId)
+  const mcpCatalog = showsMcpSelector
+    ? getProviderMcpCatalog(capabilities.providerId)
     : null;
   const hasPermissionToggle = Boolean(uiConfig.getPermissionModeToggle?.());
 
@@ -464,7 +466,7 @@ function applyProviderUIGating(tab: TabData, plugin: FeatureHost): void {
   tab.ui.mcpServerSelector?.setDisplayOnlyNotice(capabilities.mcpDisplayOnlyNotice?.() ?? null);
   tab.ui.mcpServerSelector?.setVisible(showsMcpSelector);
   tab.ui.permissionToggle?.setVisible(hasPermissionToggle);
-  tab.ui.fileContextManager?.setMcpManager(mcpManager);
+  tab.ui.fileContextManager?.setMcpManager(mcpCatalog);
 
   tab.ui.fileContextManager?.setAgentService(
     ProviderWorkspaceRegistry.getAgentMentionProvider(capabilities.providerId),
@@ -476,7 +478,7 @@ function applyProviderUIGating(tab: TabData, plugin: FeatureHost): void {
 
 export function refreshTabWorkspaceServices(tab: TabData, plugin: FeatureHost): void {
   const providerId = getTabProviderId(tab, plugin);
-  tab.ui.mcpServerSelector?.setMcpManager(getProviderMcpManager(providerId));
+  tab.ui.mcpServerSelector?.setMcpManager(getProviderMcpCatalog(providerId));
   syncSlashCommandDropdownForProvider(tab, plugin);
   applyProviderUIGating(tab, plugin);
 }
@@ -804,8 +806,7 @@ export async function initializeTabService(
     return;
   }
 
-  let service: ChatRuntime | null = null;
-  let unsubscribeReadyState: (() => void) | null = null;
+  let runtimeLease: ReturnType<typeof TabRuntimeFactory.prepare> | null = null;
   const previousService = tab.service;
 
   try {
@@ -815,37 +816,27 @@ export async function initializeTabService(
     tab.service = null;
     tab.serviceInitialized = false;
 
-    const runtime = ProviderRegistry.createChatRuntime({
-      plugin: plugin.providerHost,
+    const lease = TabRuntimeFactory.prepare({
+      plugin,
       providerId,
+      conversation,
+      selectedModel,
     });
-    service = runtime;
-    unsubscribeReadyState = runtime.onReadyStateChange(() => {});
-    tab.dom.eventCleanups.push(() => unsubscribeReadyState?.());
-
-    // Passive sync: set session state without starting the runtime process.
-    // The runtime starts on demand when query() is called.
-    const hasMessages = conversation ? conversation.messages.length > 0 : false;
-    const externalContextPaths = conversation && hasMessages
-      ? conversation.externalContextPaths || []
-      : (plugin.settings.persistentExternalContextPaths || []);
-    const runtimeConversationState = conversation
-      ?? (selectedModel ? { sessionId: null, selectedModel } : null);
-    runtime.syncConversationState(runtimeConversationState, externalContextPaths);
+    runtimeLease = lease;
+    tab.dom.eventCleanups.push(lease.unsubscribeReadyState);
 
     // Re-check after async operations — tab may have been closed during init
     if (isClosingLifecycleState(tab.lifecycleState)) {
-      unsubscribeReadyState?.();
-      service?.cleanup();
+      lease.cleanup();
       return;
     }
 
 
     tab.providerId = providerId;
-    tab.service = service;
-    tab.runtimeSupervisor.setCurrent(service, plugin.getAgentSkillResourceGeneration?.() ?? 0);
+    tab.service = lease.runtime;
+    tab.runtimeSupervisor.setCurrent(lease.runtime, plugin.getAgentSkillResourceGeneration?.() ?? 0);
     tab.serviceInitialized = true;
-    tab.onRuntimeInstalled?.(service);
+    tab.onRuntimeInstalled?.(lease.runtime);
 
     // Update lifecycle state
     if (tab.lifecycleState === 'blank') {
@@ -854,8 +845,7 @@ export async function initializeTabService(
     tab.lifecycleState = 'bound_active';
   } catch (error) {
     // Clean up partial state on failure
-    unsubscribeReadyState?.();
-    service?.cleanup();
+    runtimeLease?.cleanup();
     tab.service = null;
     tab.serviceInitialized = false;
 
@@ -892,7 +882,7 @@ function initializeContextManagers(tab: TabData, plugin: FeatureHost): void {
     dom.inputContainerEl,
     contextTray,
   );
-  tab.ui.fileContextManager.setMcpManager(getProviderMcpManager(getTabProviderId(tab, plugin)));
+  tab.ui.fileContextManager.setMcpManager(getProviderMcpCatalog(getTabProviderId(tab, plugin)));
 
   tab.ui.imageContextManager = new ImageContextManager(
     dom.inputContainerEl,
@@ -1207,7 +1197,7 @@ function initializeInputToolbar(
   tab.ui.permissionToggle = toolbarComponents.permissionToggle;
   tab.ui.serviceTierToggle = toolbarComponents.serviceTierToggle;
 
-  tab.ui.mcpServerSelector.setMcpManager(getProviderMcpManager(getTabProviderId(tab, plugin)));
+  tab.ui.mcpServerSelector.setMcpManager(getProviderMcpCatalog(getTabProviderId(tab, plugin)));
 
   // Sync @-mentions to UI selector
   tab.ui.fileContextManager?.setOnMcpMentionChange((servers) => {
@@ -1899,15 +1889,115 @@ export function wireTabInputEvents(tab: TabData, plugin: FeatureHost): void {
   const SCROLL_THRESHOLD = 20; // pixels from bottom to consider "at bottom"
   const RE_ENABLE_DELAY = 150; // ms to wait before re-enabling auto-scroll
   let reEnableTimeout: number | null = null;
+  let bottomNavigationInProgress = false;
 
   const isAutoScrollAllowed = (): boolean => plugin.settings.enableAutoScroll ?? true;
+  const cancelReEnableTimeout = (): void => {
+    if (reEnableTimeout === null) return;
+    window.clearTimeout(reEnableTimeout);
+    reEnableTimeout = null;
+  };
+
+  const onNavigationScrollIntent = (intent: 'away' | 'bottom'): void => {
+    cancelReEnableTimeout();
+    const enabled = intent === 'bottom' && isAutoScrollAllowed();
+    bottomNavigationInProgress = enabled;
+    state.autoScrollEnabled = enabled;
+  };
+  ui.navigationSidebar?.setOnScrollIntent(onNavigationScrollIntent);
+  if (ui.navigationSidebar) {
+    dom.eventCleanups.push(() => ui.navigationSidebar?.setOnScrollIntent(null));
+  }
+
+  const nativeBoundaryScrollKeys = new Set(['end', 'home']);
+  const nativePageScrollKeys = new Set(['pagedown', 'pageup']);
+  const nativeArrowScrollKeys = new Set(['arrowdown', 'arrowup']);
+  const userScrollIntentHandler = (event: Event): void => {
+    if (event.type === 'keydown') {
+      const keyboardEvent = event as KeyboardEvent;
+      const settings = plugin.settings.keyboardNavigation;
+      const key = keyboardEvent.key.toLowerCase();
+      const hasControlModifier = keyboardEvent.ctrlKey || keyboardEvent.metaKey;
+      const isConfiguredScrollKey = !hasControlModifier
+        && !keyboardEvent.altKey
+        && !keyboardEvent.shiftKey && (
+        key === settings.scrollUpKey.toLowerCase()
+        || key === settings.scrollDownKey.toLowerCase()
+      );
+      const target = keyboardEvent.target as HTMLElement | null;
+      const targetTag = target?.tagName;
+      const isTextEntryTarget = targetTag === 'INPUT'
+        || targetTag === 'SELECT'
+        || targetTag === 'TEXTAREA'
+        || target?.isContentEditable === true;
+      const isActivatableTarget = targetTag === 'A'
+        || targetTag === 'BUTTON'
+        || targetTag === 'SUMMARY'
+        || target?.getAttribute?.('role') === 'button';
+      const isNativeBoundaryScrollKey = !keyboardEvent.altKey
+        && !keyboardEvent.shiftKey
+        && nativeBoundaryScrollKeys.has(key)
+        && !isTextEntryTarget;
+      const isNativePageScrollKey = !hasControlModifier
+        && !keyboardEvent.altKey
+        && !keyboardEvent.shiftKey
+        && nativePageScrollKeys.has(key)
+        && !isTextEntryTarget;
+      const isNativeArrowScrollKey = !keyboardEvent.altKey
+        && !keyboardEvent.shiftKey
+        && nativeArrowScrollKeys.has(key)
+        && !isTextEntryTarget
+        && !isActivatableTarget;
+      const isNativeSpaceScrollKey = key === ' '
+        && !hasControlModifier
+        && !keyboardEvent.altKey
+        && !isTextEntryTarget
+        && !isActivatableTarget;
+      const isNativeScrollKey = isNativeBoundaryScrollKey
+        || isNativePageScrollKey
+        || isNativeArrowScrollKey
+        || isNativeSpaceScrollKey;
+      if (!isConfiguredScrollKey && !isNativeScrollKey) {
+        return;
+      }
+    }
+    if (event.type === 'pointerdown') {
+      const pointerEvent = event as PointerEvent;
+      if (pointerEvent.target !== dom.messagesEl) return;
+      const scrollbarWidth = dom.messagesEl.offsetWidth - dom.messagesEl.clientWidth;
+      if (scrollbarWidth <= 0 || dom.messagesEl.scrollHeight <= dom.messagesEl.clientHeight) return;
+      const bounds = dom.messagesEl.getBoundingClientRect();
+      const pointerX = pointerEvent.clientX - bounds.left;
+      const direction = dom.messagesEl.ownerDocument.defaultView
+        ?.getComputedStyle?.(dom.messagesEl).direction;
+      const isInScrollbarGutter = direction === 'rtl'
+        ? pointerX <= scrollbarWidth
+        : pointerX >= bounds.width - scrollbarWidth;
+      if (!isInScrollbarGutter) return;
+    }
+    cancelReEnableTimeout();
+    bottomNavigationInProgress = false;
+    state.autoScrollEnabled = false;
+  };
+  const userScrollIntentEvents = [
+    'wheel',
+    'touchmove',
+    'pointerdown',
+    'keydown',
+  ] as const;
+  for (const eventName of userScrollIntentEvents) {
+    dom.messagesEl.addEventListener(eventName, userScrollIntentHandler, { passive: true });
+  }
+  dom.eventCleanups.push(() => {
+    for (const eventName of userScrollIntentEvents) {
+      dom.messagesEl.removeEventListener(eventName, userScrollIntentHandler);
+    }
+  });
 
   const scrollHandler = () => {
     if (!isAutoScrollAllowed()) {
-      if (reEnableTimeout) {
-        window.clearTimeout(reEnableTimeout);
-        reEnableTimeout = null;
-      }
+      bottomNavigationInProgress = false;
+      cancelReEnableTimeout();
       state.autoScrollEnabled = false;
       return;
     }
@@ -1917,14 +2007,13 @@ export function wireTabInputEvents(tab: TabData, plugin: FeatureHost): void {
 
     if (!isAtBottom) {
       // Immediately disable when user scrolls up
-      if (reEnableTimeout) {
-        window.clearTimeout(reEnableTimeout);
-        reEnableTimeout = null;
-      }
+      if (bottomNavigationInProgress) return;
+      cancelReEnableTimeout();
       state.autoScrollEnabled = false;
-    } else if (!state.autoScrollEnabled) {
+    } else {
+      if (state.autoScrollEnabled) return;
       // Debounce re-enabling to avoid bounce during scroll animation
-      if (!reEnableTimeout) {
+      if (reEnableTimeout === null) {
         reEnableTimeout = window.setTimeout(() => {
           reEnableTimeout = null;
           // Re-verify position before enabling (content may have changed)
@@ -1939,7 +2028,7 @@ export function wireTabInputEvents(tab: TabData, plugin: FeatureHost): void {
   dom.messagesEl.addEventListener('scroll', scrollHandler, { passive: true });
   dom.eventCleanups.push(() => {
     dom.messagesEl.removeEventListener('scroll', scrollHandler);
-    if (reEnableTimeout) window.clearTimeout(reEnableTimeout);
+    cancelReEnableTimeout();
   });
 }
 

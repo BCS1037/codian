@@ -169,7 +169,7 @@ function createMockTabData(overrides: Record<string, any> = {}): any {
   const defaultState = {
     isStreaming: false,
     hasPendingConversationSave: false,
-    needsAttention: false,
+    attention: null,
     messages: [],
     currentConversationId: null,
   };
@@ -877,7 +877,7 @@ describe('TabManager - Tab Bar Data', () => {
         id: `tab-${n}`,
         state: {
           isStreaming: n === 2,
-          needsAttention: n === 3,
+          attention: n === 3 ? { kind: 'review', since: 1 } : null,
         },
       }),
     });
@@ -897,7 +897,7 @@ describe('TabManager - Tab Bar Data', () => {
       expect(items[0]).toHaveProperty('providerId');
       expect(items[0]).toHaveProperty('isActive');
       expect(items[0]).toHaveProperty('isStreaming');
-      expect(items[0]).toHaveProperty('needsAttention');
+      expect(items[0]).toHaveProperty('attention');
       expect(items[0]).toHaveProperty('canClose');
     });
 
@@ -2773,9 +2773,12 @@ describe('TabManager - Callback Wiring', () => {
       const manager = new TabManager(createMockPlugin(), createMockMcpManager(), createMockEl(), createMockView(), callbacks);
       await manager.createTab();
 
-      capturedCallbacks.onAttentionChanged(true);
+      capturedCallbacks.onAttentionChanged({ kind: 'action-required', since: 123 });
 
-      expect(onTabAttentionChanged).toHaveBeenCalledWith('test-tab', true);
+      expect(onTabAttentionChanged).toHaveBeenCalledWith(
+        'test-tab',
+        { kind: 'action-required', since: 123 },
+      );
     });
 
     it('should wire onConversationIdChanged callback to sync tab conversationId', async () => {

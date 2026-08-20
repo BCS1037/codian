@@ -365,10 +365,12 @@ describe('ClaudianView Escape handling', () => {
   function createEscapeHarness(options: {
     isStreaming: boolean;
   }): {
+    cancelInlineRename: jest.Mock;
     cancelStreaming: jest.Mock;
     eventRefs: unknown[];
     view: any;
   } {
+    const cancelInlineRename = jest.fn().mockReturnValue(false);
     const cancelStreaming = jest.fn();
     const eventRefs: unknown[] = [];
     const parentScope = new Scope();
@@ -402,6 +404,7 @@ describe('ClaudianView Escape handling', () => {
       getActiveTab: jest.fn().mockReturnValue({
         state: { isStreaming: options.isStreaming },
         controllers: {
+          conversationController: { cancelInlineRename },
           inputController: { cancelStreaming },
         },
         ui: {
@@ -415,7 +418,7 @@ describe('ClaudianView Escape handling', () => {
       }),
     };
 
-    return { cancelStreaming, eventRefs, view };
+    return { cancelInlineRename, cancelStreaming, eventRefs, view };
   }
 
   function createScopedSendHarness(options: {
@@ -504,6 +507,19 @@ describe('ClaudianView Escape handling', () => {
     const result = escapeHandler.func({ key: 'Escape', isComposing: false } as KeyboardEvent);
 
     expect(cancelStreaming).toHaveBeenCalledTimes(1);
+    expect(result).toBe(false);
+  });
+
+  it('cancels inline rename before cancelling streaming', () => {
+    const { cancelInlineRename, cancelStreaming, view } = createEscapeHarness({ isStreaming: true });
+    cancelInlineRename.mockReturnValue(true);
+
+    view.wireEventHandlers();
+    const escapeHandler = view.scope.handlers.find((handler: any) => handler.key === 'Escape');
+    const result = escapeHandler.func({ key: 'Escape', isComposing: false } as KeyboardEvent);
+
+    expect(cancelInlineRename).toHaveBeenCalledTimes(1);
+    expect(cancelStreaming).not.toHaveBeenCalled();
     expect(result).toBe(false);
   });
 

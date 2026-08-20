@@ -4,6 +4,7 @@ import { Notice, Setting } from 'obsidian';
 import { ProviderSettingsCoordinator } from '../../../core/providers/ProviderSettingsCoordinator';
 import type { ProviderSettingsTabRenderer } from '../../../core/providers/types';
 import { t } from '../../../i18n/i18n';
+import { renderNativeMcpSettingsSection } from '../../../shared/settings/NativeMcpSettingsSection';
 import { getHostnameKey } from '../../../utils/env';
 import { expandHomePath } from '../../../utils/path';
 import { getCodexWorkspaceServices } from '../app/CodexWorkspaceServices';
@@ -325,20 +326,18 @@ export const codexSettingsTabRenderer: ProviderSettingsTabRenderer = {
     if (showSection('mcp')) {
       // --- MCP Servers ---
 
-    new Setting(container).setName(t('settings.mcpServers.name')).setHeading();
-    const mcpNotice = container.createDiv({ cls: 'claudian-mcp-settings-desc' });
-    const mcpDesc = mcpNotice.createEl('p', { cls: 'setting-item-description' });
-    mcpDesc.appendText(t('settings.codex.mcp.descBeforeCommand'));
-    mcpDesc.createEl('code').appendText('codex mcp');
-    mcpDesc.appendText(t('settings.codex.mcp.descAfterCommand'));
-    mcpDesc.createEl('a', {
-      text: t('settings.codex.mcp.learnMore'),
-      href: 'https://developers.openai.com/codex/mcp',
+    const mcpNotice = renderNativeMcpSettingsSection(container, {
+      descriptionAfterCommand: t('settings.codex.mcp.descAfterCommand'),
+      descriptionBeforeCommand: t('settings.codex.mcp.descBeforeCommand'),
+      documentationLabel: t('settings.codex.mcp.learnMore'),
+      documentationUrl: 'https://developers.openai.com/codex/mcp',
+      heading: t('settings.mcpServers.name'),
+      setupCommand: 'codex mcp',
     });
 
     const configuredServers = mcpNotice.createEl('ul');
-    void codexWorkspace.mcpManager.ensureLoaded().then(() => {
-      for (const server of codexWorkspace.mcpManager.getServers()) {
+    void codexWorkspace.mcpCatalog.ensureLoaded().then(() => {
+      for (const server of codexWorkspace.mcpCatalog.getServers()) {
         const item = configuredServers.createEl('li');
         item.createEl('code', { text: server.name });
       }

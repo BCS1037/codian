@@ -1,7 +1,7 @@
 import type { App, EventRef } from 'obsidian';
 import { Notice, TFile, TFolder } from 'obsidian';
 
-import type { McpServerManager } from '../../../core/mcp/McpServerManager';
+import type { McpServerCatalog } from '../../../core/mcp/McpServerCatalog';
 import { t } from '../../../i18n/i18n';
 import type { AgentMentionProvider } from '../../../shared/mention/MentionDropdownController';
 import { MentionDropdownController } from '../../../shared/mention/MentionDropdownController';
@@ -485,7 +485,7 @@ export class FileContextManager {
   // MCP Server Support
   // ========================================
 
-  setMcpManager(manager: McpServerManager | null): void {
+  setMcpManager(manager: McpServerCatalog | null): void {
     this.mentionDropdown.setMcpManager(manager);
   }
 

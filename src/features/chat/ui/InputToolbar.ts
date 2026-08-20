@@ -2,7 +2,7 @@ import { Notice, setIcon } from 'obsidian';
 import * as os from 'os';
 import * as path from 'path';
 
-import type { McpServerManager } from '../../../core/mcp/McpServerManager';
+import type { McpServerCatalog } from '../../../core/mcp/McpServerCatalog';
 import type {
   ProviderCapabilities,
   ProviderChatUIConfig,
@@ -595,23 +595,23 @@ export class ServiceTierToggle {
     }
 
     this.container.removeClass('claudian-hidden');
-    const current = this.callbacks.getSettings().serviceTier;
-    const isActive = current === toggleConfig.activeValue;
-    if (isActive) {
+    if (toggleConfig.isActive) {
       this.buttonEl.addClass('active');
     } else {
       this.buttonEl.removeClass('active');
     }
 
-    this.container.setAttribute('title', 'Toggle on/off fast mode');
+    const currentLabel = toggleConfig.isActive
+      ? toggleConfig.activeLabel
+      : toggleConfig.inactiveLabel;
+    this.container.setAttribute('title', `Fast mode: ${currentLabel}`);
   }
 
   private async toggle() {
     const toggleConfig = this.getToggleConfig();
     if (!toggleConfig) return;
 
-    const current = this.callbacks.getSettings().serviceTier;
-    const next = current === toggleConfig.activeValue
+    const next = toggleConfig.isActive
       ? toggleConfig.inactiveValue
       : toggleConfig.activeValue;
     await this.callbacks.onServiceTierChange(next);
@@ -974,7 +974,7 @@ export class McpServerSelector {
   private iconEl: HTMLElement | null = null;
   private badgeEl: HTMLElement | null = null;
   private dropdownEl: HTMLElement | null = null;
-  private mcpManager: McpServerManager | null = null;
+  private mcpManager: McpServerCatalog | null = null;
   private enabledServers: Set<string> = new Set();
   private onChangeCallback: ((enabled: Set<string>) => void) | null = null;
   private visible = true;
@@ -994,7 +994,7 @@ export class McpServerSelector {
     }
   }
 
-  setMcpManager(manager: McpServerManager | null): void {
+  setMcpManager(manager: McpServerCatalog | null): void {
     this.mcpManager = manager;
     if (!manager && this.enabledServers.size > 0) {
       this.enabledServers.clear();

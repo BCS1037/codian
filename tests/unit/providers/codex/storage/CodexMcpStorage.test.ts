@@ -1,16 +1,15 @@
 import type { CodexMcpCatalogReader } from '@/providers/codex/storage/CodexMcpStorage';
 import { CodexMcpStorage } from '@/providers/codex/storage/CodexMcpStorage';
 
-function createHomeAdapter(files: Record<string, string>) {
+function createHomeAccess(files: Record<string, string>) {
   return {
-    exists: jest.fn(async (path: string) => path in files),
-    read: jest.fn(async (path: string) => files[path]),
+    readMcpConfig: jest.fn(async () => files['.codex/config.toml'] ?? null),
   };
 }
 
 describe('CodexMcpStorage', () => {
   it('loads stdio and HTTP servers from the Codex home configuration', async () => {
-    const storage = new CodexMcpStorage(createHomeAdapter({
+    const storage = new CodexMcpStorage(createHomeAccess({
       '.codex/config.toml': [
         '[mcp_servers.local]',
         'command = "node"',
@@ -60,14 +59,14 @@ describe('CodexMcpStorage', () => {
   });
 
   it('returns no servers when configuration is missing or malformed', async () => {
-    await expect(new CodexMcpStorage(createHomeAdapter({})).load()).resolves.toEqual([]);
-    await expect(new CodexMcpStorage(createHomeAdapter({
+    await expect(new CodexMcpStorage(createHomeAccess({})).load()).resolves.toEqual([]);
+    await expect(new CodexMcpStorage(createHomeAccess({
       '.codex/config.toml': '[mcp_servers.broken',
     })).load()).resolves.toEqual([]);
   });
 
   it('prefers the provider CLI catalog over the TOML fallback', async () => {
-    const homeAdapter = createHomeAdapter({
+    const homeAccess = createHomeAccess({
       '.codex/config.toml': '[mcp_servers.legacy]\ncommand = "legacy"',
     });
     const cliCatalog: CodexMcpCatalogReader = {
@@ -87,14 +86,14 @@ describe('CodexMcpStorage', () => {
       }),
     };
 
-    await expect(new CodexMcpStorage(homeAdapter, cliCatalog).load()).resolves.toEqual([
+    await expect(new CodexMcpStorage(homeAccess, cliCatalog).load()).resolves.toEqual([
       expect.objectContaining({ name: 'cli-server' }),
     ]);
-    expect(homeAdapter.exists).not.toHaveBeenCalled();
+    expect(homeAccess.readMcpConfig).not.toHaveBeenCalled();
   });
 
   it('uses the TOML catalog when CLI discovery is unavailable', async () => {
-    const homeAdapter = createHomeAdapter({
+    const homeAccess = createHomeAccess({
       '.codex/config.toml': '[mcp_servers.legacy]\ncommand = "legacy"',
     });
     const cliCatalog: CodexMcpCatalogReader = {
@@ -104,7 +103,7 @@ describe('CodexMcpStorage', () => {
       }),
     };
 
-    await expect(new CodexMcpStorage(homeAdapter, cliCatalog).load()).resolves.toEqual([
+    await expect(new CodexMcpStorage(homeAccess, cliCatalog).load()).resolves.toEqual([
       expect.objectContaining({
         name: 'legacy',
         provenance: {
@@ -114,18 +113,18 @@ describe('CodexMcpStorage', () => {
         },
       }),
     ]);
-    expect(homeAdapter.exists).toHaveBeenCalledWith('.codex/config.toml');
+    expect(homeAccess.readMcpConfig).toHaveBeenCalledTimes(1);
   });
 
   it('does not fall back when CLI returns a valid empty catalog', async () => {
-    const homeAdapter = createHomeAdapter({
+    const homeAccess = createHomeAccess({
       '.codex/config.toml': '[mcp_servers.legacy]\ncommand = "legacy"',
     });
     const cliCatalog: CodexMcpCatalogReader = {
       discoverCatalog: jest.fn().mockResolvedValue({ kind: 'available', servers: [] }),
     };
 
-    await expect(new CodexMcpStorage(homeAdapter, cliCatalog).load()).resolves.toEqual([]);
-    expect(homeAdapter.exists).not.toHaveBeenCalled();
+    await expect(new CodexMcpStorage(homeAccess, cliCatalog).load()).resolves.toEqual([]);
+    expect(homeAccess.readMcpConfig).not.toHaveBeenCalled();
   });
 });

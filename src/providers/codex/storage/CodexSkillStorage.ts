@@ -2,11 +2,18 @@ import * as path from 'path';
 
 import type { VaultFileAdapter } from '../../../core/storage/VaultFileAdapter';
 import { parseSlashCommandContent, serializeSlashCommandMarkdown } from '../../../utils/slashCommand';
+import type { CodexHomeAccess, CodexSkillRootId } from './CodexHomeAccess';
+import {
+  AGENTS_VAULT_SKILLS_PATH,
+  CODEX_SKILL_ROOT_PATHS,
+  CODEX_VAULT_SKILLS_PATH,
+} from './CodexHomeAccess';
 
-export const CODEX_VAULT_SKILLS_PATH = '.codex/skills';
-export const AGENTS_VAULT_SKILLS_PATH = '.agents/skills';
-
-export type CodexSkillRootId = 'vault-codex' | 'vault-agents';
+export type { CodexSkillRootId } from './CodexHomeAccess';
+export {
+  AGENTS_VAULT_SKILLS_PATH,
+  CODEX_VAULT_SKILLS_PATH,
+} from './CodexHomeAccess';
 
 export const CODEX_SKILL_ROOT_OPTIONS = [
   { id: 'vault-codex' as const, label: CODEX_VAULT_SKILLS_PATH },
@@ -14,8 +21,7 @@ export const CODEX_SKILL_ROOT_OPTIONS = [
 ];
 
 const ROOT_PATH_BY_ID: Record<CodexSkillRootId, string> = {
-  'vault-codex': CODEX_VAULT_SKILLS_PATH,
-  'vault-agents': AGENTS_VAULT_SKILLS_PATH,
+  ...CODEX_SKILL_ROOT_PATHS,
 };
 
 const ROOT_ID_BY_PATH = new Map<string, CodexSkillRootId>(
@@ -135,14 +141,12 @@ export function resolveCodexSkillLocationFromPath(
 export class CodexSkillStorage {
   constructor(
     private vaultAdapter: CodexSkillStorageAdapter,
-    private homeAdapter?: CodexSkillStorageAdapter,
+    private homeAccess?: Pick<CodexHomeAccess, 'listSkillNames' | 'readSkill'>,
   ) {}
 
   async scanAll(): Promise<CodexSkillEntry[]> {
     const vaultSkills = await this.scanRoots(this.vaultAdapter, ALL_SCAN_ROOTS, 'vault');
-    const homeSkills = this.homeAdapter
-      ? await this.scanRoots(this.homeAdapter, ALL_SCAN_ROOTS, 'home')
-      : [];
+    const homeSkills = this.homeAccess ? await this.scanHomeRoots() : [];
 
     // Deduplicate: vault takes priority over home
     const seen = new Set(vaultSkills.map(s => s.name.toLowerCase()));
@@ -233,6 +237,39 @@ export class CodexSkillStorage {
         }
       } catch {
         // Root doesn't exist or can't be read
+      }
+    }
+
+    return results;
+  }
+
+  private async scanHomeRoots(): Promise<CodexSkillEntry[]> {
+    const results: CodexSkillEntry[] = [];
+    if (!this.homeAccess) {
+      return results;
+    }
+
+    for (const rootId of ALL_SCAN_ROOTS) {
+      try {
+        const skillNames = await this.homeAccess.listSkillNames(rootId);
+        for (const skillName of skillNames) {
+          try {
+            const content = await this.homeAccess.readSkill(rootId, skillName);
+            const parsed = parseSlashCommandContent(content);
+
+            results.push({
+              name: skillName,
+              description: parsed.description,
+              content: parsed.promptContent,
+              provenance: 'home',
+              rootId,
+            });
+          } catch {
+            // Skip malformed or inaccessible files.
+          }
+        }
+      } catch {
+        // Root doesn't exist or can't be read.
       }
     }
 

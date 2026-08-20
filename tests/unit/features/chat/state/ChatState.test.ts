@@ -61,7 +61,7 @@ describe('ChatState', () => {
       expect(state.usage).toBeNull();
       expect(state.ignoreUsageUpdates).toBe(false);
       expect(state.currentTodos).toBeNull();
-      expect(state.needsAttention).toBe(false);
+      expect(state.attention).toBeNull();
       expect(state.autoScrollEnabled).toBe(true);
       expect(state.responseStartTime).toBeNull();
       expect(state.flavorTimerInterval).toBeNull();
@@ -322,14 +322,49 @@ describe('ChatState', () => {
     });
   });
 
-  describe('needsAttention', () => {
-    it('fires onAttentionChanged when value changes', () => {
+  describe('attention', () => {
+    it('marks a completed turn for review', () => {
       const onAttentionChanged = jest.fn();
       const chatState = new ChatState({ onAttentionChanged });
 
-      chatState.needsAttention = true;
+      chatState.markReviewRequired();
 
-      expect(onAttentionChanged).toHaveBeenCalledWith(true);
+      expect(chatState.attention).toEqual({
+        kind: 'review',
+        since: expect.any(Number),
+      });
+      expect(chatState.needsAttention).toBe(true);
+      expect(chatState.requiresAction).toBe(false);
+      expect(onAttentionChanged).toHaveBeenCalledWith(chatState.attention);
+    });
+
+    it('distinguishes pending action and restores review after action ends', () => {
+      const chatState = new ChatState();
+
+      chatState.markReviewRequired();
+      const reviewSince = chatState.attention!.since;
+      chatState.beginActionRequired('approval-1');
+
+      expect(chatState.attention).toEqual({
+        kind: 'action-required',
+        since: expect.any(Number),
+      });
+      expect(chatState.requiresAction).toBe(true);
+
+      chatState.endActionRequired('approval-1');
+
+      expect(chatState.attention).toEqual({ kind: 'review', since: reviewSince });
+      expect(chatState.requiresAction).toBe(false);
+    });
+
+    it('acknowledges review without affecting action-required state', () => {
+      const chatState = new ChatState();
+
+      chatState.markReviewRequired();
+      chatState.acknowledgeReview();
+
+      expect(chatState.attention).toBeNull();
+      expect(chatState.needsAttention).toBe(false);
     });
   });
 

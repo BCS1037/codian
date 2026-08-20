@@ -75,7 +75,7 @@ export async function createClaudeWorkspaceServices(
     claudeStorage,
     cliResolver,
     mcpStorage,
-    mcpServerManager: mcpManager,
+    mcpCatalog: mcpManager,
     mcpSourcePath: '.claude/mcp.json',
     mcpManager,
     pluginManager,

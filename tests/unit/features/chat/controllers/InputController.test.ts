@@ -2791,12 +2791,17 @@ describe('InputController - Message Queue', () => {
       );
 
       expect((controller as any).pendingApprovalInline).not.toBeNull();
+      expect(deps.state.attention).toEqual(expect.objectContaining({
+        kind: 'action-required',
+        since: expect.any(Number),
+      }));
 
       controller.dismissPendingApproval();
       expect((controller as any).pendingApprovalInline).toBeNull();
 
       const result = await approvalPromise;
       expect(result).toBe('cancel');
+      expect(deps.state.attention).toBeNull();
     });
 
     it('should throw when input container has no parent', async () => {
@@ -3019,12 +3024,17 @@ describe('InputController - Message Queue', () => {
       });
 
       expect(inputContainerEl.style.display).toBe('none');
+      expect(deps.state.requiresAction).toBe(true);
 
-      controller.dismissPendingApproval();
+      controller.dismissPendingApprovalPrompt();
 
       await expect(approvalPromise).resolves.toBe('cancel');
+      expect(deps.state.requiresAction).toBe(true);
+
+      controller.dismissPendingApproval();
       await expect(askPromise).resolves.toBeNull();
       expect(inputContainerEl.style.display).toBe('');
+      expect(deps.state.attention).toBeNull();
     });
 
     it('should keep input hidden until overlapping exit-plan prompt is dismissed', async () => {
@@ -3043,6 +3053,7 @@ describe('InputController - Message Queue', () => {
       const exitPlanPromise = controller.handleExitPlanMode({});
 
       expect(inputContainerEl.style.display).toBe('none');
+      expect(deps.state.requiresAction).toBe(true);
 
       const items = parentEl.querySelectorAll('claudian-ask-item');
       const allowOnceItem = items.find((item: any) => {
@@ -3054,10 +3065,12 @@ describe('InputController - Message Queue', () => {
       allowOnceItem!.click();
       await expect(approvalPromise).resolves.toBe('allow');
       expect(inputContainerEl.style.display).toBe('none');
+      expect(deps.state.requiresAction).toBe(true);
 
       controller.dismissPendingApproval();
       await expect(exitPlanPromise).resolves.toBeNull();
       expect(inputContainerEl.style.display).toBe('');
+      expect(deps.state.attention).toBeNull();
     });
   });
 
@@ -3675,10 +3688,15 @@ describe('InputController - Message Queue', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
 
       expect((controller as any).pendingPlanApproval).not.toBeNull();
+      expect(deps.state.attention).toEqual(expect.objectContaining({
+        kind: 'action-required',
+        since: expect.any(Number),
+      }));
 
       controller.dismissPendingApproval();
       await sendPromise;
 
+      expect(deps.state.attention).toBeNull();
       expect(restoreFn).not.toHaveBeenCalled();
       expect(deps.conversationController.save).not.toHaveBeenCalled();
       expect(mockAgentService.query).toHaveBeenCalledTimes(1);

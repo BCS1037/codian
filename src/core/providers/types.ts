@@ -1,8 +1,7 @@
 import type { CursorContext } from '../../utils/editor';
 import type { SharedAppStorage } from '../bootstrap/storage';
-import type { McpServerManager } from '../mcp/McpServerManager';
+import type { McpServerCatalog } from '../mcp/McpServerCatalog';
 import type { ChatRuntime } from '../runtime/ChatRuntime';
-import type { HomeFileAdapter } from '../storage/HomeFileAdapter';
 import type { VaultFileAdapter } from '../storage/VaultFileAdapter';
 import type {
   AgentDefinition,
@@ -278,6 +277,8 @@ export interface ProviderServiceTierToggleConfig {
   inactiveLabel: string;
   activeValue: string;
   activeLabel: string;
+  /** Whether the provider will use the active tier for the next request. */
+  isActive: boolean;
   description?: string;
 }
 
@@ -447,7 +448,7 @@ export interface ProviderWorkspaceServices {
   cliResolver?: ProviderCliResolver | null;
   runtimeCommandLoader?: ProviderRuntimeCommandLoader | null;
   tabWarmupPolicy?: ProviderTabWarmupPolicy | null;
-  mcpServerManager?: McpServerManager | null;
+  mcpCatalog?: McpServerCatalog | null;
   mcpSourcePath?: string | null;
   settingsTabRenderer?: ProviderSettingsTabRenderer | null;
   refreshAgentMentions?(context?: ProviderTransitionOwnerContext): Promise<void>;
@@ -504,7 +505,6 @@ export interface ProviderWorkspaceInitContext {
   plugin: ProviderHost;
   storage: SharedAppStorage;
   vaultAdapter: VaultFileAdapter;
-  homeAdapter: HomeFileAdapter;
 }
 
 export interface ProviderWorkspaceRegistration<

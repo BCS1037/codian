@@ -18,6 +18,7 @@ import type { StreamController } from '../controllers/StreamController';
 import type { MessageRenderer } from '../rendering/MessageRenderer';
 import type { SubagentManager } from '../services/SubagentManager';
 import type { ChatState } from '../state/ChatState';
+import type { TabAttention } from '../state/types';
 import type { BangBashModeManager } from '../ui/BangBashModeManager';
 import type { ComposerContextTray } from '../ui/ComposerContextTray';
 import type { FileContextManager } from '../ui/FileContext';
@@ -306,7 +307,7 @@ export interface TabManagerCallbacks {
   onTabTitleChanged?: (tabId: TabId, title: string) => void;
 
   /** Called when tab attention state changes (approval pending, etc.). */
-  onTabAttentionChanged?: (tabId: TabId, needsAttention: boolean) => void;
+  onTabAttentionChanged?: (tabId: TabId, attention: TabAttention) => void;
 
   /** Called when a tab's conversation changes (loaded different conversation in same tab). */
   onTabConversationChanged?: (tabId: TabId, conversationId: string | null) => void;
@@ -326,6 +327,6 @@ export interface TabBarItem {
   providerId: ProviderId;
   isActive: boolean;
   isStreaming: boolean;
-  needsAttention: boolean;
+  attention: TabAttention;
   canClose: boolean;
 }

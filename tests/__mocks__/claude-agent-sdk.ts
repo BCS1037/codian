@@ -95,6 +95,8 @@ export type PermissionUpdate =
   | { type: 'addDirectories'; directories: string[]; destination: PermissionUpdateDestination }
   | { type: 'removeDirectories'; directories: string[]; destination: PermissionUpdateDestination };
 
+export type PermissionDecisionClassification = 'user_temporary' | 'user_permanent' | 'user_reject';
+
 export type CanUseTool = (toolName: string, input: Record<string, unknown>, options: {
   signal: AbortSignal;
   suggestions?: PermissionUpdate[];
@@ -105,7 +107,13 @@ export type CanUseTool = (toolName: string, input: Record<string, unknown>, opti
 }) => Promise<PermissionResult>;
 
 export type PermissionResult =
-  | { behavior: 'allow'; updatedInput?: Record<string, unknown>; updatedPermissions?: PermissionUpdate[]; toolUseID?: string }
+  | {
+    behavior: 'allow';
+    updatedInput?: Record<string, unknown>;
+    updatedPermissions?: PermissionUpdate[];
+    decisionClassification?: PermissionDecisionClassification;
+    toolUseID?: string;
+  }
   | { behavior: 'deny'; message: string; interrupt?: boolean; toolUseID?: string };
 
 // Default mock messages for testing

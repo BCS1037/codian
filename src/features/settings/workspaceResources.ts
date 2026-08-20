@@ -129,10 +129,10 @@ function loadAgentResources(providerIds: readonly ProviderId[]): WorkspaceResour
 function loadMcpResources(providerIds: readonly ProviderId[]): WorkspaceResourceRow[] {
   return providerIds.flatMap((providerId) => {
     const services = ProviderWorkspaceRegistry.getServices(providerId);
-    const manager = services?.mcpServerManager;
-    if (!manager) return [];
+    const catalog = services?.mcpCatalog;
+    if (!catalog) return [];
     const source = services.mcpSourcePath ?? `${providerId} MCP configuration`;
-    return manager.getServers().map((server): WorkspaceResourceRow => ({
+    return catalog.getServers().map((server): WorkspaceResourceRow => ({
       key: `${providerId}:${server.name}`,
       name: server.name,
       providerIds: [providerId],

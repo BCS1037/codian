@@ -1,4 +1,4 @@
-import { McpServerManager } from '../../../core/mcp/McpServerManager';
+import { McpServerCatalog } from '../../../core/mcp/McpServerCatalog';
 import type { ProviderCommandCatalog } from '../../../core/providers/commands/ProviderCommandCatalog';
 import type { ProviderVaultEntryRepository } from '../../../core/providers/commands/ProviderVaultEntryRepository';
 import type { ProviderHost } from '../../../core/providers/ProviderHost';
@@ -10,7 +10,6 @@ import type {
   ProviderWorkspaceRegistration,
   ProviderWorkspaceServices,
 } from '../../../core/providers/types';
-import type { HomeFileAdapter } from '../../../core/storage/HomeFileAdapter';
 import type { VaultFileAdapter } from '../../../core/storage/VaultFileAdapter';
 import { getVaultPath } from '../../../utils/path';
 import { CodexAgentMentionProvider } from '../agents/CodexAgentMentionProvider';
@@ -21,13 +20,15 @@ import { CodexModelCatalogCoordinator } from '../runtime/CodexModelCatalogCoordi
 import { CodexModelDiscoveryService } from '../runtime/CodexModelDiscoveryService';
 import { getCodexProviderSettings } from '../settings';
 import { CodexSkillListingService } from '../skills/CodexSkillListingService';
+import type { CodexHomeAccess } from '../storage/CodexHomeAccess';
+import { CodexHomeFileAccess } from '../storage/CodexHomeAccess';
 import { CodexMcpStorage } from '../storage/CodexMcpStorage';
 import { CodexSkillStorage } from '../storage/CodexSkillStorage';
 import { CodexSubagentStorage } from '../storage/CodexSubagentStorage';
 import { codexSettingsTabRenderer } from '../ui/CodexSettingsTab';
 
 export interface CodexWorkspaceServices extends ProviderWorkspaceServices {
-  mcpManager: McpServerManager;
+  mcpCatalog: McpServerCatalog;
   subagentStorage: CodexSubagentStorage;
   commandCatalog: ProviderCommandCatalog;
   vaultCommandRepository: ProviderVaultEntryRepository & { refresh(): Promise<void> };
@@ -46,14 +47,11 @@ function createCodexCliResolver(): ProviderCliResolver {
 export async function createCodexWorkspaceServices(
   plugin: ProviderHost,
   vaultAdapter: VaultFileAdapter,
-  homeAdapter?: HomeFileAdapter,
+  homeAccess: CodexHomeAccess = new CodexHomeFileAccess(),
 ): Promise<CodexWorkspaceServices> {
   const cliMcpCatalog = new CodexMcpCatalogService(plugin);
-  const mcpStorage = new CodexMcpStorage(homeAdapter ?? {
-    exists: async () => false,
-    read: async () => '',
-  }, cliMcpCatalog);
-  const mcpManager = new McpServerManager(mcpStorage);
+  const mcpStorage = new CodexMcpStorage(homeAccess, cliMcpCatalog);
+  const mcpCatalog = new McpServerCatalog(mcpStorage);
   const subagentStorage = new CodexSubagentStorage(vaultAdapter);
   const agentMentionProvider = new CodexAgentMentionProvider(subagentStorage);
 
@@ -62,7 +60,7 @@ export async function createCodexWorkspaceServices(
   const modelCatalogCoordinator = new CodexModelCatalogCoordinator(plugin, modelDiscovery);
   const commandCatalog = new CodexSkillCatalog(skillListProvider);
   const vaultCommandRepository = new CodexVaultSkillRepository(
-    new CodexSkillStorage(vaultAdapter, homeAdapter),
+    new CodexSkillStorage(vaultAdapter, homeAccess),
     skillListProvider,
     getVaultPath(plugin.app),
   );
@@ -74,9 +72,8 @@ export async function createCodexWorkspaceServices(
   }
 
   return {
-    mcpServerManager: mcpManager,
+    mcpCatalog,
     mcpSourcePath: 'codex mcp list --json (fallback: ~/.codex/config.toml)',
-    mcpManager,
     subagentStorage,
     commandCatalog,
     vaultCommandRepository,
@@ -90,7 +87,7 @@ export async function createCodexWorkspaceServices(
     refreshModelCatalog: async context => modelCatalogCoordinator.refreshModelCatalog(context),
     prepareSettings: async () => {
       await Promise.all([
-        mcpManager.loadServers(),
+        mcpCatalog.loadServers(),
         agentMentionProvider.loadAgents(),
       ]);
     },
@@ -99,10 +96,9 @@ export async function createCodexWorkspaceServices(
 }
 
 export const codexWorkspaceRegistration: ProviderWorkspaceRegistration<CodexWorkspaceServices> = {
-  initialize: async ({ plugin, vaultAdapter, homeAdapter }) => createCodexWorkspaceServices(
+  initialize: async ({ plugin, vaultAdapter }) => createCodexWorkspaceServices(
     plugin,
     vaultAdapter,
-    homeAdapter,
   ),
 };
 

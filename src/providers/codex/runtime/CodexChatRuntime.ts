@@ -39,6 +39,7 @@ import {
 import { getCodexModelOptions } from '../modelOptions';
 import {
   findCodexModel,
+  resolveCodexModelServiceTier,
   resolveCodexReasoningEffort,
 } from '../models';
 import { toCodexRuntimeModelId } from '../modelSelection';
@@ -109,20 +110,7 @@ function resolveCodexServiceTier(
   settings: Record<string, unknown>,
 ): string | null {
   const model = findCodexModel(getCodexProviderSettings(settings).discoveredModels, modelId);
-  if (!model) {
-    return null;
-  }
-
-  if (typeof serviceTier === 'string') {
-    if (model.serviceTiers.some(tier => tier.id === serviceTier)) {
-      return serviceTier;
-    }
-    if (serviceTier === 'fast') {
-      return model.serviceTiers.find(tier => tier.name.toLowerCase() === 'fast')?.id ?? null;
-    }
-  }
-
-  return model.defaultServiceTier;
+  return resolveCodexModelServiceTier(model, serviceTier);
 }
 
 const LEGACY_WORKSPACE_DEPENDENCY_NOTICE =
