@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.3 — 2026-08-20
+
+- Fixed Codex memory citation metadata leaking into visible chat responses and history replay.
+- Improved Codex compatibility with streamed and persisted assistant messages.
+- Updated Obsidian, Provider, build, and release dependencies and settings type compatibility.
+
 ## 1.3.2 — 2026-08-20
 
 - Improved Provider workspace and Codex resource handling.

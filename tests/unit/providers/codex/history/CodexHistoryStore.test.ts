@@ -439,6 +439,69 @@ describe('CodexHistoryStore', () => {
       ]);
     });
 
+    it('does not expose raw memory citation markup from persisted assistant messages', () => {
+      const citationMarkup = [
+        '<oai-mem-citation>',
+        '<citation_entries>',
+        'MEMORY.md:10-12|note=[Used project conventions]',
+        '</citation_entries>',
+        '<rollout_ids>',
+        'thread-1',
+        '</rollout_ids>',
+        '</oai-mem-citation>',
+      ].join('\n');
+      const content = JSON.stringify({
+        timestamp: '2026-07-29T00:00:00.000Z',
+        type: 'response_item',
+        payload: {
+          type: 'message',
+          role: 'assistant',
+          content: [{ type: 'output_text', text: `Answer\n${citationMarkup}` }],
+        },
+      });
+
+      const messages = parseCodexSessionContent(content);
+
+      expect(messages).toHaveLength(1);
+      expect(messages[0].content).toBe('Answer');
+      expect(messages[0].content).not.toContain('oai-mem-citation');
+    });
+
+    it('does not expose raw memory citation markup from event messages', () => {
+      const citationMarkup = [
+        '<oai-mem-citation>',
+        '<citation_entries>',
+        'MEMORY.md:10-12|note=[Used project conventions]',
+        '</citation_entries>',
+        '<rollout_ids>',
+        '</rollout_ids>',
+        '</oai-mem-citation>',
+      ].join('\n');
+      const content = [
+        JSON.stringify({
+          timestamp: '2026-07-29T00:00:00.000Z',
+          type: 'event_msg',
+          payload: { type: 'task_started' },
+        }),
+        JSON.stringify({
+          timestamp: '2026-07-29T00:00:01.000Z',
+          type: 'event_msg',
+          payload: { type: 'agent_message', message: `Answer${citationMarkup}` },
+        }),
+        JSON.stringify({
+          timestamp: '2026-07-29T00:00:02.000Z',
+          type: 'event_msg',
+          payload: { type: 'task_complete' },
+        }),
+      ].join('\n');
+
+      const messages = parseCodexSessionContent(content);
+
+      expect(messages).toHaveLength(1);
+      expect(messages[0].content).toBe('Answer');
+      expect(messages[0].content).not.toContain('oai-mem-citation');
+    });
+
     it('deduplicates the same user message when both response_item and event_msg are persisted', () => {
       const content = [
         JSON.stringify({

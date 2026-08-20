@@ -88,6 +88,62 @@ describe('CodexNotificationRouter', () => {
       ]);
     });
 
+    it('does not append raw memory citation markup after streamed text', () => {
+      router.handleNotification('item/agentMessage/delta', {
+        threadId: 't1',
+        turnId: 'turn1',
+        itemId: 'msg1',
+        delta: 'Answer\n',
+      });
+      router.handleNotification('rawResponseItem/completed', {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: {
+          type: 'message',
+          role: 'assistant',
+          content: [{
+            type: 'output_text',
+            text: [
+              'Answer',
+              '<oai-mem-citation>',
+              '<citation_entries>',
+              'MEMORY.md:10-12|note=[Used project conventions]',
+              '</citation_entries>',
+              '<rollout_ids>',
+              '</rollout_ids>',
+              '</oai-mem-citation>',
+            ].join('\n'),
+          }],
+        },
+      });
+
+      expect(chunks).toEqual([{ type: 'text', content: 'Answer\n' }]);
+    });
+
+    it('strips raw memory citation markup from canonical completion text', () => {
+      router.handleNotification('item/started', {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: { type: 'agentMessage', id: 'msg1', text: '', phase: 'commentary', memoryCitation: null },
+      });
+      router.handleNotification('item/completed', {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: {
+          type: 'agentMessage',
+          id: 'msg1',
+          text: 'Answer<oai-mem-citation>internal</oai-mem-citation>',
+          phase: 'final_answer',
+          memoryCitation: null,
+        },
+      });
+
+      expect(chunks).toEqual([
+        { type: 'assistant_message_start', itemId: 'msg1' },
+        { type: 'text', content: 'Answer' },
+      ]);
+    });
+
     it('deduplicates raw completed text against the current post-tool assistant segment', () => {
       router.handleNotification('item/agentMessage/delta', {
         threadId: 't1',
