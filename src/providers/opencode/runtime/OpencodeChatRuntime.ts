@@ -366,10 +366,16 @@ export class OpencodeChatRuntime implements ChatRuntime {
       this.currentDatabasePath,
     );
     const promptSettings = this.getSystemPromptSettings(cwd);
+    const [memoryAppendix, consciousnessAppendix] = await Promise.all([
+      this.plugin.getMemoryInjectionText?.() ?? Promise.resolve(null),
+      this.plugin.getConsciousnessInjectionText?.() ?? Promise.resolve(null),
+    ]);
+    const combinedAppendix = [memoryAppendix, consciousnessAppendix].filter(Boolean).join('\n\n') || undefined;
     const artifacts = await prepareOpencodeLaunchArtifacts({
       runtimeEnv,
       settings: promptSettings,
       workspaceRoot: cwd,
+      memoryAppendix: combinedAppendix,
     });
     if (!this.isReadinessCurrent(lifecycleGeneration, conversationGeneration)) {
       return false;

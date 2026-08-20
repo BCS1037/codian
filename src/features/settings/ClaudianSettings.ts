@@ -952,6 +952,120 @@ export class ClaudianSettingTab extends PluginSettingTab {
         });
       });
 
+    // --- Long-term memory and awareness ---
+
+    new Setting(container).setName(t('settings.memory.heading')).setHeading();
+
+    new Setting(container)
+      .setName(t('settings.memory.enabled.name'))
+      .setDesc(t('settings.memory.enabled.desc'))
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.memoryEnabled)
+          .onChange(async (value) => {
+            await this.plugin.mutateSettings(settings => { settings.memoryEnabled = value; });
+            await this.restartServiceForPromptChange();
+            this.display();
+          });
+      });
+
+    if (this.plugin.settings.memoryEnabled) {
+      new Setting(container)
+        .setName(t('settings.memory.filePath.name'))
+        .setDesc(t('settings.memory.filePath.desc'))
+        .addText((text) => {
+          text
+            .setPlaceholder('.claudian/memory.md')
+            .setValue(this.plugin.settings.memoryFilePath)
+            .onChange(async (value) => {
+              await this.plugin.mutateSettings(settings => {
+                settings.memoryFilePath = value.trim() || '.claudian/memory.md';
+              });
+            });
+          text.inputEl.addEventListener('blur', () => { void this.restartServiceForPromptChange(); });
+        });
+
+      new Setting(container)
+        .setName(t('settings.memory.maxChars.name'))
+        .setDesc(t('settings.memory.maxChars.desc'))
+        .addSlider((slider) => {
+          slider
+            .setLimits(500, 5000, 100)
+            .setValue(this.plugin.settings.memoryMaxInjectionChars)
+            .setDynamicTooltip()
+            .onChange(async (value) => {
+              await this.plugin.mutateSettings(settings => { settings.memoryMaxInjectionChars = value; });
+            });
+        });
+
+      const memoryActions = new Setting(container);
+      memoryActions.addButton(button => {
+        button.setButtonText(t('settings.memory.view')).onClick(async () => {
+          const path = this.plugin.settings.memoryFilePath;
+          if (this.app.vault.getAbstractFileByPath(path)) {
+            await this.app.workspace.openLinkText(path, '', false);
+          } else {
+            new Notice('No memory file exists yet. Ask Codian to remember something first.');
+          }
+        });
+      });
+      memoryActions.addButton(button => {
+        button.setButtonText(t('settings.memory.clear')).setWarning().onClick(async () => {
+          await this.plugin.getMemoryStore().save([]);
+          await this.restartServiceForPromptChange();
+          new Notice('Long-term memory cleared.');
+        });
+      });
+    }
+
+    new Setting(container).setName(t('settings.consciousness.heading')).setHeading();
+
+    new Setting(container)
+      .setName(t('settings.consciousness.enabled.name'))
+      .setDesc(t('settings.consciousness.enabled.desc'))
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.consciousnessEnabled)
+          .onChange(async (value) => {
+            await this.plugin.mutateSettings(settings => { settings.consciousnessEnabled = value; });
+            if (value) await this.plugin.getConsciousnessEngine().initialize();
+            await this.restartServiceForPromptChange();
+            this.display();
+          });
+      });
+
+    if (this.plugin.settings.consciousnessEnabled) {
+      new Setting(container)
+        .setName(t('settings.consciousness.autoMemory.name'))
+        .setDesc(t('settings.consciousness.autoMemory.desc'))
+        .addToggle((toggle) => {
+          toggle
+            .setValue(this.plugin.settings.consciousnessAutoMemory)
+            .onChange(async (value) => {
+              await this.plugin.mutateSettings(settings => { settings.consciousnessAutoMemory = value; });
+            });
+        });
+
+      const awarenessActions = new Setting(container);
+      awarenessActions.addButton(button => {
+        button.setButtonText(t('settings.consciousness.open')).setCta().onClick(async () => {
+          await this.plugin.getConsciousnessEngine().initialize();
+          await this.app.workspace.openLinkText('.claudian/awareness/SOUL.md', '', false);
+        });
+      });
+      awarenessActions.addButton(button => {
+        button.setButtonText(t('settings.consciousness.reset')).setWarning().onClick(async () => {
+          await this.plugin.getConsciousnessEngine().clearAll(
+            this.plugin.settings.memoryFilePath,
+            { clearMemoryFile: false },
+          );
+          await this.plugin.getVaultKnowledgeEngine().clearIndex();
+          await this.restartServiceForPromptChange();
+          new Notice('Awareness files and vault index reset.');
+        });
+      });
+    }
+
     // --- Input ---
 
     new Setting(container).setName(t('settings.input')).setHeading();

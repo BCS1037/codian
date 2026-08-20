@@ -1,5 +1,9 @@
 import { getDefaultHiddenProviderCommands } from '../../core/providers/commands/hiddenCommands';
 import { DEFAULT_REASONING_VALUE } from '../../core/providers/reasoning';
+import {
+  DEFAULT_MEMORY_FILE_PATH,
+  DEFAULT_MEMORY_MAX_INJECTION_CHARS,
+} from '../../core/memory';
 import { type ClaudianSettings } from '../../core/types/settings';
 import { getBuiltInProviderDefaultConfigs } from '../../providers/defaultProviderConfigs';
 
@@ -55,4 +59,10 @@ export const DEFAULT_CLAUDIAN_SETTINGS: ClaudianSettings = {
   chatNavigationMode: 'conversation-rail',
 
   hiddenProviderCommands: getDefaultHiddenProviderCommands(),
+
+  memoryEnabled: true,
+  memoryFilePath: DEFAULT_MEMORY_FILE_PATH,
+  memoryMaxInjectionChars: DEFAULT_MEMORY_MAX_INJECTION_CHARS,
+  consciousnessEnabled: false,
+  consciousnessAutoMemory: false,
 };

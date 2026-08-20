@@ -140,6 +140,36 @@
       "name": "Custom system prompt",
       "desc": "Additional instructions appended to the default system prompt"
     },
+    "memory": {
+      "heading": "Long-term memory",
+      "enabled": {
+        "name": "Enable long-term memory",
+        "desc": "Keep explicit memories in an editable vault Markdown file and include them as bounded reference context."
+      },
+      "filePath": {
+        "name": "Memory file",
+        "desc": "Path relative to the vault. You can edit this Markdown file directly."
+      },
+      "maxChars": {
+        "name": "Maximum injected characters",
+        "desc": "Caps the memory context sent to each provider."
+      },
+      "view": "Open memory",
+      "clear": "Clear memory"
+    },
+    "consciousness": {
+      "heading": "Awareness",
+      "enabled": {
+        "name": "Enable awareness",
+        "desc": "Use editable collaboration and user-profile files as optional prompt context. Disabled by default."
+      },
+      "autoMemory": {
+        "name": "Automatically retain durable facts",
+        "desc": "Use conservative local heuristics to retain preferences, project context, and corrections from user messages."
+      },
+      "open": "Open awareness file",
+      "reset": "Reset awareness"
+    },
     "autoTitle": {
       "name": "Auto-generate conversation titles",
       "desc": "Automatically generate conversation titles after the first user message is sent."

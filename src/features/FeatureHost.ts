@@ -1,6 +1,12 @@
 import type { App } from 'obsidian';
 
 import type { SharedAppStorage } from '../core/bootstrap/storage';
+import type {
+  ConsciousnessEngine,
+  MemoryExtractor,
+  MemoryStore,
+  VaultKnowledgeEngine,
+} from '../core/memory';
 import type { ProviderHost } from '../core/providers/ProviderHost';
 import type { AppTabManagerState, ProviderId } from '../core/providers/types';
 import type { ChatRuntime } from '../core/runtime/ChatRuntime';
@@ -33,6 +39,11 @@ export interface FeatureHost {
   readonly providerHost: ProviderHost;
   readonly settings: ClaudianSettings;
   readonly storage: SharedAppStorage;
+  readonly memoryExtractor: MemoryExtractor;
+
+  getMemoryStore(): MemoryStore;
+  getConsciousnessEngine(): ConsciousnessEngine;
+  getVaultKnowledgeEngine(): VaultKnowledgeEngine;
 
   mutateSettings(
     mutation: (settings: ClaudianSettings) => void | Promise<void>,

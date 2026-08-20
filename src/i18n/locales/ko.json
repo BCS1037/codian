@@ -159,6 +159,19 @@
       "name": "커스텀 시스템 프롬프트",
       "desc": "기본 시스템 프롬프트에 추가되는 추가 지침"
     },
+    "memory": {
+      "heading": "Long-term memory",
+      "enabled": { "name": "Enable long-term memory", "desc": "Keep explicit memories in an editable vault Markdown file and include them as bounded reference context." },
+      "filePath": { "name": "Memory file", "desc": "Path relative to the vault. You can edit this Markdown file directly." },
+      "maxChars": { "name": "Maximum injected characters", "desc": "Caps the memory context sent to each provider." },
+      "view": "Open memory", "clear": "Clear memory"
+    },
+    "consciousness": {
+      "heading": "Awareness",
+      "enabled": { "name": "Enable awareness", "desc": "Use editable collaboration and user-profile files as optional prompt context. Disabled by default." },
+      "autoMemory": { "name": "Automatically retain durable facts", "desc": "Use conservative local heuristics to retain preferences, project context, and corrections from user messages." },
+      "open": "Open awareness file", "reset": "Reset awareness"
+    },
     "autoTitle": {
       "name": "대화 제목 자동 생성",
       "desc": "첫 번째 사용자 메시지 전송 후 자동으로 대화 제목을 생성합니다."

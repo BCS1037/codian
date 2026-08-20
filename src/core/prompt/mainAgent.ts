@@ -7,6 +7,7 @@ export interface SystemPromptSettings {
 
 export interface SystemPromptBuildOptions {
   appendices?: string[];
+  memoryAppendix?: string;
   toolGuidanceProfile?: 'claudian' | 'provider-native';
 }
 
@@ -223,6 +224,9 @@ export function buildSystemPrompt(
   if (toolGuidanceProfile === 'claudian') {
     prompt += getImageInstructions(settings.mediaFolder || '');
   }
+  if (options.memoryAppendix?.trim()) {
+    prompt += `\n\n${options.memoryAppendix.trim()}`;
+  }
   prompt += getAppendixSections(options.appendices);
 
   if (settings.customPrompt?.trim()) {
@@ -250,6 +254,10 @@ export function computeSystemPromptKey(
 
   if (appendixKey) {
     parts.push(appendixKey);
+  }
+
+  if (options.memoryAppendix?.trim()) {
+    parts.push(`memory:${options.memoryAppendix.trim()}`);
   }
 
   if (options.toolGuidanceProfile === 'provider-native') {

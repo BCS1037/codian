@@ -222,6 +222,60 @@ export class InputController {
     return false;
   }
 
+  /**
+   * Persists explicit memory commands immediately and runs heuristic extraction
+   * only when the user has opted into automatic awareness. This is deliberately
+   * detached from message delivery so a storage problem cannot block a chat.
+   */
+  private async extractAndSaveMemories(message: string): Promise<void> {
+    try {
+      const { plugin } = this.deps;
+      if (!plugin.settings.memoryEnabled) return;
+
+      const store = plugin.getMemoryStore();
+      if (plugin.memoryExtractor.isListRequest(message)) {
+        new Notice(`Saved memories: ${(await store.load()).length}`);
+        return;
+      }
+
+      const forgetTerm = plugin.memoryExtractor.extractForgetRequest(message);
+      if (forgetTerm) {
+        const removed = await store.remove(forgetTerm);
+        if (removed > 0 && plugin.settings.consciousnessEnabled) {
+          await plugin.getConsciousnessEngine().logActivity(
+            'memory-remove',
+            `Removed ${removed} ${removed === 1 ? 'memory entry' : 'memory entries'} matching "${forgetTerm}".`,
+          );
+        }
+        if (removed > 0) new Notice(`Removed ${removed} saved memor${removed === 1 ? 'y' : 'ies'}.`);
+        return;
+      }
+
+      const existing = await store.load();
+      const explicit = plugin.memoryExtractor.extract(message, existing);
+      const implicit = plugin.settings.consciousnessEnabled && plugin.settings.consciousnessAutoMemory
+        ? plugin.memoryExtractor.extractImplicit(message, [...existing, ...explicit.entries])
+        : { entries: [] as typeof explicit.entries };
+      const entries = [...explicit.entries, ...implicit.entries];
+      for (const entry of entries) {
+        await store.add({
+          category: entry.category,
+          content: entry.content,
+          source: entry.source,
+        });
+      }
+      if (entries.length > 0 && plugin.settings.consciousnessEnabled) {
+        await plugin.getConsciousnessEngine().logActivity(
+          'memory-add',
+          `Added ${entries.length} ${entries.length === 1 ? 'memory entry' : 'memory entries'}.`,
+        );
+      }
+      if (explicit.entries.length > 0) new Notice(`Saved ${explicit.entries.length} memor${explicit.entries.length === 1 ? 'y' : 'ies'}.`);
+    } catch {
+      // Awareness is optional and must never affect the send path.
+    }
+  }
+
   // ============================================
   // Message Sending
   // ============================================
@@ -371,6 +425,7 @@ export class InputController {
     state.addMessage(userMsg);
     state.hasPendingConversationSave = true;
     renderer.addMessage(userMsg);
+    void this.extractAndSaveMemories(displayContent);
 
     try {
       await this.triggerTitleGeneration();
@@ -576,6 +631,14 @@ export class InputController {
         await streamController.finalizeCurrentThinkingBlock(finalAssistantMsg);
         await streamController.finalizeCurrentTextBlock(finalAssistantMsg);
         this.deps.getSubagentManager().resetStreamingState();
+
+        if (plugin.settings.consciousnessEnabled && plugin.settings.consciousnessAutoMemory) {
+          const summary = [
+            `User: ${displayContent.slice(0, 200)}`,
+            `Assistant: ${(finalAssistantMsg.content || '').slice(0, 200)}`,
+          ].join('\n');
+          void plugin.getConsciousnessEngine().saveShortTermMemory(summary).catch(() => undefined);
+        }
 
         // Auto-hide completed todo panel on response end
         // Panel reappears only when new TodoWrite tool is called
