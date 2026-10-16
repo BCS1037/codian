@@ -13,6 +13,8 @@ import type {
   ChatRuntimeQueryOptions,
   ChatTurnMetadata,
   ChatTurnRequest,
+  ConversationBranchNavigationRequest,
+  ConversationBranchNavigationResult,
   ExitPlanModeCallback,
   PreparedChatTurn,
   SessionUpdateResult,
@@ -57,6 +59,9 @@ export interface ChatRuntime {
     mode?: ChatRewindMode,
   ): Promise<ChatRewindPreview>;
   rewind(userMessageId: string, assistantMessageId: string | undefined, mode?: ChatRewindMode): Promise<ChatRewindResult>;
+  navigateConversationBranch?(
+    request: ConversationBranchNavigationRequest,
+  ): Promise<ConversationBranchNavigationResult>;
   setApprovalCallback(callback: ApprovalCallback | null): void;
   setApprovalDismisser(dismisser: (() => void) | null): void;
   setAskUserQuestionCallback(callback: AskUserQuestionCallback | null): void;

@@ -12,7 +12,7 @@ describe('Grok system prompt', () => {
     vaultPath: '/vault',
   };
 
-  it('uses the provider-native profile without duplicating Claudian tool recipes', () => {
+  it('uses the provider-native profile without duplicating Codian tool recipes', () => {
     const prompt = buildGrokSystemPrompt(promptSettings);
 
     expect(prompt).toContain('You are collaborating with **Ada**');

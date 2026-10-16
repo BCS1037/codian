@@ -1,8 +1,8 @@
-.claudian-tool-call {
+.codian-tool-call {
   margin: 8px 0;
 }
 
-.claudian-tool-header {
+.codian-tool-header {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -11,23 +11,23 @@
   overflow: hidden;
 }
 
-.claudian-tool-header:hover {
+.codian-tool-header:hover {
   opacity: 0.85;
 }
 
-.claudian-tool-icon {
+.codian-tool-icon {
   display: flex;
   align-items: center;
   color: var(--text-accent);
   flex-shrink: 0;
 }
 
-.claudian-tool-icon svg {
+.codian-tool-icon svg {
   width: 16px;
   height: 16px;
 }
 
-.claudian-tool-name {
+.codian-tool-name {
   font-family: var(--font-monospace);
   font-size: 13px;
   font-weight: 400;
@@ -36,7 +36,7 @@
   flex-shrink: 0;
 }
 
-.claudian-tool-summary {
+.codian-tool-summary {
   font-family: var(--font-monospace);
   font-size: 13px;
   color: var(--text-muted);
@@ -47,15 +47,15 @@
   min-width: 0;
 }
 
-.claudian-tool-summary:empty {
+.codian-tool-summary:empty {
   display: none;
 }
 
-.claudian-tool-call-bash.expanded .claudian-tool-summary {
+.codian-tool-call-bash.expanded .codian-tool-summary {
   display: none;
 }
 
-.claudian-tool-bash-command {
+.codian-tool-bash-command {
   font-family: var(--font-monospace);
   font-size: 12px;
   line-height: 1.4;
@@ -65,8 +65,8 @@
   padding: 2px 0 4px;
 }
 
-/* Legacy: StatusPanel bash entries still use claudian-tool-label */
-.claudian-tool-label {
+/* Legacy: StatusPanel bash entries still use codian-tool-label */
+.codian-tool-label {
   font-family: var(--font-monospace);
   font-size: 13px;
   font-weight: 400;
@@ -76,47 +76,47 @@
   text-overflow: ellipsis;
 }
 
-.claudian-tool-current {
+.codian-tool-current {
   font-family: var(--font-monospace);
   font-size: 13px;
   color: var(--text-muted);
   white-space: nowrap;
 }
 
-.claudian-tool-current:empty {
+.codian-tool-current:empty {
   display: none;
 }
 
-.claudian-tool-status {
+.codian-tool-status {
   display: flex;
   align-items: center;
   flex-shrink: 0;
   margin-left: auto;
 }
 
-.claudian-tool-status svg {
+.codian-tool-status svg {
   width: 14px;
   height: 14px;
 }
 
-.claudian-tool-status.status-running {
+.codian-tool-status.status-running {
   color: var(--text-accent);
 }
 
-.claudian-tool-status.status-completed {
+.codian-tool-status.status-completed {
   color: var(--color-green);
 }
 
-.claudian-tool-status.status-error {
+.codian-tool-status.status-error {
   color: var(--color-red);
 }
 
-.claudian-tool-status.status-blocked {
+.codian-tool-status.status-blocked {
   color: var(--color-orange);
 }
 
 /* Tool call content - border style (like thinking block) */
-.claudian-tool-content {
+.codian-tool-content {
   padding: 4px 0;
   padding-inline-start: 16px;
   margin-inline-start: 7px;
@@ -124,39 +124,39 @@
 }
 
 /* Tool content variants that render inline widgets instead of bordered results */
-.claudian-tool-content-todo,
-.claudian-tool-content-ask {
+.codian-tool-content-todo,
+.codian-tool-content-ask {
   border-inline-start: none;
   margin-inline-start: 0;
   padding-inline-start: 0;
 }
 
 /* Expanded content: per-line rendering */
-.claudian-tool-lines {
+.codian-tool-lines {
   font-family: var(--font-monospace);
   font-size: 12px;
   line-height: 1.4;
   overflow-x: auto;
 }
 
-.claudian-tool-line {
+.codian-tool-line {
   padding: 1px 0;
   color: var(--text-muted);
   white-space: pre;
 }
 
-.claudian-tool-line-wrap {
+.codian-tool-line-wrap {
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 /* Hover highlight for file search results */
-.claudian-tool-line.hoverable:hover {
+.codian-tool-line.hoverable:hover {
   background: var(--background-modifier-hover);
 }
 
 /* Truncation indicator: "... N more lines" */
-.claudian-tool-truncated {
+.codian-tool-truncated {
   color: var(--text-faint);
   font-style: italic;
   padding: 4px 0;
@@ -165,7 +165,7 @@
 }
 
 /* ToolSearch expanded: icon + tool name rows */
-.claudian-tool-search-item {
+.codian-tool-search-item {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -175,7 +175,7 @@
   color: var(--text-muted);
 }
 
-.claudian-tool-search-icon {
+.codian-tool-search-icon {
   display: flex;
   align-items: center;
   flex-shrink: 0;
@@ -184,13 +184,13 @@
   color: var(--text-faint);
 }
 
-.claudian-tool-search-icon svg {
+.codian-tool-search-icon svg {
   width: 14px;
   height: 14px;
 }
 
 /* Web search links */
-.claudian-tool-link {
+.codian-tool-link {
   display: flex;
   align-items: flex-start;
   gap: 6px;
@@ -203,11 +203,11 @@
   line-height: 1.4;
 }
 
-.claudian-tool-link:hover {
+.codian-tool-link:hover {
   color: var(--text-accent);
 }
 
-.claudian-tool-link-icon {
+.codian-tool-link-icon {
   flex-shrink: 0;
   width: 12px;
   height: 12px;
@@ -215,19 +215,19 @@
   color: var(--text-faint);
 }
 
-.claudian-tool-link-icon svg {
+.codian-tool-link-icon svg {
   width: 12px;
   height: 12px;
 }
 
-.claudian-tool-link-title {
+.codian-tool-link-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 /* Web search summary section */
-.claudian-tool-web-summary {
+.codian-tool-web-summary {
   font-family: var(--font-monospace);
   font-size: 12px;
   color: var(--text-muted);
@@ -241,7 +241,7 @@
 }
 
 /* Empty state for file search */
-.claudian-tool-empty {
+.codian-tool-empty {
   color: var(--text-faint);
   font-style: italic;
   font-family: var(--font-monospace);
@@ -249,12 +249,12 @@
   padding: 4px 0;
 }
 
-.claudian-tool-result-row {
+.codian-tool-result-row {
   display: flex;
   align-items: flex-start;
 }
 
-.claudian-tool-result-text {
+.codian-tool-result-text {
   font-family: var(--font-monospace);
   font-size: 12px;
   color: var(--text-muted);
@@ -264,15 +264,86 @@
   flex: 1;
 }
 
-.claudian-tool-result-item {
+.codian-tool-result-item {
   display: block;
   margin-bottom: 2px;
 }
 
-.claudian-tool-patch-section + .claudian-tool-patch-section {
+.codian-tool-patch-section + .codian-tool-patch-section {
   margin-top: 10px;
 }
 
-.claudian-tool-result-item:last-child {
+.codian-tool-result-item:last-child {
   margin-bottom: 0;
+}
+
+/* Session tool cards (list destinations, send message, read session) */
+.codian-session-tool {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.codian-session-tool-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.codian-session-tool-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  padding: 1px 0;
+}
+
+.codian-session-tool-title {
+  min-width: 0;
+}
+
+.codian-session-tool-note {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 2px 0;
+}
+
+.codian-session-tool-badge {
+  padding: 0 6px;
+  border-radius: var(--radius-s);
+  background-color: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.codian-session-tool-heading {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-weight: var(--font-semibold);
+}
+
+.codian-session-tool-fields {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px 12px;
+  margin: 0;
+}
+
+.codian-session-tool-fields dt {
+  color: var(--text-muted);
+}
+
+.codian-session-tool-fields dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 0;
+  min-width: 0;
+}
+
+/* The delivered text is plain text; keep its line breaks. */
+.codian-session-tool-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text-normal);
 }

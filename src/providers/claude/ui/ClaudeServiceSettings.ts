@@ -129,7 +129,7 @@ class ClaudeServiceModal extends Modal {
       .setDesc(t('settings.claudeServices.fields.lightModelDesc'))
       .addText(text => text.setValue(this.draft.lightweightModel).onChange(value => { this.draft.lightweightModel = value; }));
 
-    const actions = this.contentEl.createDiv({ cls: 'claudian-settings-action-row' });
+    const actions = this.contentEl.createDiv({ cls: 'codian-settings-action-row' });
     new ButtonComponent(actions)
       .setButtonText(t('common.cancel'))
       .onClick(() => this.close());
@@ -195,16 +195,16 @@ export function renderClaudeServiceSettings(
   context: ProviderSettingsTabRendererContext,
 ): void {
   const settings = getClaudeProviderSettings(context.plugin.settings);
-  const section = container.createDiv({ cls: 'claudian-claude-services' });
+  const section = container.createDiv({ cls: 'codian-claude-services' });
   new Setting(section)
     .setName(t('settings.claudeServices.heading'))
     .setDesc(t('settings.claudeServices.description'))
     .setHeading();
 
-  const list = section.createDiv({ cls: 'claudian-claude-service-list' });
+  const list = section.createDiv({ cls: 'codian-claude-service-list' });
   if (settings.thirdPartyServices.length === 0) {
     list.createDiv({
-      cls: 'claudian-settings-empty-state',
+      cls: 'codian-settings-empty-state',
       text: t('settings.claudeServices.empty'),
     });
   }
@@ -219,14 +219,14 @@ export function renderClaudeServiceSettings(
     }
   };
   for (const service of settings.thirdPartyServices) {
-    const row = list.createDiv({ cls: 'claudian-claude-service-row' });
-    const copy = row.createDiv({ cls: 'claudian-claude-service-copy' });
-    copy.createDiv({ cls: 'claudian-claude-service-name', text: service.name });
+    const row = list.createDiv({ cls: 'codian-claude-service-row' });
+    const copy = row.createDiv({ cls: 'codian-claude-service-copy' });
+    copy.createDiv({ cls: 'codian-claude-service-name', text: service.name });
     copy.createDiv({
-      cls: 'claudian-claude-service-meta',
+      cls: 'codian-claude-service-meta',
       text: `${service.defaultModel} · ${service.baseUrl}`,
     });
-    const actions = row.createDiv({ cls: 'claudian-claude-service-actions' });
+    const actions = row.createDiv({ cls: 'codian-claude-service-actions' });
 
     new ButtonComponent(actions)
       .setButtonText(service.enabled
@@ -311,7 +311,7 @@ export function renderClaudeServiceSettings(
     }
   }
 
-  const footer = section.createDiv({ cls: 'claudian-settings-action-row' });
+  const footer = section.createDiv({ cls: 'codian-settings-action-row' });
   new ButtonComponent(footer)
     .setCta()
     .setButtonText(t('settings.claudeServices.add'))

@@ -4,6 +4,7 @@ import type {
   ProviderHistoryPathContext,
 } from '../../../core/providers/types';
 import { TOOL_SUBAGENT } from '../../../core/tools/toolNames';
+import { omitToolResultImageData } from '../../../core/tools/toolResultContent';
 import type {
   AsyncSubagentStatus,
   ChatMessage,
@@ -223,6 +224,78 @@ function dedupeMessages(messages: ChatMessage[]): ChatMessage[] {
   return result;
 }
 
+/**
+ * Cached messages are the tab's live projection under Codian-local ids. Native history supersedes
+ * every cached message it reflects by id or native identity. Complete history also supersedes every
+ * unmatched one before the last reflected message; later messages are the unconfirmed tail. A live
+ * task notification that native never consumed keeps its place. Incomplete history keeps every
+ * unmatched message: it may be the only copy of an unreadable segment.
+ */
+function retainUnconfirmedCachedMessages(
+  cached: ChatMessage[],
+  native: ChatMessage[],
+  complete: boolean,
+): ChatMessage[] {
+  const nativeIds = new Set(native.map(message => message.id));
+  const nativeUserIds = new Set(native.flatMap(message => message.role === 'user' && message.userMessageId
+    ? [message.userMessageId] : []));
+  const nativeAssistantIds = new Set(native.flatMap(message => message.role === 'assistant'
+    && message.assistantMessageId ? [message.assistantMessageId] : []));
+  const nativeNotifications = new Set(native.flatMap(message => (message.contentBlocks ?? [])
+    .flatMap(block => block.type === 'task_notification' ? [block.content] : [])));
+  const reflectsNative = (message: ChatMessage): boolean => nativeIds.has(message.id) || (message.role === 'user'
+    ? !!message.userMessageId && nativeUserIds.has(message.userMessageId)
+    : !!message.assistantMessageId && nativeAssistantIds.has(message.assistantMessageId));
+  const isUnconsumedNotification = (message: ChatMessage): boolean => !!message.contentBlocks?.length
+    && message.contentBlocks.every(block => block.type === 'task_notification' && !nativeNotifications.has(block.content));
+  let lastReflected = -1;
+  cached.forEach((message, index) => { if (reflectsNative(message)) lastReflected = index; });
+  return cached.filter((message, index) => nativeIds.has(message.id)
+    || (!reflectsNative(message) && (!complete || index > lastReflected || isUnconsumedNotification(message))));
+}
+
+/** Native transcript order wins; cached-only messages keep their surrounding anchors. */
+function mergeHistoryMessages(cached: ChatMessage[], native: ChatMessage[]): ChatMessage[] {
+  const byId = new Map(dedupeMessages([...cached, ...native]).map(message => [message.id, message]));
+  const nativeIds = new Set(native.map(message => message.id));
+  const nextAnchors = new Map<string, string>();
+  let nextAnchor: string | undefined;
+  for (const message of [...cached].reverse()) {
+    if (nativeIds.has(message.id)) nextAnchor = message.id;
+    else if (nextAnchor) nextAnchors.set(message.id, nextAnchor);
+  }
+  const emitted = new Set<string>();
+  const result: ChatMessage[] = [];
+  const append = (message: ChatMessage) => {
+    if (emitted.has(message.id)) return;
+    emitted.add(message.id);
+    result.push(byId.get(message.id)!);
+  };
+  let cursor = 0;
+  for (const message of native) {
+    while (cursor < cached.length) {
+      const candidate = cached[cursor];
+      if (candidate.id === message.id) {
+        cursor++;
+        break;
+      }
+      if (emitted.has(candidate.id)) {
+        cursor++;
+        continue;
+      }
+      // A shared message anchors later cache entries; timestamps only place
+      // entries absent from native history, never reorder native messages.
+      if (nativeIds.has(candidate.id)
+        || (nextAnchors.get(candidate.id) !== message.id && candidate.timestamp > message.timestamp)) break;
+      append(candidate);
+      cursor++;
+    }
+    append(message);
+  }
+  for (; cursor < cached.length; cursor++) append(cached[cursor]);
+  return result;
+}
+
 async function enrichAsyncSubagentToolCalls(
   subagentData: Record<string, SubagentInfo>,
   vaultPath: string,
@@ -369,11 +442,71 @@ function buildPersistedSubagentData(messages: ChatMessage[]): Record<string, Sub
 
     for (const toolCall of msg.toolCalls) {
       if (!isClaudeSubagentToolName(toolCall.name) || !toolCall.subagent) continue;
-      result[toolCall.subagent.id] = toolCall.subagent;
+      result[toolCall.subagent.id] = buildPersistedSubagent(toolCall.subagent);
     }
   }
 
   return result;
+}
+
+function sanitizePersistedSubagentData(
+  subagentData: Record<string, SubagentInfo>,
+): Record<string, SubagentInfo> {
+  if (!isObjectRecord(subagentData)) return subagentData;
+  return Object.fromEntries(
+    Object.entries(subagentData).map(([id, subagent]) => [
+      id,
+      buildPersistedSubagent(subagent),
+    ]),
+  );
+}
+
+function stripToolResultImageData(result: string | undefined): string | undefined {
+  if (!result?.includes('"base64"')) return result;
+
+  try {
+    let changed = false;
+    const parsed: unknown = JSON.parse(result, (key, value: unknown) => {
+      const next = omitToolResultImageData(key, value);
+      if (next !== value) changed = true;
+      return next;
+    });
+    return changed ? JSON.stringify(parsed) : result;
+  } catch {
+    return result;
+  }
+}
+
+function buildPersistedSubagent(subagent: SubagentInfo): SubagentInfo {
+  return sanitizePersistedSubagent(subagent) as SubagentInfo;
+}
+
+function sanitizePersistedSubagent(subagent: unknown): unknown {
+  if (!isObjectRecord(subagent)) return subagent;
+
+  const sanitized: Record<string, unknown> = { ...subagent };
+  if (typeof sanitized.result === 'string') {
+    sanitized.result = stripToolResultImageData(sanitized.result);
+  }
+  if (Array.isArray(sanitized.toolCalls)) {
+    sanitized.toolCalls = sanitized.toolCalls.map((toolCall) => {
+      if (!isObjectRecord(toolCall)) return toolCall;
+
+      const sanitizedToolCall: Record<string, unknown> = { ...toolCall };
+      if (typeof sanitizedToolCall.result === 'string') {
+        sanitizedToolCall.result = stripToolResultImageData(sanitizedToolCall.result);
+      }
+      if ('subagent' in sanitizedToolCall) {
+        sanitizedToolCall.subagent = sanitizePersistedSubagent(sanitizedToolCall.subagent);
+      }
+      return sanitizedToolCall;
+    });
+  }
+  return sanitized;
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function sanitizeProviderState(
@@ -587,11 +720,21 @@ export class ClaudeConversationHistoryService implements ProviderConversationHis
     const subagentData = buildPersistedSubagentData(conversation.messages);
     if (Object.keys(subagentData).length > 0) {
       providerState.subagentData = subagentData;
-    } else {
+    } else if (conversation.messages.length > 0) {
       delete providerState.subagentData;
     }
 
-    return sanitizeProviderState(providerState);
+    return this.sanitizePersistedProviderState({ ...providerState });
+  }
+
+  sanitizePersistedProviderState(
+    providerState: Record<string, unknown>,
+  ): Record<string, unknown> | undefined {
+    const sanitizedState = { ...providerState } as ClaudeProviderState;
+    if (sanitizedState.subagentData) {
+      sanitizedState.subagentData = sanitizePersistedSubagentData(sanitizedState.subagentData);
+    }
+    return sanitizeProviderState(sanitizedState);
   }
 
   async hydrateConversationHistory(
@@ -603,7 +746,7 @@ export class ClaudeConversationHistoryService implements ProviderConversationHis
       return;
     }
     this.synchronizeHistoryCache(conversation, vaultPath, pathContext);
-    if (this.hydratedConversationIds.has(conversation.id)) return;
+    if (this.hydratedConversationIds.has(conversation.id) && conversation.messages.length > 0) return;
 
     const state = getClaudeState(conversation.providerState);
     const isPendingFork = this.isPendingForkConversation(conversation);
@@ -694,10 +837,9 @@ export class ClaudeConversationHistoryService implements ProviderConversationHis
 
     const filteredSdkMessages = allSdkMessages.filter(msg => !msg.isRebuiltContext);
 
-    const merged = dedupeMessages([
-      ...conversation.messages,
-      ...filteredSdkMessages,
-    ]).sort((a, b) => a.timestamp - b.timestamp);
+    const complete = errorCount === 0 && unknownSessionCount === 0 && missingSessionCount === 0;
+    const cached = retainUnconfirmedCachedMessages(conversation.messages, filteredSdkMessages, complete);
+    const merged = mergeHistoryMessages(cached, filteredSdkMessages);
 
     if (state.subagentData) {
       await enrichAsyncSubagentToolCalls(
@@ -711,7 +853,7 @@ export class ClaudeConversationHistoryService implements ProviderConversationHis
     }
 
     conversation.messages = merged;
-    if (errorCount === 0 && unknownSessionCount === 0) {
+    if (complete) {
       this.hydratedConversationIds.add(conversation.id);
     }
   }

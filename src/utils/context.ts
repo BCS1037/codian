@@ -1,9 +1,10 @@
 /**
- * Claudian - Context Utilities
+ * Codian - Context Utilities
  *
  * Note and context file formatting for prompts.
 */
 
+import { decodeSessionMessage } from '../core/session-tools/sessionMessageEnvelope';
 import { escapePromptXmlAttribute, formatPromptXmlCdata } from './promptXml';
 
 const LINKED_NOTE_TAG = 'linked_note';
@@ -96,8 +97,16 @@ export function extractContentBeforeXmlContext(text: string): string | undefined
   return undefined;
 }
 
+/** The text a user message shows: its display text, else its content without injected context. */
+export function getUserDisplayText(message: { content: string; displayContent?: string }): string {
+  return message.displayContent ?? extractUserDisplayContent(message.content) ?? message.content;
+}
+
 export function extractUserDisplayContent(text: string): string | undefined {
   if (!text) return undefined;
+
+  const sessionMessage = decodeSessionMessage(text);
+  if (sessionMessage) return sessionMessage.text;
 
   const xmlDisplayContent = extractContentBeforeXmlContext(text);
   if (xmlDisplayContent !== undefined) {
@@ -121,6 +130,9 @@ export function extractUserDisplayContent(text: string): string | undefined {
  */
 export function extractUserQuery(prompt: string): string {
   if (!prompt) return '';
+
+  const sessionMessage = decodeSessionMessage(prompt);
+  if (sessionMessage) return extractUserQuery(sessionMessage.text);
 
   // Try to extract content before XML context
   const extracted = extractContentBeforeXmlContext(prompt);

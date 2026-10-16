@@ -55,7 +55,7 @@ export const opencodeSettingsTabRenderer: ProviderSettingsTabRenderer = {
       .setDesc(t('settings.providerCliPath.desc', { command: 'opencode', provider: 'OpenCode' }));
 
     const validationEl = container.createDiv({
-      cls: 'claudian-cli-path-validation claudian-setting-validation claudian-setting-validation-error claudian-hidden',
+      cls: 'codian-cli-path-validation codian-setting-validation codian-setting-validation-error codian-hidden',
     });
     const cliPathsByHost = { ...opencodeSettings.cliPathsByHost };
     const currentValue = opencodeSettings.cliPathsByHost[hostnameKey] || '';
@@ -65,13 +65,13 @@ export const opencodeSettingsTabRenderer: ProviderSettingsTabRenderer = {
       const error = validateCliPath(value);
       if (error) {
         validationEl.setText(error);
-        validationEl.toggleClass('claudian-hidden', false);
-        inputEl?.toggleClass('claudian-input-error', true);
+        validationEl.toggleClass('codian-hidden', false);
+        inputEl?.toggleClass('codian-input-error', true);
         return false;
       }
 
-      validationEl.toggleClass('claudian-hidden', true);
-      inputEl?.toggleClass('claudian-input-error', false);
+      validationEl.toggleClass('codian-hidden', true);
+      inputEl?.toggleClass('codian-input-error', false);
       return true;
     };
 
@@ -105,7 +105,7 @@ export const opencodeSettingsTabRenderer: ProviderSettingsTabRenderer = {
         .onChange(async (value) => {
           await persistCliPath(value);
         });
-      text.inputEl.addClass('claudian-settings-cli-path-input');
+      text.inputEl.addClass('codian-settings-cli-path-input');
       cliPathInputEl = text.inputEl;
       updateCliPathValidation(currentValue, text.inputEl);
     });
@@ -135,7 +135,7 @@ export const opencodeSettingsTabRenderer: ProviderSettingsTabRenderer = {
       .setName(t('settings.opencode.commandsAndSkills'))
       .setHeading();
 
-    const commandsDesc = container.createDiv({ cls: 'claudian-sp-settings-desc' });
+    const commandsDesc = container.createDiv({ cls: 'codian-sp-settings-desc' });
     commandsDesc.createEl('p', {
       cls: 'setting-item-description',
       text: t('settings.opencode.commandsAndSkillsDesc'),
@@ -153,13 +153,13 @@ export const opencodeSettingsTabRenderer: ProviderSettingsTabRenderer = {
     if (showSection('agents') && opencodeWorkspace?.agentStorage) {
       new Setting(container).setName(t('settings.opencode.subagents')).setHeading();
 
-      const subagentsDesc = container.createDiv({ cls: 'claudian-sp-settings-desc' });
+      const subagentsDesc = container.createDiv({ cls: 'codian-sp-settings-desc' });
       subagentsDesc.createEl('p', {
         cls: 'setting-item-description',
         text: t('settings.opencode.subagentsDesc'),
       });
 
-      const subagentsContainer = container.createDiv({ cls: 'claudian-slash-commands-container' });
+      const subagentsContainer = container.createDiv({ cls: 'codian-slash-commands-container' });
       new OpencodeAgentSettings(
         subagentsContainer,
         opencodeWorkspace.agentStorage,
@@ -208,17 +208,16 @@ function renderOpencodeModelPicker(
 
   renderProviderModelPicker({
     container,
-    emptyCatalogText: t('settings.providerCatalog.empty', { provider: 'OpenCode' }),
+    emptyCatalogText: t('settings.providerCatalog.opencodeEmpty'),
     failedCatalogText: t('settings.providerCatalog.failed', { provider: 'OpenCode' }),
     getState,
     async loadCatalog() {
       const runtime = new OpencodeChatRuntime(context.plugin);
       try {
         runtime.syncConversationState({
-          providerState: { databasePath: OPENCODE_METADATA_WARMUP_DB },
           sessionId: null,
         });
-        const loaded = await runtime.ensureReady({ allowSessionCreation: true });
+        const loaded = await runtime.ensureReady({ allowSessionCreation: false });
         const discoveredCount = getOpencodeProviderSettings(settingsBag).discoveredModels.length;
         if (!loaded) {
           return 'failed';

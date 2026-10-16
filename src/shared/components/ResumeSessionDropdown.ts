@@ -1,5 +1,5 @@
 /**
- * Claudian - Resume session dropdown
+ * Codian - Resume session dropdown
  *
  * Dropup UI for selecting a previous conversation to resume.
  * Shown when the /resume built-in command is executed.
@@ -8,6 +8,10 @@
 import { setIcon } from 'obsidian';
 
 import type { ConversationMeta } from '../../core/types';
+import { t } from '../../i18n/i18n';
+import { InputPopupRelationships } from './AccessibleTextbox';
+
+let nextResumeListboxId = 0;
 
 export interface ResumeSessionDropdownCallbacks {
   onSelect: (conversationId: string) => void;
@@ -18,6 +22,8 @@ export class ResumeSessionDropdown {
   private containerEl: HTMLElement;
   private inputEl: HTMLTextAreaElement;
   private dropdownEl: HTMLElement;
+  private readonly listboxId = `codian-resume-listbox-${++nextResumeListboxId}`;
+  private readonly inputRelationships: InputPopupRelationships;
   private callbacks: ResumeSessionDropdownCallbacks;
   private conversations: ConversationMeta[];
   private currentConversationId: string | null;
@@ -33,13 +39,15 @@ export class ResumeSessionDropdown {
   ) {
     this.containerEl = containerEl;
     this.inputEl = inputEl;
+    this.inputRelationships = new InputPopupRelationships(inputEl);
     this.conversations = this.sortConversations(conversations);
     this.currentConversationId = currentConversationId;
     this.callbacks = callbacks;
 
-    this.dropdownEl = this.containerEl.createDiv({ cls: 'claudian-resume-dropdown' });
+    this.dropdownEl = this.containerEl.createDiv({ cls: 'codian-resume-dropdown' });
     this.render();
     this.dropdownEl.addClass('visible');
+    this.syncInputRelationships();
 
     // Auto-dismiss when user starts typing
     this.onInput = () => this.dismiss();
@@ -80,11 +88,13 @@ export class ResumeSessionDropdown {
 
   destroy(): void {
     this.inputEl.removeEventListener('input', this.onInput);
+    this.inputRelationships.release();
     this.dropdownEl?.remove();
   }
 
   private dismiss(): void {
     this.dropdownEl.removeClass('visible');
+    this.inputRelationships.release();
     this.callbacks.onDismiss();
   }
 
@@ -109,15 +119,18 @@ export class ResumeSessionDropdown {
   }
 
   private updateSelection(): void {
-    const items = this.dropdownEl.querySelectorAll('.claudian-resume-item');
+    const items = this.dropdownEl.querySelectorAll('.codian-resume-item');
     items?.forEach((item, index) => {
       if (index === this.selectedIndex) {
         item.addClass('selected');
+        item.setAttribute('aria-selected', 'true');
         (item as HTMLElement).scrollIntoView({ block: 'nearest' });
       } else {
         item.removeClass('selected');
+        item.setAttribute('aria-selected', 'false');
       }
     });
+    this.syncInputRelationships();
   }
 
   private sortConversations(conversations: ConversationMeta[]): ConversationMeta[] {
@@ -129,33 +142,39 @@ export class ResumeSessionDropdown {
   private render(): void {
     this.dropdownEl.empty();
 
-    const header = this.dropdownEl.createDiv({ cls: 'claudian-resume-header' });
-    header.createSpan({ text: 'Resume conversation' });
+    const header = this.dropdownEl.createDiv({ cls: 'codian-resume-header' });
+    header.createSpan({ text: t('chat.sessions.resume') });
+
+    const list = this.dropdownEl.createDiv({ cls: 'codian-resume-list' });
+    list.setAttribute('id', this.listboxId);
+    list.setAttribute('role', 'listbox');
+    list.setAttribute('aria-label', t('chat.sessions.resume'));
 
     if (this.conversations.length === 0) {
-      this.dropdownEl.createDiv({ cls: 'claudian-resume-empty', text: 'No conversations' });
+      list.createDiv({ cls: 'codian-resume-empty', text: t('chat.sessions.empty') });
       return;
     }
-
-    const list = this.dropdownEl.createDiv({ cls: 'claudian-resume-list' });
 
     for (let i = 0; i < this.conversations.length; i++) {
       const conv = this.conversations[i];
       const isCurrent = conv.id === this.currentConversationId;
 
-      const item = list.createDiv({ cls: 'claudian-resume-item' });
+      const item = list.createDiv({ cls: 'codian-resume-item' });
+      item.setAttribute('id', `${this.listboxId}-option-${i}`);
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', String(i === this.selectedIndex));
       if (isCurrent) item.addClass('current');
       if (i === this.selectedIndex) item.addClass('selected');
 
-      const iconEl = item.createDiv({ cls: 'claudian-resume-item-icon' });
+      const iconEl = item.createDiv({ cls: 'codian-resume-item-icon' });
       setIcon(iconEl, isCurrent ? 'message-square-dot' : 'message-square');
 
-      const content = item.createDiv({ cls: 'claudian-resume-item-content' });
-      const titleEl = content.createDiv({ cls: 'claudian-resume-item-title', text: conv.title });
+      const content = item.createDiv({ cls: 'codian-resume-item-content' });
+      const titleEl = content.createDiv({ cls: 'codian-resume-item-title', text: conv.title });
       titleEl.setAttribute('title', conv.title);
       content.createDiv({
-        cls: 'claudian-resume-item-date',
-        text: isCurrent ? 'Current session' : this.formatDate(conv.lastResponseAt ?? conv.createdAt),
+        cls: 'codian-resume-item-date',
+        text: isCurrent ? t('chat.sessions.current') : this.formatDate(conv.lastResponseAt ?? conv.createdAt),
       });
 
       item.addEventListener('click', () => {
@@ -171,6 +190,21 @@ export class ResumeSessionDropdown {
         this.updateSelection();
       });
     }
+
+    this.syncInputRelationships();
+  }
+
+  private syncInputRelationships(): void {
+    if (!this.isVisible() || this.conversations.length === 0) {
+      this.inputRelationships.release();
+      return;
+    }
+
+    this.inputRelationships.set({
+      'aria-haspopup': 'listbox',
+      'aria-controls': this.listboxId,
+      'aria-activedescendant': `${this.listboxId}-option-${this.selectedIndex}`,
+    });
   }
 
   private formatDate(timestamp: number): string {

@@ -128,6 +128,11 @@ describe('MentionDropdownController', () => {
   describe('constructor', () => {
     it('creates controller with container and input elements', () => {
       expect(controller).toBeInstanceOf(MentionDropdownController);
+      const { SelectableDropdown } = jest.requireMock('@/shared/components/SelectableDropdown');
+      expect(SelectableDropdown).toHaveBeenCalledWith(containerEl, expect.objectContaining({
+        ariaLabel: 'Input suggestions',
+        inputEl,
+      }));
     });
   });
 
@@ -782,7 +787,7 @@ describe('MentionDropdownController', () => {
       const itemEl = createMockEl();
       renderOptions.renderItem(folderItem, itemEl);
 
-      const nameEl = itemEl.querySelector('.claudian-mention-name-folder');
+      const nameEl = itemEl.querySelector('.codian-mention-name-folder');
       expect(nameEl?.textContent).toBe('@src/');
 
       localController.destroy();

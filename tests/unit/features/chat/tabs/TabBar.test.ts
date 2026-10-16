@@ -35,7 +35,7 @@ describe('TabBar', () => {
 
       new TabBar(containerEl, callbacks);
 
-      expect(containerEl._classList.has('claudian-tab-badges')).toBe(true);
+      expect(containerEl._classList.has('codian-tab-badges')).toBe(true);
     });
   });
 
@@ -124,7 +124,7 @@ describe('TabBar', () => {
       badge.dispatchEvent('dblclick', event);
 
       expect(badge.textContent).toBe('My Conversation');
-      expect(badge.hasClass('claudian-tab-badge-expanded')).toBe(true);
+      expect(badge.hasClass('codian-tab-badge-expanded')).toBe(true);
       expect(badge.getAttribute('data-title-expanded')).toBe('true');
       expect(event.preventDefault).toHaveBeenCalled();
       expect(event.stopPropagation).toHaveBeenCalled();
@@ -132,7 +132,7 @@ describe('TabBar', () => {
       badge.dispatchEvent('dblclick', { preventDefault: jest.fn(), stopPropagation: jest.fn() });
 
       expect(badge.textContent).toBe('2');
-      expect(badge.hasClass('claudian-tab-badge-expanded')).toBe(false);
+      expect(badge.hasClass('codian-tab-badge-expanded')).toBe(false);
       expect(badge.getAttribute('data-title-expanded')).toBe('false');
     });
 
@@ -197,7 +197,7 @@ describe('TabBar', () => {
       tabBar.update([createTabBarItem({ id: 'tab-1', index: 1, title: 'Renamed Title' })]);
 
       expect(containerEl._children[0].textContent).toBe('Renamed Title');
-      expect(containerEl._children[0].hasClass('claudian-tab-badge-expanded')).toBe(true);
+      expect(containerEl._children[0].hasClass('codian-tab-badge-expanded')).toBe(true);
     });
 
     it('should preserve horizontal scroll position across tab bar updates', () => {
@@ -251,7 +251,7 @@ describe('TabBar', () => {
 
       tabBar.update([createTabBarItem({ isActive: false, isStreaming: false, attention: null })]);
 
-      expect(containerEl._children[0]._classList.has('claudian-tab-badge-idle')).toBe(true);
+      expect(containerEl._children[0]._classList.has('codian-tab-badge-idle')).toBe(true);
     });
 
     it('should apply active class for active tab', () => {
@@ -261,7 +261,7 @@ describe('TabBar', () => {
 
       tabBar.update([createTabBarItem({ isActive: true })]);
 
-      expect(containerEl._children[0]._classList.has('claudian-tab-badge-active')).toBe(true);
+      expect(containerEl._children[0]._classList.has('codian-tab-badge-active')).toBe(true);
     });
 
     it('should apply streaming class for streaming tab', () => {
@@ -271,7 +271,7 @@ describe('TabBar', () => {
 
       tabBar.update([createTabBarItem({ isStreaming: true })]);
 
-      expect(containerEl._children[0]._classList.has('claudian-tab-badge-streaming')).toBe(true);
+      expect(containerEl._children[0]._classList.has('codian-tab-badge-streaming')).toBe(true);
     });
 
     it('should apply review class for a completed turn awaiting review', () => {
@@ -280,11 +280,11 @@ describe('TabBar', () => {
       const tabBar = new TabBar(containerEl, callbacks);
 
       tabBar.update([createTabBarItem({
-        attention: { kind: 'review', since: 1 },
+        attention: { kind: 'review', outcome: 'completed', since: 1 },
       })]);
 
-      expect(containerEl._children[0]._classList.has('claudian-tab-badge-review')).toBe(true);
-      expect(containerEl._children[0]._classList.has('claudian-tab-badge-action-required')).toBe(false);
+      expect(containerEl._children[0]._classList.has('codian-tab-badge-review')).toBe(true);
+      expect(containerEl._children[0]._classList.has('codian-tab-badge-action-required')).toBe(false);
     });
 
     it('should apply action-required class for a pending interaction', () => {
@@ -296,8 +296,8 @@ describe('TabBar', () => {
         attention: { kind: 'action-required', since: 1 },
       })]);
 
-      expect(containerEl._children[0]._classList.has('claudian-tab-badge-action-required')).toBe(true);
-      expect(containerEl._children[0]._classList.has('claudian-tab-badge-review')).toBe(false);
+      expect(containerEl._children[0]._classList.has('codian-tab-badge-action-required')).toBe(true);
+      expect(containerEl._children[0]._classList.has('codian-tab-badge-review')).toBe(false);
     });
 
     it('should prioritize active over attention states', () => {
@@ -310,13 +310,13 @@ describe('TabBar', () => {
         attention: { kind: 'action-required', since: 1 },
       })]);
 
-      expect(containerEl._children[0]._classList.has('claudian-tab-badge-active')).toBe(true);
-      expect(containerEl._children[0]._classList.has('claudian-tab-badge-action-required')).toBe(false);
+      expect(containerEl._children[0]._classList.has('codian-tab-badge-active')).toBe(true);
+      expect(containerEl._children[0]._classList.has('codian-tab-badge-action-required')).toBe(false);
     });
 
     it.each([
-      ['review', 'claudian-tab-badge-review'],
-      ['action-required', 'claudian-tab-badge-action-required'],
+      ['review', 'codian-tab-badge-review'],
+      ['action-required', 'codian-tab-badge-action-required'],
     ] as const)('should prioritize %s attention over streaming', (kind, expectedClass) => {
       const containerEl = createMockEl();
       const callbacks = createMockCallbacks();
@@ -324,11 +324,13 @@ describe('TabBar', () => {
 
       tabBar.update([createTabBarItem({
         isStreaming: true,
-        attention: { kind, since: 1 },
+        attention: kind === 'review'
+          ? { kind, outcome: 'completed', since: 1 }
+          : { kind, since: 1 },
       })]);
 
       expect(containerEl._children[0]._classList.has(expectedClass)).toBe(true);
-      expect(containerEl._children[0]._classList.has('claudian-tab-badge-streaming')).toBe(false);
+      expect(containerEl._children[0]._classList.has('codian-tab-badge-streaming')).toBe(false);
     });
 
     it('should prioritize active over streaming', () => {
@@ -338,8 +340,8 @@ describe('TabBar', () => {
 
       tabBar.update([createTabBarItem({ isActive: true, isStreaming: true })]);
 
-      expect(containerEl._children[0]._classList.has('claudian-tab-badge-active')).toBe(true);
-      expect(containerEl._children[0]._classList.has('claudian-tab-badge-streaming')).toBe(false);
+      expect(containerEl._children[0]._classList.has('codian-tab-badge-active')).toBe(true);
+      expect(containerEl._children[0]._classList.has('codian-tab-badge-streaming')).toBe(false);
     });
   });
 
@@ -403,11 +405,11 @@ describe('TabBar', () => {
       const callbacks = createMockCallbacks();
       const tabBar = new TabBar(containerEl, callbacks);
 
-      expect(containerEl._classList.has('claudian-tab-badges')).toBe(true);
+      expect(containerEl._classList.has('codian-tab-badges')).toBe(true);
 
       tabBar.destroy();
 
-      expect(containerEl._classList.has('claudian-tab-badges')).toBe(false);
+      expect(containerEl._classList.has('codian-tab-badges')).toBe(false);
     });
   });
 });

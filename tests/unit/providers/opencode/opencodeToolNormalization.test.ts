@@ -1,6 +1,7 @@
 import {
   createOpencodeToolStreamAdapter,
   normalizeOpencodeToolInput,
+  normalizeOpencodeToolUseResult,
   resolveOpencodeRawToolName,
 } from '../../../../src/providers/opencode/normalization/opencodeToolNormalization';
 
@@ -61,6 +62,65 @@ describe('normalizeOpencodeToolInput', () => {
         { activeForm: 'Ship feature', content: 'Ship feature', status: 'in_progress' },
         { activeForm: 'Drop stale task', content: 'Drop stale task', status: 'completed' },
       ],
+    });
+  });
+
+  it('maps native task aliases and background session metadata into Codian task fields', () => {
+    expect(normalizeOpencodeToolInput('task', {
+      agent: 'worker',
+      background: true,
+      description: 'Inspect references',
+      prompt: 'Find source notes',
+      sessionID: 'ses_child',
+    })).toEqual({
+      description: 'Inspect references',
+      prompt: 'Find source notes',
+      run_in_background: true,
+      subagent_type: 'worker',
+      task_id: 'ses_child',
+    });
+
+    expect(normalizeOpencodeToolInput('subagent', {
+      agent: 'worker',
+      background: false,
+      sessionID: 'ses_sync_child',
+    })).toEqual({
+      run_in_background: false,
+      subagent_type: 'worker',
+      task_id: 'ses_sync_child',
+    });
+  });
+
+  it.each([
+    {
+      input: { filePath: 'notes.md', newString: '', oldString: 'remove me' },
+      expected: { file_path: 'notes.md', new_string: '', old_string: 'remove me' },
+    },
+    {
+      input: { file_path: 'notes.md', new_string: 'add me', old_string: '' },
+      expected: { file_path: 'notes.md', new_string: 'add me', old_string: '' },
+    },
+  ])('preserves empty edit sides: %j', ({ input, expected }) => {
+    expect(normalizeOpencodeToolInput('edit', input)).toEqual(expected);
+  });
+});
+
+describe('normalizeOpencodeToolUseResult', () => {
+  it('marks read output as plain text for shared rendering', () => {
+    expect(normalizeOpencodeToolUseResult('read', { file_path: 'notes.md' }, 'contents'))
+      .toEqual({ resultFormat: 'plain' });
+  });
+
+  it('exposes the native child session and background launch marker', () => {
+    expect(normalizeOpencodeToolUseResult('task', { background: true }, {
+      content: [{
+        text: 'The subagent is working in the background (sessionID: ses_child).',
+        type: 'text',
+      }],
+      metadata: { sessionID: 'ses_child', status: 'background' },
+    })).toEqual({
+      agentId: 'ses_child',
+      asyncLaunchMarker: true,
     });
   });
 });
@@ -197,6 +257,7 @@ describe('createOpencodeToolStreamAdapter', () => {
         content: 'read ok',
         id: 'tool-1',
         isError: false,
+        toolUseResult: { resultFormat: 'plain' },
         type: 'tool_result',
       },
     ]);

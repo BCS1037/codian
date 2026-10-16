@@ -39,6 +39,26 @@ if (testHTMLElement && typeof testHTMLElement.prototype.createEl !== 'function')
   testHTMLElement.prototype.createSpan = function(options?: any): HTMLSpanElement {
     return createChild.call(this, 'span', options) as HTMLSpanElement;
   };
+  if (typeof (testHTMLElement.prototype as any).empty !== 'function') {
+    (testHTMLElement.prototype as any).empty = function(this: HTMLElement): void {
+      while (this.firstChild) {
+        this.removeChild(this.firstChild);
+      }
+    };
+  }
+  if (typeof (testHTMLElement.prototype as any).toggleClass !== 'function') {
+    (testHTMLElement.prototype as any).toggleClass = function(this: HTMLElement, cls: string, force?: boolean): boolean {
+      if (force === undefined) {
+        return this.classList.toggle(cls);
+      }
+      return this.classList.toggle(cls, force);
+    };
+  }
+  if (typeof (testHTMLElement.prototype as any).setText !== 'function') {
+    (testHTMLElement.prototype as any).setText = function(this: HTMLElement, text: string): void {
+      this.textContent = text;
+    };
+  }
 }
 
 const testGlobal = globalThis as Record<string, any>;

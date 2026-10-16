@@ -18,7 +18,7 @@ function renderMatch(container: HTMLElement, text: string, normalizedQuery: stri
 
   if (matchIndex > 0) container.createSpan({ text: text.slice(0, matchIndex) });
   container.createSpan({
-    cls: 'claudian-history-match',
+    cls: 'codian-history-match',
     text: text.slice(matchIndex, matchIndex + normalizedQuery.length),
   });
   if (matchIndex + normalizedQuery.length < text.length) {
@@ -36,17 +36,17 @@ class SearchConversationBrowserSession implements ConversationBrowserSession {
   }
 
   render(context: ConversationBrowserRenderContext): void {
-    const search = context.header.createDiv({ cls: 'claudian-history-search' });
+    const search = context.header.createDiv({ cls: 'codian-history-search' });
     search.addEventListener('click', event => event.stopPropagation());
     const input = search.createEl('input', {
-      cls: 'claudian-history-search-input',
+      cls: 'codian-history-search-input',
       attr: { type: 'search', placeholder: t('chat.historySearch.placeholder') },
     });
     input.value = this.query;
 
     const rerenderAndFocus = () => {
       context.rerender();
-      const nextInput = context.container.querySelector<HTMLInputElement>('.claudian-history-search-input');
+      const nextInput = context.container.querySelector<HTMLInputElement>('.codian-history-search-input');
       nextInput?.focus();
       nextInput?.setSelectionRange?.(nextInput.value.length, nextInput.value.length);
     };
@@ -82,7 +82,7 @@ class SearchConversationBrowserSession implements ConversationBrowserSession {
     });
 
     const clearButton = search.createEl('button', {
-      cls: 'claudian-history-search-clear',
+      cls: 'codian-history-search-clear',
       attr: { 'aria-label': t('chat.historySearch.clear'), type: 'button' },
     });
     setIcon(clearButton, 'x');
@@ -132,7 +132,7 @@ class SearchConversationBrowserSession implements ConversationBrowserSession {
       },
       renderPreview: (container, conversation) => {
         if (normalizedQuery.length === 0 || !conversation.preview) return;
-        const preview = container.createDiv({ cls: 'claudian-history-item-preview' });
+        const preview = container.createDiv({ cls: 'codian-history-item-preview' });
         renderMatch(preview, conversation.preview, normalizedQuery);
       },
     });

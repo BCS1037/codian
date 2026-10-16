@@ -26,6 +26,14 @@ describe('OpencodeCommandCatalog', () => {
         content: '',
         source: 'sdk',
       },
+      {
+        id: 'opencode-skill:research.deep',
+        name: 'research.deep',
+        description: 'Research a topic',
+        content: '',
+        kind: 'skill',
+        source: 'sdk',
+      },
     ]);
 
     await expect(catalog.listDropdownEntries({ includeBuiltIns: false })).resolves.toEqual([
@@ -72,6 +80,20 @@ describe('OpencodeCommandCatalog', () => {
         displayPrefix: '/',
         insertPrefix: '/',
       },
+      {
+        id: 'opencode-skill:research.deep',
+        providerId: 'opencode',
+        kind: 'skill',
+        name: 'research.deep',
+        description: 'Research a topic',
+        content: '',
+        scope: 'runtime',
+        source: 'sdk',
+        isEditable: false,
+        isDeletable: false,
+        displayPrefix: '/',
+        insertPrefix: '/',
+      },
     ]);
   });
 
@@ -90,7 +112,7 @@ describe('OpencodeCommandCatalog', () => {
     expect('deleteVaultEntry' in catalog).toBe(false);
   });
 
-  it('preserves ACP names and ordering', async () => {
+  it('preserves OpenCode command names and ordering', async () => {
     const catalog = new OpencodeCommandCatalog();
     catalog.setRuntimeCommands([
       { content: '', id: 'one', name: 'local:shared-review', source: 'sdk' },

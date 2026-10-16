@@ -1,12 +1,14 @@
 import { createMockEl } from '@test/helpers/mockElement';
 
 import type { ConversationMeta } from '@/core/types';
+import { registerAccessibleTextbox } from '@/shared/components/AccessibleTextbox';
 import {
   ResumeSessionDropdown,
   type ResumeSessionDropdownCallbacks,
 } from '@/shared/components/ResumeSessionDropdown';
 
 function createMockInput(): any {
+  const attributes = new Map<string, string>();
   return {
     value: '',
     selectionStart: 0,
@@ -14,6 +16,9 @@ function createMockInput(): any {
     focus: jest.fn(),
     addEventListener: jest.fn(),
     removeEventListener: jest.fn(),
+    setAttribute: jest.fn((name: string, value: string) => attributes.set(name, value)),
+    getAttribute: (name: string) => attributes.get(name) ?? null,
+    removeAttribute: jest.fn((name: string) => attributes.delete(name)),
   };
 }
 
@@ -46,15 +51,15 @@ function createConversation(
 
 function getRenderedItems(containerEl: any): { title: string; isCurrent: boolean }[] {
   const dropdownEl = containerEl.children.find(
-    (c: any) => c.hasClass('claudian-resume-dropdown')
+    (c: any) => c.hasClass('codian-resume-dropdown')
   );
   if (!dropdownEl) return [];
-  const items = dropdownEl.querySelectorAll('.claudian-resume-item');
+  const items = dropdownEl.querySelectorAll('.codian-resume-item');
   return items.map((item: any) => {
     // Check direct children for content div, then find title inside
     let title = '';
     for (const child of item.children) {
-      const found = child.querySelector?.('.claudian-resume-item-title');
+      const found = child.querySelector?.('.codian-resume-item-title');
       if (found) {
         title = found.textContent ?? '';
         break;
@@ -92,7 +97,7 @@ describe('ResumeSessionDropdown', () => {
       );
 
       const dropdownEl = containerEl.children.find(
-        (c: any) => c.hasClass('claudian-resume-dropdown')
+        (c: any) => c.hasClass('codian-resume-dropdown')
       );
       expect(dropdownEl).toBeDefined();
       expect(dropdownEl.hasClass('visible')).toBe(true);
@@ -111,6 +116,35 @@ describe('ResumeSessionDropdown', () => {
       expect(items[2].title).toBe('First Chat');   // lastResponseAt: 1000
 
       dropdown.destroy();
+    });
+
+    it('exposes a uniquely identified listbox and the selected option through textbox relationships', () => {
+      const textbox = createMockEl('div');
+      const unregister = registerAccessibleTextbox(inputEl, () => textbox);
+      const dropdown = new ResumeSessionDropdown(
+        containerEl, inputEl, conversations, null, callbacks,
+      );
+
+      const listbox = containerEl.querySelector('.codian-resume-list');
+      const options = listbox.querySelectorAll('.codian-resume-item');
+      expect(listbox.getAttribute('role')).toBe('listbox');
+      expect(options[0].getAttribute('role')).toBe('option');
+      expect(options[0].getAttribute('aria-selected')).toBe('true');
+      expect(textbox.getAttribute('aria-haspopup')).toBe('listbox');
+      expect(textbox.getAttribute('aria-controls')).toBe(listbox.getAttribute('id'));
+      expect(textbox.getAttribute('aria-activedescendant')).toBe(options[0].getAttribute('id'));
+
+      dropdown.handleKeydown({ key: 'ArrowDown', preventDefault: jest.fn() } as any);
+      expect(options[0].getAttribute('aria-selected')).toBe('false');
+      expect(options[1].getAttribute('aria-selected')).toBe('true');
+      expect(textbox.getAttribute('aria-activedescendant')).toBe(options[1].getAttribute('id'));
+
+      expect(dropdown.handleKeydown({ key: 'Escape', preventDefault: jest.fn() } as any)).toBe(true);
+      expect(textbox.getAttribute('aria-haspopup')).toBeNull();
+      expect(textbox.getAttribute('aria-controls')).toBeNull();
+      expect(textbox.getAttribute('aria-activedescendant')).toBeNull();
+      dropdown.destroy();
+      unregister();
     });
 
     it('marks current conversation', () => {
@@ -134,9 +168,9 @@ describe('ResumeSessionDropdown', () => {
       );
 
       const dropdownEl = containerEl.children.find(
-        (c: any) => c.hasClass('claudian-resume-dropdown')
+        (c: any) => c.hasClass('codian-resume-dropdown')
       );
-      const emptyEl = dropdownEl?.querySelector('.claudian-resume-empty');
+      const emptyEl = dropdownEl?.querySelector('.codian-resume-empty');
       expect(emptyEl).toBeDefined();
       expect(emptyEl?.textContent).toBe('No conversations');
 
@@ -162,7 +196,7 @@ describe('ResumeSessionDropdown', () => {
 
       // Hide it first
       const dropdownEl = containerEl.children.find(
-        (c: any) => c.hasClass('claudian-resume-dropdown')
+        (c: any) => c.hasClass('codian-resume-dropdown')
       );
       dropdownEl.removeClass('visible');
 
@@ -322,9 +356,9 @@ describe('ResumeSessionDropdown', () => {
       );
 
       const dropdownEl = containerEl.children.find(
-        (c: any) => c.hasClass('claudian-resume-dropdown')
+        (c: any) => c.hasClass('codian-resume-dropdown')
       );
-      const items = dropdownEl.querySelectorAll('.claudian-resume-item');
+      const items = dropdownEl.querySelectorAll('.codian-resume-item');
       // Find a non-current item (conv-2 is first, conv-1 is current)
       const nonCurrentItem = items.find((i: any) => !i.hasClass('current'));
       nonCurrentItem?.dispatchEvent('click');
@@ -340,9 +374,9 @@ describe('ResumeSessionDropdown', () => {
       );
 
       const dropdownEl = containerEl.children.find(
-        (c: any) => c.hasClass('claudian-resume-dropdown')
+        (c: any) => c.hasClass('codian-resume-dropdown')
       );
-      const items = dropdownEl.querySelectorAll('.claudian-resume-item');
+      const items = dropdownEl.querySelectorAll('.codian-resume-item');
       // conv-2 is first after sorting and is current
       const currentItem = items.find((i: any) => i.hasClass('current'));
       currentItem?.dispatchEvent('click');

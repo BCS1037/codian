@@ -263,6 +263,24 @@ describe('AcpSessionUpdateNormalizer', () => {
     });
   });
 
+  it('preserves internal skill kind metadata through the shared command adapter', () => {
+    const normalizer = new AcpSessionUpdateNormalizer();
+
+    expect(normalizer.normalize({
+      availableCommands: [{ kind: 'skill', name: 'research.deep' }],
+      sessionUpdate: 'available_commands_update',
+    })).toEqual({
+      commands: [{
+        content: '',
+        id: 'acp:research.deep',
+        kind: 'skill',
+        name: 'research.deep',
+        source: 'sdk',
+      }],
+      type: 'commands',
+    });
+  });
+
   it('parses session info timestamps and renders non-text content blocks', () => {
     const normalizer = new AcpSessionUpdateNormalizer();
     const updatedAt = '2026-04-19T00:00:00.000Z';

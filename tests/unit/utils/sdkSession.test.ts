@@ -1,6 +1,7 @@
 import { existsSync } from 'fs';
 import * as fsPromises from 'fs/promises';
 import * as os from 'os';
+import type * as streamType from 'stream';
 
 import {
   collectAsyncSubagentResults,
@@ -22,10 +23,18 @@ import {
 } from '@/providers/claude/history/ClaudeHistoryStore';
 import { extractToolResultContent } from '@/providers/claude/sdk/toolResultContent';
 
-// Mock fs, fs/promises, and os modules
-jest.mock('fs', () => ({
-  existsSync: jest.fn(),
-}));
+// Mock fs, fs/promises, and os modules. The mocked filesystem serves each file's
+// `readFile` content to streaming readers as well, so history reads run the real line reader.
+jest.mock('fs', () => {
+  const { Readable } = jest.requireActual<typeof streamType>('stream');
+  const mockedFsPromises = jest.requireMock<typeof fsPromises>('fs/promises');
+  return {
+    existsSync: jest.fn(),
+    createReadStream: jest.fn((filePath: string) => Readable.from((async function* () {
+      yield String(await mockedFsPromises.readFile(filePath, 'utf-8'));
+    })())),
+  };
+});
 jest.mock('fs/promises');
 jest.mock('os');
 
@@ -2169,6 +2178,25 @@ describe('sdkSession', () => {
         'a3-new',
       ]);
     });
+
+    it.each([
+      ['a branch after the compaction', undefined, ['u1', 'a1', 'c1', 's1', 'u3', 'a3']],
+      ['a rewind after the compaction', 's1', ['u1', 'a1', 'c1', 's1']],
+    ])('keeps history before a compact boundary when resolving %s', (_case, resumeAt, expected) => {
+      // Native /compact restarts the parent chain; only logicalParentUuid links the boundary back.
+      const entries: SDKNativeMessage[] = [
+        { type: 'user', uuid: 'u1', parentUuid: null },
+        { type: 'assistant', uuid: 'a1', parentUuid: 'u1' },
+        { type: 'system', subtype: 'compact_boundary', uuid: 'c1', parentUuid: null, logicalParentUuid: 'a1' },
+        { type: 'user', uuid: 's1', parentUuid: 'c1', isMeta: true },
+        { type: 'user', uuid: 'u2', parentUuid: 's1' },        // old branch
+        { type: 'assistant', uuid: 'a2', parentUuid: 'u2' },   // old branch
+        { type: 'user', uuid: 'u3', parentUuid: 's1' },        // new branch
+        { type: 'assistant', uuid: 'a3', parentUuid: 'u3' },   // new branch
+      ];
+
+      expect(filterActiveBranch(entries, resumeAt).map(e => e.uuid)).toEqual(expected);
+    });
   });
 
   describe('loadSDKSessionMessages with resumeAtMessageId', () => {
@@ -2275,6 +2303,22 @@ describe('sdkSession', () => {
       expect(extractToolResultContent(content, { fallbackIndent: 2 })).toBe(
         JSON.stringify(content, null, 2)
       );
+    });
+
+    it('omits base64 image bytes when serializing non-text tool results', () => {
+      const imageData = 'image-payload-'.repeat(128);
+      const result = extractToolResultContent([
+        { type: 'tool_reference', tool_name: 'Read' },
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: imageData } },
+        { type: 'image', source: { type: 'url', url: 'https://example.test/image.png' } },
+      ]);
+
+      expect(result).not.toContain(imageData);
+      expect(JSON.parse(result)).toEqual([
+        { type: 'tool_reference', tool_name: 'Read' },
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: '' } },
+        { type: 'image', source: { type: 'url', url: 'https://example.test/image.png' } },
+      ]);
     });
   });
 

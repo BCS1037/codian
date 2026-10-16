@@ -1,12 +1,12 @@
 /* Drop overlay - inside input wrapper */
-.claudian-drop-overlay {
+.codian-drop-overlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(var(--claudian-brand-rgb), 0.08);
-  border: 2px dashed var(--claudian-brand);
+  background: rgba(var(--codian-brand-rgb), 0.08);
+  border: 2px dashed var(--codian-brand);
   border-radius: 6px;
   display: none;
   align-items: center;
@@ -15,23 +15,23 @@
   pointer-events: none;
 }
 
-.claudian-drop-overlay.visible {
+.codian-drop-overlay.visible {
   display: flex;
 }
 
-.claudian-drop-content {
+.codian-drop-content {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  color: var(--claudian-brand);
+  color: var(--codian-brand);
 }
 
-.claudian-drop-content svg {
+.codian-drop-content svg {
   opacity: 0.7;
 }
 
-.claudian-drop-content span {
+.codian-drop-content span {
   font-size: 12px;
   font-weight: 500;
 }
@@ -39,7 +39,7 @@
 /* Images in Messages (displayed above user bubble) */
 
 /* Images container - right-aligned above user message */
-.claudian-message-images {
+.codian-message-images {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -49,7 +49,7 @@
 }
 
 /* Individual image in message - standardized size */
-.claudian-message-image {
+.codian-message-image {
   width: 120px;
   height: 120px;
   border-radius: 8px;
@@ -60,12 +60,12 @@
   border: 1px solid var(--background-modifier-border);
 }
 
-.claudian-message-image:hover {
+.codian-message-image:hover {
   transform: scale(1.03);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.claudian-message-image img {
+.codian-message-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;

@@ -1,5 +1,6 @@
 import { createMockEl } from '@test/helpers/mockElement';
 
+import { registerAccessibleTextbox } from '@/shared/components/AccessibleTextbox';
 import { SelectableDropdown, type SelectableDropdownRenderOptions } from '@/shared/components/SelectableDropdown';
 
 function createRenderOptions<T>(overrides: Partial<SelectableDropdownRenderOptions<T>> = {}): SelectableDropdownRenderOptions<T> {
@@ -22,6 +23,7 @@ describe('SelectableDropdown', () => {
       listClassName: 'dropdown-list',
       itemClassName: 'dropdown-item',
       emptyClassName: 'dropdown-empty',
+      ariaLabel: 'Input suggestions',
     });
   });
 
@@ -62,6 +64,16 @@ describe('SelectableDropdown', () => {
       const el = dropdown.getElement();
       expect(el).not.toBeNull();
       expect(el!.hasClass('visible')).toBe(true);
+      expect(el!.getAttribute('role')).toBe('listbox');
+      expect(el!.getAttribute('aria-label')).toBe('Input suggestions');
+      const options = el!.querySelectorAll('.dropdown-item');
+      expect(options[0].getAttribute('role')).toBe('option');
+      expect(options[0].getAttribute('aria-selected')).toBe('true');
+      expect(options[1].getAttribute('aria-selected')).toBe('false');
+
+      dropdown.moveSelection(1);
+      expect(options[0].getAttribute('aria-selected')).toBe('false');
+      expect(options[1].getAttribute('aria-selected')).toBe('true');
     });
 
     it('stores items and exposes them via getItems', () => {
@@ -71,6 +83,72 @@ describe('SelectableDropdown', () => {
       }));
 
       expect(dropdown.getItems()).toEqual(['a', 'b', 'c']);
+    });
+
+    it('connects the active option to the accessible textbox and releases it on hide', () => {
+      const input = createMockEl('textarea');
+      const textbox = createMockEl('div');
+      const unregister = registerAccessibleTextbox(input, () => textbox);
+      const popup = new SelectableDropdown<string>(containerEl, {
+        listClassName: 'dropdown-list',
+        itemClassName: 'dropdown-item',
+        emptyClassName: 'dropdown-empty',
+        ariaLabel: 'Input suggestions',
+        inputEl: input,
+      });
+
+      popup.render(createRenderOptions({
+        items: ['alpha', 'beta'],
+        selectedIndex: 0,
+        renderItem: (item, el) => el.setText(item),
+      }));
+
+      const listbox = popup.getElement()!;
+      const options = listbox.querySelectorAll('.dropdown-item');
+      expect(listbox.getAttribute('id')).toBeTruthy();
+      expect(options[0].getAttribute('id')).toBeTruthy();
+      expect(textbox.getAttribute('aria-controls')).toBe(listbox.getAttribute('id'));
+      expect(textbox.getAttribute('aria-activedescendant')).toBe(options[0].getAttribute('id'));
+      expect(textbox.getAttribute('aria-autocomplete')).toBe('list');
+
+      popup.moveSelection(1);
+      expect(textbox.getAttribute('aria-activedescendant')).toBe(options[1].getAttribute('id'));
+
+      popup.hide();
+      expect(textbox.getAttribute('aria-controls')).toBeNull();
+      expect(textbox.getAttribute('aria-activedescendant')).toBeNull();
+      expect(textbox.getAttribute('aria-autocomplete')).toBeNull();
+      popup.destroy();
+      unregister();
+    });
+
+    it('assigns distinct listbox and option IDs to separate tab menus', () => {
+      const first = new SelectableDropdown<string>(containerEl, {
+        listClassName: 'dropdown-list',
+        itemClassName: 'dropdown-item',
+        emptyClassName: 'dropdown-empty',
+        ariaLabel: 'Input suggestions',
+      });
+      const second = new SelectableDropdown<string>(containerEl, {
+        listClassName: 'dropdown-list',
+        itemClassName: 'dropdown-item',
+        emptyClassName: 'dropdown-empty',
+        ariaLabel: 'Input suggestions',
+      });
+      const renderOptions = createRenderOptions({
+        items: ['alpha'],
+        renderItem: (item, el) => el.setText(item),
+      });
+      first.render(renderOptions);
+      second.render(renderOptions);
+
+      expect(first.getElement()!.getAttribute('id'))
+        .not.toBe(second.getElement()!.getAttribute('id'));
+      expect(first.getElement()!.querySelector('.dropdown-item')!.getAttribute('id'))
+        .not.toBe(second.getElement()!.querySelector('.dropdown-item')!.getAttribute('id'));
+
+      first.destroy();
+      second.destroy();
     });
 
     it('calls renderItem for each item', () => {
@@ -120,6 +198,8 @@ describe('SelectableDropdown', () => {
       const emptyEl = el.querySelector('dropdown-empty');
       expect(emptyEl).not.toBeNull();
       expect(emptyEl!.textContent).toBe('Nothing here');
+      expect(el.getAttribute('role')).toBeNull();
+      expect(el.getAttribute('aria-label')).toBeNull();
     });
   });
 

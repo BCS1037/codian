@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0 — 2026-10-16
+
+- **Inline Edit**: Streamlined the composer into a compact card with diff statistics, status indicators, and keyboard shortcuts.
+- **Chat Workspace & Dual Pane**: Enhanced wide and dual-pane chat layouts with smoother tab switching and reliable historical session restoration.
+- **Rendering & Code Blocks**: Added support for third-party plugin code-block rendering and optimized stored tool output performance.
+- **Environment & Editor Context**: Improved login shell discovery across macOS/Linux and expanded context selection to non-Markdown file views.
+- **Reliability & Stability**: Hardened tab state machines and asynchronous rendering guards against background UI deadlocks.
+
 ## 1.3.3 — 2026-08-20
 
 - Fixed Codex memory citation metadata leaking into visible chat responses and history replay.

@@ -10,7 +10,7 @@ import {
 
 describe('systemPrompt', () => {
   describe('buildSystemPrompt', () => {
-    it('should produce identical output for the default and explicit Claudian profiles', () => {
+    it('should produce identical output for the default and explicit Codian profiles', () => {
       const settings = {
         mediaFolder: 'attachments',
         customPrompt: 'Always be concise.',
@@ -19,7 +19,7 @@ describe('systemPrompt', () => {
       };
 
       expect(buildSystemPrompt(settings)).toBe(
-        buildSystemPrompt(settings, { toolGuidanceProfile: 'claudian' }),
+        buildSystemPrompt(settings, { toolGuidanceProfile: 'codian' }),
       );
     });
 
@@ -46,7 +46,7 @@ describe('systemPrompt', () => {
       expect(prompt).toContain('Use curl if the user explicitly asks for it.');
     });
 
-    it('should omit Claudian tool recipes from the provider-native profile', () => {
+    it('should omit Codian tool recipes from the provider-native profile', () => {
       const prompt = buildSystemPrompt(
         { mediaFolder: 'attachments' },
         { toolGuidanceProfile: 'provider-native' },
@@ -195,15 +195,15 @@ describe('systemPrompt', () => {
       };
 
       const defaultKey = computeSystemPromptKey(settings);
-      const claudianKey = computeSystemPromptKey(settings, {
-        toolGuidanceProfile: 'claudian',
+      const codianKey = computeSystemPromptKey(settings, {
+        toolGuidanceProfile: 'codian',
       });
       const providerNativeKey = computeSystemPromptKey(settings, {
         toolGuidanceProfile: 'provider-native',
       });
 
-      expect(defaultKey).toBe(claudianKey);
-      expect(providerNativeKey).not.toBe(claudianKey);
+      expect(defaultKey).toBe(codianKey);
+      expect(providerNativeKey).not.toBe(codianKey);
     });
 
     it('computes key from all settings', () => {

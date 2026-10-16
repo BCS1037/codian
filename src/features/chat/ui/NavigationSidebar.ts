@@ -10,7 +10,7 @@ import {
 import { formatConversationDirectoryTitle } from '../utils/conversationDirectoryTitle';
 
 const PREVIEW_CARD_HALF_HEIGHT = 40;
-const USER_MESSAGE_SELECTOR = '.claudian-message-user, [data-role="user"]';
+const USER_MESSAGE_SELECTOR = '.codian-message-user, [data-role="user"]';
 
 type NavigationScrollIntent = 'away' | 'bottom';
 
@@ -41,7 +41,7 @@ export class NavigationSidebar {
     private messagesEl: HTMLElement,
     mode: ChatNavigationMode = 'button-navigation',
   ) {
-    this.container = this.parentEl.createDiv({ cls: 'claudian-nav-sidebar' });
+    this.container = this.parentEl.createDiv({ cls: 'codian-nav-sidebar' });
     this.mode = mode;
     this.renderMode();
     this.setupEventListeners();
@@ -68,23 +68,23 @@ export class NavigationSidebar {
     this.railEl = null;
 
     if (this.mode === 'conversation-rail') {
-      this.parentEl.classList.add('claudian-conversation-rail-host');
-      this.container.classList.add('claudian-conversation-rail');
+      this.parentEl.classList.add('codian-conversation-rail-host');
+      this.container.classList.add('codian-conversation-rail');
       this.renderConversationRail();
       return;
     }
 
-    this.parentEl.classList.remove('claudian-conversation-rail-host');
-    this.container.classList.remove('claudian-conversation-rail');
+    this.parentEl.classList.remove('codian-conversation-rail-host');
+    this.container.classList.remove('codian-conversation-rail');
     this.renderButtonNavigation();
   }
 
   private renderButtonNavigation(): void {
-    this.topBtn = this.createButton('claudian-nav-btn-top', 'chevrons-up', 'Scroll to top');
-    this.prevBtn = this.createButton('claudian-nav-btn-prev', 'chevron-up', 'Previous message');
-    this.tocBtn = this.createButton('claudian-nav-btn-toc', 'list-tree', 'Conversation directory');
-    this.nextBtn = this.createButton('claudian-nav-btn-next', 'chevron-down', 'Next message');
-    this.bottomBtn = this.createButton('claudian-nav-btn-bottom', 'chevrons-down', 'Scroll to bottom');
+    this.topBtn = this.createButton('codian-nav-btn-top', 'chevrons-up', t('chat.navigation.scrollToTop'));
+    this.prevBtn = this.createButton('codian-nav-btn-prev', 'chevron-up', t('chat.navigation.previousMessage'));
+    this.tocBtn = this.createButton('codian-nav-btn-toc', 'list-tree', t('chat.navigation.directory'));
+    this.nextBtn = this.createButton('codian-nav-btn-next', 'chevron-down', t('chat.navigation.nextMessage'));
+    this.bottomBtn = this.createButton('codian-nav-btn-bottom', 'chevrons-down', t('chat.navigation.scrollToBottom'));
 
     this.topBtn.addEventListener('click', () => {
       this.onScrollIntent?.('away');
@@ -109,7 +109,7 @@ export class NavigationSidebar {
   }
 
   private createButton(cls: string, icon: string, label: string): HTMLElement {
-    const btn = this.container.createDiv({ cls: `claudian-nav-btn ${cls}` });
+    const btn = this.container.createDiv({ cls: `codian-nav-btn ${cls}` });
     setIcon(btn, icon);
     btn.setAttribute('aria-label', label);
     return btn;
@@ -180,7 +180,7 @@ export class NavigationSidebar {
   private applyVisibility(): void {
     const { scrollHeight, clientHeight } = this.messagesEl;
     const isScrollable = scrollHeight > clientHeight + 50; // Small buffer
-    this.tocBtn?.classList.remove('claudian-hidden');
+    this.tocBtn?.classList.remove('codian-hidden');
     if (this.isVisible === isScrollable) return;
     this.isVisible = isScrollable;
     this.container.classList.toggle('visible', isScrollable);
@@ -188,7 +188,7 @@ export class NavigationSidebar {
 
   private getConversationEntries(): Array<{ userEl: HTMLElement; prompt: string; reply: string }> {
     const messages = Array.from(this.messagesEl.querySelectorAll<HTMLElement>(
-      '.claudian-message-user, .claudian-message-assistant, [data-role="user"], [data-role="assistant"]',
+      '.codian-message-user, .codian-message-assistant, [data-role="user"], [data-role="assistant"]',
     ));
     const entries: Array<{ userEl: HTMLElement; prompt: string; reply: string }> = [];
 
@@ -214,31 +214,31 @@ export class NavigationSidebar {
   }
 
   private isUserMessage(el: HTMLElement): boolean {
-    return el.classList.contains('claudian-message-user') || el.getAttribute('data-role') === 'user';
+    return el.classList.contains('codian-message-user') || el.getAttribute('data-role') === 'user';
   }
 
   private isAssistantMessage(el: HTMLElement): boolean {
-    return el.classList.contains('claudian-message-assistant') || el.getAttribute('data-role') === 'assistant';
+    return el.classList.contains('codian-message-assistant') || el.getAttribute('data-role') === 'assistant';
   }
 
   private getMessageText(el: HTMLElement): string {
-    const contentEl = el.querySelector<HTMLElement>('.claudian-message-content');
+    const contentEl = el.querySelector<HTMLElement>('.codian-message-content');
     return (contentEl?.textContent ?? el.textContent ?? '').replace(/\s+/g, ' ').trim();
   }
 
   private renderConversationRail(): void {
     if (this.mode !== 'conversation-rail') return;
     this.railEl?.remove();
-    this.railEl = this.container.createDiv({ cls: 'claudian-conversation-rail-markers' });
+    this.railEl = this.container.createDiv({ cls: 'codian-conversation-rail-markers' });
     const entries = this.getConversationEntries();
 
     entries.forEach((entry, index) => {
-      const marker = this.railEl!.createDiv({ cls: 'claudian-conversation-rail-marker' });
+      const marker = this.railEl!.createDiv({ cls: 'codian-conversation-rail-marker' });
       marker.setAttribute('role', 'button');
       marker.setAttribute('tabindex', '0');
       marker.setAttribute('data-prompt-index', String(index + 1));
       marker.createDiv({
-        cls: 'claudian-conversation-rail-marker-accessible-label',
+        cls: 'codian-conversation-rail-marker-accessible-label',
         text: t('chat.navigation.jumpToPrompt', { index: index + 1 }),
       });
       if (index === entries.length - 1) marker.classList.add('is-latest');
@@ -267,7 +267,7 @@ export class NavigationSidebar {
 
   private applyWaveFocus(focusIndex: number): void {
     const markers = Array.from(this.railEl?.querySelectorAll<HTMLElement>(
-      '.claudian-conversation-rail-marker',
+      '.codian-conversation-rail-marker',
     ) ?? []);
     markers.forEach((marker, index) => {
       const diameter = Math.max(6, 10 - Math.abs(index - focusIndex) * 2);
@@ -277,7 +277,7 @@ export class NavigationSidebar {
 
   private resetWaveFocus(): void {
     for (const marker of Array.from(this.railEl?.querySelectorAll<HTMLElement>(
-      '.claudian-conversation-rail-marker',
+      '.codian-conversation-rail-marker',
     ) ?? [])) {
       marker.setCssProps({ width: '', height: '' });
     }
@@ -289,7 +289,7 @@ export class NavigationSidebar {
     marker: HTMLElement,
   ): void {
     this.closePreviewCard();
-    const card = this.parentEl.createDiv({ cls: 'claudian-conversation-rail-card' });
+    const card = this.parentEl.createDiv({ cls: 'codian-conversation-rail-card' });
     const parentRect = this.parentEl.getBoundingClientRect();
     const markerRect = marker.getBoundingClientRect();
     const markerCenter = markerRect.top - parentRect.top + markerRect.height / 2;
@@ -298,9 +298,9 @@ export class NavigationSidebar {
       Math.min(this.parentEl.clientHeight - PREVIEW_CARD_HALF_HEIGHT, markerCenter),
     );
     card.setCssProps({ top: `${boundedTop}px` });
-    card.createDiv({ cls: 'claudian-conversation-rail-card-prompt', text: `${index + 1}. ${entry.prompt}` });
+    card.createDiv({ cls: 'codian-conversation-rail-card-prompt', text: `${index + 1}. ${entry.prompt}` });
     if (entry.reply) {
-      card.createDiv({ cls: 'claudian-conversation-rail-card-reply', text: entry.reply });
+      card.createDiv({ cls: 'codian-conversation-rail-card-reply', text: entry.reply });
     }
     this.previewCard = card;
   }
@@ -315,7 +315,7 @@ export class NavigationSidebar {
   }
 
   private getDirectoryEntries(): Array<{ el: HTMLElement; title: string }> {
-    return Array.from(this.messagesEl.querySelectorAll<HTMLElement>('.claudian-message-user, [data-role="user"]'))
+    return Array.from(this.messagesEl.querySelectorAll<HTMLElement>('.codian-message-user, [data-role="user"]'))
       .map(el => ({
         el,
         title: this.getDirectoryTitle(el),
@@ -327,7 +327,7 @@ export class NavigationSidebar {
     const explicitTitle = (el.getAttribute('data-toc-title') ?? '').trim();
     if (explicitTitle) return explicitTitle;
 
-    const contentEl = el.querySelector<HTMLElement>('.claudian-message-content');
+    const contentEl = el.querySelector<HTMLElement>('.codian-message-content');
     return formatConversationDirectoryTitle(contentEl?.textContent ?? el.textContent ?? '');
   }
 
@@ -348,7 +348,7 @@ export class NavigationSidebar {
     if (this.isDirectoryMessageElement(node)) return true;
     const candidate = node as { querySelector?: (selector: string) => Element | null };
     return typeof candidate.querySelector === 'function'
-      && candidate.querySelector('.claudian-message-user, [data-role="user"]') !== null;
+      && candidate.querySelector('.codian-message-user, [data-role="user"]') !== null;
   }
 
   private isDirectoryMessageElement(node: Node): boolean {
@@ -358,9 +358,9 @@ export class NavigationSidebar {
       getAttribute?: (name: string) => string | null;
     };
     if (typeof candidate.matches === 'function') {
-      return candidate.matches('.claudian-message-user, [data-role="user"]');
+      return candidate.matches('.codian-message-user, [data-role="user"]');
     }
-    return candidate.classList?.contains?.('claudian-message-user') === true
+    return candidate.classList?.contains?.('codian-message-user') === true
       || candidate.getAttribute?.('data-role') === 'user';
   }
 
@@ -375,21 +375,21 @@ export class NavigationSidebar {
   private openDirectory(): void {
     const entries = this.getDirectoryEntries();
     this.closeDirectory();
-    this.tocPopover = this.parentEl.createDiv({ cls: 'claudian-nav-toc-popover' });
-    this.tocPopover.createDiv({ cls: 'claudian-nav-toc-title', text: 'Conversation directory' });
-    const listEl = this.tocPopover.createDiv({ cls: 'claudian-nav-toc-list' });
+    this.tocPopover = this.parentEl.createDiv({ cls: 'codian-nav-toc-popover' });
+    this.tocPopover.createDiv({ cls: 'codian-nav-toc-title', text: t('chat.navigation.directory') });
+    const listEl = this.tocPopover.createDiv({ cls: 'codian-nav-toc-list' });
 
     if (entries.length === 0) {
       listEl.createDiv({
-        cls: 'claudian-nav-toc-empty',
-        text: 'No user prompts in this conversation',
+        cls: 'codian-nav-toc-empty',
+        text: t('chat.navigation.emptyDirectory'),
       });
       return;
     }
 
     entries.forEach((entry, index) => {
       const itemEl = listEl.createDiv({
-        cls: 'claudian-nav-toc-item',
+        cls: 'codian-nav-toc-item',
         text: `${index + 1}. ${entry.title}`,
       });
       itemEl.setAttribute('role', 'button');
@@ -430,7 +430,7 @@ export class NavigationSidebar {
    * Scrolls to previous or next user message, skipping assistant messages.
    */
   private scrollToMessage(direction: 'prev' | 'next'): void {
-    const messages = Array.from(this.messagesEl.querySelectorAll<HTMLElement>('.claudian-message-user'));
+    const messages = Array.from(this.messagesEl.querySelectorAll<HTMLElement>('.codian-message-user'));
 
     if (messages.length === 0) return;
 
@@ -474,7 +474,7 @@ export class NavigationSidebar {
     this.mutationObserver = null;
     this.onScrollIntent = null;
     this.messagesEl.removeEventListener('scroll', this.scrollHandler);
-    this.parentEl.classList.remove('claudian-conversation-rail-host');
+    this.parentEl.classList.remove('codian-conversation-rail-host');
     this.container.remove();
   }
 }

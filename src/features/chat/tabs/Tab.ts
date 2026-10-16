@@ -1,5 +1,4 @@
-import type { Component } from 'obsidian';
-import { Notice, Platform, TFile, TFolder } from 'obsidian';
+import { Component, Notice, Platform, TFile, TFolder } from 'obsidian';
 
 import { getHiddenProviderCommandSet } from '../../../core/providers/commands/hiddenCommands';
 import { normalizeProviderCommandDiscoveryItems } from '../../../core/providers/commands/ProviderCommandDiscoveryResult';
@@ -25,13 +24,14 @@ import {
 import type { ChatRuntime } from '../../../core/runtime/ChatRuntime';
 import type { AutoTurnResult } from '../../../core/runtime/types';
 import { TOOL_AGENT_OUTPUT } from '../../../core/tools/toolNames';
-import type { ChatMessage, ClaudianSettings, Conversation, StreamChunk } from '../../../core/types';
+import type { ChatMessage, CodianSettings, Conversation, StreamChunk } from '../../../core/types';
 import { t } from '../../../i18n/i18n';
 import { SlashCommandDropdown } from '../../../shared/components/SlashCommandDropdown';
 import { getEnhancedPath } from '../../../utils/env';
 import { getVaultPath } from '../../../utils/path';
 import type { FeatureHost } from '../../FeatureHost';
 import { toggleServiceTier } from '../actions/toggleServiceTier';
+import { PromptHistoryNavigation } from '../composer/PromptHistoryNavigation';
 import { BrowserSelectionController } from '../controllers/BrowserSelectionController';
 import { CanvasSelectionController } from '../controllers/CanvasSelectionController';
 import { ChatSelectionController } from '../controllers/ChatSelectionController';
@@ -61,6 +61,7 @@ import { getTabProviderId } from './providerResolution';
 import { TabRuntimeFactory } from './TabRuntimeFactory';
 import { TabSession } from './TabSession';
 import type {
+  ForkContext,
   ProviderCatalogInfo,
   ProviderCatalogResolver,
   TabData,
@@ -79,6 +80,8 @@ type TabProviderSettings = Record<string, unknown> & {
   permissionMode: string;
   customContextLimits?: Record<string, number>;
 };
+
+type TabSettingsContext = TabProviderContext & Pick<TabData, 'session'>;
 
 function getSharedSelectionFocusScopeEls(component: Component): HTMLElement[] {
   const host = component as Partial<TabManagerViewHost>;
@@ -179,22 +182,41 @@ function getTabChatUIConfig(
   return ProviderRegistry.getChatUIConfig(getTabProviderId(tab, plugin, conversation));
 }
 
-function getTabSettingsSnapshot(
-  tab: TabProviderContext,
+export function getTabSettingsSnapshot(
+  tab: TabSettingsContext,
   plugin: FeatureHost,
 ): TabProviderSettings {
+  const committedSettings = plugin.getCommittedSettings() as unknown as Record<string, unknown>;
   const providerId = getTabProviderId(tab, plugin);
-  return getProviderSettingsSnapshotWithModel(
-    plugin.settings,
+  const snapshot = getProviderSettingsSnapshotWithModel(
+    committedSettings,
     providerId,
-    getTabSelectedModel(tab, plugin),
-  );
+    getTabSelectedModel(tab, plugin, committedSettings),
+  ) as TabProviderSettings;
+  const uiConfig = ProviderRegistry.getChatUIConfig(providerId);
+  const reasoningOptions = uiConfig.getReasoningOptions(snapshot.model, snapshot);
+  if (reasoningOptions.length === 0) {
+    return snapshot;
+  }
+
+  const settingKey = uiConfig.isAdaptiveReasoningModel(snapshot.model, snapshot)
+    ? 'effortLevel'
+    : 'thinkingBudget';
+  const key = `${providerId}:${snapshot.model}`;
+  const selected = tab.session.reasoningSelections.get(key) ?? snapshot[settingKey];
+  const reasoning = typeof selected === 'string'
+    && reasoningOptions.some(option => option.value === selected)
+    ? selected
+    : uiConfig.getDefaultReasoningValue(snapshot.model, snapshot);
+  tab.session.reasoningSelections.set(key, reasoning);
+  snapshot[settingKey] = reasoning;
+  return snapshot;
 }
 
 function getWritableTabSettingsSnapshot(
   tab: TabProviderContext,
   plugin: FeatureHost,
-  settings: ClaudianSettings = plugin.settings,
+  settings: CodianSettings = plugin.settings,
 ): TabProviderSettings {
   return getProviderSettingsSnapshotWithModel(
     settings,
@@ -213,10 +235,11 @@ function getTabConversation(
 function getTabSelectedModel(
   tab: TabProviderContext,
   plugin: FeatureHost,
+  settings: Record<string, unknown> = plugin.settings,
 ): string | null {
   const providerId = getTabProviderId(tab, plugin);
   if (tab.lifecycleState === 'blank') {
-    return normalizeProviderModelSelection(providerId, plugin.settings, tab.draftModel)
+    return normalizeProviderModelSelection(providerId, settings, tab.draftModel)
       ?? tab.service?.getAuxiliaryModel?.()
       ?? tab.draftModel
       ?? null;
@@ -224,14 +247,30 @@ function getTabSelectedModel(
 
   const conversation = getTabConversation(tab, plugin);
   if (conversation) {
-    return resolveConversationModel(plugin.settings, providerId, conversation).model;
+    return resolveConversationModel(settings, providerId, conversation).model;
   }
 
   return tab.service?.getAuxiliaryModel?.() ?? null;
 }
 
+export async function updateTabReasoning(
+  tab: TabData,
+  plugin: FeatureHost,
+  reasoning: string,
+  settingKey: 'effortLevel' | 'thinkingBudget',
+): Promise<void> {
+  const providerId = getTabProviderId(tab, plugin);
+  const model = getTabSettingsSnapshot(tab, plugin).model;
+  const uiConfig = ProviderRegistry.getChatUIConfig(providerId);
+  await updateTabProviderSettings(tab, plugin, (settings) => {
+    settings[settingKey] = reasoning;
+    uiConfig.applyReasoningSelection?.(model, reasoning, settings);
+  });
+  tab.session.reasoningSelections.set(`${providerId}:${model}`, reasoning);
+}
+
 function getTabPermissionMode(
-  tab: TabProviderContext,
+  tab: TabSettingsContext,
   plugin: FeatureHost,
 ): string {
   const permissionMode = getTabSettingsSnapshot(tab, plugin).permissionMode;
@@ -273,7 +312,7 @@ function shouldSendMessageFromExplicitEnterShortcut(e: KeyboardEvent): boolean {
 
 function shouldSendMessageFromEnterKey(
   e: KeyboardEvent,
-  settings: Pick<ClaudianSettings, 'requireCommandOrControlEnterToSend'>,
+  settings: Pick<CodianSettings, 'requireCommandOrControlEnterToSend'>,
 ): boolean {
   if (!isEnterWithoutShiftOrComposition(e)) {
     return false;
@@ -326,7 +365,7 @@ export function sendTabInputMessageFromExplicitEnterShortcut(
 
 function sendTabInputMessageFromEnterKey(
   tab: TabData,
-  settings: Pick<ClaudianSettings, 'requireCommandOrControlEnterToSend'>,
+  settings: Pick<CodianSettings, 'requireCommandOrControlEnterToSend'>,
   e: KeyboardEvent,
 ): boolean {
   if (!shouldSendMessageFromEnterKey(e, settings)) {
@@ -442,7 +481,7 @@ function refreshTabProviderUI(tab: TabData, plugin: FeatureHost): void {
   tab.ui.permissionToggle?.updateDisplay();
   tab.ui.serviceTierToggle?.updateDisplay();
   tab.dom.inputWrapper.toggleClass(
-    'claudian-input-plan-mode',
+    'codian-input-plan-mode',
     permissionMode === 'plan' && capabilities.supportsPlanMode,
   );
 }
@@ -567,6 +606,12 @@ export function onProviderAvailabilityChanged(tab: TabData, plugin: FeatureHost)
 /**
  * Creates a new Tab instance with all required state.
  */
+function createTabComponent(): Component {
+  const component = new Component();
+  component.load();
+  return component;
+}
+
 export function createTab(options: TabCreateOptions): TabData {
   const {
     plugin,
@@ -581,11 +626,18 @@ export function createTab(options: TabCreateOptions): TabData {
 
   const id = tabId ?? generateTabId();
 
-  const contentEl = containerEl.createDiv({ cls: 'claudian-tab-content claudian-hidden' });
+  const contentEl = containerEl.createDiv({ cls: 'codian-tab-content codian-hidden' });
 
+  let session: TabSession | null = null;
   const state = new ChatState({
-    onStreamingStateChanged: onStreamingChanged,
-    onRewindingStateChanged: onRewindingChanged,
+    onStreamingStateChanged: (isStreaming) => {
+      session?.notifyWorkStateChanged();
+      onStreamingChanged?.(isStreaming);
+    },
+    onRewindingStateChanged: (isRewinding) => {
+      session?.notifyWorkStateChanged();
+      onRewindingChanged?.(isRewinding);
+    },
     onAttentionChanged: onAttentionChanged,
     onConversationChanged: onConversationIdChanged,
   });
@@ -613,7 +665,7 @@ export function createTab(options: TabCreateOptions): TabData {
     ?? (draftModel
       ? getEnabledProviderForModel(draftModel, plugin.settings)
       : DEFAULT_CHAT_PROVIDER_ID);
-  const session = new TabSession({
+  session = new TabSession({
     id,
     lifecycleState: isBound ? 'bound_cold' : 'blank',
     draftModel,
@@ -659,6 +711,8 @@ export function createTab(options: TabCreateOptions): TabData {
       runtimeSupervisor.setCurrent(runtime);
     },
     runtimeSupervisor,
+    component: createTabComponent(),
+    owner: null,
     onRuntimeInstalled: options.onRuntimeInstalled,
     onPersistedStateChanged: options.onPersistedStateChanged,
     providerCatalogResolver: null,
@@ -673,6 +727,7 @@ export function createTab(options: TabCreateOptions): TabData {
       streamController: null,
       inputController: null,
       navigationController: null,
+      promptHistoryNavigation: null,
     },
     services: {
       subagentManager,
@@ -709,18 +764,18 @@ export function createTab(options: TabCreateOptions): TabData {
  * Builds the DOM structure for a tab.
  */
 function buildTabDOM(contentEl: HTMLElement): TabDOMElements {
-  const messagesWrapperEl = contentEl.createDiv({ cls: 'claudian-messages-wrapper' });
-  const messagesEl = messagesWrapperEl.createDiv({ cls: 'claudian-messages' });
-  const welcomeEl = messagesEl.createDiv({ cls: 'claudian-welcome' });
-  const statusPanelContainerEl = contentEl.createDiv({ cls: 'claudian-status-panel-container' });
-  const inputComposerEl = contentEl.createDiv({ cls: 'claudian-input-composer' });
-  const inputContainerEl = inputComposerEl.createDiv({ cls: 'claudian-input-container' });
-  const queueIndicatorEl = inputContainerEl.createDiv({ cls: 'claudian-input-queue-row' });
-  const navRowEl = inputContainerEl.createDiv({ cls: 'claudian-input-nav-row' });
-  const inputWrapper = inputContainerEl.createDiv({ cls: 'claudian-input-wrapper' });
-  const contextRowEl = inputWrapper.createDiv({ cls: 'claudian-context-row' });
+  const messagesWrapperEl = contentEl.createDiv({ cls: 'codian-messages-wrapper' });
+  const messagesEl = messagesWrapperEl.createDiv({ cls: 'codian-messages' });
+  const welcomeEl = messagesEl.createDiv({ cls: 'codian-welcome' });
+  const statusPanelContainerEl = contentEl.createDiv({ cls: 'codian-status-panel-container' });
+  const inputComposerEl = contentEl.createDiv({ cls: 'codian-input-composer' });
+  const inputContainerEl = inputComposerEl.createDiv({ cls: 'codian-input-container' });
+  const queueIndicatorEl = inputContainerEl.createDiv({ cls: 'codian-input-queue-row' });
+  const navRowEl = inputContainerEl.createDiv({ cls: 'codian-input-nav-row' });
+  const inputWrapper = inputContainerEl.createDiv({ cls: 'codian-input-wrapper' });
+  const contextRowEl = inputWrapper.createDiv({ cls: 'codian-context-row' });
   const inputEl = inputWrapper.createEl('textarea', {
-    cls: 'claudian-input',
+    cls: 'codian-input',
     attr: {
       placeholder: 'How can i help you today?',
       rows: '3',
@@ -1013,7 +1068,7 @@ function initializeInputToolbar(
 ): void {
   const { dom } = tab;
 
-  const inputToolbar = dom.inputWrapper.createDiv({ cls: 'claudian-input-toolbar' });
+  const inputToolbar = dom.inputWrapper.createDiv({ cls: 'codian-input-toolbar' });
 
   // Blank-tab UI config wrapper that returns mixed model options
   const blankTabUIConfigProxy = (): ProviderChatUIConfig => {
@@ -1151,18 +1206,10 @@ function initializeInputToolbar(
       tab.ui.modeSelector?.renderOptions();
     },
     onThinkingBudgetChange: async (budget: string) => {
-      await updateTabProviderSettings(tab, plugin, (settings) => {
-        const model = getTabSelectedModel(tab, plugin) ?? settings.model;
-        settings.thinkingBudget = budget;
-        getTabChatUIConfig(tab, plugin).applyReasoningSelection?.(model, budget, settings);
-      });
+      await updateTabReasoning(tab, plugin, budget, 'thinkingBudget');
     },
     onEffortLevelChange: async (effort: string) => {
-      await updateTabProviderSettings(tab, plugin, (settings) => {
-        const model = getTabSelectedModel(tab, plugin) ?? settings.model;
-        settings.effortLevel = effort;
-        getTabChatUIConfig(tab, plugin).applyReasoningSelection?.(model, effort, settings);
-      });
+      await updateTabReasoning(tab, plugin, effort, 'effortLevel');
     },
     onServiceTierChange: async (serviceTier: string) => {
       await updateTabProviderSettings(tab, plugin, (settings) => {
@@ -1181,7 +1228,7 @@ function initializeInputToolbar(
       });
       tab.ui.permissionToggle?.updateDisplay();
       dom.inputWrapper.toggleClass(
-        'claudian-input-plan-mode',
+        'codian-input-plan-mode',
         mode === 'plan' && getTabCapabilities(tab, plugin).supportsPlanMode,
       );
     },
@@ -1299,18 +1346,7 @@ export function initializeTabUI(
   dom.eventCleanups.push(() => resizeObserver.disconnect());
 }
 
-export interface ForkContext {
-  messages: ChatMessage[];
-  providerId?: ProviderId;
-  sourceSessionId: string;
-  sourceProviderState?: Record<string, unknown>;
-  sourceSelectedModel?: string;
-  resumeAt: string;
-  sourceTitle?: string;
-  /** 1-based index used for fork title suffix (counts only non-interrupt user messages). */
-  forkAtUserMessage?: number;
-  currentNote?: string;
-}
+export type { ForkContext } from './types';
 
 function deepCloneMessages(messages: ChatMessage[]): ChatMessage[] {
   if (typeof structuredClone === 'function') {
@@ -1556,13 +1592,17 @@ export function initializeTabControllers(
   // Create renderer
   tab.renderer = new MessageRenderer(
     plugin,
-    component,
+    tab.component,
     dom.messagesEl,
     (id, mode) => tab.controllers.conversationController!.rewind(id, mode),
     forkRequestCallback
       ? (id) => handleForkRequest(tab, plugin, id, forkRequestCallback)
       : undefined,
     () => getTabCapabilities(tab, plugin),
+    (userMessageId, branchMessageId) => (
+      tab.controllers.conversationController!.navigateBranch(userMessageId, branchMessageId)
+    ),
+    (conversationId) => tab.owner?.openConversation(conversationId) ?? Promise.resolve(),
   );
 
   // Selection controller
@@ -1609,7 +1649,7 @@ export function initializeTabControllers(
     },
   });
   tab.controllers.streamController.setTabActive(
-    !dom.contentEl.hasClass('claudian-hidden'),
+    !dom.contentEl.hasClass('codian-hidden'),
   );
 
   const renderWindow = dom.messagesEl.ownerDocument.defaultView;
@@ -1629,6 +1669,7 @@ export function initializeTabControllers(
   services.subagentManager.setCallback(
     (subagent) => {
       tab.controllers.streamController?.onAsyncSubagentStateChange(subagent);
+      tab.session.notifyWorkStateChanged();
     }
   );
 
@@ -1657,6 +1698,7 @@ export function initializeTabControllers(
       ensureServiceInitialized,
       getSelectedModel: () => getTabSelectedModel(tab, plugin),
       dismissPendingInlinePrompts: () => tab.controllers.inputController?.dismissPendingApproval(),
+      isVisible: () => !dom.contentEl.hasClass('codian-hidden'),
       conversationBrowserEnhancement: plugin.getConversationBrowserEnhancement?.(),
       onConversationReset: () => dom.composerSession?.onConversationReset(),
       awaitBackgroundWork: () => tab.session.awaitBackgroundWork(),
@@ -1764,6 +1806,17 @@ export function initializeTabControllers(
     },
   });
 
+  const promptHistoryNavigation = new PromptHistoryNavigation({
+    getMessages: () => tab.controllers.conversationController?.visibleMessages ?? tab.state.messages,
+    input: dom.inputEl,
+    isEnabled: () => {
+      const activeEl = dom.inputEl.ownerDocument?.activeElement;
+      return activeEl === dom.inputEl || dom.inputWrapper.contains(activeEl);
+    },
+  });
+  tab.controllers.promptHistoryNavigation = promptHistoryNavigation;
+  dom.eventCleanups.push(() => promptHistoryNavigation.destroy());
+
   tab.controllers.navigationController = new NavigationController({
     getMessagesEl: () => dom.messagesEl,
     getInputEl: () => dom.inputEl,
@@ -1775,6 +1828,7 @@ export function initializeTabControllers(
       if (tab.controllers.inputController?.isResumeDropdownVisible()) return true;
       if (ui.slashCommandDropdown?.isVisible()) return true;
       if (ui.fileContextManager?.isMentionDropdownVisible()) return true;
+      if (promptHistoryNavigation.isRecalling) return true;
       return false;
     },
   });
@@ -1856,6 +1910,10 @@ export function wireTabInputEvents(tab: TabData, plugin: FeatureHost): void {
     }
 
     if (ui.fileContextManager?.handleMentionKeydown(e)) {
+      return;
+    }
+
+    if (controllers.promptHistoryNavigation?.handleKeydown(e)) {
       return;
     }
 
@@ -2036,7 +2094,7 @@ export function wireTabInputEvents(tab: TabData, plugin: FeatureHost): void {
  * Activates a tab (shows it and starts services).
  */
 export function activateTab(tab: TabData): void {
-  tab.dom.contentEl.removeClass('claudian-hidden');
+  tab.dom.contentEl.removeClass('codian-hidden');
   tab.controllers.streamController?.setTabActive(true);
   tab.controllers.selectionController?.start();
   tab.controllers.browserSelectionController?.start();
@@ -2050,7 +2108,7 @@ export function activateTab(tab: TabData): void {
  */
 export function deactivateTab(tab: TabData): void {
   tab.controllers.streamController?.setTabActive(false);
-  tab.dom.contentEl.addClass('claudian-hidden');
+  tab.dom.contentEl.addClass('codian-hidden');
   tab.controllers.selectionController?.stop();
   tab.controllers.browserSelectionController?.stop();
   tab.controllers.canvasSelectionController?.stop();
@@ -2099,11 +2157,22 @@ export async function recycleTabRuntime(tab: TabData): Promise<void> {
   }
 }
 
-/**
- * Cleans up a tab and releases all resources.
- * Made async to ensure proper cleanup ordering.
- */
-export async function destroyTab(tab: TabData): Promise<void> {
+const tabDestructionPromises = new WeakMap<TabData, Promise<void>>();
+
+/** Cleans up a tab once, even when view teardown and plugin shutdown overlap. */
+export function destroyTab(tab: TabData): Promise<void> {
+  const existing = tabDestructionPromises.get(tab);
+  if (existing) return existing;
+  const destruction = destroyTabResources(tab);
+  tabDestructionPromises.set(tab, destruction);
+  return destruction;
+}
+
+async function destroyTabResources(tab: TabData): Promise<void> {
+  tab.owner = null;
+  tab.onRuntimeInstalled = undefined;
+  tab.onPersistedStateChanged = undefined;
+  tab.providerCatalogResolver = null;
   tab.lifecycleState = 'closing';
   tab.session.pauseBackgroundWork();
 
@@ -2132,6 +2201,8 @@ export async function destroyTab(tab: TabData): Promise<void> {
   tab.controllers.chatSelectionController?.destroy();
   tab.controllers.chatSelectionController = null;
   tab.controllers.navigationController?.dispose();
+  tab.controllers.promptHistoryNavigation?.destroy();
+  tab.controllers.promptHistoryNavigation = null;
 
   cleanupThinkingBlock(tab.state.currentThinkingState);
   tab.state.currentThinkingState = null;
@@ -2165,6 +2236,7 @@ export async function destroyTab(tab: TabData): Promise<void> {
   }
   tab.dom.eventCleanups.length = 0;
 
+  tab.component.unload();
   tab.dom.contentEl.remove();
 }
 
@@ -2324,7 +2396,7 @@ export function setupServiceCallbacks(tab: TabData, plugin: FeatureHost): void {
           if (capturedPrePlanMode && getTabPermissionMode(tab, plugin) !== 'plan') {
             tab.state.prePlanPermissionMode = null;
           }
-          new Notice(error instanceof Error ? error.message : 'Failed to change permission mode.');
+          new Notice(error instanceof Error ? error.message : t('chat.permissionMode.changeFailed'));
         });
       }
     });
@@ -2403,7 +2475,7 @@ async function renderAutoTriggeredTurn(tab: TabData, result: AutoTurnResult): Pr
   if (hasVisibleContent) {
     tab.state.addMessage(assistantMsg);
     const msgEl = tab.renderer?.addMessage?.(assistantMsg);
-    const contentEl = msgEl?.querySelector<HTMLElement>('.claudian-message-content');
+    const contentEl = msgEl?.querySelector<HTMLElement>('.codian-message-content');
     if (contentEl) {
       if (!previousContentEl) {
         tab.state.toolCallElements.clear();
@@ -2491,7 +2563,7 @@ export async function updatePlanModeUI(
     const activeMode = getTabPermissionMode(tab, plugin);
     tab.ui.permissionToggle?.updateDisplay();
     tab.dom.inputWrapper.toggleClass(
-      'claudian-input-plan-mode',
+      'codian-input-plan-mode',
       activeMode === 'plan' && getTabCapabilities(tab, plugin).supportsPlanMode,
     );
   }

@@ -111,7 +111,7 @@ describe('WriteEditRenderer', () => {
 
       expect(state.isExpanded).toBe(false);
       expect(state.wrapperEl.hasClass('expanded')).toBe(false);
-      expect(state.contentEl.hasClass('claudian-hidden')).toBe(true);
+      expect(state.contentEl.hasClass('codian-hidden')).toBe(true);
       expect(state.headerEl.getAttribute('aria-expanded')).toBe('false');
       expect(state.headerEl.getAttribute('aria-label')).toContain('click to expand');
     });
@@ -124,7 +124,7 @@ describe('WriteEditRenderer', () => {
 
       expect(state.isExpanded).toBe(true);
       expect(state.wrapperEl.hasClass('expanded')).toBe(true);
-      expect(state.contentEl.hasClass('claudian-hidden')).toBe(false);
+      expect(state.contentEl.hasClass('codian-hidden')).toBe(false);
       expect(state.headerEl.getAttribute('aria-expanded')).toBe('true');
       expect(state.headerEl.getAttribute('aria-label')).toContain('click to collapse');
     });
@@ -325,13 +325,98 @@ describe('WriteEditRenderer', () => {
       const toolCall = createToolCall({ status: 'completed' });
 
       const block = renderStoredWriteEdit(parentEl, toolCall);
-      const headerEl = block.querySelector('.claudian-write-edit-header');
-      const contentEl = block.querySelector('.claudian-write-edit-content');
+      const headerEl = block.querySelector('.codian-write-edit-header');
+      const contentEl = block.querySelector('.codian-write-edit-content');
 
       expect(block.hasClass('expanded')).toBe(false);
-      expect(contentEl?.hasClass('claudian-hidden')).toBe(true);
+      expect(contentEl?.hasClass('codian-hidden')).toBe(true);
       expect(headerEl?.getAttribute('aria-expanded')).toBe('false');
       expect(headerEl?.getAttribute('aria-label')).toContain('click to expand');
+    });
+
+    it('defers stored diff rows until expansion and reuses them after toggling', () => {
+      const parentEl = createMockEl();
+      const toolCall = createToolCall({
+        name: 'Edit',
+        status: 'completed',
+        diffData: createDiffData(),
+      });
+
+      const block = renderStoredWriteEdit(parentEl, toolCall);
+      const header = block.querySelector('.codian-write-edit-header');
+      const content = block.querySelector('.codian-write-edit-content');
+      const stats = block.querySelector('.codian-write-edit-stats');
+
+      expect(content?.children).toHaveLength(0);
+      expect(stats?.querySelector('.added')?.textContent).toBe('+1');
+      expect(stats?.querySelector('.removed')?.textContent).toBe('-1');
+
+      (header as HTMLElement | null)?.click();
+      const firstDiffLine = content?.querySelector('.codian-diff-text');
+      expect(firstDiffLine?.textContent).toBe('line1');
+
+      (header as HTMLElement | null)?.click();
+      (header as HTMLElement | null)?.click();
+      expect(content?.querySelector('.codian-diff-text')).toBe(firstDiffLine);
+    });
+
+    it('renders a stored diff immediately when initially expanded', () => {
+      const parentEl = createMockEl();
+      const toolCall = createToolCall({
+        name: 'Edit',
+        status: 'completed',
+        diffData: createDiffData(),
+      });
+
+      const block = renderStoredWriteEdit(parentEl, toolCall, { initiallyExpanded: true });
+
+      expect(block.querySelector('.codian-write-edit-header')?.getAttribute('aria-expanded')).toBe('true');
+      expect(block.querySelector('.codian-diff-text')?.textContent).toBe('line1');
+    });
+
+    it('defers stored error fallback while preserving error status', () => {
+      const parentEl = createMockEl();
+      const toolCall = createToolCall({
+        status: 'error',
+        result: 'File not found',
+      });
+
+      const block = renderStoredWriteEdit(parentEl, toolCall);
+      const content = block.querySelector('.codian-write-edit-content');
+
+      expect(block.hasClass('error')).toBe(true);
+      expect(content?.children).toHaveLength(0);
+
+      (block.querySelector('.codian-write-edit-header') as HTMLElement).click();
+      expect(block.querySelector('.codian-write-edit-error')?.textContent).toBe('File not found');
+    });
+
+    it('renders completion fallback after expansion when stored diff is empty', () => {
+      const parentEl = createMockEl();
+      const toolCall = createToolCall({
+        status: 'completed',
+        diffData: createDiffData({ diffLines: [], stats: { added: 0, removed: 0 } }),
+      });
+
+      const block = renderStoredWriteEdit(parentEl, toolCall);
+      const content = block.querySelector('.codian-write-edit-content');
+
+      expect(content?.children).toHaveLength(0);
+
+      (block.querySelector('.codian-write-edit-header') as HTMLElement).click();
+      expect(block.querySelector('.codian-write-edit-done-text')?.textContent).toBe('DONE');
+    });
+
+    it('keeps running stored diffs eager', () => {
+      const parentEl = createMockEl();
+      const toolCall = createToolCall({
+        status: 'running',
+        diffData: createDiffData(),
+      });
+
+      const block = renderStoredWriteEdit(parentEl, toolCall);
+
+      expect(block.querySelector('.codian-diff-text')?.textContent).toBe('line1');
     });
 
     it('should start expanded when requested', () => {
@@ -339,11 +424,11 @@ describe('WriteEditRenderer', () => {
       const toolCall = createToolCall({ status: 'completed' });
 
       const block = renderStoredWriteEdit(parentEl, toolCall, { initiallyExpanded: true });
-      const headerEl = block.querySelector('.claudian-write-edit-header');
-      const contentEl = block.querySelector('.claudian-write-edit-content');
+      const headerEl = block.querySelector('.codian-write-edit-header');
+      const contentEl = block.querySelector('.codian-write-edit-content');
 
       expect(block.hasClass('expanded')).toBe(true);
-      expect(contentEl?.hasClass('claudian-hidden')).toBe(false);
+      expect(contentEl?.hasClass('codian-hidden')).toBe(false);
       expect(headerEl?.getAttribute('aria-expanded')).toBe('true');
       expect(headerEl?.getAttribute('aria-label')).toContain('click to collapse');
     });

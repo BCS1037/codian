@@ -15,7 +15,7 @@ import {
 import { extractToolResultContent } from '../../../core/tools/toolResultContent';
 import type { ChatMessage, ImageAttachment, SubagentInfo, ToolCallInfo } from '../../../core/types';
 import { t } from '../../../i18n/i18n';
-import { extractUserDisplayContent } from '../../../utils/context';
+import { getUserDisplayText } from '../../../utils/context';
 import { formatDurationMmSs } from '../../../utils/date';
 import { processFileLinks, registerFileLinkHandler } from '../../../utils/fileLink';
 import { replaceImageEmbedsWithHtml } from '../../../utils/imageEmbed';
@@ -30,9 +30,12 @@ import { findRewindContext } from '../rewind';
 import { renderWelcomeContent } from '../ui/WelcomeOrb';
 import { formatConversationDirectoryTitle } from '../utils/conversationDirectoryTitle';
 import {
+  getPluginFenceLanguageSet,
   prepareDisplayOnlyCodeFences,
   restoreDisplayOnlyCodeFences,
 } from './DisplayOnlyCodeFences';
+import { renderMermaidDiagrams } from './MermaidRenderer';
+import { createSessionLink, registerSessionLinkHandler } from './sessionLinks';
 import { resolveSubagentAdapter } from './subagentAdapterResolution';
 import {
   renderStoredAsyncSubagent,
@@ -44,6 +47,7 @@ import { renderStoredWriteEdit } from './WriteEditRenderer';
 
 export interface RenderContentOptions {
   deferMath?: boolean;
+  deferDiagrams?: boolean;
 }
 
 export type RenderContentFn = (
@@ -66,7 +70,20 @@ export class MessageRenderer {
   private rewindCallback?: (messageId: string, mode?: ChatRewindMode) => Promise<void>;
   private getCapabilities: () => ProviderCapabilities;
   private forkCallback?: (messageId: string) => Promise<void>;
+  private branchNavigationCallback?: (userMessageId: string, branchMessageId: string) => Promise<void>;
+  private openConversationCallback?: (conversationId: string) => Promise<void>;
+  private removeSessionLinkHandler: () => void = () => {};
   private liveMessageEls = new Map<string, HTMLElement>();
+  private pendingLayoutScroll: ResizeObserver | null = null;
+  private isDisposed = false;
+  private contentRenders = new WeakMap<HTMLElement, object>();
+
+  dispose(): void {
+    this.isDisposed = true;
+    this.cancelLayoutScroll();
+    this.removeSessionLinkHandler();
+    this.removeSessionLinkHandler = () => {};
+  }
 
   constructor(
     plugin: FeatureHost,
@@ -75,6 +92,8 @@ export class MessageRenderer {
     rewindCallback?: (messageId: string, mode?: ChatRewindMode) => Promise<void>,
     forkCallback?: (messageId: string) => Promise<void>,
     getCapabilities?: () => ProviderCapabilities,
+    branchNavigationCallback?: (userMessageId: string, branchMessageId: string) => Promise<void>,
+    openConversationCallback?: (conversationId: string) => Promise<void>,
   ) {
     this.app = plugin.app;
     this.plugin = plugin;
@@ -82,6 +101,8 @@ export class MessageRenderer {
     this.messagesEl = messagesEl;
     this.rewindCallback = rewindCallback;
     this.forkCallback = forkCallback;
+    this.branchNavigationCallback = branchNavigationCallback;
+    this.openConversationCallback = openConversationCallback;
     this.getCapabilities = getCapabilities ?? (() => ({
       providerId: DEFAULT_CHAT_PROVIDER_ID,
       supportsPersistentRuntime: false,
@@ -99,10 +120,42 @@ export class MessageRenderer {
 
     // Register delegated click handler for file links
     registerFileLinkHandler(this.app, this.messagesEl, this.component);
+
+    // Register delegated click handler for session links
+    this.removeSessionLinkHandler = registerSessionLinkHandler(
+      this.messagesEl,
+      (sessionId) => { void this.openSession(sessionId); },
+      (sessionId) => {
+        const cached = this.plugin.getCachedConversation?.(sessionId);
+        if (cached) return { title: cached.title || undefined, providerId: cached.providerId };
+        const meta = this.plugin.getConversationList?.().find(c => c.id === sessionId);
+        return meta ? { title: meta.title || undefined, providerId: meta.providerId } : null;
+      },
+    );
+  }
+
+  async openSession(conversationId: string): Promise<void> {
+    try {
+      const open = this.openConversationCallback;
+      if (!open) {
+        new Notice(t('chat.sessionTools.openUnavailable'));
+        return;
+      }
+      const cached = this.plugin.getCachedConversation?.(conversationId);
+      const list = this.plugin.getConversationList?.() ?? [];
+      if (!cached && !list.some(c => c.id === conversationId)) {
+        new Notice(t('chat.sessionTools.sessionMissing'));
+        return;
+      }
+      await open(conversationId);
+    } catch (error) {
+      new Notice(t('chat.sessionTools.openFailed', { message: error instanceof Error ? error.message : String(error) }));
+    }
   }
 
   /** Sets the messages container element. */
   setMessagesEl(el: HTMLElement): void {
+    this.cancelLayoutScroll();
     this.messagesEl = el;
   }
 
@@ -115,7 +168,7 @@ export class MessageRenderer {
   }
 
   private getUserMessageTextToShow(msg: ChatMessage): string {
-    return msg.displayContent ?? extractUserDisplayContent(msg.content) ?? msg.content;
+    return getUserDisplayText(msg);
   }
 
   private applyTocTitle(msgEl: HTMLElement, text: string): void {
@@ -152,20 +205,26 @@ export class MessageRenderer {
     }
 
     const msgEl = this.messagesEl.createDiv({
-      cls: `claudian-message claudian-message-${msg.role}`,
+      cls: `codian-message codian-message-${msg.role}`,
       attr: {
         'data-message-id': msg.id,
         'data-role': msg.role,
       },
     });
 
-    const contentEl = msgEl.createDiv({ cls: 'claudian-message-content', attr: { dir: 'auto' } });
+    const contentEl = msgEl.createDiv({ cls: 'codian-message-content', attr: { dir: 'auto' } });
 
     if (msg.role === 'user') {
+      if (msg.sessionMessage) {
+        const { from, sessionId } = msg.sessionMessage;
+        const senderEl = contentEl.createDiv({ cls: 'codian-session-message-sender' });
+        senderEl.createSpan({ text: t('chat.sessionMessage.fromLabel') });
+        createSessionLink(senderEl, { sessionId, text: from });
+      }
       this.renderChatSelectionChips(contentEl, msg);
       const textToShow = this.getUserMessageTextToShow(msg);
       if (textToShow) {
-        const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+        const textEl = contentEl.createDiv({ cls: 'codian-text-block' });
         void this.renderContent(textEl, textToShow);
         this.addUserCopyButton(msgEl, textToShow);
         this.applyTocTitle(msgEl, textToShow);
@@ -190,7 +249,7 @@ export class MessageRenderer {
       return;
     }
 
-    const contentEl = msgEl.querySelector<HTMLElement>('.claudian-message-content');
+    const contentEl = msgEl.querySelector<HTMLElement>('.codian-message-content');
     if (!contentEl) {
       return;
     }
@@ -199,16 +258,16 @@ export class MessageRenderer {
 
     const textToShow = this.getUserMessageTextToShow(msg);
     if (textToShow) {
-      const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+      const textEl = contentEl.createDiv({ cls: 'codian-text-block' });
       void this.renderContent(textEl, textToShow);
       this.applyTocTitle(msgEl, textToShow);
     } else {
       msgEl.removeAttribute('data-toc-title');
     }
 
-    const toolbar = msgEl.querySelector<HTMLElement>('.claudian-user-msg-actions');
+    const toolbar = msgEl.querySelector<HTMLElement>('.codian-user-msg-actions');
     if (toolbar) {
-      toolbar.querySelectorAll('.claudian-user-msg-copy-btn').forEach((el) => el.remove());
+      toolbar.querySelectorAll('.codian-user-msg-copy-btn').forEach((el) => el.remove());
     }
 
     if (textToShow) {
@@ -245,14 +304,14 @@ export class MessageRenderer {
     this.liveMessageEls.clear();
 
     // Recreate welcome element after clearing
-    const newWelcomeEl = this.messagesEl.createDiv({ cls: 'claudian-welcome' });
+    const newWelcomeEl = this.messagesEl.createDiv({ cls: 'codian-welcome' });
     renderWelcomeContent(newWelcomeEl, getGreeting());
 
     for (let i = 0; i < messages.length; i++) {
       this.renderStoredMessage(messages[i], messages, i);
     }
 
-    this.scrollToBottom();
+    this.scrollToBottomOnceLaidOut();
     return newWelcomeEl;
   }
 
@@ -288,20 +347,26 @@ export class MessageRenderer {
     }
 
     const msgEl = this.messagesEl.createDiv({
-      cls: `claudian-message claudian-message-${msg.role}`,
+      cls: `codian-message codian-message-${msg.role}`,
       attr: {
         'data-message-id': msg.id,
         'data-role': msg.role,
       },
     });
 
-    const contentEl = msgEl.createDiv({ cls: 'claudian-message-content', attr: { dir: 'auto' } });
+    const contentEl = msgEl.createDiv({ cls: 'codian-message-content', attr: { dir: 'auto' } });
 
     if (msg.role === 'user') {
+      if (msg.sessionMessage) {
+        const { from, sessionId } = msg.sessionMessage;
+        const senderEl = contentEl.createDiv({ cls: 'codian-session-message-sender' });
+        senderEl.createSpan({ text: t('chat.sessionMessage.fromLabel') });
+        createSessionLink(senderEl, { sessionId, text: from });
+      }
       this.renderChatSelectionChips(contentEl, msg);
       const textToShow = this.getUserMessageTextToShow(msg);
       if (textToShow) {
-        const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+        const textEl = contentEl.createDiv({ cls: 'codian-text-block' });
         void this.renderContent(textEl, textToShow);
         this.addUserCopyButton(msgEl, textToShow);
         this.applyTocTitle(msgEl, textToShow);
@@ -313,6 +378,7 @@ export class MessageRenderer {
         if (this.forkCallback && this.isForkEligible(allMessages, index)) {
           this.addForkButton(msgEl, msg.id);
         }
+        this.addBranchNavigationControls(msgEl, msg);
       }
     } else if (msg.role === 'assistant') {
       const hadLegacyInterruptIndicator = this.renderAssistantContent(msg, contentEl);
@@ -342,10 +408,10 @@ export class MessageRenderer {
 
   private renderChatSelectionChips(contentEl: HTMLElement, msg: ChatMessage): void {
     if (!msg.chatSelections?.length) return;
-    const chipsEl = contentEl.createDiv({ cls: 'claudian-sent-chat-selections' });
+    const chipsEl = contentEl.createDiv({ cls: 'codian-sent-chat-selections' });
     for (const selection of msg.chatSelections) {
       chipsEl.createDiv({
-        cls: 'claudian-sent-chat-selection',
+        cls: 'codian-sent-chat-selection',
         text: selection.text.trim().replace(/\s+/g, ' ').slice(0, 5),
         attr: { title: selection.text },
       });
@@ -365,18 +431,18 @@ export class MessageRenderer {
   }
 
   private renderInterruptMessage(): void {
-    const msgEl = this.messagesEl.createDiv({ cls: 'claudian-message claudian-message-assistant' });
-    const contentEl = msgEl.createDiv({ cls: 'claudian-message-content', attr: { dir: 'auto' } });
+    const msgEl = this.messagesEl.createDiv({ cls: 'codian-message codian-message-assistant' });
+    const contentEl = msgEl.createDiv({ cls: 'codian-message-content', attr: { dir: 'auto' } });
     this.appendInterruptIndicator(contentEl);
   }
 
   appendInterruptIndicator(contentEl: HTMLElement): void {
-    const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
-    textEl.createSpan({ cls: 'claudian-interrupted', text: 'Interrupted' });
+    const textEl = contentEl.createDiv({ cls: 'codian-text-block' });
+    textEl.createSpan({ cls: 'codian-interrupted', text: t('chat.zen.interrupted') });
     textEl.appendText(' ');
     textEl.createSpan({
-      cls: 'claudian-interrupted-hint',
-      text: '\u00B7 What should Codian do instead?',
+      cls: 'codian-interrupted-hint',
+      text: t('chat.interruptedHint'),
     });
   }
 
@@ -403,7 +469,7 @@ export class MessageRenderer {
           if (!normalized.content.trim()) {
             continue;
           }
-          const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+          const textEl = contentEl.createDiv({ cls: 'codian-text-block' });
           void this.renderContent(textEl, normalized.content);
           this.addTextCopyButton(textEl, normalized.content);
         } else if (block.type === 'tool_use') {
@@ -413,8 +479,8 @@ export class MessageRenderer {
             renderedToolIds.add(toolCall.id);
           }
         } else if (block.type === 'context_compacted') {
-          const boundaryEl = contentEl.createDiv({ cls: 'claudian-compact-boundary' });
-          boundaryEl.createSpan({ cls: 'claudian-compact-boundary-label', text: 'Conversation compacted' });
+          const boundaryEl = contentEl.createDiv({ cls: 'codian-compact-boundary' });
+          boundaryEl.createSpan({ cls: 'codian-compact-boundary-label', text: 'Conversation compacted' });
         } else if (block.type === 'subagent') {
           const taskToolCall = msg.toolCalls?.find((toolCall) => {
             if (toolCall.id !== block.subagentId) return false;
@@ -443,7 +509,7 @@ export class MessageRenderer {
         const normalized = stripLegacyInterruptIndicator(msg.content);
         hadLegacyInterruptIndicator ||= normalized.interrupted;
         if (normalized.content.trim()) {
-          const textEl = contentEl.createDiv({ cls: 'claudian-text-block' });
+          const textEl = contentEl.createDiv({ cls: 'codian-text-block' });
           void this.renderContent(textEl, normalized.content);
           this.addTextCopyButton(textEl, normalized.content);
         }
@@ -459,10 +525,10 @@ export class MessageRenderer {
     const hasCompactBoundary = msg.contentBlocks?.some(b => b.type === 'context_compacted');
     if (msg.durationSeconds && msg.durationSeconds > 0 && !hasCompactBoundary) {
       const flavorWord = msg.durationFlavorWord || 'Baked';
-      const footerEl = contentEl.createDiv({ cls: 'claudian-response-footer' });
+      const footerEl = contentEl.createDiv({ cls: 'codian-response-footer' });
       footerEl.createSpan({
         text: `* ${flavorWord} for ${formatDurationMmSs(msg.durationSeconds)}`,
-        cls: 'claudian-baked-duration',
+        cls: 'codian-baked-duration',
       });
     }
 
@@ -659,10 +725,10 @@ export class MessageRenderer {
    * Renders image attachments above a message.
    */
   renderMessageImages(containerEl: HTMLElement, images: ImageAttachment[]): void {
-    const imagesEl = containerEl.createDiv({ cls: 'claudian-message-images' });
+    const imagesEl = containerEl.createDiv({ cls: 'codian-message-images' });
 
     for (const image of images) {
-      const imageWrapper = imagesEl.createDiv({ cls: 'claudian-message-image' });
+      const imageWrapper = imagesEl.createDiv({ cls: 'codian-message-image' });
       const imgEl = imageWrapper.createEl('img', {
         attr: {
           alt: image.name,
@@ -685,8 +751,8 @@ export class MessageRenderer {
     const dataUri = `data:${image.mediaType};base64,${image.data}`;
 
     const ownerDocument = this.messagesEl.ownerDocument ?? window.document;
-    const overlay = ownerDocument.body.createDiv({ cls: 'claudian-image-modal-overlay' });
-    const modal = overlay.createDiv({ cls: 'claudian-image-modal' });
+    const overlay = ownerDocument.body.createDiv({ cls: 'codian-image-modal-overlay' });
+    const modal = overlay.createDiv({ cls: 'codian-image-modal' });
 
     modal.createEl('img', {
       attr: {
@@ -695,7 +761,7 @@ export class MessageRenderer {
       },
     });
 
-    const closeBtn = modal.createDiv({ cls: 'claudian-image-modal-close' });
+    const closeBtn = modal.createDiv({ cls: 'codian-image-modal-close' });
     closeBtn.setText('\u00D7');
 
     const handleEsc = (e: KeyboardEvent) => {
@@ -736,6 +802,9 @@ export class MessageRenderer {
     markdown: string,
     options?: RenderContentOptions
   ): Promise<void> {
+    const renderToken = {};
+    this.contentRenders.set(el, renderToken);
+    const isCurrent = () => !this.isDisposed && this.contentRenders.get(el) === renderToken;
     el.empty();
 
     try {
@@ -747,7 +816,10 @@ export class MessageRenderer {
       // as plain text. Trusted plugin markup (image embeds) is injected only
       // after this step, otherwise it would be escaped too.
       const safeMarkdown = escapeRawHtmlTags(renderMarkdown);
-      const displayOnlyCodeFences = prepareDisplayOnlyCodeFences(safeMarkdown);
+      const pluginLanguages = options?.deferDiagrams
+        ? undefined
+        : getPluginFenceLanguageSet(this.plugin.settings.pluginRenderedFenceLanguages);
+      const displayOnlyCodeFences = prepareDisplayOnlyCodeFences(safeMarkdown, pluginLanguages);
       const processedMarkdown = replaceImageEmbedsWithHtml(
         displayOnlyCodeFences.markdown,
         this.app,
@@ -761,28 +833,34 @@ export class MessageRenderer {
         this.component
       );
       await restoreDisplayOnlyCodeFences(el, displayOnlyCodeFences.fences);
+      if (!isCurrent()) return;
 
       // Wrap pre elements and move buttons outside scroll area
       el.querySelectorAll('pre').forEach((pre) => {
         // Skip if already wrapped
-        if (pre.parentElement?.classList.contains('claudian-code-wrapper')) return;
+        if (pre.parentElement?.classList.contains('codian-code-wrapper')) return;
 
         // Create wrapper
-        const wrapper = createEl('div', { cls: 'claudian-code-wrapper' });
+        const wrapper = createEl('div', { cls: 'codian-code-wrapper' });
         pre.parentElement?.insertBefore(wrapper, pre);
         wrapper.appendChild(pre);
 
         // Check for language class and add label
         const code = pre.querySelector('code[class*="language-"]');
         if (code) {
-          const match = code.className.match(/language-(\w+)/);
+          const match = code.className.match(/language-([\w-]+)/);
           if (match) {
             wrapper.classList.add('has-language');
-            const label = createEl('span', {
-              cls: 'claudian-code-lang-label',
+            const copyLabel = t('chat.codeBlock.copyAriaLabel', { language: match[1] });
+            const copied = t('chat.codeBlock.copied');
+            const label = createEl('button', {
+              cls: 'codian-code-lang-label',
               text: match[1],
+              attr: { type: 'button', 'aria-label': copyLabel },
             });
             wrapper.appendChild(label);
+            const status = createSpan({ cls: 'codian-code-copy-status', attr: { role: 'status' } });
+            wrapper.appendChild(status);
             label.addEventListener('click', () => {
               runRendererAction(async () => {
                 const originalLabel = match[1];
@@ -790,8 +868,14 @@ export class MessageRenderer {
 
                 try {
                   await navigator.clipboard.writeText(code.textContent || '');
-                  label.setText('Copied!');
-                  window.setTimeout(() => label.setText(originalLabel), 1500);
+                  label.setText(copied);
+                  label.setAttribute('aria-label', copied);
+                  status.setText(copied);
+                  window.setTimeout(() => {
+                    label.setText(originalLabel);
+                    label.setAttribute('aria-label', copyLabel);
+                    status.setText('');
+                  }, 1500);
                 } catch {
                   // Clipboard API may fail in non-secure contexts
                 }
@@ -807,14 +891,20 @@ export class MessageRenderer {
         }
       });
 
+      if (!isCurrent()) return;
+      if (!options?.deferDiagrams
+        && displayOnlyCodeFences.fences.some((fence) => fence.originalLanguage.toLowerCase() === 'mermaid')) {
+        await renderMermaidDiagrams(el, isCurrent);
+      }
+
       // Process wikilinks only when the source can contain them; the DOM pass is expensive.
       if (processedMarkdown.includes('[[')) {
         processFileLinks(this.app, el);
       }
     } catch {
       el.createDiv({
-        cls: 'claudian-render-error',
-        text: 'Failed to render message content.',
+        cls: 'codian-render-error',
+        text: t('chat.renderFailed'),
       });
     }
   }
@@ -830,7 +920,7 @@ export class MessageRenderer {
    * @param markdown The original markdown content to copy
    */
   addTextCopyButton(textEl: HTMLElement, markdown: string): void {
-    const copyBtn = textEl.createSpan({ cls: 'claudian-text-copy-btn' });
+    const copyBtn = textEl.createSpan({ cls: 'codian-text-copy-btn' });
     setIcon(copyBtn, 'copy');
 
     let feedbackTimeout: number | null = null;
@@ -853,7 +943,7 @@ export class MessageRenderer {
 
         // Show "copied!" feedback
         copyBtn.empty();
-        copyBtn.setText('Copied!');
+        copyBtn.setText(t('chat.codeBlock.copied'));
         copyBtn.classList.add('copied');
 
         feedbackTimeout = window.setTimeout(() => {
@@ -874,10 +964,10 @@ export class MessageRenderer {
     const msgEl = this.liveMessageEls.get(msg.id);
     if (!msgEl) return;
 
-    if (canRewind && this.rewindCallback && !msgEl.querySelector('.claudian-message-rewind-btn')) {
+    if (canRewind && this.rewindCallback && !msgEl.querySelector('.codian-message-rewind-btn')) {
       this.addRewindButton(msgEl, msg.id);
     }
-    if (canFork && this.forkCallback && !msgEl.querySelector('.claudian-message-fork-btn')) {
+    if (canFork && this.forkCallback && !msgEl.querySelector('.codian-message-fork-btn')) {
       this.addForkButton(msgEl, msg.id);
     }
     this.cleanupLiveMessageEl(msg.id, msgEl, { canRewind, canFork });
@@ -890,26 +980,26 @@ export class MessageRenderer {
   ): void {
     const needsRewind = expectedActions.canRewind
       && this.rewindCallback
-      && !msgEl.querySelector('.claudian-message-rewind-btn');
+      && !msgEl.querySelector('.codian-message-rewind-btn');
     const needsFork = expectedActions.canFork
       && this.forkCallback
-      && !msgEl.querySelector('.claudian-message-fork-btn');
+      && !msgEl.querySelector('.codian-message-fork-btn');
     if (!needsRewind && !needsFork) {
       this.liveMessageEls.delete(msgId);
     }
   }
 
   private getOrCreateActionsToolbar(msgEl: HTMLElement): HTMLElement {
-    const existing = msgEl.querySelector<HTMLElement>('.claudian-user-msg-actions');
+    const existing = msgEl.querySelector<HTMLElement>('.codian-user-msg-actions');
     if (existing) return existing;
-    return msgEl.createDiv({ cls: 'claudian-user-msg-actions' });
+    return msgEl.createDiv({ cls: 'codian-user-msg-actions' });
   }
 
   private addUserCopyButton(msgEl: HTMLElement, content: string): void {
     const toolbar = this.getOrCreateActionsToolbar(msgEl);
-    const copyBtn = toolbar.createSpan({ cls: 'claudian-user-msg-copy-btn' });
+    const copyBtn = toolbar.createSpan({ cls: 'codian-user-msg-copy-btn' });
     setIcon(copyBtn, 'copy');
-    copyBtn.setAttribute('aria-label', 'Copy message');
+    copyBtn.setAttribute('aria-label', t('chat.copyMessage'));
 
     let feedbackTimeout: number | null = null;
 
@@ -923,7 +1013,7 @@ export class MessageRenderer {
         }
         if (feedbackTimeout) window.clearTimeout(feedbackTimeout);
         copyBtn.empty();
-        copyBtn.setText('Copied!');
+        copyBtn.setText(t('chat.codeBlock.copied'));
         copyBtn.classList.add('copied');
         feedbackTimeout = window.setTimeout(() => {
           copyBtn.empty();
@@ -938,7 +1028,7 @@ export class MessageRenderer {
   private addRewindButton(msgEl: HTMLElement, messageId: string): void {
     if (!this.getCapabilities().supportsRewind) return;
     const toolbar = this.getOrCreateActionsToolbar(msgEl);
-    const btn = toolbar.createSpan({ cls: 'claudian-message-rewind-btn' });
+    const btn = toolbar.createSpan({ cls: 'codian-message-rewind-btn' });
     if (toolbar.firstChild !== btn) toolbar.insertBefore(btn, toolbar.firstChild);
     setIcon(btn, 'rotate-ccw');
     btn.setAttribute('aria-label', t('chat.rewind.ariaLabel'));
@@ -979,7 +1069,7 @@ export class MessageRenderer {
   private addForkButton(msgEl: HTMLElement, messageId: string): void {
     if (!this.getCapabilities().supportsFork) return;
     const toolbar = this.getOrCreateActionsToolbar(msgEl);
-    const btn = toolbar.createSpan({ cls: 'claudian-message-fork-btn' });
+    const btn = toolbar.createSpan({ cls: 'codian-message-fork-btn' });
     if (toolbar.firstChild !== btn) toolbar.insertBefore(btn, toolbar.firstChild);
     setIcon(btn, 'git-fork');
     btn.setAttribute('aria-label', t('chat.fork.ariaLabel'));
@@ -995,6 +1085,70 @@ export class MessageRenderer {
     });
   }
 
+  private addBranchNavigationControls(msgEl: HTMLElement, message: ChatMessage): void {
+    const navigation = message.branchNavigation;
+    if (
+      !this.branchNavigationCallback
+      || !this.getCapabilities().supportsConversationBranches
+      || !message.userMessageId
+      || !navigation
+      || navigation.count < 2
+    ) return;
+
+    const toolbar = this.getOrCreateActionsToolbar(msgEl);
+    toolbar.createSpan({
+      cls: 'codian-message-branch-position',
+      text: t('chat.branchNavigation.position', {
+        position: String(navigation.position),
+        count: String(navigation.count),
+      }),
+    });
+
+    if (navigation.previousMessageId) {
+      this.addBranchNavigationButton(
+        toolbar,
+        'codian-message-branch-previous',
+        'chevron-left',
+        t('chat.branchNavigation.previous'),
+        message.userMessageId,
+        navigation.previousMessageId,
+      );
+    }
+    if (navigation.nextMessageId) {
+      this.addBranchNavigationButton(
+        toolbar,
+        'codian-message-branch-next',
+        'chevron-right',
+        t('chat.branchNavigation.next'),
+        message.userMessageId,
+        navigation.nextMessageId,
+      );
+    }
+  }
+
+  private addBranchNavigationButton(
+    toolbar: HTMLElement,
+    className: string,
+    icon: string,
+    label: string,
+    userMessageId: string,
+    branchMessageId: string,
+  ): void {
+    const button = toolbar.createEl('button', {
+      cls: className,
+      attr: { type: 'button', 'aria-label': label, title: label },
+    });
+    setIcon(button, icon);
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      void this.branchNavigationCallback?.(userMessageId, branchMessageId).catch((error: unknown) => {
+        new Notice(t('chat.branchNavigation.failed', {
+          error: error instanceof Error ? error.message : String(error),
+        }));
+      });
+    });
+  }
+
   // ============================================
   // Utilities
   // ============================================
@@ -1002,6 +1156,27 @@ export class MessageRenderer {
   /** Scrolls messages container to bottom. */
   scrollToBottom(): void {
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+  }
+
+  /** A transcript rendered into a hidden presentation ignores scroll writes until it gets a box. */
+  private scrollToBottomOnceLaidOut(): void {
+    this.cancelLayoutScroll();
+    this.scrollToBottom();
+    if (this.messagesEl.clientHeight > 0) return;
+    const Observer = this.messagesEl.ownerDocument?.defaultView?.ResizeObserver;
+    if (!Observer) return;
+    const observer = new Observer(() => {
+      if (this.messagesEl.clientHeight === 0) return;
+      this.cancelLayoutScroll();
+      this.scrollToBottom();
+    });
+    this.pendingLayoutScroll = observer;
+    observer.observe(this.messagesEl);
+  }
+
+  private cancelLayoutScroll(): void {
+    this.pendingLayoutScroll?.disconnect();
+    this.pendingLayoutScroll = null;
   }
 
   /** Scrolls to bottom if already near bottom (within threshold). */

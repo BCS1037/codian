@@ -4,9 +4,11 @@ import type { SharedAppStorage } from '../core/bootstrap/storage';
 import type { ProviderHost } from '../core/providers/ProviderHost';
 import type { AppTabManagerState, ProviderId } from '../core/providers/types';
 import type { ChatRuntime } from '../core/runtime/ChatRuntime';
-import type { ClaudianSettings, Conversation, ConversationMeta } from '../core/types';
+import type { CodianSettings, Conversation, ConversationMeta } from '../core/types';
 import type { ComposerEnhancement } from './chat/composer/types';
 import type { ConversationBrowserEnhancement } from './chat/conversation-browser/types';
+import type { TabAttention } from './chat/state/types';
+import type { SessionRuntimePool } from './chat/tabs/SessionRuntimePool';
 import type { TabData, TabId, TabManagerViewHost } from './chat/tabs/types';
 
 export interface FeatureTabManagerHost {
@@ -16,6 +18,7 @@ export interface FeatureTabManagerHost {
   broadcastToAllTabs(action: (runtime: ChatRuntime) => Promise<void>): Promise<void>;
   recycleProviderRuntimes(providerIds: ProviderId | ProviderId[]): Promise<void>;
   invalidateProviderResources(providerIds: ProviderId | ProviderId[], generation: number): void;
+  resetDeletedConversation?(conversationId: string): void;
 }
 
 export interface FeatureViewHost extends TabManagerViewHost {
@@ -31,11 +34,14 @@ export interface FeatureViewHost extends TabManagerViewHost {
 export interface FeatureHost {
   readonly app: App;
   readonly providerHost: ProviderHost;
-  readonly settings: ClaudianSettings;
+  readonly settings: CodianSettings;
   readonly storage: SharedAppStorage;
+  readonly sessionRuntimePool?: SessionRuntimePool;
+
+  getCommittedSettings(): Readonly<CodianSettings>;
 
   mutateSettings(
-    mutation: (settings: ClaudianSettings) => void | Promise<void>,
+    mutation: (settings: CodianSettings) => void | Promise<void>,
   ): Promise<void>;
   getActiveEnvironmentVariables(providerId?: ProviderId): string;
   getAgentSkillResourceGeneration(): number;
@@ -57,6 +63,7 @@ export interface FeatureHost {
   ): Promise<'deleted' | 'reset' | 'preserved' | 'not_found'>;
   renameConversation(id: string, title: string): Promise<void>;
   updateConversation(id: string, updates: Partial<Conversation>): Promise<void>;
+  setConversationAttention(id: string, attention: TabAttention): void;
   getConversationById(id: string): Promise<Conversation | null>;
   getCachedConversation(id: string): Conversation | null;
   getConversationSync(id: string): Conversation | null;

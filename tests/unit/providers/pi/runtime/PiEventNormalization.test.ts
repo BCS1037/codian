@@ -53,6 +53,26 @@ describe('Pi event normalization', () => {
     }]);
   });
 
+  it('marks Pi read results as plain text while preserving native result data', () => {
+    const state = createPiEventNormalizationState();
+
+    expect(normalizePiRpcEvent({
+      result: { content: [{ text: '1→literal arrow', type: 'text' }] },
+      toolCallId: 'read-1',
+      toolName: 'read',
+      type: 'tool_execution_end',
+    }, state)).toEqual([{
+      content: '1→literal arrow',
+      id: 'read-1',
+      isError: false,
+      toolUseResult: {
+        content: [{ text: '1→literal arrow', type: 'text' }],
+        resultFormat: 'plain',
+      },
+      type: 'tool_result',
+    }]);
+  });
+
   it('normalizes Pi RPC toolName and args to shared renderer tool shapes', () => {
     const state = createPiEventNormalizationState();
 

@@ -43,7 +43,7 @@ export const opencodeChatUIConfig: ProviderChatUIConfig = {
     const discoveredModels = new Map(buildOpencodeBaseModels(opencodeSettings.discoveredModels).map((model) => [
       encodeOpencodeModelId(model.rawId),
       applyAlias(model.rawId, {
-        description: model.description ?? 'ACP runtime',
+        description: model.description ?? 'OpenCode runtime',
         label: model.label,
         value: encodeOpencodeModelId(model.rawId),
       }),

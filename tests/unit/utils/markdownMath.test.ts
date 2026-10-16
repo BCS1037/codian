@@ -64,6 +64,27 @@ describe('markdownMath', () => {
       ].join('\n'));
     });
 
+    it.each([
+      ['trims leading inline-boundary padding', 'Inline \\( x + y\\).', 'Inline $x + y$.'],
+      ['trims trailing inline-boundary padding', 'Inline \\(x + y \\).', 'Inline $x + y$.'],
+      ['trims both inline boundaries', 'Inline \\(  x + y  \\).', 'Inline $x + y$.'],
+      ['trims multiple padded inline expressions', String.raw`Inline \( a \) and \( b \).`, String.raw`Inline $a$ and $b$.`],
+      ['trims inline-boundary tabs', 'Inline \\(\tx + y\t\\).', 'Inline $x + y$.'],
+      ['keeps internal expression spacing', 'Inline \\(  x   +   y  \\).', 'Inline $x   +   y$.'],
+      ['keeps backslash-escaped TeX spaces at boundaries', String.raw`Inline \(\ x\ \).`, String.raw`Inline $\ x\ $.`],
+      ['keeps explicit TeX spacing commands against trimmed padding', String.raw`Inline \( \,x\, \).`, String.raw`Inline $\,x\,$.`],
+      ['keeps whitespace-only inline expressions', 'Inline \\(  \\).', 'Inline $  $.'],
+      ['keeps whitespace-only inline expressions containing a newline', 'Inline \\( \n \\).', 'Inline $ \n $.'],
+      ['keeps whitespace-only inline expressions containing NBSP', 'Inline \\( \u00a0 \\).', 'Inline $ \u00a0 $.'],
+      ['keeps empty inline expressions', 'Inline \\(\\).', 'Inline $$.'],
+      ['keeps unmatched inline closers with padding', 'Keep x + y \\).', 'Keep x + y \\).'],
+      ['keeps unmatched inline openers with padding', 'Keep \\( x + y.', 'Keep \\( x + y.'],
+      ['keeps display expression padding', 'Display \\[  x + y  \\].', 'Display $$  x + y  $$.'],
+      ['keeps padded inline delimiters in protected Markdown', '`\\(  x  \\)` and [label](https://host/a\\(  x  \\)) and <span title="\\(  x  \\)">ok</span>', '`\\(  x  \\)` and [label](https://host/a\\(  x  \\)) and <span title="\\(  x  \\)">ok</span>'],
+    ])('%s', (_name, markdown, expected) => {
+      expect(normalizeLatexMathDelimiters(markdown)).toBe(expected);
+    });
+
     it('preserves raw HTML bodies', () => {
       const markdown = '<pre>\n\\(literal\\)\n</pre>\n\\(visible\\)';
       expect(normalizeLatexMathDelimiters(markdown)).toBe(

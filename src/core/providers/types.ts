@@ -39,6 +39,8 @@ export interface ProviderCapabilities {
   /** Provider reloads and consumes shared vault skills from .agents/skills. */
   supportsSharedAgentSkills?: boolean;
   supportsTurnSteer?: boolean;
+  /** Shows adjacent native-history branch controls when runtime supports them. */
+  supportsConversationBranches?: boolean;
   reasoningControl: 'effort' | 'token-budget' | 'none';
   planPathPrefix?: string;
 }
@@ -557,6 +559,10 @@ export interface ProviderConversationHistoryService {
   ): Record<string, unknown>;
   /** Adds provider-owned persisted metadata to Conversation.providerState before session save. */
   buildPersistedProviderState?(conversation: Conversation): Record<string, unknown> | undefined;
+  /** Sanitizes opaque provider state when raw session metadata is saved without message context. */
+  sanitizePersistedProviderState?(
+    providerState: Record<string, unknown>,
+  ): Record<string, unknown> | undefined;
 }
 
 export interface ProviderHistoryPathContext {

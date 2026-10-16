@@ -9,7 +9,22 @@ import {
   normalizeCodexToolName,
   normalizeCodexToolResult,
   parseCodexArguments,
+  stringifyCodexToolOutput,
 } from '@/providers/codex/normalization/codexToolNormalization';
+
+it('renders non-JSON tool outputs without losing primitive values or throwing on symbols', () => {
+  expect(stringifyCodexToolOutput(42)).toBe('42');
+  expect(stringifyCodexToolOutput(BigInt(42))).toBe('42');
+  expect(stringifyCodexToolOutput({ ok: true })).toBe('{"ok":true}');
+  expect(stringifyCodexToolOutput([{ text: 'first' }, { text: 'second' }])).toBe('firstsecond');
+  expect(stringifyCodexToolOutput([
+    { type: 'input_image', image_url: 'data:image/png;base64,aW1hZ2VCeXRlcw==' },
+  ])).toBe('');
+  expect(stringifyCodexToolOutput([
+    { type: 'input_image', image_url: 'data:image/png;base64,aW1hZ2VCeXRlcw==' },
+    { type: 'output_file', name: 'a.txt' },
+  ])).toBe('[{"type":"output_file","name":"a.txt"}]');
+});
 
 describe('normalizeCodexToolName', () => {
   it.each([

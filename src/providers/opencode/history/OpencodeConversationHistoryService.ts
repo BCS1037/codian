@@ -13,6 +13,10 @@ import {
 export class OpencodeConversationHistoryService implements ProviderConversationHistoryService {
   private hydratedKeys = new Map<string, string>();
 
+  constructor(
+    private readonly loadSessionMessages: typeof loadOpencodeSessionMessages = loadOpencodeSessionMessages,
+  ) {}
+
   async hydrateConversationHistory(
     conversation: Conversation,
     _vaultPath: string | null,
@@ -45,7 +49,11 @@ export class OpencodeConversationHistoryService implements ProviderConversationH
       return;
     }
 
-    const messages = await loadOpencodeSessionMessages(sessionId, { databasePath: databasePath ?? undefined });
+    const messages = await this.loadSessionMessages(
+      sessionId,
+      { databasePath: databasePath ?? undefined },
+      pathContext?.environment,
+    );
     if (messages.length === 0) {
       this.hydratedKeys.delete(conversation.id);
       return;
@@ -92,6 +100,9 @@ export class OpencodeConversationHistoryService implements ProviderConversationH
     const state = getOpencodeState(conversation.providerState);
     const providerState: OpencodeProviderState = {
       ...(state.databasePath ? { databasePath: state.databasePath } : {}),
+      ...(state.nativeVersion === 1 || state.nativeVersion === 2
+        ? { nativeVersion: state.nativeVersion }
+        : {}),
     };
 
     return Object.keys(providerState).length > 0

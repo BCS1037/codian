@@ -438,6 +438,8 @@ export interface AcpAvailableCommandInput {
 export interface AcpAvailableCommand {
   description?: string | null;
   input?: AcpAvailableCommandInput | null;
+  /** Internal adapter metadata; not part of the ACP wire payload. */
+  kind?: 'command' | 'skill';
   name: string;
 }
 

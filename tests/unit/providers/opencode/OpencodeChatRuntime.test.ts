@@ -28,7 +28,7 @@ function createMockPlugin(overrides: Record<string, unknown> = {}): any {
     app: {
       vault: {
         adapter: {
-          basePath: '/tmp/claudian-test-vault',
+          basePath: '/tmp/codian-test-vault',
         },
       },
     },
@@ -51,6 +51,290 @@ describe('OpencodeChatRuntime', () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.restoreAllMocks();
+  });
+
+  it('discovers free models from native HTTP without creating a session', async () => {
+    const client = {
+      dispose: jest.fn().mockResolvedValue(undefined),
+      isAlive: true,
+      isClosed: false,
+      request: jest.fn(async (route: string) => route === '/api/model'
+        ? {
+          data: [{
+            id: 'nemotron-3-ultra-free',
+            name: 'Nemotron 3 Ultra Free',
+            providerID: 'opencode',
+            variants: [],
+          }],
+        }
+        : { data: [] }),
+      subscribe: jest.fn().mockResolvedValue(undefined),
+    };
+    const createHttpClient = jest.fn().mockReturnValue(client);
+    const plugin = createMockPlugin();
+    const runtime = new OpencodeChatRuntime(plugin, {
+      createHttpClient: createHttpClient as any,
+    });
+
+    await (runtime as any).startProcess({
+      command: '/usr/bin/false',
+      configPath: '/tmp/opencode.json',
+      cwd: '/tmp/vault',
+      runtimeEnv: { PATH: '/usr/local/bin' },
+    });
+
+    expect(createHttpClient).toHaveBeenCalledWith(
+      '/usr/bin/false',
+      '/tmp/vault',
+      expect.objectContaining({ OPENCODE_CONFIG: '/tmp/opencode.json' }),
+    );
+    expect(client.subscribe).toHaveBeenCalledTimes(1);
+    expect(client.request).toHaveBeenCalledWith('/api/model');
+    expect(getOpencodeProviderSettings(plugin.settings).discoveredModels).toContainEqual({
+      label: 'opencode/Nemotron 3 Ultra Free',
+      rawId: 'opencode/nemotron-3-ultra-free',
+    });
+    expect(client.request).not.toHaveBeenCalledWith('/api/session', expect.anything());
+    await (runtime as any).shutdownProcess();
+    expect(client.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes only the typed text range to the native session connection', async () => {
+    const runtime = new OpencodeChatRuntime(createMockPlugin());
+    runtime.syncConversationState({ providerState: {}, sessionId: 'native-session-1' });
+    const prompt = jest.fn().mockResolvedValue({ stopReason: 'end_turn' });
+    (runtime as any).connection = { prompt };
+    (runtime as any).ensureReady = jest.fn().mockResolvedValue(true);
+    (runtime as any).applySelectedMode = jest.fn().mockResolvedValue(undefined);
+    (runtime as any).applySelectedModel = jest.fn().mockResolvedValue(undefined);
+    (runtime as any).applySelectedEffort = jest.fn().mockResolvedValue(undefined);
+
+    const typed = 'Use /research.deep on this note';
+    const chunks = [];
+    for await (const chunk of runtime.query(runtime.prepareTurn({
+      currentNotePath: 'notes/context.md',
+      text: typed,
+    }))) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks).toContainEqual({ type: 'done' });
+    expect(prompt).toHaveBeenCalledWith({
+      prompt: [{ type: 'text', text: expect.stringContaining('<linked_note path="notes/context.md" />') }],
+      sessionId: 'native-session-1',
+    }, { start: 0, end: typed.length });
+  });
+
+  it('forwards native background child completion through the runtime callback', async () => {
+    let onEvent: ((event: { type: string; data: Record<string, unknown> }) => void) | undefined;
+    const client = {
+      dispose: jest.fn().mockResolvedValue(undefined),
+      isAlive: true,
+      isClosed: false,
+      request: jest.fn(async (route: string, options?: { method?: string }) => {
+        if (route === '/api/model') {
+          return {
+            data: [{ id: 'model-1', providerID: 'test', name: 'Model', variants: [] }],
+          };
+        }
+        if (route === '/api/command') return { data: [] };
+        if (route === '/api/session' && options?.method === 'POST') {
+          return { data: { id: 'native-session-1' } };
+        }
+        return { data: {} };
+      }),
+      subscribe: jest.fn(async (listener: typeof onEvent) => { onEvent = listener; }),
+    };
+    const runtime = new OpencodeChatRuntime(createMockPlugin(), {
+      createHttpClient: jest.fn().mockReturnValue(client) as any,
+    });
+    const onCompletion = jest.fn();
+    runtime.setAsyncSubagentCompletionCallback(onCompletion);
+
+    await (runtime as any).startProcess({
+      command: '/usr/local/bin/opencode',
+      configPath: '/tmp/opencode.json',
+      cwd: '/tmp/vault',
+      runtimeEnv: { PATH: '/usr/local/bin' },
+    });
+    await (runtime as any).connection.newSession({ cwd: '/tmp/vault', mcpServers: [] });
+    runtime.syncConversationState({
+      providerState: { nativeVersion: 2 },
+      sessionId: 'native-session-1',
+    });
+    onEvent?.({ type: 'session.tool.called', data: {
+      assistantMessageID: 'parent-message', id: 'task-1', input: { background: true },
+      name: 'task', sessionID: 'native-session-1',
+    } });
+    onEvent?.({ type: 'session.tool.progress', data: {
+      assistantMessageID: 'parent-message', id: 'task-1',
+      metadata: { sessionID: 'native-child-1', status: 'running' },
+      sessionID: 'native-session-1',
+    } });
+    onEvent?.({ type: 'session.text.ended', data: {
+      assistantMessageID: 'child-message', ordinal: 0,
+      sessionID: 'native-child-1', text: 'Child result',
+    } });
+    onEvent?.({ type: 'session.execution.succeeded', data: { sessionID: 'native-child-1' } });
+
+    expect(onCompletion).toHaveBeenCalledWith({
+      type: 'async_subagent_completion', providerSessionId: 'native-session-1',
+      taskId: 'native-child-1', toolUseId: 'task-1', status: 'completed', result: 'Child result',
+    });
+    await (runtime as any).shutdownProcess();
+  });
+
+  it('loads background task tool calls and final text from native child session history', async () => {
+    const taskCall = { id: 'tool-read', input: { file_path: 'notes.md' }, name: 'Read', status: 'completed' };
+    const loadSessionMessages = jest.fn().mockResolvedValue([
+      { id: 'assistant-tool', role: 'assistant', content: 'Read notes', toolCalls: [taskCall] },
+      { id: 'assistant-final', role: 'assistant', content: 'Summary from child', toolCalls: undefined },
+    ]);
+    const runtime = new OpencodeChatRuntime(createMockPlugin(), { loadSessionMessages } as any);
+    (runtime as any).currentDatabasePath = '/tmp/opencode.db';
+    (runtime as any).currentRuntimeEnvironment = { PATH: '/opt/opencode/bin' };
+    (runtime as any).runtimeNativeVersion = 2;
+
+    await expect(runtime.loadSubagentToolCalls('native-child-1')).resolves.toEqual([taskCall]);
+    await expect(runtime.loadSubagentFinalResult('native-child-1')).resolves.toBe('Summary from child');
+    expect(loadSessionMessages).toHaveBeenCalledWith('native-child-1', {
+      databasePath: '/tmp/opencode.db',
+      nativeVersion: 2,
+    }, { PATH: '/opt/opencode/bin' });
+  });
+
+  it('does not use OpenCode history diagnostics as a subagent final answer', async () => {
+    const loadSessionMessages = jest.fn().mockResolvedValue([
+      {
+        content: 'Could not read OpenCode session rows from SQLite.',
+        id: 'opencode-hydration-error-session-native-child',
+        role: 'assistant',
+      },
+      {
+        content: 'OpenCode message metadata is not valid JSON.',
+        id: 'opencode-hydration-error-message-bad-row',
+        role: 'assistant',
+      },
+    ]);
+    const runtime = new OpencodeChatRuntime(createMockPlugin(), { loadSessionMessages } as any);
+    (runtime as any).currentDatabasePath = '/tmp/opencode.db';
+    (runtime as any).runtimeNativeVersion = 2;
+
+    await expect(runtime.loadSubagentFinalResult('native-child-1')).resolves.toBeNull();
+  });
+
+  it('uses native HTTP for stored v2 sessions without CLI semver compatibility checks', async () => {
+    const client = {
+      dispose: jest.fn().mockResolvedValue(undefined),
+      isAlive: true,
+      isClosed: false,
+      request: jest.fn().mockResolvedValue({ data: [] }),
+      subscribe: jest.fn().mockResolvedValue(undefined),
+    };
+    const createHttpClient = jest.fn().mockReturnValue(client);
+    const runtime = new OpencodeChatRuntime(createMockPlugin(), {
+      createHttpClient: createHttpClient as any,
+    });
+    runtime.syncConversationState({
+      providerState: { nativeVersion: 2 },
+      sessionId: 'v2-session',
+    });
+
+    await (runtime as any).startProcess({
+      command: '/usr/bin/false',
+      configPath: '/tmp/opencode.json',
+      cwd: '/tmp/vault',
+      runtimeEnv: { PATH: '/usr/local/bin' },
+    });
+    expect(createHttpClient).toHaveBeenCalledTimes(1);
+    await (runtime as any).shutdownProcess();
+  });
+
+  it.each([
+    ['v1 session marker', { nativeVersion: 1 }],
+    ['legacy session without marker', {}],
+  ])('preserves %s and refuses to load it through V2', async (_label, providerState) => {
+    const client = {
+      dispose: jest.fn().mockResolvedValue(undefined),
+      isAlive: true,
+      isClosed: false,
+      request: jest.fn().mockResolvedValue({ data: [] }),
+      subscribe: jest.fn().mockResolvedValue(undefined),
+    };
+    const createHttpClient = jest.fn().mockReturnValue(client);
+    const runtime = new OpencodeChatRuntime(createMockPlugin(), {
+      createHttpClient: createHttpClient as any,
+    });
+    runtime.syncConversationState({ providerState, sessionId: 'old-session' });
+
+    try {
+      const isV1Session = 'nativeVersion' in providerState && providerState.nativeVersion === 1;
+      await expect((runtime as any).startProcess({
+        command: '/usr/local/bin/opencode',
+        configPath: '/tmp/opencode.json',
+        cwd: '/tmp/vault',
+        runtimeEnv: { PATH: '/usr/local/bin' },
+      })).rejects.toThrow(isV1Session
+        ? 'This conversation was created with OpenCode v1 ACP and cannot resume under V2.'
+        : 'This conversation has no OpenCode V2 session metadata and cannot resume safely.');
+      expect(createHttpClient).not.toHaveBeenCalled();
+      expect((runtime as any).sessionId).toBe('old-session');
+      expect(runtime.buildSessionUpdates({
+        conversation: null,
+        sessionInvalidated: false,
+      }).updates.sessionId).toBe('old-session');
+    } finally {
+      await (runtime as any).shutdownProcess();
+    }
+  });
+
+  it('shows the V1 session incompatibility in the chat stream', async () => {
+    const runtime = new OpencodeChatRuntime(createMockPlugin());
+    jest.spyOn(runtime, 'ensureReady').mockRejectedValue(new Error(
+      'This conversation was created with OpenCode v1 ACP and cannot resume under V2. Start a new conversation; stored history is preserved.',
+    ));
+    const chunks = [];
+
+    for await (const chunk of runtime.query(runtime.prepareTurn({ text: 'Hello' }))) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks).toEqual([
+      {
+        type: 'error',
+        content: 'This conversation was created with OpenCode v1 ACP and cannot resume under V2. Start a new conversation; stored history is preserved.',
+      },
+      { type: 'done' },
+    ]);
+  });
+
+  it('persists the native version alongside the OpenCode database path', () => {
+    const runtime = new OpencodeChatRuntime(createMockPlugin());
+    runtime.syncConversationState({
+      providerState: { databasePath: '/tmp/opencode.db' },
+      sessionId: 'v2-session',
+    });
+    (runtime as any).runtimeNativeVersion = 2;
+    (runtime as any).sessionNativeVersion = 2;
+
+    const result = runtime.buildSessionUpdates({
+      conversation: {
+        id: 'conversation-v2',
+        providerId: 'opencode',
+        sessionId: 'v2-session',
+        messages: [],
+        title: 'OpenCode v2',
+        createdAt: 1,
+        updatedAt: 1,
+        providerState: { databasePath: '/tmp/opencode.db' },
+      } as any,
+      sessionInvalidated: false,
+    });
+
+    expect(result.updates.providerState).toEqual({
+      databasePath: '/tmp/opencode.db',
+      nativeVersion: 2,
+    });
   });
 
   it('rejects a turn without an enabled OpenCode model before starting the runtime', async () => {
@@ -118,7 +402,7 @@ describe('OpencodeChatRuntime', () => {
     (runtime as any).connection = { newSession };
 
     const commandsPromise = runtime.discoverSupportedCommands(5_000);
-    const sessionPromise = (runtime as any).createSession('/tmp/claudian-test-vault');
+    const sessionPromise = (runtime as any).createSession('/tmp/codian-test-vault');
     await (runtime as any).handleSessionNotification({
       sessionId: 'session-early',
       update: {
@@ -275,11 +559,11 @@ describe('OpencodeChatRuntime', () => {
     jest.spyOn(launchArtifacts, 'prepareOpencodeLaunchArtifacts').mockImplementation(async (params) => {
       expect(params.runtimeEnv.OPENCODE_DB).toBe('/persisted/opencode.db');
       return {
-        configPath: '/tmp/claudian-opencode-config.json',
+        configPath: '/tmp/codian-opencode-config.json',
         configContent: '{}\n',
         databasePath: '/persisted/opencode.db',
         launchKey: 'launch-key',
-        systemPromptPath: '/tmp/claudian-opencode-system.md',
+        systemPromptPath: '/tmp/codian-opencode-system.md',
       };
     });
     (runtime as any).startProcess = jest.fn().mockImplementation(async () => {
@@ -319,11 +603,11 @@ describe('OpencodeChatRuntime', () => {
     jest.spyOn(launchArtifacts, 'prepareOpencodeLaunchArtifacts').mockImplementation(async (params) => {
       expect(params.runtimeEnv.OPENCODE_DB).toBeUndefined();
       return {
-        configPath: '/tmp/claudian-opencode-config.json',
+        configPath: '/tmp/codian-opencode-config.json',
         configContent: '{}\n',
         databasePath: '/default/opencode.db',
         launchKey: 'launch-key',
-        systemPromptPath: '/tmp/claudian-opencode-system.md',
+        systemPromptPath: '/tmp/codian-opencode-system.md',
       };
     });
     (runtime as any).startProcess = jest.fn().mockImplementation(async () => {
@@ -353,11 +637,11 @@ describe('OpencodeChatRuntime', () => {
     jest.spyOn(launchArtifacts, 'prepareOpencodeLaunchArtifacts').mockImplementation(async (params) => {
       expect(params.runtimeEnv.OPENCODE_DB).toBe(':memory:');
       return {
-        configPath: '/tmp/claudian-opencode-config.json',
+        configPath: '/tmp/codian-opencode-config.json',
         configContent: '{}\n',
         databasePath: ':memory:',
         launchKey: 'launch-key',
-        systemPromptPath: '/tmp/claudian-opencode-system.md',
+        systemPromptPath: '/tmp/codian-opencode-system.md',
       };
     });
     (runtime as any).startProcess = jest.fn().mockImplementation(async () => {
@@ -383,11 +667,11 @@ describe('OpencodeChatRuntime', () => {
     const mockConnection = { dispose: jest.fn() };
 
     jest.spyOn(launchArtifacts, 'prepareOpencodeLaunchArtifacts').mockResolvedValue({
-      configPath: '/tmp/claudian-opencode-config.json',
+      configPath: '/tmp/codian-opencode-config.json',
       configContent: '{}\n',
       databasePath: '/default/opencode.db',
       launchKey: 'launch-key',
-      systemPromptPath: '/tmp/claudian-opencode-system.md',
+      systemPromptPath: '/tmp/codian-opencode-system.md',
     });
     const shutdownProcess = jest.spyOn(runtime as any, 'shutdownProcess').mockResolvedValue(undefined);
     const startProcess = jest.spyOn(runtime as any, 'startProcess').mockImplementation(async () => {
@@ -410,11 +694,11 @@ describe('OpencodeChatRuntime', () => {
     });
     const runtime = new OpencodeChatRuntime(plugin);
     jest.spyOn(launchArtifacts, 'prepareOpencodeLaunchArtifacts').mockResolvedValue({
-      configPath: '/tmp/claudian-opencode-config.json',
+      configPath: '/tmp/codian-opencode-config.json',
       configContent: '{}\n',
       databasePath: '/default/opencode.db',
       launchKey: 'launch-key',
-      systemPromptPath: '/tmp/claudian-opencode-system.md',
+      systemPromptPath: '/tmp/codian-opencode-system.md',
     });
     let releaseStart!: () => void;
     const startGate = new Promise<void>(resolve => { releaseStart = resolve; });
@@ -438,11 +722,11 @@ describe('OpencodeChatRuntime', () => {
     });
     const runtime = new OpencodeChatRuntime(plugin);
     jest.spyOn(launchArtifacts, 'prepareOpencodeLaunchArtifacts').mockResolvedValue({
-      configPath: '/tmp/claudian-opencode-config.json',
+      configPath: '/tmp/codian-opencode-config.json',
       configContent: '{}\n',
       databasePath: '/default/opencode.db',
       launchKey: 'launch-key',
-      systemPromptPath: '/tmp/claudian-opencode-system.md',
+      systemPromptPath: '/tmp/codian-opencode-system.md',
     });
     jest.spyOn(runtime as any, 'startProcess').mockImplementation(async () => {
       (runtime as any).process = {
@@ -468,7 +752,7 @@ describe('OpencodeChatRuntime', () => {
     await new Promise(resolve => setImmediate(resolve));
     expect(loadSession).toHaveBeenCalledWith(
       'session-a',
-      '/tmp/claudian-test-vault',
+      '/tmp/codian-test-vault',
       expect.any(Number),
     );
 
@@ -480,7 +764,7 @@ describe('OpencodeChatRuntime', () => {
     await expect(second).resolves.toBe(true);
     expect(loadSession).toHaveBeenLastCalledWith(
       'session-b',
-      '/tmp/claudian-test-vault',
+      '/tmp/codian-test-vault',
       expect.any(Number),
     );
     expect(runtime.getSessionId()).toBe('session-b');
@@ -498,11 +782,11 @@ describe('OpencodeChatRuntime', () => {
     jest.spyOn(launchArtifacts, 'prepareOpencodeLaunchArtifacts').mockImplementation(async () => {
       await artifactsGate;
       return {
-        configPath: '/tmp/claudian-opencode-config.json',
+        configPath: '/tmp/codian-opencode-config.json',
         configContent: '{}\n',
         databasePath: '/default/opencode.db',
         launchKey: 'launch-key',
-        systemPromptPath: '/tmp/claudian-opencode-system.md',
+        systemPromptPath: '/tmp/codian-opencode-system.md',
       };
     });
     const startProcess = jest.spyOn(runtime as any, 'startProcess').mockResolvedValue(undefined);
@@ -540,17 +824,32 @@ describe('OpencodeChatRuntime', () => {
     expect(cancel).toHaveBeenCalledWith({ sessionId: 'session-1' });
   });
 
+  it('interrupts a pending V2 prompt after its local turn has already settled', () => {
+    const cancel = jest.fn();
+    const runtime = new OpencodeChatRuntime(createMockPlugin());
+    (runtime as any).connection = {
+      cancel,
+      hasPendingPrompt: () => true,
+    };
+    (runtime as any).sessionId = 'session-1';
+
+    runtime.cancel();
+
+    expect(cancel).toHaveBeenCalledWith({ sessionId: 'session-1' });
+    expect((runtime as any).restartRequiredAfterCancel).toBe(true);
+  });
+
   it('restarts the ACP connection before reusing a session after cancellation', async () => {
     const runtime = new OpencodeChatRuntime(createMockPlugin({
       settings: { providerConfigs: { opencode: { enabled: true } } },
     }));
     runtime.syncConversationState({ providerState: {}, sessionId: 'session-1' });
     jest.spyOn(launchArtifacts, 'prepareOpencodeLaunchArtifacts').mockResolvedValue({
-      configPath: '/tmp/claudian-opencode-config.json',
+      configPath: '/tmp/codian-opencode-config.json',
       configContent: '{}\n',
       databasePath: '/default/opencode.db',
       launchKey: 'launch-key',
-      systemPromptPath: '/tmp/claudian-opencode-system.md',
+      systemPromptPath: '/tmp/codian-opencode-system.md',
     });
     const cancel = jest.fn();
     const startProcess = jest.spyOn(runtime as any, 'startProcess').mockImplementation(async () => {
@@ -801,7 +1100,7 @@ describe('OpencodeChatRuntime', () => {
     expect((runtime as any).resolveSelectedModeId()).toBe(OPENCODE_YOLO_MODE_ID);
   });
 
-  it('falls back to the managed YOLO mode when a saved custom mode is not managed by Claudian', () => {
+  it('falls back to the managed YOLO mode when a saved custom mode is not managed by Codian', () => {
     const plugin = createMockPlugin({
       settings: {
         permissionMode: 'yolo',
@@ -828,7 +1127,7 @@ describe('OpencodeChatRuntime', () => {
             availableModes: [
               { id: OPENCODE_BUILD_MODE_ID, name: 'build' },
               { id: 'compaction', name: 'compaction' },
-              { id: OPENCODE_SAFE_MODE_ID, name: 'claudian-safe' },
+              { id: OPENCODE_SAFE_MODE_ID, name: 'codian-safe' },
               { id: 'plan', name: 'plan' },
             ],
             selectedMode: '',

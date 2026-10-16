@@ -1,4 +1,5 @@
 import type { Writable } from 'node:stream';
+import { StringDecoder } from 'node:string_decoder';
 
 export type PiJsonlLineHandler = (line: string) => void;
 
@@ -18,10 +19,22 @@ export function subscribePiJsonlLines(
   onError?: (error: Error) => void,
 ): () => void {
   let buffer = '';
+  let decoder = new StringDecoder('utf8');
+  let ended = false;
 
   const handleData = (chunk: Buffer | string): void => {
-    buffer += typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+    if (typeof chunk === 'string') {
+      buffer += decoder.end();
+      decoder = new StringDecoder('utf8');
+      buffer += chunk;
+    } else {
+      buffer += decoder.write(chunk);
+    }
 
+    emitCompleteLines();
+  };
+
+  const emitCompleteLines = (): void => {
     while (true) {
       const newlineIndex = buffer.indexOf('\n');
       if (newlineIndex < 0) {
@@ -35,6 +48,14 @@ export function subscribePiJsonlLines(
   };
 
   const handleEnd = (): void => {
+    if (ended) {
+      return;
+    }
+    ended = true;
+
+    buffer += decoder.end();
+    emitCompleteLines();
+
     if (buffer.length > 0) {
       onLine(stripTrailingCarriageReturn(buffer));
       buffer = '';

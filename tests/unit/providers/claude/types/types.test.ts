@@ -7,9 +7,9 @@ import type {
   ToolCallInfo
 } from '@/core/types';
 import {
-  VIEW_TYPE_CLAUDIAN
+  VIEW_TYPE_CODIAN
 } from '@/core/types';
-import type { ClaudianSettings } from '@/core/types/settings';
+import type { CodianSettings } from '@/core/types/settings';
 import { getClaudeProviderSettings } from '@/providers/claude/settings';
 import {
   CONTEXT_WINDOW_1M,
@@ -27,9 +27,9 @@ import {
 } from '@/providers/claude/types/settings';
 
 describe('types.ts', () => {
-  describe('VIEW_TYPE_CLAUDIAN', () => {
+  describe('VIEW_TYPE_CODIAN', () => {
     it('should be defined as the correct view type', () => {
-      expect(VIEW_TYPE_CLAUDIAN).toBe('codian-view');
+      expect(VIEW_TYPE_CODIAN).toBe('codian-view');
     });
   });
 
@@ -80,9 +80,9 @@ describe('types.ts', () => {
     });
   });
 
-  describe('ClaudianSettings type', () => {
+  describe('CodianSettings type', () => {
     it('should be assignable with valid settings', () => {
-      const settings: ClaudianSettings = {
+      const settings: CodianSettings = {
         userName: '',
         model: 'haiku',
         enableAutoTitleGeneration: true,
@@ -113,6 +113,7 @@ describe('types.ts', () => {
         enableBangBash: false,
         enableAutoScroll: true,
         deferMathRenderingDuringStreaming: true,
+        pluginRenderedFenceLanguages: [],
         expandFileEditsByDefault: false,
         chatViewPlacement: 'right-sidebar',
         chatNavigationMode: 'conversation-rail',
@@ -136,7 +137,7 @@ describe('types.ts', () => {
     });
 
     it('should accept custom model strings', () => {
-      const settings: ClaudianSettings = {
+      const settings: CodianSettings = {
         userName: '',
         model: 'anthropic/custom-model-v1',
         enableAutoTitleGeneration: true,
@@ -167,6 +168,7 @@ describe('types.ts', () => {
         enableBangBash: false,
         enableAutoScroll: true,
         deferMathRenderingDuringStreaming: true,
+        pluginRenderedFenceLanguages: [],
         expandFileEditsByDefault: false,
         chatViewPlacement: 'right-sidebar',
         chatNavigationMode: 'conversation-rail',
@@ -189,7 +191,7 @@ describe('types.ts', () => {
     });
 
     it('should accept optional lastClaudeModel and lastCustomModel', () => {
-      const settings: ClaudianSettings = {
+      const settings: CodianSettings = {
         userName: '',
         model: 'sonnet',
         enableAutoTitleGeneration: true,
@@ -222,6 +224,7 @@ describe('types.ts', () => {
         enableBangBash: false,
         enableAutoScroll: false,
         deferMathRenderingDuringStreaming: true,
+        pluginRenderedFenceLanguages: [],
         expandFileEditsByDefault: true,
         chatViewPlacement: 'right-sidebar',
         chatNavigationMode: 'conversation-rail',

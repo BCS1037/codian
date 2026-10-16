@@ -24,7 +24,7 @@ function emptyElement(container: HTMLElement): void {
 
 function appendFallback(container: HTMLElement, markdown: string): void {
   container.createDiv({
-    cls: 'claudian-inline-markdown-fallback',
+    cls: 'codian-inline-markdown-fallback',
     text: markdown,
   });
 }

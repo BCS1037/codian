@@ -3,9 +3,36 @@ import {
   transformMarkdownSegments,
 } from './markdownSegments';
 
+function trimInlineBoundarySpaces(
+  text: string,
+  contentStart: number,
+  contentEnd: number,
+  removals: Set<number>,
+): void {
+  const isOrdinaryBoundarySpace = (position: number): boolean =>
+    (text[position] === ' ' || text[position] === '\t')
+    && !isBackslashEscaped(text, position);
+
+  let start = contentStart;
+  let end = contentEnd;
+  while (start < end && isOrdinaryBoundarySpace(start)) start += 1;
+  while (end > start && isOrdinaryBoundarySpace(end - 1)) end -= 1;
+
+  // Empty or genuinely whitespace-only expressions keep their original padding.
+  if (start >= end || /^\s*$/.test(text.slice(start, end))) return;
+
+  for (let position = contentStart; position < start; position += 1) {
+    removals.add(position);
+  }
+  for (let position = end; position < contentEnd; position += 1) {
+    removals.add(position);
+  }
+}
+
 function normalizeLatexMathInText(text: string): string {
   const openers = new Map<'inline' | 'display', number>();
   const replacements = new Map<number, string>();
+  const removals = new Set<number>();
 
   for (let index = 0; index < text.length - 1; index += 1) {
     if (text[index] !== '\\' || isBackslashEscaped(text, index)) {
@@ -32,6 +59,9 @@ function normalizeLatexMathInText(text: string): string {
         const replacement = kind === 'display' ? '$$' : '$';
         replacements.set(opener, replacement);
         replacements.set(index, replacement);
+        if (kind === 'inline') {
+          trimInlineBoundarySpaces(text, opener + 2, index, removals);
+        }
         openers.delete(kind);
       }
     }
@@ -48,7 +78,7 @@ function normalizeLatexMathInText(text: string): string {
     if (replacement) {
       normalized += replacement;
       index += 1;
-    } else {
+    } else if (!removals.has(index)) {
       normalized += text[index];
     }
   }

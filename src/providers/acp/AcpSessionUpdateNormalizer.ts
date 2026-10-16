@@ -304,6 +304,7 @@ function mapAcpCommandToSlashCommand(command: AcpAvailableCommand): SlashCommand
     content: '',
     description: command.description ?? undefined,
     id: `acp:${name}`,
+    ...(command.kind ? { kind: command.kind } : {}),
     name,
     source: 'sdk',
   };

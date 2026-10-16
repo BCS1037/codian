@@ -69,25 +69,25 @@ export interface MockElement {
 }
 
 const CLASS_DISPLAY: Record<string, string> = {
-  'claudian-context-meter': 'flex',
-  'claudian-mcp-selector': 'flex',
-  'claudian-mode-selector': 'flex',
-  'claudian-permission-toggle': 'flex',
-  'claudian-service-tier-toggle': 'flex',
-  'claudian-status-panel-bash': 'block',
-  'claudian-status-panel-bash-content': 'block',
-  'claudian-status-panel-bash-entry-content': 'block',
-  'claudian-status-panel-content': 'block',
-  'claudian-status-panel-todos': 'block',
-  'claudian-tab-content': 'flex',
-  'claudian-thinking-budget': 'flex',
-  'claudian-thinking-effort': 'flex',
+  'codian-context-meter': 'flex',
+  'codian-mcp-selector': 'flex',
+  'codian-mode-selector': 'flex',
+  'codian-permission-toggle': 'flex',
+  'codian-service-tier-toggle': 'flex',
+  'codian-status-panel-bash': 'block',
+  'codian-status-panel-bash-content': 'block',
+  'codian-status-panel-bash-entry-content': 'block',
+  'codian-status-panel-content': 'block',
+  'codian-status-panel-todos': 'block',
+  'codian-tab-content': 'flex',
+  'codian-thinking-budget': 'flex',
+  'codian-thinking-effort': 'flex',
 };
 
 const DISPLAY_CLASSES = new Set([
-  'claudian-hidden',
-  'claudian-visible-block',
-  'claudian-visible-flex',
+  'codian-hidden',
+  'codian-visible-block',
+  'codian-visible-flex',
   ...Object.keys(CLASS_DISPLAY),
 ]);
 
@@ -101,9 +101,9 @@ export function createMockEl(tag = 'div'): any {
   let textContent = '';
 
   const resolveDisplay = (): string | null => {
-    if (classes.has('claudian-hidden')) return 'none';
-    if (classes.has('claudian-visible-flex')) return 'flex';
-    if (classes.has('claudian-visible-block')) return 'block';
+    if (classes.has('codian-hidden')) return 'none';
+    if (classes.has('codian-visible-flex')) return 'flex';
+    if (classes.has('codian-visible-block')) return 'block';
 
     for (const [cls, display] of Object.entries(CLASS_DISPLAY)) {
       if (classes.has(cls)) return display;

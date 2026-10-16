@@ -11,7 +11,7 @@ import { VaultContextDropController } from './VaultContextDropController';
 
 export class LivePreviewComposerEnhancement implements ComposerEnhancement {
   mount(context: ComposerEnhancementContext): ComposerSession {
-    const hostEl = context.inputWrapperEl.createDiv({ cls: 'claudian-live-preview-host' });
+    const hostEl = context.inputWrapperEl.createDiv({ cls: 'codian-live-preview-host' });
     const bridge = new LivePreviewInputBridge(context.sourceEl, hostEl, {
       references: context.initialReferences,
       onOpenReference: reference => context.onOpenReference(reference),

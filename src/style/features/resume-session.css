@@ -1,5 +1,5 @@
 /* Resume Session Dropdown */
-.claudian-resume-dropdown {
+.codian-resume-dropdown {
   display: none;
   position: absolute;
   bottom: 100%;
@@ -17,11 +17,11 @@
   overflow: hidden;
 }
 
-.claudian-resume-dropdown.visible {
+.codian-resume-dropdown.visible {
   display: block;
 }
 
-.claudian-resume-header {
+.codian-resume-header {
   padding: 8px 12px;
   font-size: 12px;
   font-weight: 600;
@@ -31,19 +31,19 @@
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.claudian-resume-list {
+.codian-resume-list {
   max-height: 350px;
   overflow-y: auto;
 }
 
-.claudian-resume-empty {
+.codian-resume-empty {
   padding: 16px;
   text-align: center;
   color: var(--text-muted);
   font-size: 13px;
 }
 
-.claudian-resume-item {
+.codian-resume-item {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -53,43 +53,43 @@
   transition: background 0.1s ease;
 }
 
-.claudian-resume-item:last-child {
+.codian-resume-item:last-child {
   border-bottom: none;
 }
 
-.claudian-resume-item:hover,
-.claudian-resume-item.selected {
+.codian-resume-item:hover,
+.codian-resume-item.selected {
   background: var(--background-modifier-hover);
 }
 
-.claudian-resume-item.current {
+.codian-resume-item.current {
   background: var(--background-secondary);
   border-inline-start: 2px solid var(--interactive-accent);
   padding-inline-start: 10px;
 }
 
-.claudian-resume-item-icon {
+.codian-resume-item-icon {
   display: flex;
   align-items: center;
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
-.claudian-resume-item-icon svg {
+.codian-resume-item-icon svg {
   width: 16px;
   height: 16px;
 }
 
-.claudian-resume-item.current .claudian-resume-item-icon {
+.codian-resume-item.current .codian-resume-item-icon {
   color: var(--interactive-accent);
 }
 
-.claudian-resume-item-content {
+.codian-resume-item-content {
   flex: 1;
   min-width: 0;
 }
 
-.claudian-resume-item-title {
+.codian-resume-item-title {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-normal);
@@ -98,22 +98,22 @@
   text-overflow: ellipsis;
 }
 
-.claudian-resume-item-date {
+.codian-resume-item-date {
   font-size: 11px;
   color: var(--text-faint);
   margin-top: 2px;
 }
 
 /* Scrollbar */
-.claudian-resume-list::-webkit-scrollbar {
+.codian-resume-list::-webkit-scrollbar {
   width: 6px;
 }
 
-.claudian-resume-list::-webkit-scrollbar-track {
+.codian-resume-list::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.claudian-resume-list::-webkit-scrollbar-thumb {
+.codian-resume-list::-webkit-scrollbar-thumb {
   background: var(--background-modifier-border);
   border-radius: 3px;
 }

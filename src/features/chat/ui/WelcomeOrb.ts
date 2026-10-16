@@ -170,7 +170,7 @@ export function renderWelcomeOrb(container: HTMLElement): HTMLCanvasElement {
   const ownerDocument = container.ownerDocument;
   const ownerWindow = ownerDocument.defaultView ?? window;
   const canvas = container.createEl('canvas', {
-    cls: 'claudian-welcome-orb',
+    cls: 'codian-welcome-orb',
     attr: {
       role: 'img',
       'aria-label': t('chat.welcomeOrb.solving'),
@@ -251,5 +251,5 @@ export function renderWelcomeOrb(container: HTMLElement): HTMLCanvasElement {
 
 export function renderWelcomeContent(container: HTMLElement, greeting: string): void {
   renderWelcomeOrb(container);
-  container.createDiv({ cls: 'claudian-welcome-greeting', text: greeting });
+  container.createDiv({ cls: 'codian-welcome-greeting', text: greeting });
 }

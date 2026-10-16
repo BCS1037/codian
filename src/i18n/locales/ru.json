@@ -1,5 +1,6 @@
 {
   "common": {
+    "inputSuggestions": "Подсказки ввода",
     "save": "Сохранить",
     "cancel": "Отмена",
     "delete": "Удалить",
@@ -22,7 +23,9 @@
     "rewind": "Откатить",
     "enable": "Включить",
     "disable": "Отключить",
-    "legacyPluginDataMigrated": "Настройки перенесены из старого плагина Codian. Перед использованием Codian отключите старый плагин \"codian\"."
+    "legacyPluginDataMigrated": "Настройки перенесены из старого плагина Codian. Перед использованием Codian отключите старый плагин \"codian\".",
+    "retry": "Повторить",
+    "none": "Нет"
   },
   "chat": {
     "drop": {
@@ -32,6 +35,8 @@
     },
     "providerRetry": "Повторная попытка Claude API (попытка {attempt}/{maxRetries}; причина: {reason}).",
     "providerWorkspaceInitializationTimeout": "Инициализация Provider {provider} превысила время ожидания ({seconds} с). Повторите переключение вкладки.",
+    "deletedConversationResetFailed": "Не удалось сбросить удалённый разговор. Неотправленный ввод восстановлен.",
+    "resizeConversations": "Изменить ширину списка разговоров",
     "historySearch": {
       "placeholder": "Поиск разговоров",
       "noMatches": "Подходящих разговоров нет",
@@ -44,6 +49,12 @@
       "archive": "Архивировать",
       "unarchive": "Извлечь из архива",
       "pinned": "Закреплено",
+      "markUnread": "Отметить как непрочитанное",
+      "markRead": "Отметить как прочитанное",
+      "unread": "Не прочитано",
+      "needsInput": "Требуется ваш ввод",
+      "stoppedWithError": "Остановлено с ошибкой",
+      "running": "Выполняется",
       "archived": "В архиве",
       "updateFailed": "Не удалось обновить индекс разговоров"
     },
@@ -107,10 +118,327 @@
       "selectedReply": "Выбранный ответ ИИ"
     },
     "navigation": {
-      "jumpToPrompt": "Перейти к запросу {index}"
+      "jumpToPrompt": "Перейти к запросу {index}",
+      "scrollToTop": "Прокрутить вверх",
+      "previousMessage": "Предыдущее сообщение",
+      "directory": "Содержание разговора",
+      "nextMessage": "Следующее сообщение",
+      "scrollToBottom": "Прокрутить вниз",
+      "emptyDirectory": "В этом разговоре нет пользовательских запросов"
+    },
+    "branchNavigation": {
+      "previous": "Предыдущая ветка",
+      "next": "Следующая ветка",
+      "position": "{position} / {count}",
+      "failed": "Не удалось переключить ветку диалога: {error}",
+      "recoveryRequired": "Переключение ветки Pi завершилось с ошибкой; может потребоваться восстановление сеанса: {error}",
+      "saveFailed": "Ветка переключена, но состояние диалога не удалось сохранить: {error}",
+      "unavailable": "Ветка больше недоступна.",
+      "unsupported": "Этот Provider не поддерживает навигацию по веткам.",
+      "runtimeUnavailable": "Среда Pi недоступна."
     },
     "welcomeOrb": {
       "solving": "Решение задачи"
+    },
+    "promptSuggestionHint": "Tab для принятия",
+    "selectAvailableModel": "Перед отправкой выберите доступную модель.",
+    "selectAvailableTitleModel": "Выберите доступную модель для заголовков в настройках Codian.",
+    "quote": {
+      "buttonLabel": "Цитировать"
+    },
+    "codeBlock": {
+      "copyAriaLabel": "Копировать код {language}",
+      "copied": "Скопировано!"
+    },
+    "sideChat": {
+      "title": "Побочный чат",
+      "collapse": "Свернуть",
+      "fullHeight": "Во всю высоту",
+      "discard": "Отменить",
+      "statusPreparing": "Подготовка",
+      "statusQueued": "В очереди: {count}",
+      "statusWorking": "Работает",
+      "statusError": "Требует внимания",
+      "statusActionRequired": "Требуется ввод",
+      "placeholder": "Задайте уточняющий вопрос в побочном чате",
+      "composerLabel": "Сообщение побочного чата",
+      "needsPrompt": "Добавьте запрос после /side, чтобы начать побочный чат.",
+      "unsupportedProvider": "Этот провайдер не поддерживает побочный чат.",
+      "unavailableBusy": "Побочному чату нужен завершённый ответ. Дождитесь окончания текущего хода.",
+      "unavailableNoCheckpoint": "Сначала завершите ответ в этом разговоре.",
+      "unavailableNoSession": "Не удалось определить сессию провайдера для этого разговора.",
+      "alreadyExists": "Для этого разговора уже есть побочный чат. Отмените его, чтобы начать новый.",
+      "nestedUnavailable": "Побочный чат не может запустить ещё один. Сначала сверните к основному.",
+      "mainOnlyCommand": "/{command} доступна только в основном чате.",
+      "startFailed": "Не удалось запустить побочный чат: {error}",
+      "queued": "Добавлено в очередь бокового чата.",
+      "busySide": "Побочный чат ещё отвечает. Дождитесь завершения."
+    },
+    "zen": {
+      "regionLabel": "Чат Codian",
+      "showHistory": "Показать разговор",
+      "move": "Переместить панель чата",
+      "working": "Выполняется…",
+      "thinking": "Размышляет…",
+      "interrupted": "Прервано",
+      "workedFor": "Работал {duration}",
+      "workedForResult": "Работал {duration} · {result}",
+      "actionRequired": "Требуется ваш ответ",
+      "error": "Ошибка: {message}",
+      "toolRunning": "{tool} · выполняется",
+      "toolCompleted": "{tool} · готово",
+      "toolFailed": "{tool} · ошибка",
+      "toolBlocked": "{tool} · заблокировано"
+    },
+    "composer": {
+      "placeholder": "Запросите изменения, укажите файлы через @, выполните /команды",
+      "message": "Сообщение",
+      "dropImage": "Перетащите изображение сюда",
+      "moreContext": "Показать ещё элементов контекста: {count}",
+      "showLess": "Показать меньше",
+      "moreItems": "Ещё {count}"
+    },
+    "worked": "Работа выполнена",
+    "taskNotification": "Уведомление о задаче",
+    "copyMessage": "Копировать сообщение",
+    "renderFailed": "Не удалось отобразить содержимое сообщения.",
+    "interruptedHint": "· Что Codian следует сделать вместо этого?",
+    "sessions": {
+      "empty": "Нет разговоров",
+      "noMatch": "Нет подходящих сессий",
+      "resume": "Продолжить разговор",
+      "loading": "Загрузка разговора…",
+      "current": "Текущая сессия",
+      "loadFailed": "Не удалось загрузить разговор"
+    },
+    "linkedContent": {
+      "label": "Связанное содержимое:",
+      "choices": "Варианты связанного содержимого",
+      "noMatch": "Нет подходящих файлов или папок",
+      "missing": "Содержимое отсутствует",
+      "path": "Связанное содержимое: {path}",
+      "missingPath": "Связанное содержимое: {path}. Содержимое отсутствует",
+      "noContent": "Нет связанного содержимого",
+      "missingNotice": "Связанное содержимое отсутствует: {path}",
+      "openFailed": "Не удалось открыть связанное содержимое: {error}"
+    },
+    "questions": {
+      "title": "Вопрос",
+      "submit": "Отправить",
+      "review": "Проверьте ответы",
+      "ready": "Готовы отправить ответы?",
+      "sending": "Отправка…",
+      "submitAnswers": "Отправить ответы",
+      "notAnswered": "Нет ответа",
+      "customAnswer": "Введите свой ответ…",
+      "secret": "Введите секретное значение…",
+      "editAnswer": "Изменить ответ на {question}",
+      "waiting": "Ожидание ответа…",
+      "noOptions": "Варианты не записаны",
+      "sendFailed": "Не удалось отправить ответ. Повторите попытку.",
+      "answerBelow": "Ответьте в панели вопросов ниже.",
+      "expired": "Вопрос устарел.",
+      "notSent": "Ответ не отправлен. Повторите попытку.",
+      "unsupportedReply": "Этот вопрос не может принять такой ответ.",
+      "uncertainDelivery": "Доставку ответа не удалось подтвердить. Он не поставлен в очередь повторно, чтобы избежать двойной отправки.",
+      "differentConversation": "Этот вопрос относится к другому разговору.",
+      "sideUnavailable": "Этот дополнительный чат больше недоступен."
+    },
+    "tools": {
+      "calls": "Вызовы инструментов",
+      "output": "Вывод",
+      "noResult": "Нет результата",
+      "noMatches": "Совпадений не найдено",
+      "tasksUpdated": "Задачи обновлены",
+      "noChanges": "Нет изменений",
+      "moreLines": "…ещё строк: {count}",
+      "moreCharacters": "…ещё символов: {count}",
+      "running": "Выполняется…",
+      "noOutput": "Нет вывода",
+      "status": {
+        "running": "Статус: выполняется",
+        "completed": "Статус: завершено",
+        "error": "Статус: ошибка",
+        "cancelled": "Статус: отменено",
+        "blocked": "Статус: заблокировано"
+      },
+      "inProgress": "Статус: в процессе",
+      "writing": "Запись…",
+      "done": "ГОТОВО",
+      "errorResult": "ОШИБКА",
+      "tasks": "Задачи",
+      "taskProgress": "Задачи {completed}/{total}",
+      "taskProgressLabel": "Задачи ({completed}/{total})",
+      "changes": "Изменения: +{added} -{removed}",
+      "fileDeleted": "Файл удалён",
+      "noTextDiff": "Текстовые изменения недоступны",
+      "patch": "патч",
+      "files": "Файлов: {count}",
+      "file": "файл",
+      "enteringPlan": "Переход в режим планирования",
+      "planComplete": "План готов",
+      "messageAgent": "Отправить сообщение агенту",
+      "continueAgent": "Продолжить работу агента",
+      "listAgents": "Список агентов",
+      "interruptAgent": "Прервать агента",
+      "allAgents": "Все агенты",
+      "commandPlaceholder": "команда",
+      "filesPlaceholder": "файлы",
+      "patternPlaceholder": "шаблон",
+      "toolsPlaceholder": "инструменты",
+      "agentCount": "{count} агент",
+      "agentCountPlural": "Агенты: {count}",
+      "listDestinations": "Список адресатов",
+      "messageSession": "Отправить сообщение сеансу",
+      "stopSession": "Остановить сеанс",
+      "readSession": "Прочитать сеанс"
+    },
+    "citations": {
+      "memoryUsed": "Использованная память",
+      "source": "{count} источник",
+      "sources": "Источников: {count}"
+    },
+    "web": {
+      "findInPage": "Найти на странице",
+      "openPage": "Открыть страницу",
+      "urlUnavailable": "URL недоступен",
+      "clickLink": "Нажать ссылку {id}",
+      "pattern": "Шаблон: {pattern}",
+      "query": "Запрос: {query}",
+      "altQuery": "Другой запрос: {query}",
+      "search": "Поиск в интернете",
+      "moreQueries": "…ещё запросов: {count}",
+      "clickInPage": "Нажать ссылку {id} на {url}",
+      "open": "Открыть {url}",
+      "find": "Найти «{pattern}»",
+      "inPage": "{action} на {url}",
+      "operations": "Веб-операций: {count}",
+      "searchTerm": "поиск"
+    },
+    "permissionMode": {
+      "label": "Режим разрешений",
+      "current": "Режим разрешений: {mode}",
+      "changeFailed": "Не удалось изменить режим разрешений",
+      "claude": {
+        "auto": "Автоматически",
+        "manual": "Вручную",
+        "acceptEdits": "Разрешать изменения",
+        "yolo": "YOLO",
+        "autoDesc": "Claude принимает решения о разрешениях",
+        "manualDesc": "Всегда спрашивать перед изменениями",
+        "acceptEditsDesc": "Автоматически разрешать все изменения файлов",
+        "yoloDesc": "Разрешать всё без запроса"
+      },
+      "codex": {
+        "autoReview": "Одобрять за меня",
+        "normal": "Запрашивать одобрение",
+        "yolo": "Полный доступ",
+        "autoReviewDesc": "Автоматическая проверка дополнительного доступа.",
+        "readOnlyDesc": "Спрашивать перед изменениями или выходом в интернет.",
+        "normalDesc": "Спрашивать перед дополнительным доступом.",
+        "yoloDesc": "Неограниченный доступ к файлам и интернету."
+      }
+    },
+    "thinking": {
+      "active": "Размышление: {seconds}с…",
+      "completed": "Размышлял {seconds}с",
+      "label": "Размышления"
+    },
+    "suggestions": {
+      "loading": "Загрузка…",
+      "noMatches": "Нет совпадений",
+      "loadFailed": "Не удалось загрузить подсказки",
+      "retryHint": "Введите снова для повторной попытки",
+      "providerLoading": "Загрузка команд провайдера…",
+      "providerRetry": "Повторить поиск команд провайдера"
+    },
+    "approval": {
+      "title": "Требуется разрешение",
+      "question": "Разрешить это действие?",
+      "deny": "Отклонить",
+      "allowOnce": "Разрешить один раз",
+      "alwaysAllow": "Всегда разрешать",
+      "mcpRequest": "Запрос MCP",
+      "mcpServer": "Сервер MCP: {server}",
+      "decline": "Отклонить",
+      "allow": "Разрешить",
+      "cancelRequest": "Отменить этот запрос.",
+      "declineRequest": "Отклонить этот запрос.",
+      "acceptRequest": "Принять этот запрос.",
+      "fileChange": "Изменение файла",
+      "fileChangeReason": "Изменение файла: {reason}",
+      "permissionRequest": "Запрос разрешения",
+      "permissionReason": "Запрос разрешения: {reason}",
+      "networkAccess": "Разрешить доступ по {protocol} к {host}",
+      "execute": "Выполнить: {command}",
+      "executeCommand": "Выполнить команду",
+      "allowSimilar": "Разрешить похожие команды",
+      "execPolicy": "Одобрить и сохранить изменение политики выполнения.",
+      "host": "узел",
+      "allowHost": "Разрешить {host} для этой сессии",
+      "denyHost": "Запретить {host} для этой сессии",
+      "allowRule": "Применить разрешающее правило для {host}.",
+      "denyRule": "Применить запрещающее правило для {host}.",
+      "details": "Подробности разрешения для {tool}",
+      "unexpectedSelection": "Неожиданный выбор разрешения: «{value}»",
+      "runCommand": "Выполнить команду: {pattern}",
+      "readFile": "Прочитать файл: {pattern}",
+      "writeFile": "Записать в файл: {pattern}",
+      "editFile": "Изменить файл: {pattern}",
+      "searchFiles": "Найти файлы по шаблону: {pattern}",
+      "searchContent": "Найти содержимое по шаблону: {pattern}",
+      "unknownPattern": "(неизвестно)",
+      "deepseekRequest": "DeepSeek запрашивает разрешение."
+    },
+    "disclosure": {
+      "expand": "{label} - нажмите, чтобы развернуть",
+      "collapse": "{label} - нажмите, чтобы свернуть"
+    },
+    "removeItem": "Удалить {item}",
+    "agent": "Агент: {agent}",
+    "images": {
+      "unsupportedProvider": "Этот провайдер не поддерживает вложения изображений.",
+      "tooLarge": "Изображение превышает ограничение {size}.",
+      "unsupportedType": "Неподдерживаемый формат изображения.",
+      "attachFailed": "Не удалось прикрепить изображение.",
+      "label": "Изображение",
+      "numbered": "Изображение {number}",
+      "attachment": "Вложенное изображение: {name} · {size}",
+      "fileNotFound": "{message} (Файл не найден)",
+      "permissionDenied": "{message} (Доступ запрещён)",
+      "preview": "Предпросмотр изображения: {name}",
+      "closePreview": "Закрыть предпросмотр изображения"
+    },
+    "pi": {
+      "extension": "Расширение Pi",
+      "notification": "Уведомление расширения Pi."
+    },
+    "sessionMessage": {
+      "undelivered": "Не удалось доставить сообщения от {senders}.",
+      "fromLabel": "Из сеанса:"
+    },
+    "sessionTools": {
+      "noSessions": "Нет сеансов",
+      "thisSession": "Этот сеанс",
+      "truncated": "Показаны не все сеансы",
+      "recipient": "Получатель",
+      "model": "Модель",
+      "reasoning": "Рассуждение",
+      "message": "Сообщение",
+      "openSession": "Открыть сеанс {sessionId}",
+      "openProviderSession": "Открыть сеанс {provider} {sessionId}",
+      "sessionMissing": "Этот сеанс больше не существует.",
+      "openFailed": "Не удалось открыть сеанс: {message}",
+      "openUnavailable": "Отсюда нельзя открывать сеансы.",
+      "providersIncluded": "Включены доступные провайдеры и модели",
+      "newSession": "Новый сеанс",
+      "session": "Сеанс",
+      "turns": "Ходы",
+      "turnRange": "{from}–{to} из {total}",
+      "noTurns": "Пока нет",
+      "mode": "Доставка",
+      "modeSteer": "Добавить в текущий ход",
+      "modeInterrupt": "Прервать текущую работу"
     }
   },
   "settings": {
@@ -123,7 +451,8 @@
       "workspace": "Рабочая область",
       "about": "О приложении",
       "environment": "Переменные среды",
-      "pro": "Pro"
+      "pro": "Pro",
+      "skills": "Навыки"
     },
     "display": "Отображение",
     "conversations": "Разговоры",
@@ -171,7 +500,9 @@
     "titleModel": {
       "name": "Модель генерации заголовков",
       "desc": "Модель, используемая для автоматической генерации заголовков бесед.",
-      "auto": "Авто (Haiku)"
+      "auto": "Авто (Haiku)",
+      "select": "Выберите модель",
+      "unavailableWarning": "Автоматическое создание заголовков приостановлено. Выберите доступную модель для заголовков."
     },
     "navMappings": {
       "name": "Сопоставления навигации в стиле Vim",
@@ -226,6 +557,39 @@
     "slashCommands": {
       "name": "Команды и навыки",
       "desc": "Управление командами и навыками на уровне хранилища, расположенными в .claude/commands/ и .claude/skills/. Запускаются через /имя."
+    },
+    "skillMigration": {
+      "name": "Предпросмотр миграции навыков Claude",
+      "desc": "Проверяйте встроенные навыки Claude и переносите выбранные корректные пакеты в общие навыки. Существующие цели и пакеты со ссылками исключаются; исходники сохраняются.",
+      "previewButton": "Проверить и перенести",
+      "modalTitle": "Перенос навыков Claude",
+      "loading": "Проверка папок навыков…",
+      "empty": "Навыки и команды Claude не найдены.",
+      "failed": "Не удалось создать предпросмотр.",
+      "status": {
+        "reviewRequired": "Навык корректен; требуется проверка",
+        "conversionPolicyRequired": "Требуется проверить правила преобразования команд",
+        "symlinkNotInspected": "Символическая ссылка; цель не проверялась",
+        "missingSkillMarkdown": "Отсутствует SKILL.md",
+        "invalidSkill": "Метаданные навыка некорректны",
+        "unreadable": "Не удалось прочитать источник",
+        "unsupportedEntry": "Неподдерживаемая запись; сохранена"
+      },
+      "target": {
+        "absent": "Одноимённой цели нет",
+        "entry": "Одноимённая цель существует",
+        "symlink": "Цель является ссылкой; не проверялась",
+        "ambiguous": "Несколько одноимённых целей",
+        "unknown": "Не удалось проверить цель"
+      },
+      "diagnostics": "Непроверенные записи",
+      "additionalEntries": "Дополнительные элементы пакета:",
+      "diagnostic": "Подробности:",
+      "selectInstruction": "Выберите корректные пакеты с пустой общей целью. Будет скопирован весь пакет, исходник Claude сохранится.",
+      "applySelected": "Перенести выбранные навыки",
+      "migrationSucceeded": "Перенесено:",
+      "migrationFailed": "Ошибка переноса:",
+      "stalePreview": "Предпросмотр устарел. Обновите его и проверьте пакет перед повтором."
     },
     "hiddenSlashCommands": {
       "name": "Скрытые команды и навыки",
@@ -334,14 +698,21 @@
         "save": "Сохранить",
         "update": "Обновить",
         "cancel": "Отмена"
-      }
+      },
+      "saveCurrent": "Сохранить текущее окружение как сниппет",
+      "insert": "Вставить",
+      "insertFailed": "Не удалось вставить сниппет",
+      "deleteConfirm": "Удалить сниппет окружения «{name}»?",
+      "deleteFailed": "Не удалось удалить сниппет"
     },
     "customModelOverrides": {
       "name": "Переопределения пользовательских моделей",
       "desc": "Настройте псевдонимы в селекторе моделей и размеры окна контекста для пользовательских моделей."
     },
     "customModelAliases": {
-      "placeholder": "Псевдоним"
+      "placeholder": "Псевдоним",
+      "ariaLabel": "Псевдоним для {model}",
+      "ariaDescription": "Пользовательская метка в селекторе моделей. Оставьте пустым, чтобы использовать значение по умолчанию."
     },
     "customContextLimits": {
       "name": "Пользовательские лимиты контекста",
@@ -395,8 +766,13 @@
       "descUnix": "Вставьте вывод команды \"which claude\" — работает как для нативных установок, так и для npm/pnpm/yarn.",
       "validation": {
         "notExist": "Путь не существует",
-        "isDirectory": "Путь является директорией, а не файлом"
-      }
+        "isDirectory": "Путь является директорией, а не файлом",
+        "mustBeAbsolute": "Путь должен быть абсолютным",
+        "notFile": "Путь должен указывать на файл",
+        "notAccessible": "Путь недоступен",
+        "notExecutable": "Путь должен быть исполняемым"
+      },
+      "genericName": "Путь к CLI"
     },
     "language": {
       "name": "Язык",
@@ -405,7 +781,9 @@
     "providerEnablement": {
       "name": "Включить {provider}",
       "desc": "Сделать включённые модели {provider} доступными для новых бесед. Существующие сеансы сохраняются после отключения.",
-      "atLeastOne": "Хотя бы один провайдер должен оставаться включённым."
+      "atLeastOne": "Хотя бы один провайдер должен оставаться включённым.",
+      "lastProviderWarning": "Для работы Codian должен быть включён хотя бы один провайдер.",
+      "noModelsWarning": "Нет включённых моделей {provider}. В разделе «Модели» ниже включите хотя бы одну модель."
     },
     "codex": {
       "installationMethod": {
@@ -474,6 +852,21 @@
       "enableProvider": {
         "name": "Включить провайдера Codex",
         "desc": "Когда включено, модели Codex появляются в выборе моделей для новых бесед. Существующие сеансы Codex сохраняются."
+      },
+      "responseStyle": {
+        "name": "Стиль ответа",
+        "desc": "Выберите стиль общения Codex для поддерживаемых моделей.",
+        "pragmatic": "Прагматичный",
+        "friendly": "Дружелюбный",
+        "neutral": "Нейтральный"
+      },
+      "responseVerbosity": {
+        "name": "Подробность ответов",
+        "desc": "Выберите уровень подробности ответов для поддерживаемых моделей. По умолчанию используется конфигурация Codex.",
+        "default": "По умолчанию",
+        "low": "Низкая",
+        "medium": "Средняя",
+        "high": "Высокая"
       }
     },
     "agentSkills": {
@@ -505,13 +898,16 @@
         "descriptionPlaceholder": "Reviews code for correctness and maintainability",
         "instructions": "Instructions",
         "instructionsDesc": "Required SKILL.md instructions",
-        "instructionsPlaceholder": "Review the supplied code and report actionable findings..."
+        "instructionsPlaceholder": "Review the supplied code and report actionable findings...",
+        "titleFix": "Исправить навык"
       },
       "delete": {
         "title": "Delete Shared Skill",
         "description": "The entire skill folder, including scripts, references, and assets, will be moved to trash.",
         "confirm": "Move to trash"
-      }
+      },
+      "fix": "Исправить",
+      "fixed": "Навык «{name}» исправлен."
     },
     "codexSkills": {
       "modal": {
@@ -682,6 +1078,7 @@
     },
     "providerCatalog": {
       "empty": "Модели {provider} пока не обнаружены. Выберите Обнаружить.",
+      "opencodeEmpty": "Модели OpenCode не найдены. Выполните `opencode auth login`, подключите OpenCode Zen или другого провайдера, затем выберите «Обнаружить».",
       "failed": "Не удалось загрузить каталог {provider}. Проверьте путь CLI и вход в систему.",
       "loading": "Загрузка каталога {provider}...",
       "discoveryFailed": "Ошибка обнаружения моделей {provider}: {message}"
@@ -707,11 +1104,23 @@
       "subagents": "Субагенты",
       "subagentsDesc": "Управляйте субагентами хранилища в .opencode/agent/ и старом пути .opencode/agents/. Новые элементы появляются в меню @упоминаний.",
       "environmentVariables": "Переменные среды",
-      "environmentVariablesDesc": "Дополнительные переменные среды для OpenCode. `OPENCODE_ENABLE_EXA=1` включена по умолчанию."
+      "environmentVariablesDesc": "Дополнительные переменные среды для OpenCode. `OPENCODE_ENABLE_EXA=1` включена по умолчанию.",
+      "environment": {
+        "name": "Переменные окружения OpenCode",
+        "desc": "Дополнительные переменные окружения, передаваемые в OpenCode."
+      },
+      "migrationNotice": {
+        "text": "Codian теперь поддерживает OpenCode v2. Поддержка OpenCode v1 прекращается 30 октября 2026 г.",
+        "link": "Перейти на OpenCode v2"
+      }
     },
     "pi": {
       "environmentVariables": "Переменные среды Pi",
-      "environmentVariablesDesc": "Переменные среды, передаваемые только Pi."
+      "environmentVariablesDesc": "Переменные среды, передаваемые только Pi.",
+      "environment": {
+        "name": "Переменные окружения Pi",
+        "desc": "Переменные окружения, передаваемые только в Pi."
+      }
     },
     "livePreviewComposer": {
       "name": "Живой предпросмотр ввода",
@@ -722,6 +1131,17 @@
       "enableProvider": {
         "name": "Включить провайдера Claude",
         "desc": "Когда включено, модели Claude появляются в выборе моделей для новых бесед. Существующие сеансы Claude сохраняются."
+      },
+      "promptSuggestions": {
+        "name": "Подсказки запросов",
+        "desc": "Показывать предсказанный Claude следующий запрос в пустом поле ввода. Каждая подсказка — это дополнительный запрос к Claude после каждого хода, который может быстрее расходовать ваши лимиты."
+      },
+      "configuration": "Конфигурация",
+      "responseStyle": {
+        "name": "Стиль ответа",
+        "desc": "Стиль вывода Claude Code для ответов, включая пользовательские стили. «Настройка Claude Code» следует вашей конфигурации Claude Code. Список обновляется при обновлении моделей или запуске чата.",
+        "default": "По умолчанию",
+        "inherit": "Настройка Claude Code"
       }
     },
     "claudeServices": {
@@ -768,6 +1188,204 @@
         "defaultModel": "Default model ID is required.",
         "lightModel": "Lightweight model ID is required."
       }
+    },
+    "providerSettings": {
+      "unavailable": "Настройки провайдера недоступны.",
+      "loadFailed": "Не удалось загрузить настройки провайдера: {message}"
+    },
+    "responses": "Ответы",
+    "codexSandbox": {
+      "name": "Песочница",
+      "desc": "Доступ к файлам в режимах Одобрять за меня и Запрашивать одобрение. «Только чтение» запрашивает подтверждение перед каждым изменением; Полный доступ игнорирует эту настройку."
+    },
+    "sharedEnvironment": {
+      "name": "Общее окружение",
+      "desc": "Независимые от провайдера переменные среды выполнения, общие для всех провайдеров. Используйте для PATH, прокси, сертификатов и временных каталогов."
+    },
+    "enableDualPane": {
+      "name": "Включить двухпанельный режим",
+      "desc": "Автоматически показывать менеджер сессий рядом с чатом, когда ширина представления не менее 600 px."
+    },
+    "restoreTabsOnStartup": {
+      "name": "Восстанавливать вкладки при запуске",
+      "desc": "Повторно открывать все вкладки в однопанельном режиме или только последнюю активную вкладку в двухпанельном режиме."
+    },
+    "sessionAutoArchiveAfter": {
+      "name": "Автоматически архивировать неактивные сессии",
+      "desc": "Архивировать незакреплённые сессии без активности в течение выбранного периода. Открытые и выполняющиеся сессии пропускаются.",
+      "multiSelectHint": "Щёлкайте по сессиям с зажатой клавишей Option (Alt в Windows и Linux), чтобы выбрать несколько, затем щёлкните правой кнопкой мыши, чтобы закрепить или архивировать их.",
+      "off": "Выкл.",
+      "days7": "Через 7 дней",
+      "days14": "Через 14 дней",
+      "days30": "Через 30 дней"
+    },
+    "dualPaneSide": {
+      "name": "Сторона второй панели",
+      "desc": "Выберите, с какой стороны чата отображается менеджер сессий.",
+      "left": "Слева",
+      "right": "Справа"
+    },
+    "showMessageTimestamps": {
+      "name": "Показывать время сообщений",
+      "desc": "Показывать локальное время отправки или получения каждого сообщения в чате."
+    },
+    "enableZenMode": {
+      "name": "Включить режим дзен",
+      "desc": "Оставлять минимальный интерфейс чата видимым, когда боковая панель скрыта."
+    },
+    "cliInstallation": {
+      "disclosure": "Установка {name}",
+      "description": "Необязательный путь к CLI на этом компьютере. Оставьте пустым для автоматического обнаружения.",
+      "checking": "Проверка CLI…",
+      "versionUnavailable": "Версия недоступна",
+      "notFound": "Не найден",
+      "custom": "Пользовательский путь",
+      "auto": "Определено автоматически",
+      "checkFailed": "Не удалось проверить CLI",
+      "saveFailed": "Не удалось сохранить путь. Повторите попытку."
+    },
+    "modelPicker": {
+      "name": "Видимые модели",
+      "desc": "Выберите, какие модели доступны в селекторе чата. Перетаскивайте их, чтобы изменить порядок; провайдер использует первую доступную сейчас модель по умолчанию. Выберите хотя бы одну модель, чтобы использовать этого провайдера.",
+      "browse": "Обзор моделей",
+      "filterLabel": "Фильтр моделей {provider}",
+      "searchPlaceholder": "Фильтр по модели, провайдеру или ID...",
+      "providerFilterLabel": "Фильтр провайдеров моделей",
+      "allProviders": "Все провайдеры ({count})",
+      "discover": "Обнаружить",
+      "visible": "Видимых: ",
+      "ofDiscovered": " из {count} обнаруженных",
+      "oneProvider": " | провайдеров: 1",
+      "manyProviders": " | провайдеров: {count}",
+      "loadingModels": "Загрузка моделей...",
+      "loading": "Загрузка...",
+      "available": "Доступно: {count}",
+      "noneDiscovered": "Модели пока не обнаружены",
+      "selected": "Выбрано ({count})",
+      "clearAllLabel": "Снять выбор со всех моделей {provider}",
+      "reorderLabel": "Изменить порядок {model}; перетащите или используйте клавиши со стрелками вверх и вниз",
+      "default": "По умолчанию",
+      "unavailable": "Недоступна",
+      "aliasLabel": "Псевдоним (необязательно)",
+      "removeLabel": "Удалить {model}",
+      "noMatch": "Нет моделей, соответствующих фильтру.",
+      "emptyCatalog": "{provider} не сообщил ни одной модели. Проверьте конфигурацию и нажмите «Обнаружить».",
+      "loadingCatalog": "Загрузка моделей {provider}…",
+      "stale": "Каталог моделей {provider} устарел. Нажмите «Обнаружить», чтобы обновить его."
+    },
+    "grok": {
+      "environment": {
+        "name": "Переменные окружения Grok Build",
+        "desc": "Переменные окружения, передаваемые только в Grok Build. Секреты пользовательских моделей остаются в области этого провайдера, а нативная конфигурация ссылается на них через env_key."
+      }
+    },
+    "deepseek": {
+      "installation": {
+        "desc": "Автопоиск предпочитает dsh, затем ищет Desktop в macOS или Windows. Если установлены оба варианта, укажите путь к .app или папку установки в Windows для выбора Desktop. Сначала откройте Desktop и завершите настройку.",
+        "desktop": "Используется ваш нативный профиль Desktop.",
+        "web": "Используется ваш нативный Web-профиль."
+      },
+      "preset": "Пресет",
+      "codeMode": {
+        "name": "Включить режим кода",
+        "desc": "Применяется со следующего хода каждого разговора, включая существующие. Добавляет нативный run_code к прямым инструментам."
+      },
+      "presetPlugins": {
+        "name": "Дополнительные плагины пресета",
+        "desc": "Для опытных пользователей. YAML-список (формат dsh) строк нативных плагинов dsh, добавляемых в чат-пресет Codian; у каждой строки свои \"id\" и \"name\". Строки не могут заменить собственные строки Codian. Сохранение перезапускает DeepSeek Harness и останавливает выполняемые ходы. Плагины без интерфейса в Codian, например режим планирования, могут не работать."
+      },
+      "presetPreview": "Предпросмотр пресета",
+      "environment": {
+        "name": "Переменные окружения DeepSeek Harness",
+        "desc": "Переменные окружения, передаваемые только DeepSeek Harness. Использует выбранный нативный профиль Web или Desktop, ваши учётные данные, модели и MCP-серверы."
+      }
+    },
+    "skills": {
+      "subTabs": {
+        "claude": "Claude Code",
+        "shared": "Другие провайдеры"
+      },
+      "claudeHelp": "Навыки Claude Code в .claude/skills/ и команды в .claude/commands/.",
+      "sharedHelp": "Общие навыки в .agents/skills/ для Codex, OpenCode, Pi, Grok Build и DeepSeek Harness.",
+      "status": {
+        "error": "Не удалось прочитать папки навыков: {message}"
+      },
+      "synced": "Синхронизировано",
+      "actions": {
+        "sync": "Синхронизировать",
+        "resync": "Синхронизировать снова"
+      },
+      "commands": {
+        "title": "Команды Claude Code",
+        "hint": "Команды работают только в Claude Code. Рекомендуется преобразовать их в навыки.",
+        "badge": "команда",
+        "empty": "В .claude/commands нет команд.",
+        "convert": "Преобразовать в навык",
+        "editTitle": "Изменить команду",
+        "convertTitle": "Преобразовать команду в навык",
+        "nameDesc": "Путь внутри .claude/commands без .md; вложенные команды используют /",
+        "descriptionDesc": "Необязательное описание в меню команд",
+        "updated": "Команда «{name}» обновлена.",
+        "converted": "Команда преобразована в навык «{name}».",
+        "deleted": "Команда «{name}» перемещена в корзину.",
+        "deleteTitle": "Удалить команду",
+        "deleteDescription": "Файл команды будет перемещён в корзину.",
+        "collisionFailed": "Команда «{name}» уже существует."
+      },
+      "droppedFrontmatterWarning": "При сохранении остаются только имя и описание. Эти ключи будут удалены, и поведение провайдеров может измениться: {keys}",
+      "hidden": {
+        "name": "Скрытые команды и навыки",
+        "desc": "Скрывает команды и навыки в меню команд всех провайдеров. Вводите точные имена без начальной косой черты, по одному в строке (навыки Pi используют skill:имя).",
+        "placeholder": "commit\ncompact\nskill:review"
+      },
+      "sync": {
+        "title": "Синхронизация навыков",
+        "repairTitle": "Исправление ссылки навыков",
+        "loading": "Проверка папок навыков...",
+        "intro": "Синхронизация объединяет навыки и команды Claude Code в .agents/skills и делает .claude/skills ссылкой на эту папку.",
+        "pros": {
+          "oneList": "Один список для всех провайдеров.",
+          "newSkills": "Новые навыки появляются везде."
+        },
+        "cons": {
+          "dropped": "Сохраняются только имя и описание; настройки конкретных провайдеров удаляются, и поведение может измениться.",
+          "claudeSyntax": "Синтаксис только для Claude Code не работает у других провайдеров: {names}"
+        },
+        "attentionTitle": "Требует внимания",
+        "nothingNeedsAttention": "Ничего не требует внимания.",
+        "nameField": "Имя",
+        "descriptionField": "Описание",
+        "ready": "Готово",
+        "problems": {
+          "name": "Недопустимое имя. Используйте строчные буквы, цифры и дефисы.",
+          "description": "Нет описания.",
+          "instructions": "Нет инструкций. Добавьте их в файл и синхронизируйте снова.",
+          "unreadable": "Не удаётся прочитать frontmatter. Исправьте файл и синхронизируйте снова.",
+          "sharedConflict": "Общий навык «{name}» уже существует.",
+          "itemConflict": "Другой элемент тоже называется «{name}»."
+        },
+        "options": {
+          "fix": "Исправить",
+          "replace": "Заменить общий навык",
+          "discard": "Отбросить (в корзину)",
+          "keep": "Оставить командой"
+        },
+        "continue": "Продолжить",
+        "confirmTitle": "Заменить .claude/skills ссылкой?",
+        "confirmBody": ".claude/skills будет заменена ссылкой на .agents/skills. Это действие нельзя отменить.",
+        "repairBody": ".claude/skills будет заменена ссылкой на .agents/skills. Папка, на которую она сейчас указывает, не изменится.",
+        "linkBody": "Создаёт .claude/skills как ссылку на .agents/skills, чтобы Claude Code использовал общие навыки. Файлы не перемещаются.",
+        "linkWithItemsBody": "Команды станут навыками, затем .claude/skills будет создана как ссылка на .agents/skills. Это действие нельзя отменить.",
+        "devicesWarning": "Хранилище синхронизируется между устройствами? Ссылка может не синхронизироваться; выполните синхронизацию на каждом устройстве.",
+        "confirm": "Синхронизировать и связать",
+        "partial": "Синхронизация остановлена до создания ссылки. Исправьте элементы ниже и запустите синхронизацию снова.",
+        "failed": "Ошибка синхронизации: {message}",
+        "summary": "Перемещено {moved}, преобразовано {converted}, в корзине {trashed}, удалено ссылок: {unlinked}."
+      }
+    },
+    "pluginRenderedFenceLanguages": {
+      "name": "Языки блоков кода, отображаемые плагинами",
+      "desc": "Языки блоков кода, по одному в строке, которые передаются плагину, отображающему их в заметках (например, vega-lite). Они отображаются после завершения ответа. Остальные блоки кода всегда показываются как код."
     }
   }
 }

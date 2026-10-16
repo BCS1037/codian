@@ -1265,6 +1265,85 @@ describe('CodexNotificationRouter', () => {
   });
 
   describe('collabAgentToolCall', () => {
+    it('keeps child output and native receiver state when raw and canonical results arrive together', () => {
+      router.beginTurn({ isPlanTurn: false });
+      const item = {
+        type: 'collabAgentToolCall',
+        id: 'send-child',
+        tool: 'sendInput',
+        status: 'completed',
+        arguments: { message: 'Continue work.' },
+        result: 'Acknowledged',
+        receiverThreadIds: ['child-thread'],
+        agentsStates: { 'child-thread': { status: 'running', message: 'Checking file.' } },
+      };
+      router.handleNotification('item/started', { item, threadId: 't1', turnId: 'turn1' });
+      router.handleNotification('rawResponseItem/completed', {
+        threadId: 't1', turnId: 'turn1',
+        item: { type: 'function_call', call_id: 'send-child', name: 'send_input', arguments: '{"id":"child-thread"}' },
+      });
+      router.handleNotification('rawResponseItem/completed', {
+        threadId: 't1', turnId: 'turn1',
+        item: { type: 'function_call_output', call_id: 'send-child', output: '{"output":"Detailed child output"}' },
+      });
+      router.handleNotification('item/completed', { item, threadId: 't1', turnId: 'turn1' });
+
+      expect(chunks.find(chunk => chunk.type === 'tool_use')).toMatchObject({
+        type: 'tool_use',
+        name: 'send_input',
+        input: { ids: ['child-thread'], message: 'Continue work.' },
+      });
+      const result = chunks.find(chunk => chunk.type === 'tool_result');
+      expect(result?.type === 'tool_result' && JSON.parse(result.content)).toEqual({
+        output: 'Detailed child output',
+        status: { 'child-thread': { status: 'running', message: 'Checking file.' } },
+      });
+    });
+
+    it('uses native receiver thread id and agentsStates in completed spawn result', () => {
+      const item = {
+        type: 'collabAgentToolCall',
+        id: 'spawn-child',
+        tool: 'spawnAgent',
+        status: 'completed',
+        result: 'Spawn accepted.',
+        receiverThreadIds: ['child-thread'],
+        agentsStates: { 'child-thread': { status: 'completed', message: 'Child findings.' } },
+      };
+      router.handleNotification('item/completed', { item, threadId: 't1', turnId: 'turn1' });
+
+      const result = chunks.find(chunk => chunk.type === 'tool_result');
+      expect(result?.type === 'tool_result' && JSON.parse(result.content)).toEqual({
+        status: { 'child-thread': { status: 'completed', message: 'Child findings.' } },
+        agent_id: 'child-thread',
+        output: 'Spawn accepted.',
+      });
+    });
+
+    it('keeps raw child-request errors authoritative over accompanying native state', () => {
+      const item = {
+        type: 'collabAgentToolCall',
+        id: 'send-child-error',
+        tool: 'sendInput',
+        status: 'completed',
+        receiverThreadIds: ['child-thread'],
+        agentsStates: { 'child-thread': { status: 'running', message: 'Prior activity.' } },
+      };
+      router.handleNotification('rawResponseItem/completed', {
+        threadId: 't1', turnId: 'turn1',
+        item: { type: 'function_call', call_id: 'send-child-error', name: 'send_input', arguments: '{"id":"child-thread"}' },
+      });
+      router.handleNotification('rawResponseItem/completed', {
+        threadId: 't1', turnId: 'turn1',
+        item: { type: 'function_call_output', call_id: 'send-child-error', output: '{"error":"permission denied"}' },
+      });
+      router.handleNotification('item/completed', { item, threadId: 't1', turnId: 'turn1' });
+
+      expect(chunks.filter(chunk => chunk.type === 'tool_result')).toEqual([{
+        type: 'tool_result', id: 'send-child-error', content: '{"error":"permission denied"}', isError: true,
+      }]);
+    });
+
     it('maps collabAgentToolCall item/started to tool_use chunk', () => {
       router.handleNotification('item/started', {
         item: {

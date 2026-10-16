@@ -1,4 +1,3 @@
-import type { Conversation } from '../types';
 import { toProviderRuntimeModelId } from './modelSelection';
 import { ProviderRegistry } from './ProviderRegistry';
 import { ProviderSettingsCoordinator } from './ProviderSettingsCoordinator';
@@ -16,7 +15,7 @@ function trimModel(model: unknown): string {
   return typeof model === 'string' ? model.trim() : '';
 }
 
-function findModelOption(
+export function findProviderModelOption(
   providerId: ProviderId,
   model: string,
   settings: Record<string, unknown>,
@@ -30,6 +29,89 @@ function findModelOption(
       || toProviderRuntimeModelId(providerId, candidate.value) === runtimeModel
     );
   return option?.value ?? null;
+}
+
+function findModelOption(
+  providerId: ProviderId,
+  model: string,
+  settings: Record<string, unknown>,
+): string | null {
+  return findProviderModelOption(providerId, model, settings);
+}
+
+export function resolveProviderDefaultModel(
+  providerId: ProviderId,
+  settings: Record<string, unknown>,
+): string | null {
+  const uiConfig = ProviderRegistry.getChatUIConfig(providerId);
+  const options = uiConfig.getModelOptions(settings);
+  if (options.length === 0) {
+    return null;
+  }
+
+  const preferred = trimModel(uiConfig.getDefaultModel?.(settings));
+  if (preferred) {
+    const preferredRuntimeModel = toProviderRuntimeModelId(providerId, preferred);
+    const option = options.find(candidate => (
+      candidate.value === preferred
+      || toProviderRuntimeModelId(providerId, candidate.value) === preferredRuntimeModel
+    ));
+    if (option) {
+      return option.value;
+    }
+  }
+
+  return options[0]?.value ?? null;
+}
+
+export function resolveNewConversationModel(
+  settings: Record<string, unknown>,
+): { providerId: ProviderId; model: string } | null {
+  const registeredProviderIds = new Set(ProviderRegistry.getRegisteredProviderIds());
+  const lastSelected = settings.lastSelectedChatModel as { providerId?: string; model?: string } | undefined;
+  if (
+    lastSelected?.providerId
+    && lastSelected?.model
+    && registeredProviderIds.has(lastSelected.providerId)
+    && ProviderRegistry.isEnabled(lastSelected.providerId, settings)
+  ) {
+    const selectedModel = findProviderModelOption(
+      lastSelected.providerId,
+      lastSelected.model,
+      settings,
+    );
+    if (selectedModel) {
+      return {
+        providerId: lastSelected.providerId,
+        model: selectedModel,
+      };
+    }
+
+    return { providerId: lastSelected.providerId, model: lastSelected.model };
+  }
+
+  const defaultChatProviderId = ProviderRegistry.resolveDefaultChatProviderId(settings);
+  if (defaultChatProviderId) {
+    const blankDefault = resolveProviderDefaultModel(defaultChatProviderId, settings);
+    if (blankDefault) {
+      return {
+        providerId: defaultChatProviderId,
+        model: blankDefault,
+      };
+    }
+  }
+
+  for (const providerId of ProviderRegistry.getEnabledProviderIds(settings)) {
+    const providerDefault = resolveProviderDefaultModel(providerId, settings);
+    if (providerDefault) {
+      return {
+        providerId,
+        model: providerDefault,
+      };
+    }
+  }
+
+  return null;
 }
 
 export function normalizeProviderModelSelection(
@@ -82,7 +164,7 @@ export function normalizeProviderModelSelection(
 export function resolveConversationModel(
   settings: Record<string, unknown>,
   providerId: ProviderId,
-  conversation?: Conversation | null,
+  conversation?: { selectedModel?: string; usage?: { model?: string } } | null,
 ): ConversationModelResolution {
   const selectedModel = normalizeProviderModelSelection(
     providerId,

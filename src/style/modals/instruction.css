@@ -1,22 +1,22 @@
 /* Instruction Mode */
 
 /* Instruction Confirm Modal */
-.claudian-instruction-modal {
+.codian-instruction-modal {
   max-width: 500px;
 }
 
-.claudian-instruction-section {
+.codian-instruction-section {
   margin-bottom: 16px;
 }
 
-.claudian-instruction-label {
+.codian-instruction-label {
   font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
   margin-bottom: 6px;
 }
 
-.claudian-instruction-original {
+.codian-instruction-original {
   padding: 10px 12px;
   background: var(--background-secondary);
   border-radius: 6px;
@@ -26,7 +26,7 @@
   white-space: pre-wrap;
 }
 
-.claudian-instruction-refined {
+.codian-instruction-refined {
   padding: 12px;
   background: var(--background-primary-alt);
   border: 1px solid var(--background-modifier-border);
@@ -37,7 +37,7 @@
   white-space: pre-wrap;
 }
 
-.claudian-instruction-clarification {
+.codian-instruction-clarification {
   padding: 12px;
   background: var(--background-primary-alt);
   border: 1px solid var(--background-modifier-border);
@@ -48,11 +48,11 @@
   white-space: pre-wrap;
 }
 
-.claudian-instruction-edit-container {
+.codian-instruction-edit-container {
   margin-top: 6px;
 }
 
-.claudian-instruction-edit-textarea {
+.codian-instruction-edit-textarea {
   width: 100%;
   padding: 10px 12px;
   font-size: 14px;
@@ -65,12 +65,12 @@
   min-height: 80px;
 }
 
-.claudian-instruction-edit-textarea:focus {
+.codian-instruction-edit-textarea:focus {
   outline: none;
   border-color: var(--interactive-accent);
 }
 
-.claudian-instruction-response-textarea {
+.codian-instruction-response-textarea {
   width: 100%;
   padding: 10px 12px;
   font-size: 14px;
@@ -83,19 +83,19 @@
   min-height: 60px;
 }
 
-.claudian-instruction-response-textarea:focus {
+.codian-instruction-response-textarea:focus {
   outline: none;
   border-color: var(--interactive-accent);
 }
 
-.claudian-instruction-buttons {
+.codian-instruction-buttons {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
   margin-top: 16px;
 }
 
-.claudian-instruction-btn {
+.codian-instruction-btn {
   padding: 8px 16px;
   font-size: 13px;
   border: none;
@@ -104,35 +104,35 @@
   font-weight: 500;
 }
 
-.claudian-instruction-reject-btn {
+.codian-instruction-reject-btn {
   background: var(--background-modifier-border);
   color: var(--text-normal);
 }
 
-.claudian-instruction-reject-btn:hover {
+.codian-instruction-reject-btn:hover {
   background: var(--background-modifier-border-hover);
 }
 
-.claudian-instruction-edit-btn {
+.codian-instruction-edit-btn {
   background: var(--background-modifier-border);
   color: var(--text-normal);
 }
 
-.claudian-instruction-edit-btn:hover {
+.codian-instruction-edit-btn:hover {
   background: var(--background-modifier-border-hover);
 }
 
-.claudian-instruction-accept-btn {
+.codian-instruction-accept-btn {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
 }
 
-.claudian-instruction-accept-btn:hover {
+.codian-instruction-accept-btn:hover {
   opacity: 0.9;
 }
 
 /* Instruction loading state */
-.claudian-instruction-loading {
+.codian-instruction-loading {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -141,21 +141,21 @@
   color: var(--text-muted);
 }
 
-.claudian-instruction-spinner {
+.codian-instruction-spinner {
   width: 18px;
   height: 18px;
   border: 2px solid var(--background-modifier-border);
   border-top-color: var(--interactive-accent);
   border-radius: 50%;
-  animation: claudian-spin 0.8s linear infinite;
+  animation: codian-spin 0.8s linear infinite;
 }
 
 /* Instruction modal content sections */
-.claudian-instruction-content-section {
+.codian-instruction-content-section {
   margin: 8px 0;
 }
 
-.claudian-instruction-clarification-section,
-.claudian-instruction-confirmation-section {
+.codian-instruction-clarification-section,
+.codian-instruction-confirmation-section {
   margin-top: 8px;
 }

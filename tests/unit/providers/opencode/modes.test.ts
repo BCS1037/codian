@@ -34,7 +34,7 @@ describe('OpenCode mode settings', () => {
     expect(getEffectiveOpencodeModes([])).toEqual(OPENCODE_FALLBACK_MODES);
   });
 
-  it('keeps Claudian on managed YOLO/safe/plan modes even when discovery only reports custom agents', () => {
+  it('keeps Codian on managed YOLO/safe/plan modes even when discovery only reports custom agents', () => {
     expect(getManagedOpencodeModes([
       { id: 'compaction', name: 'compaction' },
       { id: 'summary', name: 'summary' },

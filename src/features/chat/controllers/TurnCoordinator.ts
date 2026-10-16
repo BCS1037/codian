@@ -15,6 +15,10 @@ export class TurnCoordinator<TRequest> {
     return this.activeTurn;
   }
 
+  get isInFlight(): boolean {
+    return this.activeTurn !== null;
+  }
+
   async run(request?: TRequest): Promise<void> {
     const execution = this.executeTurn(request);
     this.activeTurn = execution;

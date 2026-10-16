@@ -389,6 +389,26 @@ describe('StreamController - Text Content', () => {
       );
     });
 
+    it.each([
+      '```Vega-Lite\n{"mark": "bar"}',
+      '<div>\n```vega-lite\n{"mark": "bar"}',
+      '> <div>\n> ```vega-lite\n> {"mark": "bar"}',
+    ])('defers listed plugin fence languages until text finalization: %s', async (content) => {
+      (deps.plugin.settings as any).pluginRenderedFenceLanguages = ['vega-lite'];
+      deps.state.currentTextEl = createMockEl();
+      await controller.appendText(content);
+      jest.advanceTimersByTime(16);
+      await Promise.resolve();
+      expect(deps.renderer.renderContent).toHaveBeenLastCalledWith(
+        deps.state.currentTextEl,
+        content,
+        { deferDiagrams: true },
+      );
+      const target = deps.state.currentTextEl;
+      await controller.finalizeCurrentTextBlock(createTestMessage());
+      expect(deps.renderer.renderContent).toHaveBeenLastCalledWith(target, content);
+    });
+
     it('should flush a pending text render before finalizing text', async () => {
       const msg = createTestMessage();
 
@@ -3080,9 +3100,9 @@ describe('StreamController - Text Content', () => {
       // Manually set up a rendered tool element with name + summary children
       // (the mock renderToolCall doesn't actually populate toolCallElements)
       const toolEl = createMockEl();
-      const nameChild = toolEl.createDiv({ cls: 'claudian-tool-name' });
+      const nameChild = toolEl.createDiv({ cls: 'codian-tool-name' });
       nameChild.setText('Read');
-      const summaryChild = toolEl.createDiv({ cls: 'claudian-tool-summary' });
+      const summaryChild = toolEl.createDiv({ cls: 'codian-tool-summary' });
       summaryChild.setText('test.md');
       deps.state.toolCallElements.set('read-1', toolEl);
 
@@ -3119,8 +3139,8 @@ describe('StreamController - Text Content', () => {
       await controller.handleStreamChunk({ type: 'done' }, msg);
 
       const toolEl = createMockEl();
-      const nameChild = toolEl.createDiv({ cls: 'claudian-tool-name' });
-      const summaryChild = toolEl.createDiv({ cls: 'claudian-tool-summary' });
+      const nameChild = toolEl.createDiv({ cls: 'codian-tool-name' });
+      const summaryChild = toolEl.createDiv({ cls: 'codian-tool-summary' });
       deps.state.toolCallElements.set('title-only', toolEl);
       getToolName.mockReturnValueOnce('Read');
       getToolSummary.mockReturnValueOnce('');
@@ -4179,6 +4199,28 @@ describe('StreamController - Text Content', () => {
       expect(msg.toolCalls[0].status).toBe('completed');
       expect(msg.toolCalls[0].result).toBe('Created project successfully');
       expect(updateToolCallResult).toHaveBeenCalled();
+    });
+
+    it('stores plain-text formatting metadata from provider tool results', async () => {
+      const msg = createTestMessage();
+      msg.toolCalls = [{
+        id: 'read-1',
+        name: 'Read',
+        input: { file_path: 'literal.md' },
+        status: 'running',
+      }];
+
+      await controller.handleStreamChunk({
+        type: 'tool_result',
+        id: 'read-1',
+        content: '1→literal arrow',
+        toolUseResult: { resultFormat: 'plain' },
+      }, msg);
+
+      expect(msg.toolCalls[0]).toMatchObject({
+        result: '1→literal arrow',
+        resultFormat: 'plain',
+      });
     });
   });
 

@@ -16,7 +16,7 @@ export function renderNativeMcpSettingsSection(
 ): HTMLElement {
   new Setting(container).setName(options.heading).setHeading();
 
-  const notice = container.createDiv({ cls: 'claudian-mcp-settings-desc' });
+  const notice = container.createDiv({ cls: 'codian-mcp-settings-desc' });
   const description = notice.createEl('p', { cls: 'setting-item-description' });
   description.appendText(options.descriptionBeforeCommand);
   description.createEl('code').appendText(options.setupCommand);

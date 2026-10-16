@@ -4,6 +4,7 @@ export const addIcon = jest.fn();
 export const loadPrism = jest.fn().mockResolvedValue({
   highlightElement: jest.fn(),
 });
+export const loadMermaid = jest.fn();
 
 export class Plugin {
   app: any;
@@ -67,7 +68,60 @@ export class ItemView {
   }
 }
 
+export class FileView extends ItemView {
+  file: any = null;
+  navigation = true;
+}
+
+export class TextFileView extends FileView {
+  data = '';
+
+  getViewData(): string {
+    return this.data;
+  }
+
+  setViewData(data: string, _clear?: boolean): void {
+    this.data = data;
+  }
+
+  clear(): void {}
+}
+
 export class WorkspaceLeaf {}
+
+export class Component {
+  private cleanups: Array<() => void> = [];
+  private children = new Set<Component>();
+
+  load = jest.fn();
+
+  unload = jest.fn(() => {
+    for (const cleanup of this.cleanups.splice(0)) cleanup();
+    for (const child of this.children) child.unload();
+    this.children.clear();
+  });
+
+  registerDomEvent = jest.fn((
+    element: HTMLElement,
+    event: string,
+    callback: EventListener,
+  ) => {
+    element.addEventListener(event, callback);
+    const cleanup = () => element.removeEventListener(event, callback);
+    this.cleanups.push(cleanup);
+    return cleanup;
+  });
+
+  addChild = jest.fn((child: Component) => {
+    this.children.add(child);
+    return child;
+  });
+
+  removeChild = jest.fn((child: Component) => {
+    this.children.delete(child);
+    return child;
+  });
+}
 
 export class Scope {
   static instances: Scope[] = [];

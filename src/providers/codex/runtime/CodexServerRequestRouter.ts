@@ -4,6 +4,7 @@ import type {
   AskUserQuestionCallback,
 } from '../../../core/runtime/types';
 import type { ApprovalDecision } from '../../../core/types';
+import { t } from '../../../i18n/i18n';
 import { normalizeCodexToolName } from '../normalization/codexToolNormalization';
 import type {
   CommandApprovalRequest,
@@ -146,7 +147,7 @@ export class CodexServerRequestRouter {
     const reason = params.reason ?? undefined;
     const toolName = normalizeCodexToolName('file_change');
     const input: Record<string, unknown> = { reason: reason ?? null };
-    const description = reason ? `File change: ${reason}` : 'File change';
+    const description = reason ? t('chat.approval.fileChangeReason', { reason }) : t('chat.approval.fileChange');
 
     if (requestId !== undefined) {
       this.pendingApprovalRequests.set(requestId, params.threadId);
@@ -175,7 +176,7 @@ export class CodexServerRequestRouter {
     const requestedPermissions = params.permissions as Record<string, unknown> | undefined ?? {};
     const reason = params.reason ?? undefined;
     const toolName = 'permissions';
-    const description = reason ? `Permission request: ${reason}` : 'Permission request';
+    const description = reason ? t('chat.approval.permissionReason', { reason }) : t('chat.approval.permissionRequest');
 
     if (requestId !== undefined) {
       this.pendingApprovalRequests.set(requestId, params.threadId);
@@ -260,11 +261,14 @@ export class CodexServerRequestRouter {
 function describeCommandApproval(params: CommandApprovalRequest): string {
   const networkContext = params.networkApprovalContext;
   if (networkContext) {
-    return `Allow ${networkContext.protocol} access to ${networkContext.host}`;
+    return t('chat.approval.networkAccess', {
+      protocol: networkContext.protocol,
+      host: networkContext.host,
+    });
   }
 
   const command = params.command ?? '';
-  return command ? `Execute: ${command}` : 'Execute command';
+  return command ? t('chat.approval.execute', { command }) : t('chat.approval.executeCommand');
 }
 
 function buildCommandApprovalDecisionOptions(
@@ -280,31 +284,31 @@ function mapDecisionOption(
   params: CommandApprovalRequest,
 ): ApprovalDecisionOption {
   if (decision === 'accept') {
-    return { label: 'Allow once', value: 'allow-once', decision: 'allow' };
+    return { label: t('chat.approval.allowOnce'), value: 'allow-once', decision: 'allow' };
   }
   if (decision === 'acceptForSession') {
-    return { label: 'Always allow', value: 'allow-always', decision: 'allow-always' };
+    return { label: t('chat.approval.alwaysAllow'), value: 'allow-always', decision: 'allow-always' };
   }
   if (decision === 'decline') {
-    return { label: 'Deny', value: 'deny', decision: 'deny' };
+    return { label: t('chat.approval.deny'), value: 'deny', decision: 'deny' };
   }
   if (decision === 'cancel') {
-    return { label: 'Cancel', value: 'cancel', decision: 'cancel' };
+    return { label: t('common.cancel'), value: 'cancel', decision: 'cancel' };
   }
   if ('acceptWithExecpolicyAmendment' in decision) {
     return {
-      label: 'Allow similar commands',
-      description: 'Approve and store an exec policy amendment.',
+      label: t('chat.approval.allowSimilar'),
+      description: t('chat.approval.execPolicy'),
       value: encodeCommandApprovalDecision(decision),
     };
   }
 
   const networkPolicyAmendment = decision.applyNetworkPolicyAmendment.network_policy_amendment;
-  const host = networkPolicyAmendment.host || params.networkApprovalContext?.host || 'host';
-  const action = networkPolicyAmendment.action === 'deny' ? 'Deny' : 'Allow';
+  const host = networkPolicyAmendment.host || params.networkApprovalContext?.host || t('chat.approval.host');
+  const isDeny = networkPolicyAmendment.action === 'deny';
   return {
-    label: `${action} ${host} for this session`,
-    description: `Apply a ${networkPolicyAmendment.action} rule for ${host}.`,
+    label: t(isDeny ? 'chat.approval.denyHost' : 'chat.approval.allowHost', { host }),
+    description: t(isDeny ? 'chat.approval.denyRule' : 'chat.approval.allowRule', { host }),
     value: encodeCommandApprovalDecision(decision),
   };
 }

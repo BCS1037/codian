@@ -1,3 +1,4 @@
+import { TOOL_READ } from '../../../core/tools/toolNames';
 import type { StreamChunk } from '../../../core/types';
 import {
   extractPiToolTextContent,
@@ -153,7 +154,10 @@ function normalizeToolResult(
   const content = extractPiToolTextContent(event.result ?? event.output ?? event.content)
     || state.toolOutputs.get(id)
     || '';
-  const toolUseResult = getNestedRecord(event, 'result');
+  const result = getNestedRecord(event, 'result');
+  const toolUseResult = getPiToolName(event) === TOOL_READ
+    ? { ...result, resultFormat: 'plain' }
+    : result;
   return [{
     type: 'tool_result',
     content,

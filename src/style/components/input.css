@@ -1,36 +1,36 @@
 /* Input area */
-.claudian-input-container {
+.codian-input-container {
   position: relative;
   padding: 12px 0 0 0;
 }
 
-.claudian-input-footer {
+.codian-input-footer {
   position: relative;
   flex-shrink: 0;
   margin-top: auto;
   padding: 6px 0 0 0;
 }
 
-.claudian-active-input-slot > .claudian-input-composer > .claudian-input-container {
+.codian-active-input-slot > .codian-input-composer > .codian-input-container {
   padding-top: 0;
 }
 
 /* Input wrapper (border container) - flex column so textarea expands when no chips */
-.claudian-input-wrapper {
-  --claudian-input-wrapper-border-color: var(--background-modifier-border);
-  --claudian-input-wrapper-box-shadow: none;
+.codian-input-wrapper {
+  --codian-input-wrapper-border-color: var(--background-modifier-border);
+  --codian-input-wrapper-box-shadow: none;
   position: relative;
   display: flex;
   flex-direction: column;
   min-height: 140px;
-  border: 1px solid var(--claudian-input-wrapper-border-color);
+  border: 1px solid var(--codian-input-wrapper-border-color);
   border-radius: 6px;
   background: var(--background-primary);
-  box-shadow: var(--claudian-input-wrapper-box-shadow);
+  box-shadow: var(--codian-input-wrapper-box-shadow);
 }
 
 /* Nav row (tab badges start, action icons end) - above input wrapper */
-.claudian-input-nav-row {
+.codian-input-nav-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -38,11 +38,11 @@
   min-height: 0;
 }
 
-.claudian-input-nav-row:empty {
+.codian-input-nav-row:empty {
   display: none;
 }
 
-.claudian-input-nav-content {
+.codian-input-nav-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -50,7 +50,7 @@
   min-width: 0;
 }
 
-.claudian-input-nav-actions {
+.codian-input-nav-actions {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -58,7 +58,7 @@
   margin-inline-start: auto;
 }
 
-.claudian-input-nav-btn {
+.codian-input-nav-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -73,26 +73,26 @@
   transition: color 0.15s ease, background 0.15s ease;
 }
 
-.claudian-input-nav-btn:hover {
+.codian-input-nav-btn:hover {
   color: var(--text-normal);
   background: var(--background-modifier-hover);
 }
 
-.claudian-input-nav-btn svg {
+.codian-input-nav-btn svg {
   width: 16px;
   height: 16px;
 }
 
-.claudian-new-tab-btn svg {
+.codian-new-tab-btn svg {
   width: 16.8px;
   height: 16.8px;
 }
 
-.claudian-input-wrapper textarea.claudian-input {
+.codian-input-wrapper textarea.codian-input {
   width: 100%;
   flex: 1 1 0;
-  min-height: var(--claudian-textarea-min-height, 60px);
-  max-height: var(--claudian-textarea-max-height, none);
+  min-height: var(--codian-textarea-min-height, 60px);
+  max-height: var(--codian-textarea-max-height, none);
   resize: none;
   padding: 8px 10px 10px 10px;
   border: none;
@@ -107,31 +107,31 @@
   unicode-bidi: plaintext; /* Proper BiDi text handling for mixed RTL/LTR */
 }
 
-.claudian-input-wrapper textarea.claudian-input:hover,
-.claudian-input-wrapper textarea.claudian-input:focus {
+.codian-input-wrapper textarea.codian-input:hover,
+.codian-input-wrapper textarea.codian-input:focus {
   outline: none;
   border: none;
   background: transparent;
   box-shadow: none;
 }
 
-.claudian-input-wrapper textarea.claudian-input::placeholder {
+.codian-input-wrapper textarea.codian-input::placeholder {
   color: var(--text-muted);
 }
 
-.claudian-input-wrapper textarea.claudian-input.claudian-live-preview-source {
+.codian-input-wrapper textarea.codian-input.codian-live-preview-source {
   display: none;
 }
 
-.claudian-live-preview-host {
+.codian-live-preview-host {
   display: flex;
   flex: 1 1 0;
-  min-height: var(--claudian-textarea-min-height, 60px);
-  max-height: var(--claudian-textarea-max-height, 50vh);
+  min-height: var(--codian-textarea-min-height, 60px);
+  max-height: var(--codian-textarea-max-height, 50vh);
   min-width: 0;
 }
 
-.claudian-live-preview-composer.cm-editor {
+.codian-live-preview-composer.cm-editor {
   width: 100%;
   min-width: 0;
   background: transparent;
@@ -141,33 +141,33 @@
   line-height: 1.4;
 }
 
-.claudian-live-preview-composer.cm-editor.cm-focused {
+.codian-live-preview-composer.cm-editor.cm-focused {
   outline: none;
 }
 
-.claudian-live-preview-composer .cm-scroller {
+.codian-live-preview-composer .cm-scroller {
   overflow: auto;
   font-family: inherit;
 }
 
-.claudian-live-preview-composer .cm-content {
+.codian-live-preview-composer .cm-content {
   min-height: 60px;
   padding: 8px 10px 10px 10px;
   caret-color: var(--text-normal);
   unicode-bidi: plaintext;
 }
 
-.claudian-live-preview-composer .cm-line {
+.codian-live-preview-composer .cm-line {
   padding: 0;
 }
 
-.claudian-live-preview-composer .cm-placeholder {
+.codian-live-preview-composer .cm-placeholder {
   color: var(--text-muted);
   font-style: normal;
 }
 
-.claudian-live-preview-inline-code,
-.claudian-live-preview-reference {
+.codian-live-preview-inline-code,
+.codian-live-preview-reference {
   padding: 1px 4px;
   border-radius: 4px;
   background: var(--code-background);
@@ -176,11 +176,11 @@
   font-size: 0.92em;
 }
 
-.claudian-live-preview-reference--selected {
+.codian-live-preview-reference--selected {
   box-shadow: 0 0 0 1px var(--interactive-accent);
 }
 
-.claudian-live-preview-reference {
+.codian-live-preview-reference {
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -188,26 +188,26 @@
   cursor: default;
 }
 
-.claudian-live-preview-reference-label {
+.codian-live-preview-reference-label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.claudian-live-preview-reference-icon {
+.codian-live-preview-reference-icon {
   display: inline-flex;
   color: var(--text-muted);
   --icon-size: 12px;
 }
 
-.claudian-live-preview-link {
+.codian-live-preview-link {
   color: var(--link-color);
   border-bottom: 1px solid var(--link-color);
 }
 
-.claudian-live-preview-unordered-marker,
-.claudian-live-preview-ordered-marker {
+.codian-live-preview-unordered-marker,
+.codian-live-preview-ordered-marker {
   display: inline-block;
   min-width: 1.4em;
   color: var(--list-marker-color, var(--text-muted));
@@ -215,7 +215,7 @@
 }
 
 /* Input toolbar */
-.claudian-input-toolbar {
+.codian-input-toolbar {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -225,13 +225,13 @@
   padding: 4px 6px 6px 6px;
 }
 
-.claudian-input-toolbar--compact .claudian-thinking-label-text,
-.claudian-input-toolbar--compact .claudian-context-meter-percent {
+.codian-input-toolbar--compact .codian-thinking-label-text,
+.codian-input-toolbar--compact .codian-context-meter-percent {
   display: none;
 }
 
 /* Composer queue status row (queued follow-up preview + steer action) */
-.claudian-input-queue-row {
+.codian-input-queue-row {
   display: none;
   font-size: 12px;
   color: var(--text-muted);
@@ -241,7 +241,7 @@
   padding: 0 2px 8px 2px;
 }
 
-.claudian-queue-indicator-text {
+.codian-queue-indicator-text {
   min-width: 0;
   flex: 1 1 auto;
   white-space: nowrap;
@@ -249,14 +249,14 @@
   text-overflow: ellipsis;
 }
 
-.claudian-queue-indicator-actions {
+.codian-queue-indicator-actions {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.claudian-queue-indicator-action {
+.codian-queue-indicator-action {
   flex: 0 0 auto;
   padding: 1px 8px;
   border: 0;
@@ -266,17 +266,17 @@
   cursor: pointer;
 }
 
-.claudian-queue-indicator-action:hover {
+.codian-queue-indicator-action:hover {
   text-decoration: underline;
 }
 
-.claudian-queue-indicator-action[disabled] {
+.codian-queue-indicator-action[disabled] {
   color: var(--text-faint);
   cursor: default;
   text-decoration: none;
 }
 
-.claudian-queue-indicator-icon-action {
+.codian-queue-indicator-icon-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -291,33 +291,33 @@
   cursor: pointer;
 }
 
-.claudian-queue-indicator-icon-action:hover {
+.codian-queue-indicator-icon-action:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
-.claudian-queue-indicator-icon-action svg {
+.codian-queue-indicator-icon-action svg {
   width: 14px;
   height: 14px;
 }
 
 /* Light blue border when instruction mode is active */
-.claudian-input-wrapper.claudian-input-instruction-mode {
-  --claudian-input-wrapper-border-color: #60a5fa;
-  --claudian-input-wrapper-box-shadow: 0 0 0 1px #60a5fa;
+.codian-input-wrapper.codian-input-instruction-mode {
+  --codian-input-wrapper-border-color: #60a5fa;
+  --codian-input-wrapper-box-shadow: 0 0 0 1px #60a5fa;
 }
 
 /* Pink border when bash mode is active */
-.claudian-input-wrapper.claudian-input-bang-bash-mode {
-  --claudian-input-wrapper-border-color: #f472b6;
-  --claudian-input-wrapper-box-shadow: 0 0 0 1px #f472b6;
+.codian-input-wrapper.codian-input-bang-bash-mode {
+  --codian-input-wrapper-border-color: #f472b6;
+  --codian-input-wrapper-box-shadow: 0 0 0 1px #f472b6;
 }
 
 /* Monospace input while in bash mode */
-.claudian-input-wrapper.claudian-input-bang-bash-mode .claudian-input {
+.codian-input-wrapper.codian-input-bang-bash-mode .codian-input {
   font-family: var(--font-monospace);
 }
 
-.claudian-input-wrapper.claudian-input-bang-bash-mode .claudian-live-preview-composer {
+.codian-input-wrapper.codian-input-bang-bash-mode .codian-live-preview-composer {
   font-family: var(--font-monospace);
 }

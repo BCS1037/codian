@@ -48,7 +48,7 @@ class InlineCodeWidget extends WidgetType {
 
   toDOM(view: EditorView): HTMLElement {
     const element = view.dom.createEl('code');
-    element.classList.add('claudian-live-preview-inline-code');
+    element.classList.add('codian-live-preview-inline-code');
     element.textContent = this.text;
     return element;
   }
@@ -65,7 +65,7 @@ class LinkWidget extends WidgetType {
 
   toDOM(view: EditorView): HTMLElement {
     const element = view.dom.createSpan();
-    element.classList.add('claudian-live-preview-link');
+    element.classList.add('codian-live-preview-link');
     element.dataset.href = this.href;
     element.title = this.href;
     element.textContent = this.label;
@@ -85,8 +85,8 @@ class ListMarkerWidget extends WidgetType {
   toDOM(view: EditorView): HTMLElement {
     const element = view.dom.createSpan();
     element.classList.add(this.ordered
-      ? 'claudian-live-preview-ordered-marker'
-      : 'claudian-live-preview-unordered-marker');
+      ? 'codian-live-preview-ordered-marker'
+      : 'codian-live-preview-unordered-marker');
     element.textContent = this.label;
     return element;
   }
@@ -117,14 +117,14 @@ class VaultReferenceWidget extends WidgetType {
     const label = element.createSpan();
     const token = `@${this.reference.path}${this.reference.kind === 'folder' ? '/' : ''}`;
 
-    element.classList.add('claudian-live-preview-reference');
-    element.classList.toggle('claudian-live-preview-reference--selected', this.selected);
+    element.classList.add('codian-live-preview-reference');
+    element.classList.toggle('codian-live-preview-reference--selected', this.selected);
     element.dataset.path = this.reference.path;
     element.dataset.kind = this.reference.kind;
     element.title = token;
-    icon.classList.add('claudian-live-preview-reference-icon');
+    icon.classList.add('codian-live-preview-reference-icon');
     setIcon(icon, this.reference.kind === 'folder' ? 'folder' : 'file-text');
-    label.classList.add('claudian-live-preview-reference-label');
+    label.classList.add('codian-live-preview-reference-label');
     label.textContent = formatReferenceLabel(this.reference.path);
     element.append(icon, label);
     element.addEventListener('click', (event) => {
@@ -279,7 +279,7 @@ export class LivePreviewComposer {
       extensions: [
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
-        EditorView.editorAttributes.of({ class: 'claudian-live-preview-composer' }),
+        EditorView.editorAttributes.of({ class: 'codian-live-preview-composer' }),
         this.placeholderCompartment.of(placeholder(options.placeholder ?? '')),
         createDecorationPlugin(() => this.references, options.onOpenReference),
         Prec.highest(EditorView.domEventHandlers({
@@ -338,6 +338,16 @@ export class LivePreviewComposer {
 
   focus(): void {
     this.view.focus();
+  }
+
+  isCaretOnEdgeRow(direction: 'up' | 'down'): boolean | null {
+    const view = this.view;
+    if (!view) return null;
+    const caret = view.state.selection.main;
+    const caretRect = view.coordsAtPos(caret.head, caret.assoc < 0 ? -1 : 1);
+    const edgeRect = direction === 'up' ? view.coordsAtPos(0, 1) : view.coordsAtPos(view.state.doc.length, -1);
+    if (!caretRect || !edgeRect || caretRect.bottom <= caretRect.top || edgeRect.bottom <= edgeRect.top) return null;
+    return direction === 'up' ? caretRect.top < edgeRect.bottom : caretRect.bottom > edgeRect.top;
   }
 
   destroy(): void {

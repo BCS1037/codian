@@ -25,6 +25,7 @@ import type {
   ChatRuntimeQueryOptions,
   ChatTurnRequest,
 } from '../../../core/runtime/types';
+import { encodeSessionMessage, type SessionMessage } from '../../../core/session-tools/sessionMessageEnvelope';
 import { TOOL_EXIT_PLAN_MODE } from '../../../core/tools/toolNames';
 import type {
   ApprovalDecision,
@@ -36,6 +37,7 @@ import type {
 import { t } from '../../../i18n/i18n';
 import { ResumeSessionDropdown } from '../../../shared/components/ResumeSessionDropdown';
 import { InstructionModal } from '../../../shared/modals/InstructionConfirmModal';
+import { throwIfAborted } from '../../../utils/abort';
 import type { BrowserSelectionContext } from '../../../utils/browser';
 import type { CanvasSelectionContext } from '../../../utils/canvas';
 import { extractUserDisplayContent } from '../../../utils/context';
@@ -50,6 +52,7 @@ import { InlinePlanApproval,type PlanApprovalDecision } from '../rendering/Inlin
 import type { MessageRenderer } from '../rendering/MessageRenderer';
 import { setToolIcon, updateToolCallResult } from '../rendering/ToolCallRenderer';
 import type { SubagentManager } from '../services/SubagentManager';
+import type { SessionMessageUnsentReason } from '../session-messaging/SessionMailbox';
 import type { ChatState } from '../state/ChatState';
 import type { QueuedMessage } from '../state/types';
 import type { FileContextManager } from '../ui/FileContext';
@@ -133,6 +136,13 @@ export interface SendMessageOptions {
   content?: string;
   images?: ChatMessage['images'];
   turnRequestOverride?: ChatTurnRequest;
+  origin?: 'user' | 'session-message';
+  assertBeforeHandoff?: () => void;
+  onUnsent?: (reason: SessionMessageUnsentReason) => void;
+  sessionMessageMetadata?: {
+    from: string;
+    sessionId: string;
+  };
 }
 
 interface PendingProviderUserMessage {
@@ -230,6 +240,101 @@ export class InputController {
     await this.turnCoordinator.run(options);
   }
 
+  get canStartSessionMessage(): boolean {
+    const { state } = this.deps;
+    return (
+      !state.isStreaming
+      && !state.queuedMessage
+      && !state.isCreatingConversation
+      && !state.isSwitchingConversation
+      && !state.isRewinding
+      && !this.steerInFlight
+      && !this.turnCoordinator.isInFlight
+    );
+  }
+
+  async sendSessionMessage(
+    message: SessionMessage,
+    options: {
+      assertBeforeHandoff(): void;
+      onUnsent(reason: SessionMessageUnsentReason): void;
+    },
+  ): Promise<void> {
+    if (!this.canStartSessionMessage) {
+      options.onUnsent('deferred');
+      return;
+    }
+
+    const providerId = this.getActiveProviderId();
+    if (!providerId) {
+      options.onUnsent('failed');
+      return;
+    }
+
+    await this.sendMessage({
+      content: message.text,
+      turnRequestOverride: {
+        text: encodeSessionMessage(message),
+        images: undefined,
+        currentNotePath: undefined,
+        editorSelection: null,
+        browserSelection: null,
+        canvasSelection: null,
+      },
+      origin: 'session-message',
+      assertBeforeHandoff: options.assertBeforeHandoff,
+      onUnsent: options.onUnsent,
+      sessionMessageMetadata: {
+        from: message.from,
+        sessionId: message.sessionId,
+      },
+    });
+  }
+
+  async steerSessionMessage(
+    message: SessionMessage,
+    signal: AbortSignal,
+  ): Promise<'accepted' | 'uncertain' | 'not-sent'> {
+    if (
+      !this.canSteerQueuedMessage()
+      || this.pendingAskInline !== null
+      || this.pendingApprovalInline !== null
+      || this.pendingPlanApproval !== null
+      || this.pendingExitPlanModeInline !== null
+    ) {
+      return 'not-sent';
+    }
+
+    const agentService = this.getAgentService();
+    if (!agentService?.steer) return 'not-sent';
+
+    try {
+      throwIfAborted(signal, 'Steer cancelled');
+      const preparedTurn = agentService.prepareTurn({
+        text: encodeSessionMessage(message),
+        images: undefined,
+        currentNotePath: undefined,
+        editorSelection: null,
+        browserSelection: null,
+        canvasSelection: null,
+      });
+
+      const accepted = await agentService.steer(preparedTurn);
+      if (signal.aborted || this.deps.state.cancelRequested) return 'not-sent';
+      return accepted ? 'accepted' : 'not-sent';
+    } catch {
+      return 'not-sent';
+    }
+  }
+
+  interruptForSessionMessage(): void {
+    const { state, streamController } = this.deps;
+    if (!state.isStreaming) return;
+    state.cancelRequested = true;
+    this.getAgentService()?.cancel();
+    streamController.hideThinkingIndicator();
+  }
+
   private async executeSendMessage(options?: SendMessageOptions): Promise<void> {
     const {
       plugin,
@@ -325,7 +430,7 @@ export class InputController {
     // Hide welcome message when sending first message
     const welcomeEl = this.deps.getWelcomeEl();
     if (welcomeEl) {
-      welcomeEl.addClass('claudian-hidden');
+      welcomeEl.addClass('codian-hidden');
     }
 
     fileContextManager?.startSession();
@@ -356,6 +461,19 @@ export class InputController {
     const { displayContent, turnRequest } = turnSubmission;
     const messagesBeforeTurn = state.messages;
     const hadPendingConversationSave = state.hasPendingConversationSave;
+    const restoreCanceledPreHandoffTurn = (): boolean => {
+      if (state.streamGeneration !== streamGeneration) return true;
+      if (!state.cancelRequested) return false;
+
+      this.restoreMessageToInput(this.createQueuedMessage(displayContent, {
+        ...turnRequest,
+        images: imagesForMessage ?? turnRequest.images,
+      }), { mergeWithComposer: true });
+      this.rollbackFailedTurn(messagesBeforeTurn, hadPendingConversationSave);
+      this.activeStreamingAssistantMessage = null;
+      this.resetProviderMessageBoundaryState();
+      return true;
+    };
 
     fileContextManager?.markCurrentNoteSent();
 
@@ -367,6 +485,7 @@ export class InputController {
       timestamp: Date.now(),
       images: imagesForMessage,
       chatSelections: turnRequest.chatSelections,
+      sessionMessage: options?.sessionMessageMetadata,
     };
     state.addMessage(userMsg);
     state.hasPendingConversationSave = true;
@@ -379,6 +498,7 @@ export class InputController {
       this.rollbackFailedTurn(messagesBeforeTurn, hadPendingConversationSave);
       throw error;
     }
+    if (restoreCanceledPreHandoffTurn()) return;
 
     const assistantMsg: ChatMessage = {
       id: this.deps.generateId(),
@@ -400,7 +520,7 @@ export class InputController {
 
     streamController.showThinkingIndicator(
       isCompact ? 'Compacting...' : undefined,
-      isCompact ? 'claudian-thinking--compact' : undefined,
+      isCompact ? 'codian-thinking--compact' : undefined,
     );
     state.responseStartTime = performance.now();
 
@@ -412,6 +532,7 @@ export class InputController {
     // Lazy initialization: ensure service is ready before first query
     if (this.deps.ensureServiceInitialized) {
       const ready = await this.deps.ensureServiceInitialized();
+      if (restoreCanceledPreHandoffTurn()) return;
       if (!ready) {
         new Notice('Failed to initialize agent service. Please try again.');
         this.restoreMessageToInput(this.createQueuedMessage(displayContent, turnRequest));
@@ -448,9 +569,22 @@ export class InputController {
         }
       }
     }
+    if (restoreCanceledPreHandoffTurn()) return;
 
     try {
       await agentService.prepareForTurn?.();
+      if (restoreCanceledPreHandoffTurn()) return;
+      if (options?.assertBeforeHandoff) {
+        try {
+          options.assertBeforeHandoff();
+        } catch (error) {
+          options.onUnsent?.('deferred');
+          this.rollbackFailedTurn(messagesBeforeTurn, hadPendingConversationSave);
+          this.activeStreamingAssistantMessage = null;
+          this.resetProviderMessageBoundaryState();
+          throw error;
+        }
+      }
       const preparedTurn = agentService.prepareTurn(turnRequest);
       userMsg.content = preparedTurn.persistedContent;
       userMsg.currentNote = preparedTurn.isCompact
@@ -562,10 +696,10 @@ export class InputController {
             finalAssistantMsg.durationFlavorWord = flavorWord;
             // Add footer to live message in DOM
             if (state.currentContentEl) {
-              const footerEl = state.currentContentEl.createDiv({ cls: 'claudian-response-footer' });
+              const footerEl = state.currentContentEl.createDiv({ cls: 'codian-response-footer' });
               footerEl.createSpan({
                 text: `* ${flavorWord} for ${formatDurationMmSs(durationSeconds)}`,
-                cls: 'claudian-baked-duration',
+                cls: 'codian-baked-duration',
               });
             }
           }
@@ -680,16 +814,16 @@ export class InputController {
     if (visibleQueuedMessage) {
       const isPendingSteerOnly = !state.queuedMessage && !!this.pendingSteerMessage;
       indicatorEl.createSpan({
-        cls: 'claudian-queue-indicator-text',
+        cls: 'codian-queue-indicator-text',
         text: `${isPendingSteerOnly ? '⌙ Steering: ' : '⌙ Queued: '}${this.getQueuedMessageDisplay(visibleQueuedMessage)}`,
       });
 
       if (state.queuedMessage) {
-        const actionsEl = indicatorEl.createDiv({ cls: 'claudian-queue-indicator-actions' });
+        const actionsEl = indicatorEl.createDiv({ cls: 'codian-queue-indicator-actions' });
 
         if (this.canSteerQueuedMessage()) {
           const steerButton = actionsEl.createEl('button', {
-            cls: 'claudian-queue-indicator-action',
+            cls: 'codian-queue-indicator-action',
             text: this.steerInFlight ? 'Steering...' : 'Steer Now',
           });
           steerButton.setAttribute('type', 'button');
@@ -724,13 +858,13 @@ export class InputController {
         });
       }
 
-      indicatorEl.addClass('claudian-visible-flex');
-      indicatorEl.removeClass('claudian-hidden');
+      indicatorEl.addClass('codian-visible-flex');
+      indicatorEl.removeClass('codian-hidden');
       return;
     }
 
-    indicatorEl.removeClass('claudian-visible-flex');
-    indicatorEl.addClass('claudian-hidden');
+    indicatorEl.removeClass('codian-visible-flex');
+    indicatorEl.addClass('codian-hidden');
   }
 
   clearQueuedMessage(): void {
@@ -786,6 +920,23 @@ export class InputController {
     }
     this.deps.resetInputHeight();
     inputEl.focus();
+  }
+
+  captureUnsentInput(): QueuedMessage | null {
+    const { state } = this.deps;
+    const queued = this.mergePendingMessages(
+      this.pendingSteerMessage,
+      state.queuedMessage,
+    );
+    const unsent = this.mergePendingMessages(queued, this.captureComposerDraft());
+    state.queuedMessage = null;
+    this.clearPendingSteerState();
+    this.updateQueueIndicator();
+    return unsent;
+  }
+
+  restoreUnsentInput(message: QueuedMessage | null): void {
+    this.restoreMessageToInput(message, { mergeWithComposer: true });
   }
 
   private captureComposerDraft(): QueuedMessage | null {
@@ -919,7 +1070,7 @@ export class InputController {
     label: string,
   ): HTMLElement {
     const button = parentEl.createEl('button', {
-      cls: 'claudian-queue-indicator-icon-action',
+      cls: 'codian-queue-indicator-icon-action',
       attr: {
         'aria-label': label,
         title: label,
@@ -1115,7 +1266,7 @@ export class InputController {
   private activateStreamingAssistantMessage(message: ChatMessage): void {
     const { state, renderer } = this.deps;
     const msgEl = renderer.addMessage(message);
-    const contentEl = msgEl.querySelector<HTMLElement>('.claudian-message-content');
+    const contentEl = msgEl.querySelector<HTMLElement>('.codian-message-content');
 
     if (!contentEl) {
       return;
@@ -1276,7 +1427,7 @@ export class InputController {
     this.deps.getSubagentManager().resetStreamingState();
 
     if (messagesBeforeTurn.length === 0) {
-      this.deps.getWelcomeEl()?.removeClass('claudian-hidden');
+      this.deps.getWelcomeEl()?.removeClass('codian-hidden');
     }
   }
 
@@ -1537,26 +1688,26 @@ export class InputController {
     }
 
     // Build header element, then detach — InlineAskUserQuestion will re-attach it
-    const headerEl = parentEl.createDiv({ cls: 'claudian-ask-approval-info' });
+    const headerEl = parentEl.createDiv({ cls: 'codian-ask-approval-info' });
     headerEl.remove();
 
-    const toolEl = headerEl.createDiv({ cls: 'claudian-ask-approval-tool' });
-    const iconEl = toolEl.createSpan({ cls: 'claudian-ask-approval-icon' });
+    const toolEl = headerEl.createDiv({ cls: 'codian-ask-approval-tool' });
+    const iconEl = toolEl.createSpan({ cls: 'codian-ask-approval-icon' });
     iconEl.setAttribute('aria-hidden', 'true');
     setToolIcon(iconEl, toolName);
-    toolEl.createSpan({ text: toolName, cls: 'claudian-ask-approval-tool-name' });
+    toolEl.createSpan({ text: toolName, cls: 'codian-ask-approval-tool-name' });
 
     if (approvalOptions?.decisionReason) {
-      headerEl.createDiv({ text: approvalOptions.decisionReason, cls: 'claudian-ask-approval-reason' });
+      headerEl.createDiv({ text: approvalOptions.decisionReason, cls: 'codian-ask-approval-reason' });
     }
     if (approvalOptions?.blockedPath) {
-      headerEl.createDiv({ text: approvalOptions.blockedPath, cls: 'claudian-ask-approval-blocked-path' });
+      headerEl.createDiv({ text: approvalOptions.blockedPath, cls: 'codian-ask-approval-blocked-path' });
     }
     if (approvalOptions?.agentID) {
-      headerEl.createDiv({ text: `Agent: ${approvalOptions.agentID}`, cls: 'claudian-ask-approval-agent' });
+      headerEl.createDiv({ text: `Agent: ${approvalOptions.agentID}`, cls: 'codian-ask-approval-agent' });
     }
 
-    headerEl.createDiv({ text: description, cls: 'claudian-ask-approval-desc' });
+    headerEl.createDiv({ text: description, cls: 'codian-ask-approval-desc' });
 
     const decisionOptions = approvalOptions?.decisionOptions ?? DEFAULT_APPROVAL_DECISION_OPTIONS;
     const optionDecisionMap = new Map<string, ApprovalDecision>();
@@ -1780,21 +1931,21 @@ export class InputController {
 
   private hideInputContainer(inputContainerEl: HTMLElement): void {
     this.inputContainerHideDepth++;
-    inputContainerEl.addClass('claudian-hidden');
+    inputContainerEl.addClass('codian-hidden');
   }
 
   private restoreInputContainer(inputContainerEl: HTMLElement): void {
     if (this.inputContainerHideDepth <= 0) return;
     this.inputContainerHideDepth--;
     if (this.inputContainerHideDepth === 0) {
-      inputContainerEl.removeClass('claudian-hidden');
+      inputContainerEl.removeClass('codian-hidden');
     }
   }
 
   private resetInputContainerVisibility(): void {
     if (this.inputContainerHideDepth > 0) {
       this.inputContainerHideDepth = 0;
-      this.deps.getInputContainerEl().removeClass('claudian-hidden');
+      this.deps.getInputContainerEl().removeClass('codian-hidden');
     }
   }
 

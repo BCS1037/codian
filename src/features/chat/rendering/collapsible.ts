@@ -1,3 +1,5 @@
+import { t } from '@/i18n/i18n';
+
 export interface CollapsibleState {
   isExpanded: boolean;
 }
@@ -39,8 +41,7 @@ export function setupCollapsible(
   // Helper to update aria-label based on expanded state
   const updateAriaLabel = (isExpanded: boolean) => {
     if (baseAriaLabel) {
-      const action = isExpanded ? 'click to collapse' : 'click to expand';
-      headerEl.setAttribute('aria-label', `${baseAriaLabel} - ${action}`);
+      headerEl.setAttribute('aria-label', t(isExpanded ? 'chat.disclosure.collapse' : 'chat.disclosure.expand', { label: baseAriaLabel }));
     }
   };
 
@@ -48,10 +49,10 @@ export function setupCollapsible(
   state.isExpanded = initiallyExpanded;
   if (initiallyExpanded) {
     wrapperEl.addClass('expanded');
-    contentEl.removeClass('claudian-hidden');
+    contentEl.removeClass('codian-hidden');
     headerEl.setAttribute('aria-expanded', 'true');
   } else {
-    contentEl.addClass('claudian-hidden');
+    contentEl.addClass('codian-hidden');
     headerEl.setAttribute('aria-expanded', 'false');
   }
   updateAriaLabel(initiallyExpanded);
@@ -61,11 +62,11 @@ export function setupCollapsible(
     state.isExpanded = !state.isExpanded;
     if (state.isExpanded) {
       wrapperEl.addClass('expanded');
-      contentEl.removeClass('claudian-hidden');
+      contentEl.removeClass('codian-hidden');
       headerEl.setAttribute('aria-expanded', 'true');
     } else {
       wrapperEl.removeClass('expanded');
-      contentEl.addClass('claudian-hidden');
+      contentEl.addClass('codian-hidden');
       headerEl.setAttribute('aria-expanded', 'false');
     }
     updateAriaLabel(state.isExpanded);
@@ -96,6 +97,6 @@ export function collapseElement(
 ): void {
   state.isExpanded = false;
   wrapperEl.removeClass('expanded');
-  contentEl.addClass('claudian-hidden');
+  contentEl.addClass('codian-hidden');
   headerEl.setAttribute('aria-expanded', 'false');
 }

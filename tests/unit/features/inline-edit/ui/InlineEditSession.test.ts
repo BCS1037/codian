@@ -71,7 +71,20 @@ function createSession() {
 }
 
 describe('InlineEditSession', () => {
+  let originalDocument: any;
+
+  beforeEach(() => {
+    originalDocument = (global as any).document;
+    (global as any).document = {
+      body: createMockEl('body'),
+      createElement: (tagName: string) => createMockEl(tagName),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+    };
+  });
+
   afterEach(() => {
+    (global as any).document = originalDocument;
     jest.restoreAllMocks();
   });
 
@@ -159,5 +172,46 @@ describe('InlineEditSession', () => {
     expect(Notice).toHaveBeenCalledWith(
       'Inline edit was not applied because the source document or selection changed.',
     );
+  });
+
+  it('renders review bar with line count stats and keyboard shortcut hints', () => {
+    const { session } = createSession();
+    const diffOps: any[] = [
+      { type: 'delete', text: 'old line 1\nold line 2\n' },
+      { type: 'insert', text: 'new line 1\n' },
+      { type: 'equal', text: 'same\n' },
+    ];
+
+    const previewEl = session.createDiffPreviewDOM(diffOps);
+    const statsEl = previewEl.querySelector('.codian-inline-diff-stats');
+    expect(statsEl).toBeDefined();
+    expect(previewEl.querySelector('.codian-inline-diff-stat-del')?.textContent).toBe('−2');
+    expect(previewEl.querySelector('.codian-inline-diff-stat-ins')?.textContent).toBe('+1');
+    const labelSpan = statsEl?.children[statsEl.children.length - 1];
+    expect(labelSpan?.textContent).toBe('lines');
+
+    const actions = previewEl.querySelectorAll('.codian-inline-preview-action');
+    expect(actions).toHaveLength(2);
+    const rejectBtn = actions[0];
+    const acceptBtn = actions[1];
+
+    expect(rejectBtn.getAttribute('aria-keyshortcuts')).toBe('Escape');
+    expect(rejectBtn.querySelector('.codian-inline-preview-key')?.textContent).toBe('Esc');
+
+    expect(acceptBtn.getAttribute('aria-keyshortcuts')).toBe('Enter');
+    expect(acceptBtn.querySelector('.codian-inline-preview-key')?.textContent).toBe('↵');
+  });
+
+  it('renders single-row composer card with data-provider', () => {
+    const { session } = createSession();
+    const dom = session.createInputDOM();
+
+    expect(dom.classList.contains('codian-inline-input-container')).toBe(true);
+    expect(dom.getAttribute('data-provider')).toBe('claude');
+    const cardEl = dom.querySelector('.codian-inline-composer');
+    expect(cardEl).toBeDefined();
+    expect(cardEl?.querySelector('.codian-inline-input-wrap')).toBeDefined();
+    expect(cardEl?.querySelector('input.codian-inline-input')).toBeDefined();
+    expect(cardEl?.querySelector('.codian-inline-spinner')).toBeDefined();
   });
 });

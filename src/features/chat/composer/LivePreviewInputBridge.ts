@@ -1,3 +1,5 @@
+import { registerAccessibleTextbox } from '@/shared/components/AccessibleTextbox';
+
 import { LivePreviewComposer } from './LivePreviewComposer';
 import type { VaultContextReference } from './types';
 
@@ -11,6 +13,7 @@ export class LivePreviewInputBridge {
 
   private syncing = false;
   private readonly originalFocus: HTMLTextAreaElement['focus'];
+  private readonly unregisterAccessibleTextbox: () => void;
 
   private readonly handleComposerPaste = (event: ClipboardEvent): void => {
     const EventConstructor = this.sourceEl.ownerDocument.defaultView?.Event ?? Event;
@@ -40,10 +43,15 @@ export class LivePreviewInputBridge {
       onKeydown: event => this.handleComposerKeydown(event),
       onOpenReference: reference => options.onOpenReference?.(reference),
     });
-    sourceEl.classList.add('claudian-live-preview-source');
-    hostEl.classList.add('claudian-live-preview-host');
+    this.unregisterAccessibleTextbox = registerAccessibleTextbox(
+      sourceEl,
+      () => this.composer.contentDOM,
+    );
+    sourceEl.classList.add('codian-live-preview-source');
+    hostEl.classList.add('codian-live-preview-host');
     sourceEl.addEventListener('input', this.handleSourceInput);
     this.composer.contentDOM.addEventListener('paste', this.handleComposerPaste);
+    (sourceEl as any).isCaretOnEdgeRow = (direction: 'up' | 'down') => this.composer.isCaretOnEdgeRow(direction);
     sourceEl.focus = () => {
       this.syncFromSource();
       this.composer.focus();
@@ -55,11 +63,13 @@ export class LivePreviewInputBridge {
   }
 
   destroy(): void {
+    this.unregisterAccessibleTextbox();
+    delete (this.sourceEl as any).isCaretOnEdgeRow;
     this.sourceEl.removeEventListener('input', this.handleSourceInput);
     this.composer.contentDOM.removeEventListener('paste', this.handleComposerPaste);
     this.sourceEl.focus = this.originalFocus;
-    this.sourceEl.classList.remove('claudian-live-preview-source');
-    this.hostEl.classList.remove('claudian-live-preview-host');
+    this.sourceEl.classList.remove('codian-live-preview-source');
+    this.hostEl.classList.remove('codian-live-preview-host');
     this.composer.destroy();
   }
 

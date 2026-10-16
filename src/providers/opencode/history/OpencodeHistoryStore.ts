@@ -38,17 +38,20 @@ const OPENCODE_HYDRATION_DIAGNOSTIC_ID_PREFIX = 'opencode-hydration-error';
 export async function loadOpencodeSessionMessages(
   sessionId: string,
   providerState?: OpencodeProviderState,
+  environment?: NodeJS.ProcessEnv,
 ): Promise<ChatMessage[]> {
   const databasePath = resolveExistingOpencodeDatabasePath(providerState?.databasePath);
   if (!databasePath || databasePath === ':memory:' || !fs.existsSync(databasePath)) {
     return [];
   }
 
-  const rows = await loadOpencodeSessionRows(databasePath, sessionId);
-  if (!rows) {
+  let rows;
+  try {
+    rows = await loadOpencodeSessionRows(databasePath, sessionId, { environment });
+  } catch (error) {
     return [createOpencodeHydrationDiagnosticMessage({
       databasePath,
-      reason: 'Could not read OpenCode session rows from SQLite.',
+      reason: formatUnknownError(error),
       sessionId,
     })];
   }
@@ -300,7 +303,7 @@ export function isOpencodeSessionHydrationDiagnosticMessage(message: ChatMessage
   return message.id.startsWith(`${OPENCODE_HYDRATION_DIAGNOSTIC_ID_PREFIX}-session-`);
 }
 
-function isOpencodeHydrationDiagnosticMessage(message: ChatMessage): boolean {
+export function isOpencodeHydrationDiagnosticMessage(message: ChatMessage): boolean {
   return message.id.startsWith(OPENCODE_HYDRATION_DIAGNOSTIC_ID_PREFIX);
 }
 
@@ -380,6 +383,7 @@ function buildAssistantToolCalls(parts: StoredRow[]): ToolCallInfo[] {
       input,
       name,
       result,
+      ...(toolUseResult?.resultFormat === 'plain' ? { resultFormat: 'plain' } : {}),
       status,
     };
 

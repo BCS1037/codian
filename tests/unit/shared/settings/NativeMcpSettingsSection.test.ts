@@ -52,7 +52,7 @@ describe('renderNativeMcpSettingsSection', () => {
 
     expect(returnedNotice).toBe(notice);
     expect(createdSettings).toEqual([{ heading: true, name: 'MCP Servers' }]);
-    expect(container.createDiv).toHaveBeenCalledWith({ cls: 'claudian-mcp-settings-desc' });
+    expect(container.createDiv).toHaveBeenCalledWith({ cls: 'codian-mcp-settings-desc' });
     expect(notice.createEl).toHaveBeenNthCalledWith(1, 'p', {
       cls: 'setting-item-description',
     });

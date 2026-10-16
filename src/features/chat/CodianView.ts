@@ -1,0 +1,1033 @@
+import type { EventRef, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Notice, Scope, setIcon } from 'obsidian';
+
+import { StartupProfiler } from '../../core/performance/StartupProfiler';
+import { getHiddenProviderCommandSet } from '../../core/providers/commands/hiddenCommands';
+import {
+  getProviderSettingsSnapshotWithModel,
+  resolveConversationModel,
+} from '../../core/providers/conversationModel';
+import { ProviderRegistry } from '../../core/providers/ProviderRegistry';
+import { ProviderSettingsCoordinator } from '../../core/providers/ProviderSettingsCoordinator';
+import { type AppTabManagerState, DEFAULT_CHAT_PROVIDER_ID, type ProviderId } from '../../core/providers/types';
+import { VIEW_TYPE_CODIAN } from '../../core/types';
+import { t } from '../../i18n/i18n';
+import { CODIAN_RIBBON_ICON_ID } from '../../shared/codianLogo';
+import { createProviderIconSvg } from '../../shared/icons';
+import {
+  cancelScheduledAnimationFrame,
+  scheduleAnimationFrame,
+  type ScheduledAnimationFrame,
+} from '../../utils/animationFrame';
+import type { FeatureHost } from '../FeatureHost';
+import type { HistoryConversationStatus } from './controllers/ConversationController';
+import { DualPaneLayout } from './DualPaneLayout';
+import { MentionCacheCoordinator } from './services/MentionCacheCoordinator';
+import { TabStatePersistenceCoordinator } from './services/TabStatePersistenceCoordinator';
+import {
+  getTabProviderId,
+  onProviderAvailabilityChanged,
+  sendTabInputMessageFromExplicitEnterShortcut,
+  updatePlanModeUI,
+} from './tabs/Tab';
+import { TabBar } from './tabs/TabBar';
+import { TabManager } from './tabs/TabManager';
+import type { TabData, TabId } from './tabs/types';
+import { recalculateUsageForModel } from './utils/usageInfo';
+
+type LoadableView = {
+  containerEl?: HTMLElement;
+  load: () => Promise<void> | void;
+};
+
+export class CodianView extends ItemView {
+  private plugin: FeatureHost;
+
+  // Tab management
+  private tabManager: TabManager | null = null;
+  private mentionCacheCoordinator: MentionCacheCoordinator | null = null;
+  private tabBar: TabBar | null = null;
+  private tabBarContainerEl: HTMLElement | null = null;
+  private tabContentEl: HTMLElement | null = null;
+  private navRowContent: HTMLElement | null = null;
+  private inputFooterEl: HTMLElement | null = null;
+  private inputNavRowHostEl: HTMLElement | null = null;
+  private activeInputSlotEl: HTMLElement | null = null;
+  private dualPaneLayout: DualPaneLayout | null = null;
+  private wideSessionSidebarEl: HTMLElement | null = null;
+  private wideSidebarRenderAbortController: AbortController | null = null;
+  /** The exact tab instance whose composer currently occupies the shared footer. */
+  private activeInputTab: TabData | null = null;
+
+  // DOM Elements
+  private viewContainerEl: HTMLElement | null = null;
+  private logoEl: HTMLElement | null = null;
+  private newTabButtonEl: HTMLElement | null = null;
+
+  // Header elements
+  private historyDropdown: HTMLElement | null = null;
+  private historyRenderAbortController: AbortController | null = null;
+  private historyDropdownDirty = true;
+  private historyDropdownRendered = false;
+
+  // Event refs for cleanup
+  private eventRefs: EventRef[] = [];
+
+  // Debouncing for tab bar updates
+  private pendingTabBarUpdate: ScheduledAnimationFrame | null = null;
+
+  private tabStatePersistence: TabStatePersistenceCoordinator;
+
+  constructor(leaf: WorkspaceLeaf, plugin: FeatureHost) {
+    super(leaf);
+    this.plugin = plugin;
+    this.tabStatePersistence = new TabStatePersistenceCoordinator(
+      state => this.plugin.persistTabManagerState(state),
+    );
+
+    // Hover Editor compatibility: Define load as an instance method that can't be
+    // overwritten by prototype patching. Hover Editor patches CodianView.prototype.load
+    // after our class is defined, but instance methods take precedence over prototype methods.
+    const prototype = Object.getPrototypeOf(this) as LoadableView;
+    const originalLoad = prototype.load.bind(this);
+    Object.defineProperty(this, 'load', {
+      value: async () => {
+        // Ensure containerEl exists before any patched load code tries to use it
+        if (!this.containerEl) {
+          (this as LoadableView).containerEl = createDiv({ cls: 'view-content' });
+        }
+        // Wrap in try-catch to prevent Hover Editor errors from breaking our view
+        try {
+          return await originalLoad();
+        } catch {
+          // Hover Editor may throw if its DOM setup fails - continue anyway
+        }
+      },
+      writable: false,
+      configurable: false,
+    });
+  }
+
+  getViewType(): string {
+    return VIEW_TYPE_CODIAN;
+  }
+
+  getDisplayText(): string {
+    return 'Codian';
+  }
+
+  getIcon(): string {
+    return CODIAN_RIBBON_ICON_ID;
+  }
+
+  appendToActiveInput(text: string): boolean {
+    const inputEl = this.tabManager?.getActiveTab()?.dom.inputEl;
+    if (!inputEl || !text) return false;
+    const separator = inputEl.value && !/\s$/.test(inputEl.value) ? ' ' : '';
+    inputEl.value = `${inputEl.value}${separator}${text}`;
+    inputEl.selectionStart = inputEl.value.length;
+    inputEl.selectionEnd = inputEl.value.length;
+    const EventConstructor = inputEl.ownerDocument.defaultView?.Event ?? Event;
+    inputEl.dispatchEvent(new EventConstructor('input', { bubbles: true }));
+    inputEl.focus();
+    return true;
+  }
+
+  /** Refreshes model-dependent UI across all tabs (used after settings/env changes). */
+  refreshModelSelector(changedProviderId?: ProviderId): void {
+    for (const tab of this.tabManager?.getAllTabs() ?? []) {
+      onProviderAvailabilityChanged(tab, this.plugin);
+      const providerId = getTabProviderId(tab, this.plugin);
+      if (
+        changedProviderId
+        && tab.lifecycleState !== 'blank'
+        && providerId !== changedProviderId
+      ) {
+        continue;
+      }
+      const conversation = tab.conversationId
+        ? this.plugin.getConversationSync(tab.conversationId)
+        : null;
+      const modelOverride = conversation
+        ? resolveConversationModel(this.plugin.settings, providerId, conversation).model
+        : tab.lifecycleState === 'blank'
+        ? tab.draftModel
+        : tab.service?.getAuxiliaryModel?.() ?? null;
+      const providerSettings = getProviderSettingsSnapshotWithModel(
+        this.plugin.settings,
+        providerId,
+        modelOverride,
+      );
+      const model = providerSettings.model;
+      const uiConfig = ProviderRegistry.getChatUIConfig(providerId);
+      const capabilities = ProviderRegistry.getCapabilities(providerId);
+      const contextWindow = uiConfig.getContextWindowSize(
+        model,
+        providerSettings.customContextLimits,
+        providerSettings,
+      );
+
+      if (tab.state.usage) {
+        tab.state.usage = recalculateUsageForModel(tab.state.usage, model, contextWindow);
+      }
+
+      tab.ui.modelSelector?.updateDisplay();
+      tab.ui.modelSelector?.renderOptions();
+      tab.ui.modeSelector?.updateDisplay();
+      tab.ui.modeSelector?.renderOptions();
+      tab.ui.thinkingBudgetSelector?.updateDisplay();
+      tab.ui.permissionToggle?.updateDisplay();
+      tab.ui.serviceTierToggle?.updateDisplay();
+      tab.dom.inputWrapper.toggleClass(
+        'codian-input-plan-mode',
+        providerSettings.permissionMode === 'plan' && capabilities.supportsPlanMode,
+      );
+    }
+
+    if (!changedProviderId) {
+      this.tabManager?.primeProviderRuntime();
+    }
+  }
+
+  invalidateProviderCommandCaches(providerIds?: ProviderId[]): void {
+    this.tabManager?.invalidateProviderCommandCaches(providerIds);
+  }
+
+  invalidateProviderResources(providerIds: ProviderId[], generation: number): void {
+    this.tabManager?.invalidateProviderResources(providerIds, generation);
+  }
+
+  /** Updates provider-scoped hidden commands on all tabs after settings changes. */
+  updateHiddenProviderCommands(): void {
+    for (const tab of this.tabManager?.getAllTabs() ?? []) {
+      tab.ui.slashCommandDropdown?.setHiddenCommands(
+        getHiddenProviderCommandSet(this.plugin.settings, getTabProviderId(tab, this.plugin)),
+      );
+    }
+  }
+
+  async onOpen() {
+    const span = StartupProfiler.start('view-open');
+    try {
+      await this.onOpenImpl();
+    } finally {
+      StartupProfiler.finish(span);
+    }
+  }
+
+  private async onOpenImpl() {
+    // Guard: Hover Editor and similar plugins may call onOpen before DOM is ready.
+    // containerEl must exist before we can access contentEl or create elements.
+    if (!this.containerEl) {
+      return;
+    }
+
+    // Use contentEl (standard Obsidian API) as primary target.
+    // Hover Editor and other plugins may modify the DOM structure,
+    // so we need fallbacks to handle non-standard scenarios.
+    let container: HTMLElement | null =
+      this.contentEl ?? (this.containerEl.children[1] as HTMLElement | null);
+
+    if (!container) {
+      // Last resort: create our own container inside containerEl
+      container = this.containerEl.createDiv();
+    }
+
+    this.viewContainerEl = container;
+    this.viewContainerEl.empty();
+    this.viewContainerEl.addClass('codian-container');
+
+    const header = this.viewContainerEl.createDiv({ cls: 'codian-header' });
+    this.buildHeader(header);
+
+    this.navRowContent = this.buildNavRowContent();
+    this.tabContentEl = this.viewContainerEl.createDiv({ cls: 'codian-tab-content-container' });
+    this.buildInputFooter();
+    this.initializeDualPaneLayout(header);
+
+    this.tabManager = new TabManager(
+      this.plugin,
+      this.tabContentEl,
+      this,
+      {
+        onTabCreated: () => {
+          this.updateTabBar();
+          this.updateHistoryDropdown();
+          this.updateInputLocation();
+          this.persistTabState();
+          this.syncProviderBrandColor();
+        },
+        onActiveTabChanged: () => {
+          this.updateTabBar();
+          this.updateHistoryDropdown();
+          this.updateInputLocation();
+          this.syncProviderBrandColor();
+        },
+        onTabSwitched: () => {
+          this.updateTabBar();
+          this.updateHistoryDropdown();
+          this.updateInputLocation();
+          this.persistTabState();
+          this.syncProviderBrandColor();
+        },
+        onTabClosed: () => {
+          this.updateTabBar();
+          this.updateHistoryDropdown();
+          this.updateInputLocation();
+          this.persistTabState();
+        },
+        onTabStreamingChanged: () => {
+          this.updateTabBar();
+          this.updateHistoryDropdown();
+        },
+        onTabRewindingChanged: () => this.updateTabBar(),
+        onTabTitleChanged: () => this.updateTabBar(),
+        onTabAttentionChanged: () => {
+          this.updateTabBar();
+          this.updateHistoryDropdown();
+        },
+        onTabConversationChanged: () => {
+          this.updateTabBar();
+          this.updateHistoryDropdown();
+          this.persistTabState();
+          this.syncProviderBrandColor();
+        },
+        onTabProviderChanged: () => {
+          this.updateTabBar();
+          this.syncProviderBrandColor();
+        },
+      }
+    );
+    this.mentionCacheCoordinator = new MentionCacheCoordinator(
+      () => (this.tabManager?.getAllTabs() ?? []).map(tab => ({
+        fileContextManager: tab.ui.fileContextManager,
+      })),
+    );
+
+    this.wireEventHandlers();
+    await this.restoreOrCreateTabs();
+    this.syncProviderBrandColor();
+    this.attachNavRowContentToInputFooter();
+    this.updateInputLocation();
+    this.updateTabBarVisibility();
+  }
+
+  async onClose() {
+    this.cancelHistoryRendering();
+    this.cancelWideSidebarRendering();
+    this.dualPaneLayout?.dispose();
+    this.dualPaneLayout = null;
+    if (this.pendingTabBarUpdate !== null) {
+      cancelScheduledAnimationFrame(this.pendingTabBarUpdate);
+      this.pendingTabBarUpdate = null;
+    }
+
+    for (const ref of this.eventRefs) {
+      this.plugin.app.vault.offref(ref);
+    }
+    this.eventRefs = [];
+
+    try {
+      await this.persistTabStateImmediate();
+    } catch {
+      // The storage boundary already reports the failure. View teardown must still complete cleanly.
+    } finally {
+      this.tabStatePersistence.dispose();
+      try {
+        this.restoreActiveInputToTabContent();
+        if (
+          this.plugin.sessionRuntimePool?.isShuttingDown
+          || typeof this.tabManager?.detachRunningSessions !== 'function'
+        ) {
+          await this.tabManager?.destroy();
+        } else {
+          await this.tabManager?.detachRunningSessions();
+        }
+      } finally {
+        this.tabManager = null;
+        this.mentionCacheCoordinator = null;
+
+        this.tabBar?.destroy();
+        this.tabBar = null;
+        this.scope = null;
+      }
+    }
+  }
+
+  async disposeSessions(): Promise<void> {
+    await this.tabManager?.destroy();
+  }
+
+  // ============================================
+  // UI Building
+  // ============================================
+
+  private buildHeader(header: HTMLElement): void {
+    const titleEl = header.createDiv({ cls: 'codian-title' });
+
+    this.logoEl = titleEl.createSpan({ cls: 'codian-logo' });
+    this.syncHeaderLogo(DEFAULT_CHAT_PROVIDER_ID);
+
+    titleEl.createEl('h4', { text: 'Codian', cls: 'codian-title-text' });
+  }
+
+  /**
+   * Builds the active tab nav row content.
+   * The wrapper is moved to the active tab's nav row on tab switches.
+   */
+  private buildNavRowContent(): HTMLElement {
+    const wrapper = this.containerEl.createDiv({ cls: 'codian-input-nav-content' });
+
+    this.tabBarContainerEl = wrapper.createDiv({ cls: 'codian-tab-bar-container' });
+    this.tabBar = new TabBar(this.tabBarContainerEl, {
+      onTabClick: (tabId) => this.handleTabClick(tabId),
+      onTabClose: (tabId) => {
+        void this.handleTabClose(tabId);
+      },
+      onNewTab: () => {
+        void this.createNewTab().catch(() => new Notice('Failed to create tab'));
+      },
+      onTitleExpansionChanged: () => this.persistTabState(),
+    });
+
+    const navActionsEl = wrapper.createDiv({ cls: 'codian-input-nav-actions' });
+
+    this.newTabButtonEl = navActionsEl.createDiv({ cls: 'codian-input-nav-btn codian-new-tab-btn' });
+    setIcon(this.newTabButtonEl, 'square-plus');
+    this.newTabButtonEl.setAttribute('aria-label', 'New tab');
+    this.newTabButtonEl.addEventListener('click', () => {
+      void this.createNewTab().catch(() => new Notice('Failed to create tab'));
+    });
+
+    const newBtn = navActionsEl.createDiv({ cls: 'codian-input-nav-btn' });
+    setIcon(newBtn, 'square-pen');
+    newBtn.setAttribute('aria-label', 'New conversation');
+    newBtn.addEventListener('click', () => {
+      void (async () => {
+        await this.startNewConversationForLayout();
+      })().catch(() => new Notice('Failed to create conversation'));
+    });
+
+    // History dropdown
+    const historyContainer = navActionsEl.createDiv({ cls: 'codian-history-container' });
+    const historyBtn = historyContainer.createDiv({ cls: 'codian-input-nav-btn' });
+    setIcon(historyBtn, 'history');
+    historyBtn.setAttribute('aria-label', 'Chat history');
+
+    this.historyDropdown = historyContainer.createDiv({ cls: 'codian-history-menu' });
+
+    historyBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleHistoryDropdown();
+    });
+
+    return wrapper;
+  }
+
+  private buildInputFooter(): void {
+    if (!this.viewContainerEl) return;
+
+    this.inputFooterEl = this.viewContainerEl.createDiv({ cls: 'codian-input-footer' });
+    this.inputNavRowHostEl = this.inputFooterEl.createDiv({
+      cls: 'codian-input-nav-row codian-view-input-nav-row',
+    });
+    this.activeInputSlotEl = this.inputFooterEl.createDiv({ cls: 'codian-active-input-slot' });
+  }
+
+  /** Moves chat into the main pane and reserves a history pane for wide views. */
+  private initializeDualPaneLayout(headerEl: HTMLElement): void {
+    if (!this.viewContainerEl || !this.tabContentEl || !this.inputFooterEl) return;
+    const layoutEl = this.viewContainerEl.createDiv({ cls: 'codian-chat-layout' });
+    this.wideSessionSidebarEl = layoutEl.createDiv({ cls: 'codian-wide-session-sidebar' });
+    this.wideSessionSidebarEl.setAttribute('aria-label', t('settings.conversations'));
+    const resizerEl = layoutEl.createDiv({ cls: 'codian-session-resizer' });
+    const mainPaneEl = layoutEl.createDiv({ cls: 'codian-chat-main-pane' });
+    mainPaneEl.appendChild(headerEl);
+    mainPaneEl.appendChild(this.tabContentEl);
+    mainPaneEl.appendChild(this.inputFooterEl);
+
+    this.dualPaneLayout = new DualPaneLayout({
+      onWideChanged: wide => {
+        if (wide) {
+          this.closeHistoryDropdown();
+          this.historyDropdown?.parentElement?.addClass('codian-hidden');
+          this.renderWideSessionSidebar();
+        } else {
+          this.cancelWideSidebarRendering();
+          this.historyDropdown?.parentElement?.removeClass('codian-hidden');
+          this.getActiveConversationController()?.resetHistorySearch?.();
+        }
+        this.updateTabBarVisibility();
+      },
+    });
+    this.dualPaneLayout.initialize({
+      containerEl: layoutEl,
+      resizerEl,
+      sidebarEl: this.wideSessionSidebarEl,
+    });
+    this.dualPaneLayout.startObserving();
+  }
+
+  private attachNavRowContentToInputFooter(): void {
+    if (!this.inputNavRowHostEl || !this.navRowContent) return;
+
+    this.tabBar?.captureScrollPosition();
+    this.inputNavRowHostEl.appendChild(this.navRowContent);
+    this.tabBar?.restoreScrollPosition();
+  }
+
+  private updateInputLocation(): void {
+    const activeTab = this.tabManager?.getActiveTab();
+    if (!this.activeInputSlotEl) return;
+
+    if (!activeTab) {
+      this.activeInputSlotEl.empty();
+      this.activeInputTab = null;
+      return;
+    }
+
+    if (this.activeInputTab && this.activeInputTab !== activeTab) {
+      this.activeInputTab.dom.contentEl.appendChild(this.activeInputTab.dom.inputComposerEl);
+    }
+
+    if (this.activeInputTab === activeTab) {
+      if (activeTab.dom.inputComposerEl.parentElement !== this.activeInputSlotEl) {
+        this.activeInputSlotEl.appendChild(activeTab.dom.inputComposerEl);
+      }
+      return;
+    }
+
+    this.activeInputSlotEl.empty();
+    this.activeInputSlotEl.appendChild(activeTab.dom.inputComposerEl);
+    this.activeInputTab = activeTab;
+  }
+
+  private restoreActiveInputToTabContent(): void {
+    if (!this.activeInputTab) return;
+
+    this.activeInputTab.dom.contentEl.appendChild(this.activeInputTab.dom.inputComposerEl);
+    this.activeInputSlotEl?.empty();
+    this.activeInputTab = null;
+  }
+
+  /** Refreshes tab controls after settings that affect tab availability change. */
+  refreshTabControls(): void {
+    this.updateTabBarVisibility();
+  }
+
+  // ============================================
+  // Tab Management
+  // ============================================
+
+  private handleTabClick(tabId: TabId): void {
+    const switched = this.tabManager?.switchToTab(tabId);
+    if (switched) {
+      void switched.catch(() => new Notice('Failed to switch tab'));
+    }
+  }
+
+  private async handleTabClose(tabId: TabId): Promise<void> {
+    try {
+      const tab = this.tabManager?.getTab(tabId);
+      // If streaming, treat close like user interrupt (force close cancels the stream)
+      const force = tab?.state.isStreaming ?? false;
+      await this.tabManager?.closeTab(tabId, force);
+      this.updateTabBarVisibility();
+    } catch {
+      new Notice('Failed to close tab');
+    }
+  }
+
+  async createNewTab(): Promise<void> {
+    const tab = await this.tabManager?.createTab();
+    if (!tab) {
+      const maxTabs = this.plugin.settings.maxTabs ?? 3;
+      new Notice(`Maximum ${maxTabs} tabs allowed`);
+      this.updateTabBarVisibility();
+      return;
+    }
+    this.updateTabBarVisibility();
+  }
+
+  private updateTabBar(): void {
+    if (!this.tabManager || !this.tabBar) return;
+
+    // Debounce tab bar updates using requestAnimationFrame
+    if (this.pendingTabBarUpdate !== null) {
+      cancelScheduledAnimationFrame(this.pendingTabBarUpdate);
+    }
+
+    this.pendingTabBarUpdate = scheduleAnimationFrame(() => {
+      this.pendingTabBarUpdate = null;
+      if (!this.tabManager || !this.tabBar) return;
+
+      const items = this.tabManager.getTabBarItems();
+      this.tabBar.update(items);
+      this.updateTabBarVisibility();
+    }, this.containerEl.ownerDocument.defaultView ?? null);
+  }
+
+  private updateTabBarVisibility(): void {
+    if (!this.tabBarContainerEl || !this.tabManager) return;
+
+    const tabCount = this.tabManager.getTabCount();
+    const isWide = this.dualPaneLayout?.isWide ?? false;
+    const showTabBar = !isWide && tabCount >= 2;
+
+    this.tabBarContainerEl.toggleClass('codian-hidden', !showTabBar);
+
+    this.updateNewTabButtonVisibility();
+  }
+
+  private updateNewTabButtonVisibility(): void {
+    if (!this.newTabButtonEl || !this.tabManager) return;
+
+    const canCreateTab = !this.dualPaneLayout?.isWide && this.tabManager.canCreateTab();
+    this.newTabButtonEl.toggleClass('codian-hidden', !canCreateTab);
+    if (canCreateTab) {
+      this.newTabButtonEl.removeAttribute('aria-disabled');
+      this.newTabButtonEl.removeAttribute('aria-hidden');
+      return;
+    }
+
+    this.newTabButtonEl.setAttribute('aria-disabled', 'true');
+    this.newTabButtonEl.setAttribute('aria-hidden', 'true');
+  }
+
+  /** Wide New starts a separate session so the selected conversation remains untouched. */
+  private async startNewConversationForLayout(): Promise<void> {
+    if (!this.dualPaneLayout?.isWide) {
+      await this.tabManager?.createNewConversation();
+      this.updateHistoryDropdown();
+      return;
+    }
+
+    const activeTab = this.tabManager?.getActiveTab();
+    if (activeTab && !activeTab.conversationId && activeTab.state.messages.length === 0) {
+      activeTab.dom.inputEl.focus();
+      return;
+    }
+    await this.createNewTab();
+  }
+
+  /** Sets `data-provider` on the root container so CSS brand color follows the active provider. */
+  private syncProviderBrandColor(): void {
+    if (!this.viewContainerEl) return;
+    const activeTab = this.tabManager?.getActiveTab();
+    const providerId = activeTab ? getTabProviderId(activeTab, this.plugin) : DEFAULT_CHAT_PROVIDER_ID;
+    this.viewContainerEl.dataset.provider = providerId;
+    this.syncHeaderLogo(providerId);
+  }
+
+  /** Rebuilds the header logo SVG to match the given provider. */
+  private syncHeaderLogo(providerId: ProviderId): void {
+    if (!this.logoEl) return;
+    const icon = ProviderRegistry.getChatUIConfig(providerId).getProviderIcon?.();
+    if (!icon) return;
+    const existing = this.logoEl.querySelector('svg');
+    if (existing?.getAttribute('data-provider') === providerId) return;
+    this.logoEl.empty();
+    const svg = createProviderIconSvg(icon, {
+      dataProvider: providerId,
+      height: 18,
+      ownerDocument: this.logoEl.ownerDocument,
+      width: 18,
+    });
+    this.logoEl.appendChild(svg);
+  }
+
+  // ============================================
+  // History Dropdown
+  // ============================================
+
+  private toggleHistoryDropdown(): void {
+    if (!this.historyDropdown) return;
+
+    const isVisible = this.historyDropdown.hasClass('visible');
+    if (isVisible) {
+      this.closeHistoryDropdown();
+    } else {
+      this.getActiveConversationController()?.resetHistorySearch?.();
+      this.historyDropdownDirty = true;
+      this.historyDropdown.addClass('visible');
+      this.renderHistoryDropdown();
+    }
+  }
+
+  private getActiveConversationController() {
+    return this.tabManager?.getActiveTab()?.controllers.conversationController;
+  }
+
+  private closeHistoryDropdown(): void {
+    this.getActiveConversationController()?.resetHistorySearch?.();
+    this.historyDropdown?.removeClass('visible');
+    this.cancelHistoryRendering();
+  }
+
+  private updateHistoryDropdown(): void {
+    this.historyDropdownDirty = true;
+    if (this.historyDropdown?.hasClass('visible')) {
+      this.renderHistoryDropdown();
+    }
+    if (this.dualPaneLayout?.isWide) this.renderWideSessionSidebar();
+  }
+
+  private renderWideSessionSidebar(): void {
+    const container = this.wideSessionSidebarEl;
+    const controller = this.getActiveConversationController();
+    if (!container || !this.dualPaneLayout?.isWide) return;
+    if (!controller) {
+      this.cancelWideSidebarRendering();
+      container.empty();
+      return;
+    }
+
+    this.cancelWideSidebarRendering();
+    const abortController = new AbortController();
+    this.wideSidebarRenderAbortController = abortController;
+    controller.renderHistoryDropdown(container, {
+      onSelectConversation: id => this.openHistoryConversation(id),
+      onOpenConversationInNewTab: (id, activate) => this.openHistoryConversationInNewTab(id, activate),
+      getConversationStatus: id => this.getHistoryConversationStatus(id),
+      signal: abortController.signal,
+    });
+  }
+
+  private cancelWideSidebarRendering(): void {
+    this.wideSidebarRenderAbortController?.abort();
+    this.wideSidebarRenderAbortController = null;
+  }
+
+  private renderHistoryDropdown(): void {
+    if (!this.historyDropdown || !this.historyDropdownDirty) return;
+
+    this.cancelHistoryRendering();
+    const abortController = new AbortController();
+    this.historyRenderAbortController = abortController;
+    const span = this.historyDropdownRendered ? null : StartupProfiler.start('history-list-render');
+    this.historyDropdownRendered = true;
+
+    try {
+      this.historyDropdown.empty();
+
+      const conversationController = this.getActiveConversationController();
+
+      if (conversationController) {
+        conversationController.renderHistoryDropdown(this.historyDropdown, {
+          onSelectConversation: (id) => this.openHistoryConversation(id),
+          onOpenConversationInNewTab: (id, activate) =>
+            this.openHistoryConversationInNewTab(id, activate),
+          getConversationStatus: (id) => this.getHistoryConversationStatus(id),
+          signal: abortController.signal,
+        });
+      }
+      this.historyDropdownDirty = false;
+    } finally {
+      if (span) StartupProfiler.finish(span);
+    }
+  }
+
+  private cancelHistoryRendering(): void {
+    this.historyRenderAbortController?.abort();
+    this.historyRenderAbortController = null;
+  }
+
+  private async openHistoryConversation(conversationId: string): Promise<void> {
+    await this.openHistoryConversationInLayout(conversationId, true);
+    this.closeHistoryDropdown();
+  }
+
+  private async openHistoryConversationInNewTab(
+    conversationId: string,
+    activate = true,
+  ): Promise<void> {
+    if (this.dualPaneLayout?.isWide) {
+      await this.openHistoryConversationInLayout(conversationId, activate);
+    } else {
+      await this.tabManager?.openConversation(conversationId, {
+        preferNewTab: true,
+        activate,
+      });
+    }
+    this.closeHistoryDropdown();
+  }
+
+  private async openHistoryConversationInLayout(conversationId: string, activate: boolean): Promise<void> {
+    const manager = this.tabManager;
+    if (!manager) return;
+    if (!this.dualPaneLayout?.isWide) {
+      await manager.openConversation(conversationId);
+      return;
+    }
+
+    const existingTab = manager.getAllTabs().find(tab => tab.conversationId === conversationId);
+    if (existingTab) {
+      if (activate) await manager.openConversation(conversationId);
+      return;
+    }
+
+    const hasDetachedSession = this.plugin.sessionRuntimePool?.hasConversation(conversationId) ?? false;
+    const hasSessionElsewhere = !!this.plugin.findConversationAcrossViews(conversationId);
+    if (!manager.canCreateTab() && !hasDetachedSession && !hasSessionElsewhere) {
+      const blankTab = manager.getAllTabs().find(tab => !tab.conversationId && tab.state.messages.length === 0);
+      if (blankTab) {
+        await manager.switchToTab(blankTab.id);
+        await blankTab.controllers.conversationController?.switchTo(conversationId);
+        return;
+      }
+      const maxTabs = this.plugin.settings.maxTabs ?? 3;
+      new Notice(`Maximum ${maxTabs} tabs allowed`);
+      return;
+    }
+    await manager.openConversation(conversationId, { preferNewTab: true, activate });
+  }
+
+  isWideLayout(): boolean {
+    return this.dualPaneLayout?.isWide ?? false;
+  }
+
+  private getHistoryConversationStatus(conversationId: string): HistoryConversationStatus {
+    const activeTab = this.tabManager?.getActiveTab();
+    if (activeTab?.conversationId === conversationId) {
+      return {
+        openState: 'current',
+        isRunning: activeTab.state.isStreaming,
+        attention: activeTab.state.attention,
+        location: 'current-view',
+        tabIndex: this.getHistoryTabIndex(activeTab),
+      };
+    }
+
+    const localTab = this.findTabWithConversation(conversationId);
+    if (localTab) {
+      return {
+        openState: 'open',
+        isRunning: localTab.state.isStreaming,
+        attention: localTab.state.attention,
+        location: 'current-view',
+        tabIndex: this.getHistoryTabIndex(localTab),
+      };
+    }
+
+    if (this.plugin.sessionRuntimePool?.hasConversation(conversationId)) {
+      return {
+        openState: 'open',
+        isRunning: this.plugin.sessionRuntimePool.isConversationRunning(conversationId),
+        attention: this.plugin.sessionRuntimePool.getConversationAttention(conversationId) ?? null,
+        location: 'current-view',
+      };
+    }
+
+    const crossViewResult = this.plugin.findConversationAcrossViews(conversationId);
+    if (crossViewResult && crossViewResult.view !== this) {
+      const crossViewTab = crossViewResult.view.getTabManager()?.getTab(crossViewResult.tabId);
+      return {
+        openState: 'open',
+        isRunning: crossViewTab?.state.isStreaming ?? false,
+        attention: crossViewTab?.state.attention ?? null,
+        location: 'other-view',
+      };
+    }
+
+    return {
+      openState: 'closed',
+      isRunning: false,
+      attention: this.plugin.sessionRuntimePool?.getConversationAttention(conversationId) ?? null,
+      location: 'current-view',
+    };
+  }
+
+  private findTabWithConversation(conversationId: string): TabData | null {
+    const tabs = this.tabManager?.getAllTabs() ?? [];
+    return tabs.find(tab => tab.conversationId === conversationId) ?? null;
+  }
+
+  private getHistoryTabIndex(tab: TabData): number | undefined {
+    const index = this.tabManager?.getAllTabs().findIndex(candidate => candidate.id === tab.id) ?? -1;
+    return index >= 0 ? index + 1 : undefined;
+  }
+
+  // ============================================
+  // Event Wiring
+  // ============================================
+
+  private wireEventHandlers(): void {
+    const activeDocument = this.containerEl.ownerDocument;
+
+    // Document-level click to close dropdowns
+    this.registerDomEvent(activeDocument, 'click', () => {
+      this.closeHistoryDropdown();
+    });
+
+    // View-level Shift+Tab to toggle plan mode (works from any focused element)
+    this.registerDomEvent(this.containerEl, 'keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Tab' && e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        const activeTab = this.tabManager?.getActiveTab();
+        if (!activeTab) return;
+        const providerId = getTabProviderId(activeTab, this.plugin);
+        if (!ProviderRegistry.getCapabilities(providerId).supportsPlanMode) return;
+        const current = ProviderSettingsCoordinator.getProviderSettingsSnapshot(
+          this.plugin.settings,
+          providerId,
+        ).permissionMode as string;
+        if (current === 'plan') {
+          const restoreMode = activeTab.state.prePlanPermissionMode ?? 'normal';
+          void updatePlanModeUI(activeTab, this.plugin, restoreMode, { syncRuntime: true })
+            .finally(() => {
+              const activeMode = ProviderSettingsCoordinator.getProviderSettingsSnapshot(
+                this.plugin.settings,
+                providerId,
+              ).permissionMode;
+              if (activeMode !== 'plan') {
+                activeTab.state.prePlanPermissionMode = null;
+              }
+            })
+            .catch((error: unknown) => {
+              new Notice(error instanceof Error ? error.message : t('chat.permissionMode.changeFailed'));
+            });
+        } else {
+          activeTab.state.prePlanPermissionMode = current;
+          void updatePlanModeUI(activeTab, this.plugin, 'plan', { syncRuntime: true }).catch((error: unknown) => {
+            const activeMode = ProviderSettingsCoordinator.getProviderSettingsSnapshot(
+              this.plugin.settings,
+              providerId,
+            ).permissionMode;
+            if (activeMode !== 'plan') {
+              activeTab.state.prePlanPermissionMode = null;
+            }
+            new Notice(error instanceof Error ? error.message : t('chat.permissionMode.changeFailed'));
+          });
+        }
+      }
+    });
+
+    // View scopes are the Obsidian-owned boundary for main-area tab hotkeys.
+    // Returning false consumes Escape before Obsidian uses it for pane navigation.
+    this.scope = new Scope(this.app.scope);
+    this.scope.register([], 'Escape', (e: KeyboardEvent) => {
+      if (e.isComposing) return;
+      const activeTab = this.tabManager?.getActiveTab();
+      if (activeTab?.controllers.conversationController?.cancelInlineRename?.()) return false;
+      if (!e.defaultPrevented) {
+        if (activeTab?.state.isStreaming) {
+          activeTab.controllers.inputController?.cancelStreaming();
+        }
+      }
+      return false;
+    });
+    this.scope.register(['Mod'], 'Enter', (e: KeyboardEvent) => {
+      if (e.isComposing || e.defaultPrevented) return;
+      const activeTab = this.tabManager?.getActiveTab();
+      if (!activeTab) return;
+      if (sendTabInputMessageFromExplicitEnterShortcut(activeTab, e, { requireInputFocus: true })) {
+        return false;
+      }
+    });
+
+    this.eventRefs.push(
+      this.plugin.app.vault.on('create', () => this.mentionCacheCoordinator?.markStructureDirty()),
+      this.plugin.app.vault.on('delete', () => this.mentionCacheCoordinator?.markStructureDirty()),
+      this.plugin.app.vault.on('rename', () => this.mentionCacheCoordinator?.markStructureDirty()),
+      this.plugin.app.vault.on('modify', () => this.mentionCacheCoordinator?.markFilesDirty())
+    );
+
+    // File open event
+    this.registerEvent(
+      this.plugin.app.workspace.on('file-open', (file) => {
+        if (file) {
+          this.tabManager?.getActiveTab()?.ui.fileContextManager?.handleFileOpen(file);
+        }
+      })
+    );
+
+    // Click outside to close mention dropdown
+    this.registerDomEvent(activeDocument, 'click', (e) => {
+      const activeTab = this.tabManager?.getActiveTab();
+      if (activeTab) {
+        const fcm = activeTab.ui.fileContextManager;
+        if (fcm && !fcm.containsElement(e.target as Node) && e.target !== activeTab.dom.inputEl) {
+          fcm.hideMentionDropdown();
+        }
+      }
+    });
+  }
+
+  // ============================================
+  // Persistence
+  // ============================================
+
+  private async restoreOrCreateTabs(): Promise<void> {
+    const span = StartupProfiler.start('tab-restore');
+    try {
+      if (!this.tabManager) return;
+      const persistedState = await this.plugin.storage.getTabManagerState();
+      if (persistedState && persistedState.openTabs.length > 0) {
+        StartupProfiler.recordCount('restored-tab-count', persistedState.openTabs.length);
+        await StartupProfiler.runAsync(
+          'tab-restore-internal',
+          () => this.tabManager!.restoreState(persistedState),
+        );
+        this.tabBar?.setExpandedTitleTabIds(persistedState.expandedTitleTabIds ?? []);
+        this.updateTabBar();
+        return;
+      }
+      await this.tabManager.createTab();
+    } finally {
+      StartupProfiler.finish(span);
+    }
+  }
+
+  private persistTabState(): void {
+    const state = this.getPersistedTabState();
+    if (!state) return;
+    this.tabStatePersistence.update(state);
+  }
+
+  /** Force immediate persistence (for onClose/onunload). */
+  private async persistTabStateImmediate(): Promise<void> {
+    const state = this.getPersistedTabState();
+    if (!state) return;
+    this.tabStatePersistence.update(state);
+    await this.tabStatePersistence.flush();
+  }
+
+  getPersistedTabState(): AppTabManagerState | null {
+    if (!this.tabManager) return null;
+
+    const state = this.tabManager.getPersistedState();
+    const openTabIds = new Set(state.openTabs.map(tab => tab.tabId));
+    const expandedTitleTabIds = (this.tabBar?.getExpandedTitleTabIds() ?? [])
+      .filter(tabId => openTabIds.has(tabId));
+
+    return {
+      ...state,
+      ...(expandedTitleTabIds.length > 0 ? { expandedTitleTabIds } : {}),
+    };
+  }
+
+  notifyConversationListChanged(): void {
+    this.updateHistoryDropdown();
+  }
+
+  // ============================================
+  // Public API
+  // ============================================
+
+  /** Gets the currently active tab. */
+  getActiveTab(): TabData | null {
+    return this.tabManager?.getActiveTab() ?? null;
+  }
+
+  /** Gets the tab manager. */
+  getTabManager(): TabManager | null {
+    return this.tabManager;
+  }
+
+  /** Gets shared view controls that should preserve active tab selection context. */
+  getSharedSelectionFocusScopeEls(): HTMLElement[] {
+    return [
+      this.inputNavRowHostEl,
+    ].filter((el): el is HTMLElement => el !== null);
+  }
+}

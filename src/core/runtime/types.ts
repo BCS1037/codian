@@ -3,10 +3,12 @@ import type { CanvasSelectionContext } from '../../utils/canvas';
 import type { EditorSelectionContext } from '../../utils/editor';
 import type {
   ApprovalDecision,
+  ChatMessage,
   Conversation,
   ExitPlanModeCallback,
   ImageAttachment,
   StreamChunk,
+  UsageInfo,
 } from '../types';
 
 export interface ApprovalDecisionOption {
@@ -100,6 +102,18 @@ export interface ChatRewindResult {
   deletions?: number;
   sessionStrategy?: ChatRewindSessionStrategy;
 }
+
+export interface ConversationBranchNavigationRequest {
+  branchMessageId: string;
+  signal?: AbortSignal;
+  userMessageId: string;
+}
+
+export type ConversationBranchNavigationResult =
+  | { status: 'committed'; messages: ChatMessage[]; usage?: UsageInfo | null }
+  | { status: 'cancelled' }
+  | { status: 'failed'; error: string }
+  | { status: 'recovery-required'; error: string };
 
 export interface ChatRewindConflict {
   conflictType: string;

@@ -390,7 +390,7 @@ export class CodexNotificationRouter {
         break;
 
       case 'collabAgentToolCall':
-        this.emitToolResultFromCollabAgent(item);
+        this.emitToolResultFromCollabAgent(item, rawResult);
         break;
 
       case 'mcpToolCall':
@@ -956,20 +956,19 @@ export class CodexNotificationRouter {
       type: 'tool_use',
       id: item.id,
       name: toolName,
-      input: item.arguments ?? {},
+      input: normalizeCodexToolInput(toolName, {
+        ...this.rawToolInputsByCallId.get(item.id),
+        ...getCollabAgentInput(item),
+      }),
     });
   }
 
-  private emitToolResultFromCollabAgent(item: CollabAgentToolCallItem): void {
-    const resultText = item.result && typeof item.result === 'object'
-      ? JSON.stringify(item.result)
-      : item.status === 'completed' ? 'Completed' : item.status ?? 'Done';
-
+  private emitToolResultFromCollabAgent(item: CollabAgentToolCallItem, rawResult?: RawToolResult): void {
     this.emit({
       type: 'tool_result',
       id: item.id,
-      content: resultText,
-      isError: item.status === 'failed' || item.status === 'error',
+      content: getCollabAgentResult(item, rawResult),
+      isError: rawResult?.isError || item.status === 'failed' || item.status === 'error',
     });
   }
 
@@ -1227,6 +1226,70 @@ function normalizeRawToolOutput(
   }
 
   return normalizeCodexToolResult(normalizedName, stringifyCodexToolOutput(rawOutput));
+}
+
+type CollabAgentToolCallItemWithState = CollabAgentToolCallItem & {
+  agentsStates?: Record<string, unknown>;
+  prompt?: string;
+  model?: string;
+  reasoningEffort?: string;
+  receiverThreadIds?: unknown[];
+};
+
+function getCollabAgentResult(item: CollabAgentToolCallItem, rawResult?: RawToolResult): string {
+  if (rawResult?.isError) return rawResult.content;
+
+  const extended = item as CollabAgentToolCallItemWithState;
+  let rawRecord: Record<string, unknown> | null = null;
+  if (rawResult?.content) {
+    try {
+      rawRecord = asRecord(JSON.parse(rawResult.content));
+    } catch {
+      // Keep plain-text acknowledgements alongside native state.
+    }
+  }
+
+  const itemRecord = asRecord(item.result);
+  const result: Record<string, unknown> = { ...itemRecord, ...rawRecord };
+  const statuses = {
+    ...(extended.agentsStates ?? {}),
+    ...asRecord(itemRecord?.status),
+    ...asRecord(rawRecord?.status),
+  };
+  if (Object.keys(statuses).length) result.status = statuses;
+
+  const receiverIds = Array.isArray(extended.receiverThreadIds)
+    ? extended.receiverThreadIds.filter((id): id is string => typeof id === 'string' && !!id)
+    : [];
+  if (item.tool === 'spawnAgent' && receiverIds.length === 1 && !result.agent_id) {
+    result.agent_id = receiverIds[0];
+  }
+
+  const text = rawResult
+    ? rawRecord ? undefined : rawResult.content
+    : typeof item.result === 'string' ? item.result : undefined;
+  if (Object.keys(result).length) {
+    if (text) result.output = text;
+    return JSON.stringify(result);
+  }
+
+  return text ?? rawResult?.content ?? (item.result !== undefined
+    ? JSON.stringify(item.result)
+    : item.status === 'completed' ? 'Completed' : item.status ?? 'Done');
+}
+
+function getCollabAgentInput(item: CollabAgentToolCallItem): Record<string, unknown> {
+  const extended = item as CollabAgentToolCallItemWithState;
+  const receiverIds = Array.isArray(extended.receiverThreadIds)
+    ? extended.receiverThreadIds.filter((id): id is string => typeof id === 'string' && !!id)
+    : [];
+  return {
+    ...(typeof extended.prompt === 'string' ? { message: extended.prompt } : {}),
+    ...(extended.model ? { model: extended.model } : {}),
+    ...(extended.reasoningEffort ? { reasoning_effort: extended.reasoningEffort } : {}),
+    ...(item.tool !== 'spawnAgent' && receiverIds.length ? { ids: receiverIds } : {}),
+    ...item.arguments,
+  };
 }
 
 function buildFileChangeInput(changes: unknown): Record<string, unknown> {

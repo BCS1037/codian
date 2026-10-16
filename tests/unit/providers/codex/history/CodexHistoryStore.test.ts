@@ -1,8 +1,10 @@
+import { testDate, testTime } from '@test/helpers/testClock';
 import * as path from 'path';
 
 import {
   deriveCodexMemoriesDirFromSessionsRoot,
   deriveCodexSessionsRootFromSessionPath,
+  extractCodexThreadIdFromPath,
   findCodexSessionFileAsync,
   parseCodexSessionContent,
   parseCodexSessionFile,
@@ -10,6 +12,7 @@ import {
 } from '@/providers/codex/history/CodexHistoryStore';
 
 const FIXTURES_DIR = path.join(__dirname, '..', 'fixtures');
+
 
 describe('CodexHistoryStore', () => {
   it('settles lookup at the deadline when a directory read never resolves', async () => {
@@ -36,7 +39,40 @@ describe('CodexHistoryStore', () => {
     }
   });
 
+  describe('zstd compression support and threadId extraction', () => {
+    it('finds .jsonl.zst session files both directly and in nested directories', async () => {
+      const zstDirect = '/sessions/thread-123.jsonl.zst';
+      const pathExists = jest.fn(async (p: string) => p === '/sessions' || p === zstDirect);
+      const foundDirect = await findCodexSessionFileAsync('thread-123', '/sessions', 1000, { pathExists });
+      expect(foundDirect).toBe(zstDirect);
+
+      const readDirectory = jest.fn(async (dir: string) => {
+        if (dir === '/sessions') {
+          return [{ name: 'rollout-2026-09-29T13-58-33-thread-456.jsonl.zst', isFile: () => true, isDirectory: () => false } as any];
+        }
+        return [];
+      });
+
+      const pathExistsNested = jest.fn(async (p: string) => p === '/sessions');
+      const foundNested = await findCodexSessionFileAsync('thread-456', '/sessions', 1000, {
+        pathExists: pathExistsNested,
+        readDirectory,
+      });
+      expect(foundNested).toBe('/sessions/rollout-2026-09-29T13-58-33-thread-456.jsonl.zst');
+    });
+
+    it('extracts threadId from rollout file paths including .zst', () => {
+      expect(extractCodexThreadIdFromPath('/path/to/rollout-2026-09-29T13-58-33-01a0ebbe-514a-7213-b418-f534ecdd41ff.jsonl.zst'))
+        .toBe('01a0ebbe-514a-7213-b418-f534ecdd41ff');
+      expect(extractCodexThreadIdFromPath('/path/to/rollout-2026-10-13T11-38-49-01a13357-6994-7983-a7f0-cf8dc93b9ce4.jsonl'))
+        .toBe('01a13357-6994-7983-a7f0-cf8dc93b9ce4');
+      expect(extractCodexThreadIdFromPath('/path/to/simple-thread-id.jsonl'))
+        .toBe('simple-thread-id');
+    });
+  });
+
   describe('path helpers', () => {
+
     it('derives transcript and memories roots from POSIX session paths', () => {
       const sessionFilePath = '/home/user/.codex/sessions/2026/04/14/rollout-thread.jsonl';
 
@@ -584,6 +620,196 @@ describe('CodexHistoryStore', () => {
       expect(patchTool!.status).toBe('completed');
     });
 
+    it.each([
+      [0, 'completed'],
+      [2, 'error'],
+    ])('restores structured command exit code %s through direct and exec outputs', (exitCode, status) => {
+      const result = JSON.stringify({ output: 'command output', exit_code: exitCode, wall_time_seconds: 1 });
+      const content = [
+        { type: 'event_msg', payload: { type: 'task_started' } },
+        { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', call_id: 'direct', arguments: '{"cmd":"check"}' } },
+        { type: 'response_item', payload: { type: 'function_call_output', call_id: 'direct', output: result } },
+        { type: 'response_item', payload: { type: 'custom_tool_call', name: 'exec', call_id: 'wrapped', input: 'text(await tools.exec_command({cmd:"check"}));' } },
+        { type: 'response_item', payload: { type: 'custom_tool_call_output', call_id: 'wrapped', output: [
+          { type: 'input_text', text: 'Script completed\nWall time 1.0 seconds\nOutput:\n' },
+          { type: 'input_text', text: result },
+        ] } },
+        { type: 'event_msg', payload: { type: 'task_complete' } },
+      ].map((record, seconds) => JSON.stringify({ timestamp: `2026-07-20T00:00:0${seconds}.000Z`, ...record })).join('\n');
+
+      expect(parseCodexSessionContent(content).flatMap(message => message.toolCalls ?? [])).toEqual([
+        expect.objectContaining({ id: 'direct', status, result: 'command output' }),
+        expect.objectContaining({ id: 'wrapped', status, result: 'command output' }),
+      ]);
+    });
+
+    it('keeps failed exec scripts as one failed call instead of inventing nested executions', () => {
+      const script = 'text(await tools.apply_patch("invalid patch")); text(await tools.exec_command({cmd:"never runs"}));';
+      const error = 'Script error:\napply_patch verification failed: missing expected lines';
+      const content = [
+        { type: 'event_msg', payload: { type: 'task_started', turn_id: 'failed-script-turn' } },
+        { type: 'response_item', payload: { type: 'custom_tool_call', name: 'exec', call_id: 'failed-script', input: script } },
+        { type: 'response_item', payload: { type: 'custom_tool_call_output', call_id: 'failed-script', output: [
+          { type: 'input_text', text: 'Script failed\nWall time 0.0 seconds\nOutput:\n' },
+          { type: 'input_text', text: error },
+        ] } },
+        { type: 'event_msg', payload: { type: 'task_complete', turn_id: 'failed-script-turn' } },
+      ].map((record, seconds) => JSON.stringify({ timestamp: `2026-07-20T00:00:0${seconds}.000Z`, ...record })).join('\n');
+
+      const messages = parseCodexSessionContent(content);
+      expect(messages.flatMap(message => message.toolCalls ?? [])).toEqual([
+        expect.objectContaining({ id: 'failed-script', name: 'exec', input: { raw: script }, status: 'error', result: expect.stringContaining(error) }),
+      ]);
+      expect(messages.flatMap(message => message.contentBlocks ?? [])).toEqual([
+        { type: 'tool_use', toolId: 'failed-script' },
+      ]);
+    });
+
+    it.each([
+      ['direct', 0, 'completed'],
+      ['direct', 2, 'error'],
+      ['wrapped', 0, 'completed'],
+      ['wrapped', 2, 'error'],
+    ])('retains %s polling output after a multi-command script exits with %s', (shape, exitCode, status) => {
+      const initialOutput = JSON.stringify({ output: 'first passed', exit_code: 0 })
+        + JSON.stringify({ output: 'second started', session_id: 42 });
+      const pollResult = JSON.stringify({ output: 'second finished', exit_code: exitCode });
+      const records = [
+        { type: 'event_msg', payload: { type: 'task_started' } },
+        { type: 'response_item', payload: { type: 'custom_tool_call', name: 'exec', call_id: 'batch', input: 'text(await tools.exec_command({cmd:"first"})); text(await tools.exec_command({cmd:"second"}));' } },
+        { type: 'response_item', payload: { type: 'custom_tool_call_output', call_id: 'batch', output: initialOutput } },
+        { type: 'response_item', payload: shape === 'direct'
+          ? { type: 'function_call', name: 'write_stdin', call_id: 'poll', arguments: '{"session_id":42,"chars":""}' }
+          : { type: 'custom_tool_call', name: 'exec', call_id: 'poll', input: 'text(await tools.write_stdin({session_id:42,chars:""}));' } },
+        { type: 'response_item', payload: { type: shape === 'direct' ? 'function_call_output' : 'custom_tool_call_output', call_id: 'poll', output: shape === 'direct' ? pollResult : 'Script completed\nWall time 0.1 seconds\nOutput:\n' + pollResult } },
+        { type: 'event_msg', payload: { type: 'task_complete' } },
+      ];
+      const messages = parseCodexSessionContent(records.map((record, seconds) => JSON.stringify({ timestamp: testTime({ seconds }), ...record })).join('\n'));
+      expect(messages.flatMap(message => message.toolCalls ?? [])).toEqual([
+        expect.objectContaining({ id: 'batch:1', name: 'Bash' }),
+        expect.objectContaining({ id: 'batch:2', name: 'Bash' }),
+        expect.objectContaining({ id: 'batch', name: 'exec', result: initialOutput }),
+        expect.objectContaining({ id: 'poll', name: 'write_stdin', input: { session_id: 42, chars: '' }, status, result: 'second finished' }),
+      ]);
+      expect(messages.flatMap(message => message.toolCalls ?? []).slice(0, 2).map(tool => tool.result)).toEqual([undefined, undefined]);
+      expect(messages.flatMap(message => message.contentBlocks ?? [])).toContainEqual({ type: 'tool_use', toolId: 'poll' });
+    });
+
+    it.each([
+      ['plain output', 'new output', 'new output', 'completed'],
+      ['wrapped error', 'Script completed\nOutput:\nError: Unknown session 42', 'Error: Unknown session 42', 'error'],
+      ['empty failure', JSON.stringify({ output: '', exit_code: -1 }), '', 'error'],
+      ['structured acknowledgement text', JSON.stringify({ output: 'Input sent.', exit_code: 0 }), 'Input sent.', 'completed'],
+      ['running terminal', JSON.stringify({ output: 'still working', session_id: 42 }), 'still working', 'completed'],
+      ['textual failure', 'Process exited with code 2\nOutput:\nfailed', 'failed', 'error'],
+    ])('retains an unresolved poll with %s under its own identity', (_label, output, result, status) => {
+      const records = [
+        { type: 'event_msg', payload: { type: 'task_started' } },
+        { type: 'response_item', payload: { type: 'function_call', name: 'write_stdin', call_id: 'poll', arguments: '{"session_id":42,"chars":""}' } },
+        { type: 'response_item', payload: { type: 'function_call_output', call_id: 'poll', output } },
+      ];
+      const messages = parseCodexSessionContent(records.map((record, seconds) => JSON.stringify({ timestamp: testTime({ seconds }), ...record })).join('\n'));
+      expect(messages.flatMap(message => message.toolCalls ?? [])).toEqual([
+        expect.objectContaining({ id: 'poll', name: 'write_stdin', input: { session_id: 42, chars: '' }, result, status }),
+      ]);
+    });
+
+    it('keeps a delayed unresolved poll in its original assistant bubble and turn', () => {
+      const records = [
+        { type: 'event_msg', payload: { type: 'task_started', turn_id: 'first' } },
+        { type: 'response_item', payload: { type: 'function_call', name: 'write_stdin', call_id: 'poll', arguments: '{"session_id":42,"chars":""}' } },
+        { type: 'event_msg', payload: { type: 'agent_message', message: 'Checking.' } },
+        { type: 'event_msg', payload: { type: 'task_complete', turn_id: 'first' } },
+        { type: 'event_msg', payload: { type: 'task_started', turn_id: 'second' } },
+        { type: 'event_msg', payload: { type: 'agent_message', message: 'Next turn.' } },
+        { type: 'response_item', payload: { type: 'function_call_output', call_id: 'poll', output: JSON.stringify({ output: 'late failure', exit_code: 1 }) } },
+        { type: 'event_msg', payload: { type: 'task_complete', turn_id: 'second' } },
+      ];
+      const turns = parseCodexSessionTurns(records.map((record, seconds) => JSON.stringify({ timestamp: testTime({ seconds }), ...record })).join('\n'));
+      expect(turns).toHaveLength(2);
+      expect(turns[0].messages).toEqual([
+        expect.objectContaining({ content: 'Checking.', toolCalls: [expect.objectContaining({ id: 'poll', result: 'late failure', status: 'error' })], contentBlocks: [
+          { type: 'tool_use', toolId: 'poll' },
+          { type: 'text', content: 'Checking.' },
+        ] }),
+      ]);
+      expect(turns[1].messages).toEqual([expect.objectContaining({ content: 'Next turn.', toolCalls: undefined })]);
+    });
+
+    it('retains an unresolved polling wrapper through its yielded script cell', () => {
+      const records = [
+        { type: 'event_msg', payload: { type: 'task_started' } },
+        { type: 'response_item', payload: { type: 'custom_tool_call', name: 'exec', call_id: 'poll', input: 'text(await tools.write_stdin({session_id:42,chars:""}));' } },
+        { type: 'response_item', payload: { type: 'custom_tool_call_output', call_id: 'poll', output: 'Script running with cell ID poll-cell\nOutput:\n' } },
+        { type: 'response_item', payload: { type: 'function_call', name: 'wait', call_id: 'wait-poll', arguments: '{"cell_id":"poll-cell"}' } },
+        { type: 'response_item', payload: { type: 'function_call_output', call_id: 'wait-poll', output: 'Script completed\nOutput:\n' + JSON.stringify({ output: 'late failure', exit_code: 2 }) } },
+      ];
+      const serialize = (entries: typeof records) => entries.map((record, seconds) => JSON.stringify({ timestamp: testTime({ seconds }), ...record })).join('\n');
+      expect(parseCodexSessionContent(serialize(records.slice(0, 3))).flatMap(message => message.toolCalls ?? [])).toEqual([
+        expect.objectContaining({ id: 'poll', name: 'write_stdin', status: 'running' }),
+      ]);
+      expect(parseCodexSessionContent(serialize(records)).flatMap(message => message.toolCalls ?? [])).toEqual([
+        expect.objectContaining({ id: 'poll', name: 'write_stdin', result: 'late failure', status: 'error' }),
+      ]);
+    });
+
+    it('preserves settled command and polling payloads as script output without guessing their owners', () => {
+      const firstResult = JSON.stringify({ status: 'fulfilled', value: { output: 'first failed', exit_code: 1 } });
+      const secondResult = JSON.stringify({ status: 'fulfilled', value: { output: 'second started', session_id: 42 } });
+      const polledResult = JSON.stringify({ output: 'second failed', exit_code: 2 });
+      const thirdResult = JSON.stringify({ output: 'third passed', exit_code: 0 });
+      const records = [
+        { type: 'event_msg', payload: { type: 'task_started' } },
+        { type: 'response_item', payload: { type: 'custom_tool_call', name: 'exec', call_id: 'batch', input: 'const results = await Promise.allSettled([tools.exec_command({cmd:"first"}), tools.exec_command({cmd:"second"})]); for (const result of results) text(result);' } },
+        { type: 'response_item', payload: { type: 'custom_tool_call_output', call_id: 'batch', output: [
+          { type: 'input_text', text: 'Script completed\nWall time 0.1 seconds\nOutput:\n' },
+          { type: 'input_text', text: firstResult },
+          { type: 'input_text', text: secondResult },
+        ] } },
+        { type: 'response_item', payload: { type: 'custom_tool_call', name: 'exec', call_id: 'poll-batch', input: 'text(await tools.write_stdin({session_id:42,chars:""})); text(await tools.exec_command({cmd:"third"}));' } },
+        { type: 'response_item', payload: { type: 'custom_tool_call_output', call_id: 'poll-batch', output: [
+          { type: 'input_text', text: 'Script completed\nWall time 0.1 seconds\nOutput:\n' },
+          { type: 'input_text', text: polledResult },
+          { type: 'input_text', text: thirdResult },
+        ] } },
+        { type: 'event_msg', payload: { type: 'task_complete' } },
+      ];
+      const content = records.map((record, seconds) => JSON.stringify({ timestamp: testTime({ seconds }), ...record })).join('\n');
+      const messages = parseCodexSessionContent(content);
+      expect(messages.flatMap(message => message.toolCalls ?? []).map(tool => [tool.id, tool.name, tool.result])).toEqual([
+        ['batch:1', 'Bash', undefined],
+        ['batch:2', 'Bash', undefined],
+        ['batch', 'exec', firstResult + secondResult],
+        ['poll-batch:2', 'Bash', undefined],
+        ['poll-batch', 'exec', polledResult + thirdResult],
+      ]);
+      expect(messages.flatMap(message => message.contentBlocks ?? [])).toEqual([
+        { type: 'tool_use', toolId: 'batch:1' },
+        { type: 'tool_use', toolId: 'batch:2' },
+        { type: 'tool_use', toolId: 'batch' },
+        { type: 'tool_use', toolId: 'poll-batch:2' },
+        { type: 'tool_use', toolId: 'poll-batch' },
+      ]);
+    });
+
+    it('keeps image-only script output bytes out of the result text', () => {
+      const record = (seconds: number, payload: Record<string, unknown>) => JSON.stringify({
+        timestamp: `2026-07-20T00:00:0${seconds}.000Z`, type: 'response_item', payload,
+      });
+      const messages = parseCodexSessionContent([
+        record(0, { type: 'custom_tool_call', name: 'exec', call_id: 'image_only', input: 'image(globalThis.screenshot);' }),
+        record(1, { type: 'custom_tool_call_output', call_id: 'image_only', output: [
+          { type: 'input_image', image_url: 'data:image/png;base64,aW1hZ2VCeXRlcw==' },
+        ] }),
+      ].join('\n'));
+      const script = messages.flatMap(message => message.toolCalls ?? []).find(tool => tool.id === 'image_only');
+
+      expect(script).toMatchObject({
+        result: '',
+        resultImages: [{ kind: 'data', mediaType: 'image/png', data: 'aW1hZ2VCeXRlcw==' }],
+      });
+    });
+
     it('restores completed exec envelopes as their nested tools', () => {
       const patch = '*** Begin Patch\n*** Update File: note.md\n*** End Patch';
       const content = [
@@ -655,7 +881,7 @@ describe('CodexHistoryStore', () => {
       ]));
     });
 
-    it('restores every command from a multi-command exec envelope', () => {
+    it('restores every command while keeping its uncorrelated output on the script', () => {
       const content = [
         JSON.stringify({
           timestamp: '2026-07-13T00:00:00.000Z',
@@ -703,32 +929,37 @@ describe('CodexHistoryStore', () => {
           id: 'call_exec_group:1',
           name: 'Bash',
           input: { command: 'pwd' },
-          result: '/vault\n',
           status: 'completed',
         }),
         expect.objectContaining({
           id: 'call_exec_group:2',
           name: 'Bash',
           input: { command: 'printf edit' },
-          result: '',
           status: 'completed',
         }),
         expect.objectContaining({
           id: 'call_exec_group:3',
           name: 'Bash',
           input: { command: 'wc -l note.md' },
-          result: '80 note.md\n',
+          status: 'completed',
+        }),
+        expect.objectContaining({
+          id: 'call_exec_group',
+          name: 'exec',
+          result: '/vault\n80 note.md\n',
           status: 'completed',
         }),
       ]);
+      expect(assistantMessage?.toolCalls?.slice(0, 3).map(tool => tool.result)).toEqual([undefined, undefined, undefined]);
       expect(assistantMessage?.contentBlocks).toEqual([
         { type: 'tool_use', toolId: 'call_exec_group:1' },
         { type: 'tool_use', toolId: 'call_exec_group:2' },
         { type: 'tool_use', toolId: 'call_exec_group:3' },
+        { type: 'tool_use', toolId: 'call_exec_group' },
       ]);
     });
 
-    it('restores every image view from a multi-call exec envelope', () => {
+    it('restores image-view requests and preserves the emitted images on the script', () => {
       const content = [
         JSON.stringify({
           timestamp: '2026-07-13T00:00:00.000Z',
@@ -773,14 +1004,22 @@ describe('CodexHistoryStore', () => {
           id: 'call_image_group:1',
           name: 'Read',
           input: expect.objectContaining({ file_path: '/tmp/first.png' }),
-          result: '/tmp/first.png',
           status: 'completed',
         }),
         expect.objectContaining({
           id: 'call_image_group:2',
           name: 'Read',
           input: expect.objectContaining({ file_path: '/tmp/second.png' }),
-          result: '/tmp/second.png',
+          status: 'completed',
+        }),
+        expect.objectContaining({
+          id: 'call_image_group',
+          name: 'exec',
+          result: '',
+          resultImages: [
+            { kind: 'data', mediaType: 'image/png', data: 'Zmlyc3Q=' },
+            { kind: 'data', mediaType: 'image/png', data: 'c2Vjb25k' },
+          ],
           status: 'completed',
         }),
       ]);
@@ -991,10 +1230,10 @@ describe('CodexHistoryStore', () => {
       expect(stdinTool!.input.chars).toBe('y\n');
     });
 
-    it('suppresses standalone empty write_stdin polling calls', () => {
+    it.each(['Input sent.', ''])('suppresses acknowledgement-only standalone polling output: %s', output => {
       const content = [
         JSON.stringify({
-          timestamp: '2026-03-27T00:00:00.000Z',
+          timestamp: testDate({ seconds: 0 }).toISOString(),
           type: 'response_item',
           payload: {
             type: 'function_call',
@@ -1004,16 +1243,16 @@ describe('CodexHistoryStore', () => {
           },
         }),
         JSON.stringify({
-          timestamp: '2026-03-27T00:00:01.000Z',
+          timestamp: testDate({ seconds: 1 }).toISOString(),
           type: 'response_item',
           payload: {
             type: 'function_call_output',
             call_id: 'call_poll',
-            output: 'Input sent.',
+            output,
           },
         }),
         JSON.stringify({
-          timestamp: '2026-03-27T00:00:02.000Z',
+          timestamp: testDate({ seconds: 2 }).toISOString(),
           type: 'response_item',
           payload: {
             type: 'message',
@@ -2649,6 +2888,29 @@ describe('CodexHistoryStore', () => {
   });
 
   describe('parseCodexSessionContent - context_compacted boundary', () => {
+    it.each([false, true])('restores record-only compaction and deduplicates its event (event: %s)', (withEvent) => {
+      const records = [
+        { type: 'event_msg', payload: { type: 'task_started', turn_id: 'compacted-turn' } },
+        { type: 'event_msg', payload: { type: 'agent_message', message: 'Before' } },
+        { type: 'compacted', payload: { message: 'Hidden summary', replacement_history: [
+          { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Hidden replacement' }] },
+        ] } },
+        ...(withEvent ? [{ type: 'event_msg', payload: { type: 'context_compacted' } }] : []),
+        { type: 'event_msg', payload: { type: 'agent_message', message: 'After' } },
+        { type: 'event_msg', payload: { type: 'task_complete', turn_id: 'compacted-turn' } },
+      ];
+      const content = records.map((record, seconds) => JSON.stringify({ timestamp: `2026-07-20T00:00:0${seconds}.000Z`, ...record })).join('\n');
+
+      const turns = parseCodexSessionTurns(content);
+      expect(turns).toHaveLength(1);
+      expect(turns[0].turnId).toBe('compacted-turn');
+      expect(turns[0].messages.map(message => ({ content: message.content, blocks: message.contentBlocks }))).toEqual([
+        { content: 'Before', blocks: [{ type: 'text', content: 'Before' }] },
+        { content: '', blocks: [{ type: 'context_compacted' }] },
+        { content: 'After', blocks: [{ type: 'text', content: 'After' }] },
+      ]);
+    });
+
     it('keeps post-compaction records in the active turn when auto-compaction happens mid-turn', () => {
       const content = [
         JSON.stringify({

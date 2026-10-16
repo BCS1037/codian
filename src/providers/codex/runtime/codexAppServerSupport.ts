@@ -12,7 +12,7 @@ import type { CodexLaunchSpec } from './codexLaunchTypes';
 import type { CodexRpcTransport } from './CodexRpcTransport';
 
 const CODEX_APP_SERVER_CLIENT_INFO = Object.freeze({
-  name: 'claudian',
+  name: 'codian',
   version: '1.0.0',
 });
 

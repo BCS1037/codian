@@ -331,6 +331,7 @@ describe('ChatState', () => {
 
       expect(chatState.attention).toEqual({
         kind: 'review',
+        outcome: 'completed',
         since: expect.any(Number),
       });
       expect(chatState.needsAttention).toBe(true);
@@ -353,8 +354,19 @@ describe('ChatState', () => {
 
       chatState.endActionRequired('approval-1');
 
-      expect(chatState.attention).toEqual({ kind: 'review', since: reviewSince });
+      expect(chatState.attention).toEqual({ kind: 'review', outcome: 'completed', since: reviewSince });
       expect(chatState.requiresAction).toBe(false);
+    });
+
+    it('preserves an error review outcome while an action is pending', () => {
+      const chatState = new ChatState();
+
+      chatState.markReviewRequired('error');
+      const reviewSince = chatState.attention!.since;
+      chatState.beginActionRequired('approval-1');
+      chatState.endActionRequired('approval-1');
+
+      expect(chatState.attention).toEqual({ kind: 'review', outcome: 'error', since: reviewSince });
     });
 
     it('acknowledges review without affecting action-required state', () => {

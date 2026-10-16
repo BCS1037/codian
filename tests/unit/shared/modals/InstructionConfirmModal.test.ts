@@ -48,7 +48,7 @@ function findAllByClass(root: any, cls: string): any[] {
 }
 
 function clickButton(root: any, text: string): void {
-  const buttons = findAllByClass(root, 'claudian-instruction-btn');
+  const buttons = findAllByClass(root, 'codian-instruction-btn');
   const btn = buttons.find((b: any) => b.textContent === text);
   if (!btn) throw new Error(`Button "${text}" not found`);
   btn.click();
@@ -61,7 +61,7 @@ describe('InstructionModal', () => {
       const modal = openModal('Make it better', callbacks);
       const contentEl = (modal as any).contentEl;
 
-      const originalEl = findByClass(contentEl, 'claudian-instruction-original');
+      const originalEl = findByClass(contentEl, 'codian-instruction-original');
       expect(originalEl).not.toBeNull();
       expect(originalEl.textContent).toBe('Make it better');
     });
@@ -71,15 +71,15 @@ describe('InstructionModal', () => {
       const modal = openModal('test', callbacks);
       const contentEl = (modal as any).contentEl;
 
-      const loadingEl = findByClass(contentEl, 'claudian-instruction-loading');
+      const loadingEl = findByClass(contentEl, 'codian-instruction-loading');
       expect(loadingEl).not.toBeNull();
-      expect(loadingEl.hasClass('claudian-hidden')).toBe(false);
+      expect(loadingEl.hasClass('codian-hidden')).toBe(false);
 
-      const clarificationEl = findByClass(contentEl, 'claudian-instruction-clarification-section');
-      expect(clarificationEl.hasClass('claudian-hidden')).toBe(true);
+      const clarificationEl = findByClass(contentEl, 'codian-instruction-clarification-section');
+      expect(clarificationEl.hasClass('codian-hidden')).toBe(true);
 
-      const confirmationEl = findByClass(contentEl, 'claudian-instruction-confirmation-section');
-      expect(confirmationEl.hasClass('claudian-hidden')).toBe(true);
+      const confirmationEl = findByClass(contentEl, 'codian-instruction-confirmation-section');
+      expect(confirmationEl.hasClass('codian-hidden')).toBe(true);
     });
 
     it('renders Cancel button in loading state', () => {
@@ -87,7 +87,7 @@ describe('InstructionModal', () => {
       const modal = openModal('test', callbacks);
       const contentEl = (modal as any).contentEl;
 
-      const buttons = findAllByClass(contentEl, 'claudian-instruction-btn');
+      const buttons = findAllByClass(contentEl, 'codian-instruction-btn');
       expect(buttons.length).toBe(1);
       expect(buttons[0].textContent).toBe('Cancel');
     });
@@ -101,11 +101,11 @@ describe('InstructionModal', () => {
 
       modal.showClarification('What style do you want?');
 
-      const loadingEl = findByClass(contentEl, 'claudian-instruction-loading');
-      expect(loadingEl.hasClass('claudian-hidden')).toBe(true);
+      const loadingEl = findByClass(contentEl, 'codian-instruction-loading');
+      expect(loadingEl.hasClass('codian-hidden')).toBe(true);
 
-      const clarificationEl = findByClass(contentEl, 'claudian-instruction-clarification-section');
-      expect(clarificationEl.hasClass('claudian-hidden')).toBe(false);
+      const clarificationEl = findByClass(contentEl, 'codian-instruction-clarification-section');
+      expect(clarificationEl.hasClass('codian-hidden')).toBe(false);
     });
 
     it('displays the clarification text', () => {
@@ -115,7 +115,7 @@ describe('InstructionModal', () => {
 
       modal.showClarification('What format?');
 
-      const clarificationTextEl = findByClass(contentEl, 'claudian-instruction-clarification');
+      const clarificationTextEl = findByClass(contentEl, 'codian-instruction-clarification');
       expect(clarificationTextEl.textContent).toBe('What format?');
     });
 
@@ -126,7 +126,7 @@ describe('InstructionModal', () => {
 
       modal.showClarification('Question?');
 
-      const buttons = findAllByClass(contentEl, 'claudian-instruction-btn');
+      const buttons = findAllByClass(contentEl, 'codian-instruction-btn');
       const buttonTexts = buttons.map((b: any) => b.textContent);
       expect(buttonTexts).toContain('Cancel');
       expect(buttonTexts).toContain('Submit');
@@ -141,11 +141,11 @@ describe('InstructionModal', () => {
 
       modal.showConfirmation('Refined instruction text');
 
-      const loadingEl = findByClass(contentEl, 'claudian-instruction-loading');
-      expect(loadingEl.hasClass('claudian-hidden')).toBe(true);
+      const loadingEl = findByClass(contentEl, 'codian-instruction-loading');
+      expect(loadingEl.hasClass('codian-hidden')).toBe(true);
 
-      const confirmationEl = findByClass(contentEl, 'claudian-instruction-confirmation-section');
-      expect(confirmationEl.hasClass('claudian-hidden')).toBe(false);
+      const confirmationEl = findByClass(contentEl, 'codian-instruction-confirmation-section');
+      expect(confirmationEl.hasClass('codian-hidden')).toBe(false);
     });
 
     it('displays the refined instruction', () => {
@@ -155,7 +155,7 @@ describe('InstructionModal', () => {
 
       modal.showConfirmation('The refined snippet');
 
-      const refinedEl = findByClass(contentEl, 'claudian-instruction-refined');
+      const refinedEl = findByClass(contentEl, 'codian-instruction-refined');
       expect(refinedEl.textContent).toBe('The refined snippet');
     });
 
@@ -166,7 +166,7 @@ describe('InstructionModal', () => {
 
       modal.showConfirmation('instruction');
 
-      const buttons = findAllByClass(contentEl, 'claudian-instruction-btn');
+      const buttons = findAllByClass(contentEl, 'codian-instruction-btn');
       const buttonTexts = buttons.map((b: any) => b.textContent);
       expect(buttonTexts).toContain('Cancel');
       expect(buttonTexts).toContain('Edit');
@@ -295,11 +295,11 @@ describe('InstructionModal', () => {
       modal.showClarification('question?');
       modal.showClarificationLoading();
 
-      const loadingEl = findByClass(contentEl, 'claudian-instruction-loading');
-      expect(loadingEl.hasClass('claudian-hidden')).toBe(false);
+      const loadingEl = findByClass(contentEl, 'codian-instruction-loading');
+      expect(loadingEl.hasClass('codian-hidden')).toBe(false);
 
-      const clarificationEl = findByClass(contentEl, 'claudian-instruction-clarification-section');
-      expect(clarificationEl.hasClass('claudian-hidden')).toBe(true);
+      const clarificationEl = findByClass(contentEl, 'codian-instruction-clarification-section');
+      expect(clarificationEl.hasClass('codian-hidden')).toBe(true);
     });
   });
 });

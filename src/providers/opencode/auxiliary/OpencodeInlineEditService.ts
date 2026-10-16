@@ -7,7 +7,6 @@ export class OpencodeInlineEditService extends QueryBackedInlineEditService {
     super(new OpencodeAuxQueryRunner(plugin, {
       agentProfile: 'readonly',
       artifactPurpose: 'inline',
-      allowReadTextFile: true,
     }));
   }
 }

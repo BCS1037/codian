@@ -515,6 +515,13 @@ export class SubagentManager {
     return this._spawnedThisStream;
   }
 
+  public get hasActiveWork(): boolean {
+    if (this.pendingTasks.size > 0) return true;
+    return Array.from(this.asyncSubagents.values()).some(({ info }) => (
+      info.asyncStatus === 'pending' || info.asyncStatus === 'running'
+    ));
+  }
+
   public resetSpawnedCount(): void {
     this._spawnedThisStream = 0;
   }
@@ -695,7 +702,7 @@ export class SubagentManager {
     const description = (newInput.description as string) || '';
     if (description) {
       info.description = description;
-      const labelEl = wrapperEl.querySelector('.claudian-subagent-label');
+      const labelEl = wrapperEl.querySelector('.codian-subagent-label');
       if (labelEl) {
         const truncated = description.length > 40 ? description.substring(0, 40) + '...' : description;
         labelEl.setText(truncated);
@@ -704,7 +711,7 @@ export class SubagentManager {
     const prompt = (newInput.prompt as string) || '';
     if (prompt) {
       info.prompt = prompt;
-      const promptEl = wrapperEl.querySelector('.claudian-subagent-prompt-text');
+      const promptEl = wrapperEl.querySelector('.codian-subagent-prompt-text');
       if (promptEl) {
         promptEl.setText(prompt);
       }

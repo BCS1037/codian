@@ -361,7 +361,7 @@ describe('GrokSettingsTab', () => {
     grokSettingsTabRenderer.render(createContainer(), createContext(plugin), 'provider');
 
     expect(findSetting('MCP Servers').heading).toBe(true);
-    const notice = createdElements.find(element => element.cls === 'claudian-mcp-settings-desc');
+    const notice = createdElements.find(element => element.cls === 'codian-mcp-settings-desc');
     const description = notice?.children[0];
     expect(description?.text).toBe(
       'Grok Build manages MCP servers through its native CLI. Configure them with  and they will be available in Codian. ',

@@ -5,12 +5,20 @@
  * vault adapter instead of Node's fs module.
  */
 
+import { constants as fsConstants } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 import type { App, DataAdapter } from 'obsidian';
 
 export type ManagedResourceType = 'file' | 'folder';
+export type ManagedFolderEntryKind = 'file' | 'folder' | 'symlink' | 'other';
+
+export interface ManagedFolderEntry {
+  name: string;
+  path: string;
+  kind: ManagedFolderEntryKind;
+}
 
 export interface ManagedPathVerificationOptions {
   expectedType: ManagedResourceType;
@@ -372,7 +380,8 @@ export class VaultFileAdapter {
 
   async createManagedFolderExclusive(folderPath: string): Promise<void> {
     const normalized = normalizeManagedPath(folderPath);
-    const parent = normalized.slice(0, normalized.lastIndexOf('/'));
+    const separator = normalized.lastIndexOf('/');
+    const parent = separator === -1 ? '' : normalized.slice(0, separator);
     if (parent) {
       await this.verifyManagedPath(parent, { expectedType: 'folder' });
     }
@@ -422,6 +431,93 @@ export class VaultFileAdapter {
     }
   }
 
+  async readManagedBinary(filePath: string): Promise<ArrayBuffer> {
+    const normalized = normalizeManagedPath(filePath);
+    await this.verifyManagedPath(normalized, { expectedType: 'file' });
+    const desktopAdapter = this.getDesktopAdapter();
+    if (!desktopAdapter) {
+      throw new ManagedResourcePathError(
+        'No-follow managed binary reads require a filesystem-backed vault adapter',
+      );
+    }
+
+    const absolutePath = this.resolveManagedDesktopPath(
+      path.resolve(desktopAdapter.getBasePath()),
+      normalized,
+    );
+    let handle: fs.FileHandle | undefined;
+    try {
+      handle = await fs.open(
+        absolutePath,
+        fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0),
+      );
+      const stat = await handle.stat();
+      if (!stat.isFile()) {
+        throw new ManagedResourcePathError(`Managed resource must be a regular file: ${normalized}`);
+      }
+      const content = await handle.readFile();
+      return content.buffer.slice(
+        content.byteOffset,
+        content.byteOffset + content.byteLength,
+      );
+    } catch (error) {
+      if (error instanceof ManagedResourcePathError) throw error;
+      throw new ManagedResourcePathError(`Could not read managed resource: ${normalized}`, {
+        cause: error,
+      });
+    } finally {
+      await handle?.close().catch(() => undefined);
+    }
+  }
+
+  async writeManagedBinaryExclusive(filePath: string, content: ArrayBuffer): Promise<void> {
+    const normalized = normalizeManagedPath(filePath);
+    const separator = normalized.lastIndexOf('/');
+    const parent = separator === -1 ? '' : normalized.slice(0, separator);
+    if (parent) await this.verifyManagedPath(parent, { expectedType: 'folder' });
+    const desktopAdapter = this.getDesktopAdapter();
+    if (!desktopAdapter) {
+      throw new ManagedResourcePathError(
+        'Exclusive managed binary writes require a filesystem-backed vault adapter',
+      );
+    }
+    if (await this.verifyManagedCollisionTarget(normalized)) {
+      throw new ManagedResourceCollisionError(normalized);
+    }
+
+    const absolutePath = this.resolveManagedDesktopPath(
+      path.resolve(desktopAdapter.getBasePath()),
+      normalized,
+    );
+    let handle: fs.FileHandle | undefined;
+    let created = false;
+    try {
+      handle = await fs.open(
+        absolutePath,
+        fsConstants.O_WRONLY
+          | fsConstants.O_CREAT
+          | fsConstants.O_EXCL
+          | (fsConstants.O_NOFOLLOW ?? 0),
+        0o666,
+      );
+      created = true;
+      await handle.writeFile(new Uint8Array(content));
+      await handle.close();
+      handle = undefined;
+      await this.verifyManagedPath(normalized, { expectedType: 'file' });
+    } catch (error) {
+      await handle?.close().catch(() => undefined);
+      if (created) await fs.unlink(absolutePath).catch(() => undefined);
+      if (isCollision(error)) {
+        throw new ManagedResourceCollisionError(normalized, { cause: error });
+      }
+      if (error instanceof ManagedResourcePathError) throw error;
+      throw new ManagedResourcePathError(`Could not write managed resource: ${normalized}`, {
+        cause: error,
+      });
+    }
+  }
+
   async writeManagedFile(filePath: string, content: string): Promise<void> {
     const normalized = normalizeManagedPath(filePath);
     const parent = normalized.slice(0, normalized.lastIndexOf('/'));
@@ -448,6 +544,76 @@ export class VaultFileAdapter {
       });
     }
     return { files: [...listing.files], folders: [...listing.folders] };
+  }
+
+  /** List direct desktop entries with lstat so symlinks are reported without following them. */
+  async listManagedFolderEntries(folderPath: string): Promise<ManagedFolderEntry[]> {
+    const normalized = normalizeManagedPath(folderPath);
+    await this.verifyManagedPath(normalized, { expectedType: 'folder' });
+    const desktopAdapter = this.getDesktopAdapter();
+    if (!desktopAdapter) {
+      throw new ManagedResourcePathError(
+        'No-follow managed entry inspection requires a filesystem-backed vault adapter',
+      );
+    }
+
+    const basePath = path.resolve(desktopAdapter.getBasePath());
+    let realBasePath: string;
+    try {
+      realBasePath = await fs.realpath(basePath);
+    } catch (error) {
+      throw new ManagedResourcePathError('Could not resolve the vault root', { cause: error });
+    }
+
+    const folderAbsolute = this.resolveManagedDesktopPath(basePath, normalized);
+    let realFolderPath: string;
+    try {
+      realFolderPath = await fs.realpath(folderAbsolute);
+    } catch (error) {
+      throw new ManagedResourcePathError(`Could not resolve managed resource: ${normalized}`, {
+        cause: error,
+      });
+    }
+    const relativeFolder = path.relative(realBasePath, realFolderPath);
+    if (
+      relativeFolder === '..'
+      || relativeFolder.startsWith(`..${path.sep}`)
+      || path.isAbsolute(relativeFolder)
+    ) {
+      throw new ManagedResourcePathError(`Managed resource escapes the vault root: ${normalized}`);
+    }
+
+    let names: string[];
+    try {
+      names = await fs.readdir(realFolderPath);
+    } catch (error) {
+      throw new ManagedResourcePathError(`Could not list managed resource: ${normalized}`, {
+        cause: error,
+      });
+    }
+
+    const entries = await Promise.all(names.map(async (name): Promise<ManagedFolderEntry> => {
+      const entryPath = `${normalized}/${name}`;
+      this.resolveManagedDesktopPath(basePath, entryPath);
+      let stat: Awaited<ReturnType<typeof fs.lstat>>;
+      try {
+        stat = await fs.lstat(path.join(realFolderPath, name));
+      } catch (error) {
+        throw new ManagedResourcePathError(`Could not inspect managed resource: ${entryPath}`, {
+          cause: error,
+        });
+      }
+      const kind: ManagedFolderEntryKind = stat.isSymbolicLink()
+        ? 'symlink'
+        : stat.isDirectory()
+          ? 'folder'
+          : stat.isFile()
+            ? 'file'
+            : 'other';
+      return { name, path: entryPath, kind };
+    }));
+
+    return entries.sort((left, right) => left.name.localeCompare(right.name));
   }
 
   async removeManagedFile(filePath: string): Promise<void> {

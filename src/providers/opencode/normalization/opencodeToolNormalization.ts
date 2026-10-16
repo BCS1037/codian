@@ -27,6 +27,7 @@ const TOOL_NAME_MAP: Record<string, string> = {
   question: TOOL_ASK_USER_QUESTION,
   read: TOOL_READ,
   skill: TOOL_SKILL,
+  subagent: TOOL_SUBAGENT,
   task: TOOL_SUBAGENT,
   todowrite: TOOL_TODO_WRITE,
   webfetch: TOOL_WEB_FETCH,
@@ -347,17 +348,21 @@ export function normalizeOpencodeToolInput(
         ...(typeof input.content === 'string' ? { content: input.content } : {}),
         ...(firstString(input.file_path, input.filePath) ? { file_path: firstString(input.file_path, input.filePath) } : {}),
       };
-    case 'edit':
+    case 'edit': {
+      const oldString = firstString(input.old_string, input.oldString);
+      const newString = firstString(input.new_string, input.newString);
       return {
         ...(firstString(input.file_path, input.filePath) ? { file_path: firstString(input.file_path, input.filePath) } : {}),
-        ...(firstString(input.old_string, input.oldString) ? { old_string: firstString(input.old_string, input.oldString) } : {}),
-        ...(firstString(input.new_string, input.newString) ? { new_string: firstString(input.new_string, input.newString) } : {}),
+        ...(oldString !== undefined ? { old_string: oldString } : {}),
+        ...(newString !== undefined ? { new_string: newString } : {}),
         ...(typeof input.replace_all === 'boolean'
           ? { replace_all: input.replace_all }
           : typeof input.replaceAll === 'boolean'
           ? { replace_all: input.replaceAll }
           : {}),
       };
+    }
+    case 'subagent':
     case 'task':
       return {
         ...(firstTrimmedString(input.command) ? { command: firstTrimmedString(input.command) } : {}),
@@ -365,9 +370,15 @@ export function normalizeOpencodeToolInput(
         ...(firstTrimmedString(input.prompt) ? { prompt: firstTrimmedString(input.prompt) } : {}),
         ...(input.run_in_background === true || input.run_in_background === false
           ? { run_in_background: input.run_in_background }
+          : typeof input.background === 'boolean'
+          ? { run_in_background: input.background }
           : {}),
-        ...(firstTrimmedString(input.subagent_type) ? { subagent_type: firstTrimmedString(input.subagent_type) } : {}),
-        ...(firstTrimmedString(input.task_id) ? { task_id: firstTrimmedString(input.task_id) } : {}),
+        ...(firstTrimmedString(input.subagent_type, input.agent)
+          ? { subagent_type: firstTrimmedString(input.subagent_type, input.agent) }
+          : {}),
+        ...(firstTrimmedString(input.task_id, input.sessionID)
+          ? { task_id: firstTrimmedString(input.task_id, input.sessionID) }
+          : {}),
       };
     case 'todowrite':
       return { todos: normalizeTodos(input.todos) };
@@ -391,6 +402,10 @@ export function normalizeOpencodeToolUseResult(
   const metadata = extractToolMetadata(rawOutput);
   const normalized: SDKToolUseResult = {};
 
+  if (knownName === 'read') {
+    normalized.resultFormat = 'plain';
+  }
+
   if (
     (knownName === 'write' || knownName === 'edit')
     && firstString(input.file_path, input.filePath, metadata?.filepath, metadata?.filePath)
@@ -405,6 +420,32 @@ export function normalizeOpencodeToolUseResult(
     const answers = normalizeQuestionAnswers(metadata?.answers, questions);
     if (answers) {
       normalized.answers = answers;
+    }
+  }
+
+  if (knownName === 'subagent' || knownName === 'task') {
+    const content = isPlainObject(rawOutput) && Array.isArray(rawOutput.content)
+      ? rawOutput.content
+      : [];
+    const outputText = content.flatMap((block) => (
+      isPlainObject(block) && typeof block.text === 'string' ? [block.text] : []
+    )).join('\n');
+    const launchMatch = /The subagent is working in the background \(sessionID: (ses_[^)\s]+)\)/u.exec(outputText);
+    const sessionId = firstTrimmedString(
+      metadata?.sessionID,
+      metadata?.sessionId,
+      input.task_id,
+      input.sessionID,
+      launchMatch?.[1],
+    );
+    if (sessionId) normalized.agentId = sessionId;
+    if (
+      input.run_in_background === true
+      || input.background === true
+      || metadata?.status === 'background'
+      || launchMatch
+    ) {
+      normalized.asyncLaunchMarker = true;
     }
   }
 

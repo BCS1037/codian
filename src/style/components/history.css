@@ -1,9 +1,9 @@
-.claudian-history-container {
+.codian-history-container {
   position: static;
 }
 
 /* History dropup menu (opens upward since it's at bottom of view) */
-.claudian-history-menu {
+.codian-history-menu {
   display: none;
   position: absolute;
   bottom: 100%;
@@ -21,11 +21,11 @@
   inset-inline-end: 0;
 }
 
-.claudian-history-menu.visible {
+.codian-history-menu.visible {
   display: block;
 }
 
-.claudian-history-header {
+.codian-history-header {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -38,18 +38,18 @@
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.claudian-history-header > span {
+.codian-history-header > span {
   padding-inline: 2px;
 }
 
-.claudian-history-filters {
+.codian-history-filters {
   display: flex;
   gap: 4px;
   text-transform: none;
   letter-spacing: normal;
 }
 
-.claudian-history-filter {
+.codian-history-filter {
   flex: 1;
   min-width: 0;
   padding: 4px 6px;
@@ -61,18 +61,18 @@
   font-size: 11px;
 }
 
-.claudian-history-filter:hover {
+.codian-history-filter:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
-.claudian-history-filter[aria-pressed="true"] {
+.codian-history-filter[aria-pressed="true"] {
   border-color: var(--background-modifier-border);
   background: var(--background-primary);
   color: var(--text-normal);
 }
 
-.claudian-history-search {
+.codian-history-search {
   position: relative;
   display: flex;
   align-items: center;
@@ -80,7 +80,7 @@
   letter-spacing: normal;
 }
 
-.claudian-history-search-input {
+.codian-history-search-input {
   width: 100%;
   min-width: 0;
   height: 30px;
@@ -92,17 +92,17 @@
   font-size: 13px;
 }
 
-.claudian-history-search-input:focus {
+.codian-history-search-input:focus {
   border-color: var(--interactive-accent);
   outline: none;
   box-shadow: 0 0 0 1px var(--interactive-accent);
 }
 
-.claudian-history-search-input::-webkit-search-cancel-button {
+.codian-history-search-input::-webkit-search-cancel-button {
   display: none;
 }
 
-.claudian-history-search-clear {
+.codian-history-search-clear {
   position: absolute;
   inset-inline-end: 4px;
   display: flex;
@@ -118,34 +118,34 @@
   cursor: pointer;
 }
 
-.claudian-history-search-clear:hover {
+.codian-history-search-clear:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
-.claudian-history-search-clear svg {
+.codian-history-search-clear svg {
   width: 14px;
   height: 14px;
 }
 
-.claudian-history-search-input:placeholder-shown + .claudian-history-search-clear {
+.codian-history-search-input:placeholder-shown + .codian-history-search-clear {
   opacity: 0;
   pointer-events: none;
 }
 
-.claudian-history-list {
+.codian-history-list {
   max-height: 320px;
   overflow-y: auto;
 }
 
-.claudian-history-empty {
+.codian-history-empty {
   padding: 16px;
   text-align: center;
   color: var(--text-muted);
   font-size: 13px;
 }
 
-.claudian-history-item {
+.codian-history-item {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -154,95 +154,103 @@
   transition: background 0.15s ease;
 }
 
-.claudian-history-item-icon {
+.codian-history-item-icon {
   display: flex;
   align-items: center;
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
-.claudian-history-item-icon svg {
+.codian-history-item-icon svg {
   width: 16px;
   height: 16px;
 }
 
-.claudian-history-item:last-child {
+.codian-history-item:last-child {
   border-bottom: none;
 }
 
-.claudian-history-item:hover {
+.codian-history-item:hover {
   background: var(--background-modifier-hover);
 }
 
-.claudian-history-item.keyboard-selected {
+.codian-history-item.keyboard-selected {
   background: var(--background-modifier-hover);
   box-shadow: inset 2px 0 0 var(--interactive-accent);
 }
 
-.claudian-history-item.active {
+.codian-history-item.active {
   background: var(--background-modifier-hover);
   border-inline-start: 2px solid var(--interactive-accent);
   padding-inline-start: 10px;
 }
 
-.claudian-history-item.active:hover {
+.codian-history-item.active:hover {
   background: var(--background-modifier-active-hover, var(--background-modifier-hover));
 }
 
-.claudian-history-item.active .claudian-history-item-icon {
+.codian-history-item.active .codian-history-item-icon {
   color: var(--interactive-accent);
 }
 
-.claudian-history-item.active .claudian-history-item-content {
+.codian-history-item.active .codian-history-item-content {
   cursor: default;
 }
 
-.claudian-history-item.active .claudian-history-item-date {
+.codian-history-item.active .codian-history-item-date {
   color: var(--text-faint);
 }
 
-.claudian-history-item.open {
+.codian-history-item.open {
   background: var(--background-modifier-hover);
   border-inline-start: 2px solid var(--interactive-accent);
   padding-inline-start: 10px;
 }
 
-.claudian-history-item.open:hover {
+.codian-history-item.open:hover {
   background: var(--background-modifier-active-hover, var(--background-modifier-hover));
 }
 
-.claudian-history-item.open .claudian-history-item-icon {
+.codian-history-item.open .codian-history-item-icon {
   color: var(--interactive-accent);
 }
 
-.claudian-history-item.open .claudian-history-item-date {
+.codian-history-item.open .codian-history-item-date {
   color: var(--text-muted);
 }
 
-.claudian-history-item.running .claudian-history-item-icon {
+.codian-history-item.running .codian-history-item-icon {
   color: var(--interactive-accent);
 }
 
-.claudian-history-item.running .claudian-history-item-icon svg {
+.codian-history-item.running .codian-history-item-icon svg {
   animation: spin 1s linear infinite;
 }
 
-.claudian-history-item.running .claudian-history-item-date {
+.codian-history-item.running .codian-history-item-date {
   color: var(--interactive-accent);
   font-weight: 500;
 }
 
-.claudian-history-item.pinned .claudian-history-item-icon {
+.codian-history-item.status-action-required .codian-history-item-icon {
+  color: var(--text-warning, var(--color-orange));
+}
+
+.codian-history-item.status-error .codian-history-item-icon {
+  color: var(--text-error, var(--color-red));
+}
+
+.codian-history-item.pinned .codian-history-item-icon {
   color: var(--interactive-accent);
 }
 
-.claudian-history-item-content {
+.codian-history-item-content {
   flex: 1;
   min-width: 0;
   cursor: pointer;
 }
 
-.claudian-history-item-title {
+.codian-history-item-title {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-normal);
@@ -251,7 +259,25 @@
   text-overflow: ellipsis;
 }
 
-.claudian-history-item-pin {
+.codian-history-item.status-unread .codian-history-item-title {
+  position: relative;
+  padding-inline-end: 13px;
+}
+
+.codian-history-item-unread-dot {
+  position: absolute;
+  inset-inline-end: 2px;
+  top: 50%;
+  display: block;
+  width: 7px;
+  height: 7px;
+  margin: 0;
+  border-radius: 50%;
+  background: var(--text-normal);
+  transform: translateY(-50%);
+}
+
+.codian-history-item-pin {
   display: inline-flex;
   align-items: center;
   margin-inline-start: 4px;
@@ -261,12 +287,12 @@
   vertical-align: middle;
 }
 
-.claudian-history-item-pin svg {
+.codian-history-item-pin svg {
   width: 11px;
   height: 11px;
 }
 
-.claudian-history-item-preview {
+.codian-history-item-preview {
   margin-top: 2px;
   overflow: hidden;
   color: var(--text-muted);
@@ -276,19 +302,19 @@
   white-space: nowrap;
 }
 
-.claudian-history-match {
+.codian-history-match {
   border-radius: 2px;
   background: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
   color: inherit;
 }
 
-.claudian-history-item-date {
+.codian-history-item-date {
   font-size: 11px;
   color: var(--text-faint);
   margin-top: 2px;
 }
 
-.claudian-history-item-actions {
+.codian-history-item-actions {
   display: flex;
   gap: 4px;
   margin-inline-start: 8px;
@@ -296,15 +322,15 @@
   transition: opacity 0.15s ease;
 }
 
-.claudian-history-item:hover .claudian-history-item-actions {
+.codian-history-item:hover .codian-history-item-actions {
   opacity: 1;
 }
 
-.claudian-history-item:focus-within .claudian-history-item-actions {
+.codian-history-item:focus-within .codian-history-item-actions {
   opacity: 1;
 }
 
-.claudian-action-btn {
+.codian-action-btn {
   background: transparent;
   border: none;
   cursor: pointer;
@@ -314,25 +340,25 @@
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.claudian-action-btn:hover {
+.codian-action-btn:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
-.claudian-action-btn svg {
+.codian-action-btn svg {
   width: 14px;
   height: 14px;
 }
 
-.claudian-delete-btn:hover {
+.codian-delete-btn:hover {
   color: var(--color-red);
 }
 
-.claudian-open-new-tab-btn:hover {
+.codian-open-new-tab-btn:hover {
   color: var(--interactive-accent);
 }
 
-.claudian-rename-input {
+.codian-rename-input {
   width: 100%;
   padding: 2px 4px;
   font-size: 13px;
@@ -343,13 +369,13 @@
   color: var(--text-normal);
 }
 
-.claudian-rename-input:focus {
+.codian-rename-input:focus {
   outline: none;
   box-shadow: 0 0 0 2px var(--interactive-accent-hover);
 }
 
 /* Loading indicator for title generation */
-.claudian-action-loading {
+.codian-action-loading {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -358,7 +384,7 @@
   cursor: default;
 }
 
-.claudian-history-load-more {
+.codian-history-load-more {
   width: calc(100% - 16px);
   margin: 8px;
   padding: 8px 12px;
@@ -369,7 +395,7 @@
   cursor: pointer;
 }
 
-.claudian-history-load-more:hover {
+.codian-history-load-more:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }

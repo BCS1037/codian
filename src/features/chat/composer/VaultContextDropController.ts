@@ -124,9 +124,9 @@ export class VaultContextDropController {
   }
 
   private createDropOverlay(): HTMLElement {
-    const overlayEl = this.dropZoneEl.createDiv({ cls: 'claudian-drop-overlay' });
-    const contentEl = overlayEl.createDiv({ cls: 'claudian-drop-content' });
-    const iconEl = contentEl.createSpan({ cls: 'claudian-drop-icon' });
+    const overlayEl = this.dropZoneEl.createDiv({ cls: 'codian-drop-overlay' });
+    const contentEl = overlayEl.createDiv({ cls: 'codian-drop-content' });
+    const iconEl = contentEl.createSpan({ cls: 'codian-drop-icon' });
     setIcon(iconEl, 'paperclip');
     contentEl.createSpan({ text: t('chat.drop.context') });
     return overlayEl;

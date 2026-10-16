@@ -9,7 +9,7 @@ export interface ForkSource {
 }
 
 /** View type identifier for Obsidian. */
-export const VIEW_TYPE_CLAUDIAN = 'codian-view';
+export const VIEW_TYPE_CODIAN = 'codian-view';
 
 /** Supported image media types for attachments. */
 export type ImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
@@ -33,7 +33,8 @@ export type ContentBlock =
   | { type: 'tool_use'; toolId: string }
   | { type: 'thinking'; content: string; durationSeconds?: number }
   | { type: 'subagent'; subagentId: string; mode?: SubagentMode }
-  | { type: 'context_compacted' };
+  | { type: 'context_compacted' }
+  | { type: 'task_notification'; content: string };
 
 /** Chat message with content, tool calls, and attachments. */
 export interface ChatMessage {
@@ -49,10 +50,16 @@ export interface ChatMessage {
   images?: ImageAttachment[];
   /** Selected assistant-reply context attached to this user turn. */
   chatSelections?: Array<{ id: string; text: string }>;
+  /** Sender info if this message was sent from another Codian session. */
+  sessionMessage?: { from: string; sessionId: string };
   /** True if this message represents a user interrupt (from SDK storage). */
   isInterrupt?: boolean;
   /** True if this message is rebuilt context sent to SDK on session reset (should be hidden). */
   isRebuiltContext?: boolean;
+  /** True if this message was generated automatically (e.g., auto-continuation). */
+  isAutomaticResponse?: boolean;
+  /** Timestamp when response completed. */
+  completedAt?: number;
   /** Duration in seconds from user send to response completion. */
   durationSeconds?: number;
   /** Flavor word used for duration display (e.g., "Baked", "Cooked"). */
@@ -61,6 +68,13 @@ export interface ChatMessage {
   userMessageId?: string;
   /** Provider-native assistant message identifier used for rewind/fork checkpoints. */
   assistantMessageId?: string;
+  /** Adjacent native history branches for providers that expose in-session navigation. */
+  branchNavigation?: {
+    count: number;
+    nextMessageId?: string;
+    position: number;
+    previousMessageId?: string;
+  };
 }
 
 /** Persisted conversation with messages and session state. */
@@ -74,6 +88,8 @@ export interface Conversation {
   updatedAt: number;
   /** Timestamp when the last agent response completed. */
   lastResponseAt?: number;
+  /** Backward-compatible alias for updatedAt */
+  lastActivityAt?: number;
   sessionId: string | null;
   /** Conversation-owned model selection. Missing values are migrated lazily. */
   selectedModel?: string;
@@ -95,6 +111,14 @@ export interface Conversation {
   pinned?: boolean;
   /** Hides the conversation from the default active session index. */
   archived?: boolean;
+  /** Backward-compatible alias for archived */
+  isArchived?: boolean;
+}
+
+export function isCanonicalUserMessage(message: ChatMessage): boolean {
+  return message.role === 'user'
+    && !message.isInterrupt
+    && !message.isRebuiltContext;
 }
 
 /** Lightweight conversation metadata for the history dropdown. */
@@ -104,16 +128,21 @@ export interface ConversationMeta {
   title: string;
   createdAt: number;
   updatedAt: number;
+  /** Backward-compatible alias for updatedAt */
+  lastActivityAt?: number;
   /** Timestamp when the last agent response completed. */
   lastResponseAt?: number;
   messageCount: number;
   preview?: string;
+  selectedModel?: string;
   /** Status of AI title generation. */
   titleGenerationStatus?: 'pending' | 'success' | 'failed';
   /** Keeps the conversation at the top of the session index. */
   pinned?: boolean;
   /** Hides the conversation from the default active session index. */
   archived?: boolean;
+  /** Backward-compatible alias for archived */
+  isArchived?: boolean;
 }
 
 /**

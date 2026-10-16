@@ -16,6 +16,7 @@ import type { ChatRuntime } from '../../../core/runtime/ChatRuntime';
 import type {
   ApprovalCallback,
   AskUserQuestionCallback,
+  AsyncSubagentCompletionCallback,
   AutoTurnCallback,
   ChatRewindMode,
   ChatRewindResult,
@@ -38,8 +39,6 @@ import type {
 import { getEnhancedPath } from '../../../utils/env';
 import { getVaultPath } from '../../../utils/path';
 import {
-  AcpClientConnection,
-  AcpJsonRpcTransport,
   type AcpReadTextFileRequest,
   type AcpRequestPermissionRequest,
   type AcpRequestPermissionResponse,
@@ -48,7 +47,6 @@ import {
   type AcpSessionModeState,
   type AcpSessionNotification,
   AcpSessionUpdateNormalizer,
-  AcpSubprocess,
   type AcpUsage,
   type AcpUsageUpdate,
   type AcpWriteTextFileRequest,
@@ -65,6 +63,13 @@ import {
 } from '../../acp/AcpPermissionAdapter';
 import { OPENCODE_PROVIDER_CAPABILITIES } from '../capabilities';
 import { updateOpencodeDiscoveryState } from '../discoveryState';
+import {
+  isOpencodeHydrationDiagnosticMessage,
+  loadOpencodeSessionMessages,
+} from '../history/OpencodeHistoryStore';
+import { OpencodeHttpClient, type OpencodeHttpClientConnection } from '../http/OpencodeHttpClient';
+import type { OpencodeHttpClientPool } from '../http/OpencodeHttpClientPool';
+import { OpencodeHttpSessionConnection } from '../http/OpencodeHttpSessionConnection';
 import {
   sameDiscoveredModels,
   sameModes,
@@ -92,9 +97,14 @@ import {
 import { createOpencodeToolStreamAdapter } from '../normalization/opencodeToolNormalization';
 import { getOpencodeProviderSettings, updateOpencodeProviderSettings } from '../settings';
 import { getOpencodeState, type OpencodeProviderState } from '../types';
-import { buildOpencodePromptBlocks, buildOpencodePromptText } from './buildOpencodePrompt';
+import { buildOpencodePrompt, buildOpencodePromptText } from './buildOpencodePrompt';
 import { prepareOpencodeLaunchArtifacts } from './OpencodeLaunchArtifacts';
 import { buildOpencodeRuntimeEnv } from './OpencodeRuntimeEnvironment';
+import {
+  assertOpencodeSessionCompatibility,
+  type OpencodeNativeVersion,
+} from './OpencodeSessionCompatibility';
+import type { OpencodeSessionConnection } from './OpencodeSessionConnection';
 
 interface ActiveTurn {
   cancelled: boolean;
@@ -158,17 +168,29 @@ class StreamChunkQueue {
   }
 }
 
+export interface OpencodeChatRuntimeDependencies {
+  createHttpClient?: (
+    command: string,
+    cwd: string,
+    environment: NodeJS.ProcessEnv,
+  ) => OpencodeHttpClientConnection;
+  httpClientPool?: OpencodeHttpClientPool;
+  loadSessionMessages?: typeof loadOpencodeSessionMessages;
+}
+
 export class OpencodeChatRuntime implements ChatRuntime {
   readonly providerId = 'opencode' as const;
 
   private activeTurn: ActiveTurn | null = null;
   private approvalCallback: ApprovalCallback | null = null;
-  private connection: AcpClientConnection | null = null;
+  private asyncSubagentCompletionCallback: AsyncSubagentCompletionCallback | null = null;
+  private connection: OpencodeSessionConnection | null = null;
   private connectionGeneration = 0;
   private conversationId: string | null = null;
   private conversationGeneration = 0;
   private contextUsage: AcpUsageUpdate | null = null;
   private currentDatabasePath: string | null = null;
+  private currentRuntimeEnvironment: NodeJS.ProcessEnv | null = null;
   private currentLaunchKey: string | null = null;
   private currentSessionEffortConfigId: string | null = null;
   private currentSessionEffortValue: string | null = null;
@@ -178,8 +200,11 @@ export class OpencodeChatRuntime implements ChatRuntime {
   private currentSessionModeId: string | null = null;
   private currentTurnMetadata: ChatTurnMetadata = {};
   private loadedSessionId: string | null = null;
+  private askUserQuestionCallback: AskUserQuestionCallback | null = null;
   private permissionModeSyncCallback: ((mode: string) => void) | null = null;
-  private process: AcpSubprocess | null = null;
+  private httpClient: OpencodeHttpClientConnection | null = null;
+  private runtimeNativeVersion: OpencodeNativeVersion | null = null;
+  private sessionNativeVersion: OpencodeNativeVersion | null = null;
   private promptUsage: AcpUsage | null = null;
   private readonly readyListeners: Array<(ready: boolean) => void> = [];
   private ready = false;
@@ -202,11 +227,10 @@ export class OpencodeChatRuntime implements ChatRuntime {
     isToolBlocked: toolCallId => this.blockedToolIds.has(toolCallId),
   });
   private readonly toolStreamAdapter = createOpencodeToolStreamAdapter();
-  private transport: AcpJsonRpcTransport | null = null;
-  private unregisterTransportClose: (() => void) | null = null;
 
   constructor(
     private readonly plugin: ProviderHost,
+    private readonly dependencies: OpencodeChatRuntimeDependencies = {},
   ) {}
 
   getCapabilities(): Readonly<ProviderCapabilities> {
@@ -243,11 +267,16 @@ export class OpencodeChatRuntime implements ChatRuntime {
     const nextConversationId = conversation?.id ?? null;
     const nextSessionId = conversation?.sessionId ?? null;
     const state = getOpencodeState(conversation?.providerState);
+    const nextNativeVersion = nextSessionId
+      && (state.nativeVersion === 1 || state.nativeVersion === 2)
+      ? state.nativeVersion
+      : null;
     const nextDatabasePath = state.databasePath
       ?? ((!nextSessionId || nextSessionId !== previousSessionId) ? null : this.currentDatabasePath);
     const targetChanged = nextConversationId !== this.conversationId
       || nextSessionId !== this.sessionId
-      || nextDatabasePath !== this.currentDatabasePath;
+      || nextDatabasePath !== this.currentDatabasePath
+      || nextNativeVersion !== this.sessionNativeVersion;
     if (this.sessionId !== nextSessionId) {
       this.rejectSupportedCommandWaiters(
         new Error('OpenCode command discovery context changed.'),
@@ -264,6 +293,7 @@ export class OpencodeChatRuntime implements ChatRuntime {
     this.conversationId = nextConversationId;
     this.sessionId = nextSessionId;
     this.currentDatabasePath = nextDatabasePath;
+    this.sessionNativeVersion = nextNativeVersion;
     if (targetChanged) {
       this.conversationGeneration += 1;
       if (this.readinessFlight) {
@@ -384,11 +414,9 @@ export class OpencodeChatRuntime implements ChatRuntime {
       artifactKey: artifacts.launchKey,
     });
 
-    const shouldRestart = !this.process
-      || !this.transport
+    const backendUnavailable = !this.httpClient || !this.httpClient.isAlive || this.httpClient.isClosed;
+    const shouldRestart = backendUnavailable
       || !this.connection
-      || !this.process.isAlive()
-      || this.transport.isClosed
       || options?.force === true
       || this.restartRequiredAfterCancel
       || this.currentLaunchKey !== nextLaunchKey;
@@ -401,7 +429,9 @@ export class OpencodeChatRuntime implements ChatRuntime {
       await this.startProcess({
         command: resolvedCliPath,
         configPath: artifacts.configPath,
+        conversationGeneration,
         cwd,
+        launchKey: nextLaunchKey,
         runtimeEnv,
       });
       if (!this.isReadinessCurrent(lifecycleGeneration, conversationGeneration)) {
@@ -471,7 +501,15 @@ export class OpencodeChatRuntime implements ChatRuntime {
     let shouldBootstrapHistory = previousMessages.length > 0
       && (!expectedSessionId || this.sessionInvalidated);
 
-    if (!(await this.ensureReady())) {
+    let ready: boolean;
+    try {
+      ready = await this.ensureReady();
+    } catch (error) {
+      yield { type: 'error', content: this.formatRuntimeError(error) };
+      yield { type: 'done' };
+      return;
+    }
+    if (!ready) {
       yield { type: 'error', content: 'Failed to start OpenCode. Check the CLI path and login state.' };
       yield { type: 'done' };
       return;
@@ -535,13 +573,14 @@ export class OpencodeChatRuntime implements ChatRuntime {
       return;
     }
 
+    const prompt = buildOpencodePrompt(
+      turn.request,
+      shouldBootstrapHistory ? previousMessages : [],
+    );
     const promptPromise = this.connection.prompt({
-      prompt: buildOpencodePromptBlocks(
-        turn.request,
-        shouldBootstrapHistory ? previousMessages : [],
-      ),
+      prompt: prompt.blocks,
       sessionId,
-    }).then((response) => {
+    }, prompt.userTextRange).then((response) => {
       if (response.userMessageId) {
         this.currentTurnMetadata.userMessageId = response.userMessageId;
       }
@@ -591,14 +630,16 @@ export class OpencodeChatRuntime implements ChatRuntime {
 
   cancel(): void {
     const activeTurn = this.activeTurn;
-    if (!activeTurn || activeTurn.cancelled) {
+    const ownsLocalTurn = !!activeTurn && !activeTurn.cancelled;
+    const hasPendingPrompt = this.connection?.hasPendingPrompt?.() === true;
+    if (!ownsLocalTurn && !hasPendingPrompt) {
       return;
     }
     if (this.connection && this.sessionId) {
       this.connection.cancel({ sessionId: this.sessionId });
     }
     this.restartRequiredAfterCancel = true;
-    this.settleActiveTurn();
+    if (ownsLocalTurn) this.settleActiveTurn();
   }
 
   resetSession(): void {
@@ -686,6 +727,7 @@ export class OpencodeChatRuntime implements ChatRuntime {
     this.activeTurn?.queue.close();
     this.rejectSupportedCommandWaiters(new Error('OpenCode runtime stopped.'));
     this.supportedCommandListeners.clear();
+    this.asyncSubagentCompletionCallback = null;
     void this.shutdownProcess();
   }
 
@@ -703,9 +745,15 @@ export class OpencodeChatRuntime implements ChatRuntime {
 
   setApprovalDismisser(_dismisser: (() => void) | null): void {}
 
-  setAskUserQuestionCallback(_callback: AskUserQuestionCallback | null): void {}
+  setAskUserQuestionCallback(callback: AskUserQuestionCallback | null): void {
+    this.askUserQuestionCallback = callback;
+  }
 
   setExitPlanModeCallback(_callback: ExitPlanModeCallback | null): void {}
+
+  setAsyncSubagentCompletionCallback(callback: AsyncSubagentCompletionCallback | null): void {
+    this.asyncSubagentCompletionCallback = callback;
+  }
 
   setPermissionModeSyncCallback(callback: ((sdkMode: string) => void) | null): void {
     this.permissionModeSyncCallback = callback;
@@ -726,10 +774,14 @@ export class OpencodeChatRuntime implements ChatRuntime {
     const existingState = params.conversation
       ? getOpencodeState(params.conversation.providerState)
       : null;
+    const nativeVersion = this.sessionId
+      ? this.sessionNativeVersion ?? this.runtimeNativeVersion ?? existingState?.nativeVersion
+      : null;
     const providerState: OpencodeProviderState = {
       ...(this.currentDatabasePath || existingState?.databasePath
         ? { databasePath: this.currentDatabasePath ?? existingState?.databasePath }
         : {}),
+      ...(nativeVersion === 1 || nativeVersion === 2 ? { nativeVersion } : {}),
     };
     const updates: Partial<Conversation> = {
       providerState: Object.keys(providerState).length > 0
@@ -752,18 +804,40 @@ export class OpencodeChatRuntime implements ChatRuntime {
     return this.sessionId ?? conversation?.sessionId ?? null;
   }
 
-  async loadSubagentToolCalls(_agentId: string): Promise<ToolCallInfo[]> {
-    return [];
+  async loadSubagentToolCalls(agentId: string): Promise<ToolCallInfo[]> {
+    const messages = await this.loadSubagentMessages(agentId);
+    return messages.flatMap((message) => message.role === 'assistant' ? message.toolCalls ?? [] : []);
   }
 
-  async loadSubagentFinalResult(_agentId: string): Promise<string | null> {
+  async loadSubagentFinalResult(agentId: string): Promise<string | null> {
+    const messages = await this.loadSubagentMessages(agentId);
+    for (const message of [...messages].reverse()) {
+      if (
+        message.role === 'assistant'
+        && !isOpencodeHydrationDiagnosticMessage(message)
+        && message.content.trim()
+      ) {
+        return message.content.trim();
+      }
+    }
     return null;
+  }
+
+  private loadSubagentMessages(agentId: string): Promise<ChatMessage[]> {
+    const nativeVersion = this.sessionNativeVersion ?? this.runtimeNativeVersion;
+    if (nativeVersion !== 2 || !this.currentDatabasePath) return Promise.resolve([]);
+    return (this.dependencies.loadSessionMessages ?? loadOpencodeSessionMessages)(agentId, {
+      databasePath: this.currentDatabasePath,
+      nativeVersion: 2,
+    }, this.currentRuntimeEnvironment ?? process.env);
   }
 
   private async startProcess(params: {
     command: string;
     configPath: string;
+    conversationGeneration: number;
     cwd: string;
+    launchKey: string;
     runtimeEnv: NodeJS.ProcessEnv;
   }): Promise<void> {
     const processEnv: NodeJS.ProcessEnv = {
@@ -775,51 +849,59 @@ export class OpencodeChatRuntime implements ChatRuntime {
         path.isAbsolute(params.command) ? params.command : undefined,
       ),
     };
+    this.currentRuntimeEnvironment = processEnv;
 
-    this.process = new AcpSubprocess({
-      args: ['acp', `--cwd=${params.cwd}`],
-      command: params.command,
-      cwd: params.cwd,
-      env: processEnv,
-    });
-    this.process.start();
+    assertOpencodeSessionCompatibility(
+      this.sessionNativeVersion ?? undefined,
+      this.sessionId !== null,
+    );
+    this.runtimeNativeVersion = 2;
 
-    this.transport = new AcpJsonRpcTransport({
-      input: this.process.stdout,
-      onClose: (listener) => this.process!.onClose(listener),
-      output: this.process.stdin,
-    });
-    const transport = this.transport;
-    this.unregisterTransportClose = transport.onClose((error) => {
-      if (this.transport === transport) {
-        this.setReady(false);
-        this.rejectSupportedCommandWaiters(error ?? new Error('OpenCode runtime closed.'));
-        this.settleActiveTurn(error ?? new Error('OpenCode runtime closed'));
-      }
-    });
-
+    const httpClient = this.dependencies.httpClientPool?.acquire(
+      params.command,
+      params.cwd,
+      processEnv,
+      params.launchKey,
+    ) ?? (this.dependencies.createHttpClient ?? (
+      (command, cwd, environment) => new OpencodeHttpClient(command, cwd, environment)
+    ))(params.command, params.cwd, processEnv);
+    this.httpClient = httpClient;
     const connectionGeneration = ++this.connectionGeneration;
-    this.connection = new AcpClientConnection({
-      clientInfo: {
-        name: 'claudian',
-        version: this.plugin.manifest?.version ?? '0.0.0',
+    const connection = new OpencodeHttpSessionConnection(httpClient, params.cwd, {
+      askUserQuestion: (input, signal) => this.askUserQuestionCallback
+        ? this.askUserQuestionCallback(input, signal)
+        : Promise.resolve(null),
+      fileSystem: {
+        readTextFile: (request) => this.readTextFile(request),
+        writeTextFile: (request) => this.writeTextFile(request),
       },
-      delegate: {
-        fileSystem: {
-          readTextFile: (request) => this.readTextFile(request),
-          writeTextFile: (request) => this.writeTextFile(request),
-        },
-        onSessionNotification: (notification) => this.handleSessionNotification(
-          notification,
-          connectionGeneration,
-        ),
-        requestPermission: (request) => this.handlePermissionRequest(request),
+      onSessionNotification: (notification) => this.handleSessionNotification(
+        notification,
+        connectionGeneration,
+      ),
+      onAsyncSubagentCompletion: (completion) => (
+        completion.providerSessionId === this.sessionId
+          ? this.asyncSubagentCompletionCallback?.(completion)
+          : undefined
+      ),
+      onSubagentChunk: (chunk) => {
+        const activeTurn = this.activeTurn;
+        if (activeTurn && activeTurn.sessionId === this.sessionId) {
+          activeTurn.queue.push(chunk);
+        }
       },
-      transport: this.transport,
+      requestPermission: (request) => this.handlePermissionRequest(request),
+      onClosed: (error) => {
+        if (this.connection === connection) {
+          this.setReady(false);
+          this.rejectSupportedCommandWaiters(error);
+          this.settleActiveTurn(error);
+        }
+      },
     });
-
-    this.transport.start();
-    await this.connection.initialize();
+    this.connection = connection;
+    await connection.initialize();
+    await this.syncSessionModelState({ models: connection.getModelState() }, params.conversationGeneration);
   }
 
   private async shutdownProcess(options?: { preserveCommandWaiters?: boolean }): Promise<void> {
@@ -835,19 +917,11 @@ export class OpencodeChatRuntime implements ChatRuntime {
     this.clearSupportedCommands();
     this.pendingSupportedCommands.clear();
 
-    this.unregisterTransportClose?.();
-    this.unregisterTransportClose = null;
-
-    this.connection?.dispose();
+    await this.connection?.dispose();
     this.connection = null;
-
-    this.transport?.dispose();
-    this.transport = null;
-
-    if (this.process) {
-      await this.process.shutdown().catch(() => {});
-      this.process = null;
-    }
+    this.httpClient = null;
+    this.runtimeNativeVersion = null;
+    this.currentRuntimeEnvironment = null;
   }
 
   private setReady(ready: boolean): void {
@@ -1396,6 +1470,7 @@ export class OpencodeChatRuntime implements ChatRuntime {
       }
       this.loadedSessionId = response.sessionId;
       this.sessionId = response.sessionId;
+      this.sessionNativeVersion = this.runtimeNativeVersion;
       this.sessionCwds.set(response.sessionId, cwd);
       this.publishPendingSupportedCommands(response.sessionId);
       await this.syncSessionModelState({
@@ -1442,6 +1517,7 @@ export class OpencodeChatRuntime implements ChatRuntime {
       this.sessionInvalidated = false;
       this.loadedSessionId = loadedSessionId;
       this.sessionId = loadedSessionId;
+      this.sessionNativeVersion = this.runtimeNativeVersion ?? this.sessionNativeVersion;
       this.sessionCwds.set(loadedSessionId, cwd);
       await this.syncSessionModelState({
         configOptions: response.configOptions ?? null,
@@ -1680,13 +1756,12 @@ export class OpencodeChatRuntime implements ChatRuntime {
   }
 
   private formatRuntimeError(error: unknown): string {
-    const baseMessage = error instanceof Error ? error.message : 'OpenCode request failed';
-    const stderr = this.process?.getStderrSnapshot();
-    return stderr ? `${baseMessage}\n\n${stderr}` : baseMessage;
+    return error instanceof Error ? error.message : 'OpenCode request failed';
   }
 
   private clearActiveSession(): void {
     this.currentDatabasePath = null;
+    this.sessionNativeVersion = null;
     this.sessionId = null;
     this.loadedSessionId = null;
     this.currentSessionModelId = null;

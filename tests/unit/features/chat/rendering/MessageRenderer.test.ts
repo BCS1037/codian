@@ -49,7 +49,7 @@ function createMockComponent() {
   };
 }
 
-function mockCapabilities(providerId: 'claude' | 'codex' | 'grok' = 'claude') {
+function mockCapabilities(providerId: 'claude' | 'codex' | 'grok' | 'pi' = 'claude') {
   return () => ({
     providerId,
     supportsPersistentRuntime: true,
@@ -61,6 +61,7 @@ function mockCapabilities(providerId: 'claude' | 'codex' | 'grok' = 'claude') {
     supportsImageAttachments: true,
     supportsInstructionMode: true,
     supportsMcpTools: true,
+    supportsConversationBranches: providerId === 'pi',
     reasoningControl: 'effort' as const,
   });
 }
@@ -114,8 +115,8 @@ describe('MessageRenderer', () => {
 
     expect(emptySpy).toHaveBeenCalled();
     expect(renderStoredSpy).toHaveBeenCalledTimes(1);
-    expect(welcomeEl.hasClass('claudian-welcome')).toBe(true);
-    expect(welcomeEl.children[0].hasClass('claudian-welcome-orb')).toBe(true);
+    expect(welcomeEl.hasClass('codian-welcome')).toBe(true);
+    expect(welcomeEl.children[0].hasClass('codian-welcome-orb')).toBe(true);
     expect(welcomeEl.children[1].textContent).toBe('Hello');
   });
 
@@ -126,7 +127,40 @@ describe('MessageRenderer', () => {
     const welcomeEl = renderer.renderMessages([], () => 'Welcome!');
 
     expect(renderStoredSpy).not.toHaveBeenCalled();
-    expect(welcomeEl.hasClass('claudian-welcome')).toBe(true);
+    expect(welcomeEl.hasClass('codian-welcome')).toBe(true);
+  });
+
+  it('scrolls to bottom once container receives layout box if clientHeight is 0 at render time', () => {
+    const messagesEl = createMockEl();
+    Object.defineProperty(messagesEl, 'clientHeight', { value: 0, writable: true, configurable: true });
+    Object.defineProperty(messagesEl, 'scrollHeight', { value: 1000, writable: true, configurable: true });
+    messagesEl.scrollTop = 0;
+
+    let resizeCallback: (() => void) | undefined;
+    const disconnectSpy = jest.fn();
+    class MockResizeObserver {
+      constructor(cb: () => void) {
+        resizeCallback = cb;
+      }
+      observe = jest.fn();
+      unobserve = jest.fn();
+      disconnect = disconnectSpy;
+    }
+    (messagesEl.ownerDocument as any).defaultView = { ResizeObserver: MockResizeObserver };
+
+    const mockComponent = createMockComponent();
+    const renderer = new MessageRenderer({} as any, mockComponent as any, messagesEl);
+
+    renderer.renderMessages([], () => 'Welcome!');
+
+    expect(disconnectSpy).not.toHaveBeenCalled();
+
+    // Layout occurs: clientHeight becomes > 0
+    Object.defineProperty(messagesEl, 'clientHeight', { value: 400, writable: true, configurable: true });
+    if (resizeCallback) (resizeCallback as () => void)();
+
+    expect(messagesEl.scrollTop).toBe(1000);
+    expect(disconnectSpy).toHaveBeenCalled();
   });
 
   // ============================================
@@ -151,12 +185,12 @@ describe('MessageRenderer', () => {
     // Should create assistant-style message with interrupt content
     expect(messagesEl.children.length).toBe(1);
     const msgEl = messagesEl.children[0];
-    expect(msgEl.hasClass('claudian-message-assistant')).toBe(true);
+    expect(msgEl.hasClass('codian-message-assistant')).toBe(true);
     // Check the content contains interrupt styling
     const contentEl = msgEl.children[0];
     const textEl = contentEl.children[0];
     const interruptedEl = textEl.children[0];
-    expect(interruptedEl.hasClass('claudian-interrupted')).toBe(true);
+    expect(interruptedEl.hasClass('codian-interrupted')).toBe(true);
     expect(interruptedEl.textContent).toBe('Interrupted');
   });
 
@@ -178,13 +212,13 @@ describe('MessageRenderer', () => {
     // Should create an assistant message (not a bare interrupt marker)
     expect(messagesEl.children.length).toBe(1);
     const msgEl = messagesEl.children[0];
-    expect(msgEl.hasClass('claudian-message-assistant')).toBe(true);
+    expect(msgEl.hasClass('codian-message-assistant')).toBe(true);
 
     // The content div should have both content rendering and an interrupt indicator
     const contentEl = msgEl.children[0];
     const lastChild = contentEl.children[contentEl.children.length - 1];
     const interruptedEl = lastChild.children[0];
-    expect(interruptedEl.hasClass('claudian-interrupted')).toBe(true);
+    expect(interruptedEl.hasClass('codian-interrupted')).toBe(true);
     expect(interruptedEl.textContent).toBe('Interrupted');
   });
 
@@ -193,7 +227,7 @@ describe('MessageRenderer', () => {
     const messagesEl = createMockEl();
     const { renderer } = createRenderer(messagesEl);
     const legacyMarker =
-      '<span class="claudian-interrupted">Interrupted</span> <span class="claudian-interrupted-hint">· What should Claudian do instead?</span>';
+      '<span class="codian-interrupted">Interrupted</span> <span class="codian-interrupted-hint">· What should Codian do instead?</span>';
     const interruptMsg: ChatMessage = {
       id: 'interrupt-legacy-1',
       role: 'assistant',
@@ -212,7 +246,7 @@ describe('MessageRenderer', () => {
     );
     const contentEl = messagesEl.children[0].children[0];
     const indicatorEl = contentEl.children[contentEl.children.length - 1];
-    expect(indicatorEl.children[0].hasClass('claudian-interrupted')).toBe(true);
+    expect(indicatorEl.children[0].hasClass('codian-interrupted')).toBe(true);
     expect(indicatorEl.children[0].textContent).toBe('Interrupted');
   });
 
@@ -234,10 +268,10 @@ describe('MessageRenderer', () => {
     // Should create a bare interrupt marker (same as Claude-style)
     expect(messagesEl.children.length).toBe(1);
     const msgEl = messagesEl.children[0];
-    expect(msgEl.hasClass('claudian-message-assistant')).toBe(true);
+    expect(msgEl.hasClass('codian-message-assistant')).toBe(true);
     const contentEl = msgEl.children[0];
     const textEl = contentEl.children[0];
-    expect(textEl.children[0].hasClass('claudian-interrupted')).toBe(true);
+    expect(textEl.children[0].hasClass('codian-interrupted')).toBe(true);
   });
 
   it('skips rebuilt context messages', () => {
@@ -273,7 +307,7 @@ describe('MessageRenderer', () => {
 
     expect(messagesEl.children.length).toBe(1);
     const msgEl = messagesEl.children[0];
-    expect(msgEl.hasClass('claudian-message-user')).toBe(true);
+    expect(msgEl.hasClass('codian-message-user')).toBe(true);
   });
 
   it('renders user message with displayContent instead of content', () => {
@@ -330,7 +364,7 @@ describe('MessageRenderer', () => {
     expect(renderer.renderMessageImages).toHaveBeenCalled();
     // Only the images container, no message bubble
     const bubbles = messagesEl.children.filter(
-      (c: any) => c.hasClass('claudian-message')
+      (c: any) => c.hasClass('codian-message')
     );
     expect(bubbles.length).toBe(0);
   });
@@ -372,7 +406,62 @@ describe('MessageRenderer', () => {
 
     renderer.renderStoredMessage(allMessages[1], allMessages, 1);
 
-    expect(messagesEl.querySelector('.claudian-message-rewind-btn')).not.toBeNull();
+    expect(messagesEl.querySelector('.codian-message-rewind-btn')).not.toBeNull();
+  });
+
+  it('renders native branch controls only for supported adjacent Pi branches', async () => {
+    const messagesEl = createMockEl();
+    const navigateBranch = jest.fn().mockResolvedValue(undefined);
+    const capabilities = mockCapabilities('pi');
+    const renderer = new MessageRenderer(
+      { app: {}, settings: { mediaFolder: '' } } as any,
+      createMockComponent() as any,
+      messagesEl,
+      undefined,
+      undefined,
+      capabilities,
+      navigateBranch,
+    );
+    jest.spyOn(renderer, 'renderContent').mockResolvedValue(undefined);
+
+    const message: ChatMessage = {
+      id: 'u1',
+      role: 'user',
+      content: 'hello',
+      timestamp: 1,
+      userMessageId: 'native-prompt',
+      branchNavigation: {
+        count: 3,
+        nextMessageId: 'next-branch',
+        position: 2,
+        previousMessageId: 'previous-branch',
+      },
+    };
+
+    renderer.renderStoredMessage(message);
+
+    const previousButton = messagesEl.querySelector('.codian-message-branch-previous');
+    const nextButton = messagesEl.querySelector('.codian-message-branch-next');
+    expect(previousButton).not.toBeNull();
+    expect(nextButton).not.toBeNull();
+    expect(messagesEl.querySelector('.codian-message-branch-position')?.textContent).toBe('2 / 3');
+    previousButton!.click();
+    await Promise.resolve();
+    expect(navigateBranch).toHaveBeenCalledWith('native-prompt', 'previous-branch');
+
+    const unsupportedMessagesEl = createMockEl();
+    const unsupportedRenderer = new MessageRenderer(
+      { app: {}, settings: { mediaFolder: '' } } as any,
+      createMockComponent() as any,
+      unsupportedMessagesEl,
+      undefined,
+      undefined,
+      mockCapabilities('claude'),
+      navigateBranch,
+    );
+    jest.spyOn(unsupportedRenderer, 'renderContent').mockResolvedValue(undefined);
+    unsupportedRenderer.renderStoredMessage(message);
+    expect(unsupportedMessagesEl.querySelector('.codian-message-branch-previous')).toBeNull();
   });
 
   it('adds rewind but not fork for a completed first user message', () => {
@@ -396,8 +485,8 @@ describe('MessageRenderer', () => {
 
     renderer.renderStoredMessage(allMessages[0], allMessages, 0);
 
-    expect(messagesEl.querySelector('.claudian-message-rewind-btn')).not.toBeNull();
-    expect(messagesEl.querySelector('.claudian-message-fork-btn')).toBeNull();
+    expect(messagesEl.querySelector('.codian-message-rewind-btn')).not.toBeNull();
+    expect(messagesEl.querySelector('.codian-message-fork-btn')).toBeNull();
     expect((renderer as any).liveMessageEls.has('u1')).toBe(false);
   });
 
@@ -417,7 +506,7 @@ describe('MessageRenderer', () => {
 
     renderer.renderStoredMessage(msg);
 
-    expect(messagesEl.querySelector('.claudian-message-rewind-btn')).toBeNull();
+    expect(messagesEl.querySelector('.codian-message-rewind-btn')).toBeNull();
   });
 
   it('shows rewind mode menu for eligible streamed user messages', async () => {
@@ -443,7 +532,7 @@ describe('MessageRenderer', () => {
 
     renderer.refreshActionButtons(userMsg, allMessages, 1);
 
-    const btn = messagesEl.querySelector('.claudian-message-rewind-btn');
+    const btn = messagesEl.querySelector('.codian-message-rewind-btn');
     expect(btn).not.toBeNull();
 
     btn!.click();
@@ -487,8 +576,8 @@ describe('MessageRenderer', () => {
       { id: 'a1', role: 'assistant', content: 'response', timestamp: 2, assistantMessageId: 'resp-a' },
     ], 0);
 
-    expect(messagesEl.querySelector('.claudian-message-rewind-btn')).not.toBeNull();
-    expect(messagesEl.querySelector('.claudian-message-fork-btn')).toBeNull();
+    expect(messagesEl.querySelector('.codian-message-rewind-btn')).not.toBeNull();
+    expect(messagesEl.querySelector('.codian-message-fork-btn')).toBeNull();
   });
 
   // ============================================
@@ -742,8 +831,8 @@ describe('MessageRenderer', () => {
 
     // Find the footer element
     const msgEl = messagesEl.children[0];
-    const contentEl = msgEl.children[0]; // claudian-message-content
-    const footerEl = contentEl.children.find((c: any) => c.hasClass('claudian-response-footer'));
+    const contentEl = msgEl.children[0]; // codian-message-content
+    const footerEl = contentEl.children.find((c: any) => c.hasClass('codian-response-footer'));
     expect(footerEl).toBeDefined();
     const durationSpan = footerEl!.children[0];
     expect(durationSpan.textContent).toContain('Baked');
@@ -770,7 +859,7 @@ describe('MessageRenderer', () => {
 
     const msgEl = messagesEl.children[0];
     const contentEl = msgEl.children[0];
-    const footerEl = contentEl.children.find((c: any) => c.hasClass('claudian-response-footer'));
+    const footerEl = contentEl.children.find((c: any) => c.hasClass('codian-response-footer'));
     expect(footerEl).toBeUndefined();
   });
 
@@ -794,7 +883,7 @@ describe('MessageRenderer', () => {
 
     const msgEl = messagesEl.children[0];
     const contentEl = msgEl.children[0];
-    const footerEl = contentEl.children.find((c: any) => c.hasClass('claudian-response-footer'));
+    const footerEl = contentEl.children.find((c: any) => c.hasClass('codian-response-footer'));
     expect(footerEl).toBeDefined();
     expect(footerEl!.children[0].textContent).toContain('Baked');
   });
@@ -1107,7 +1196,7 @@ describe('MessageRenderer', () => {
 
     const msgEl = renderer.addMessage(msg);
 
-    expect(msgEl.hasClass('claudian-message-user')).toBe(true);
+    expect(msgEl.hasClass('codian-message-user')).toBe(true);
   });
 
   it('addMessage stores a truncated first-line table-of-contents title for user messages', () => {
@@ -1184,7 +1273,7 @@ describe('MessageRenderer', () => {
 
     const msgEl = renderer.addMessage(msg);
 
-    expect(msgEl.hasClass('claudian-message-assistant')).toBe(true);
+    expect(msgEl.hasClass('codian-message-assistant')).toBe(true);
   });
 
   // ============================================
@@ -1223,7 +1312,7 @@ describe('MessageRenderer', () => {
     // Should create images container with 2 image wrappers
     expect(containerEl.children.length).toBe(1);
     const imagesContainer = containerEl.children[0];
-    expect(imagesContainer.hasClass('claudian-message-images')).toBe(true);
+    expect(imagesContainer.hasClass('codian-message-images')).toBe(true);
     expect(imagesContainer.children.length).toBe(2);
   });
 
@@ -1264,7 +1353,7 @@ describe('MessageRenderer', () => {
 
     try {
       renderer.showFullImage(image);
-      expect(mockBody.createDiv).toHaveBeenCalledWith({ cls: 'claudian-image-modal-overlay' });
+      expect(mockBody.createDiv).toHaveBeenCalledWith({ cls: 'codian-image-modal-overlay' });
     } finally {
       (globalThis as any).document = origDocument;
     }
@@ -1282,7 +1371,7 @@ describe('MessageRenderer', () => {
 
     expect(textEl.children.length).toBe(1);
     const copyBtn = textEl.children[0];
-    expect(copyBtn.hasClass('claudian-text-copy-btn')).toBe(true);
+    expect(copyBtn.hasClass('codian-text-copy-btn')).toBe(true);
   });
 
   // ============================================
@@ -1426,6 +1515,36 @@ describe('MessageRenderer', () => {
     );
   });
 
+  it('renderContent preserves plugin-rendered fence languages unless deferDiagrams is true', async () => {
+    const { MarkdownRenderer } = await import('obsidian');
+    const { renderer } = createRenderer(undefined, 'claude', {
+      pluginRenderedFenceLanguages: ['vega-lite'],
+    });
+    const el = createMockEl();
+    const markdown = '```Vega-Lite\n{"mark": "bar"}\n```\n\n```python\nprint(1)\n```';
+
+    // Normal render: vega-lite is not replaced, python is replaced
+    await renderer.renderContent(el, markdown);
+    expect(MarkdownRenderer.renderMarkdown).toHaveBeenCalledWith(
+      expect.stringContaining('```Vega-Lite\n{"mark": "bar"}\n```'),
+      el,
+      '',
+      expect.anything()
+    );
+    expect(MarkdownRenderer.renderMarkdown).toHaveBeenCalledWith(
+      expect.stringContaining('```codian-display-only-fence-'),
+      el,
+      '',
+      expect.anything()
+    );
+
+    // With deferDiagrams: true: both are replaced
+    await renderer.renderContent(el, markdown, { deferDiagrams: true });
+    const lastCall = (MarkdownRenderer.renderMarkdown as jest.Mock).mock.calls.at(-1);
+    expect(lastCall[0]).not.toContain('```Vega-Lite');
+    expect(lastCall[0]).toContain('```codian-display-only-fence-');
+  });
+
   // ============================================
   // addTextCopyButton - click behavior
   // ============================================
@@ -1461,7 +1580,7 @@ describe('MessageRenderer', () => {
       renderer.addTextCopyButton(textEl, 'markdown content');
 
       const copyBtn = textEl.children[0];
-      expect(copyBtn.hasClass('claudian-text-copy-btn')).toBe(true);
+      expect(copyBtn.hasClass('codian-text-copy-btn')).toBe(true);
 
       // Simulate click
       const clickHandlers = copyBtn._eventListeners.get('click');
@@ -1516,7 +1635,7 @@ describe('MessageRenderer', () => {
     const welcomeEl = renderer.renderMessages(messages, () => 'Good morning!');
 
     expect(welcomeEl).toBeDefined();
-    expect(welcomeEl!.hasClass('claudian-welcome')).toBe(true);
+    expect(welcomeEl!.hasClass('codian-welcome')).toBe(true);
   });
 
   it('renderMessages should store table-of-contents title from displayContent before content', () => {
@@ -1536,7 +1655,7 @@ describe('MessageRenderer', () => {
 
     renderer.renderMessages(messages, () => 'Hello');
 
-    const msgEl = messagesEl.querySelector('.claudian-message-user');
+    const msgEl = messagesEl.querySelector('.codian-message-user');
     expect(msgEl?.getAttribute('data-toc-title')).toBe('Visible slash command');
   });
 
@@ -1563,7 +1682,7 @@ describe('MessageRenderer', () => {
     const welcomeEl = renderer.renderMessages([], () => 'Welcome');
 
     expect(welcomeEl).toBeDefined();
-    expect(welcomeEl!.hasClass('claudian-welcome')).toBe(true);
+    expect(welcomeEl!.hasClass('codian-welcome')).toBe(true);
   });
 
   // ============================================
@@ -1906,10 +2025,10 @@ describe('MessageRenderer', () => {
         renderer.showFullImage(image);
 
         // The overlay has a modal child, which has a close button child
-        const modalEl = overlayEl.children[0]; // claudian-image-modal
+        const modalEl = overlayEl.children[0]; // codian-image-modal
         // Children: img (index 0), closeBtn (index 1)
         const closeBtn = modalEl.children[1];
-        expect(closeBtn.hasClass('claudian-image-modal-close')).toBe(true);
+        expect(closeBtn.hasClass('codian-image-modal-close')).toBe(true);
 
         const removeSpy = jest.spyOn(overlayEl, 'remove');
         closeBtn.click();
@@ -1981,7 +2100,7 @@ describe('MessageRenderer', () => {
       await renderer.renderContent(el, '**broken markdown**');
 
       const errorDiv = el.children.find(
-        (c: any) => c.hasClass('claudian-render-error')
+        (c: any) => c.hasClass('codian-render-error')
       );
       expect(errorDiv).toBeDefined();
       expect(errorDiv!.textContent).toBe('Failed to render message content.');
@@ -2110,7 +2229,7 @@ describe('MessageRenderer', () => {
 
       await renderer.renderContent(el, '```js\nconsole.log("hello")\n```');
 
-      // The pre should be wrapped in a claudian-code-wrapper
+      // The pre should be wrapped in a codian-code-wrapper
       // Due to mock limitations, check that querySelectorAll was called on el
       // The actual wrapping logic runs on real DOM, but the mock captures calls
       expect(MarkdownRenderer.renderMarkdown).toHaveBeenCalled();
@@ -2124,7 +2243,7 @@ describe('MessageRenderer', () => {
       // Mock renderMarkdown to create an already-wrapped pre element
       (MarkdownRenderer.renderMarkdown as jest.Mock).mockImplementationOnce(
         async (_md: string, container: any) => {
-          const wrapper = container.createDiv({ cls: 'claudian-code-wrapper' });
+          const wrapper = container.createDiv({ cls: 'codian-code-wrapper' });
           wrapper.createEl('pre');
         }
       );
@@ -2189,6 +2308,25 @@ describe('MessageRenderer', () => {
       );
 
       await renderer.renderContent(el, '```typescript\nconst x = 1;\n```');
+
+      expect(MarkdownRenderer.renderMarkdown).toHaveBeenCalled();
+    });
+
+    it('should preserve hyphenated language names in code blocks', async () => {
+      const { MarkdownRenderer } = await import('obsidian');
+      const { renderer } = createRenderer();
+      const el = createMockEl();
+
+      (MarkdownRenderer.renderMarkdown as jest.Mock).mockImplementationOnce(
+        async (_md: string, container: any) => {
+          const pre = container.createEl('pre');
+          const code = pre.createEl('code');
+          code.className = 'language-objective-c';
+          code.textContent = '@implementation Foo\n@end';
+        }
+      );
+
+      await renderer.renderContent(el, '```objective-c\n@implementation Foo\n@end\n```');
 
       expect(MarkdownRenderer.renderMarkdown).toHaveBeenCalled();
     });

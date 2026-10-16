@@ -1,5 +1,5 @@
 /**
- * Claudian - Claude Agent SDK wrapper
+ * Codian - Claude Agent SDK wrapper
  *
  * Handles communication with Claude via the Agent SDK. Manages streaming,
  * session persistence and permission modes.
@@ -58,7 +58,7 @@ import type {
   StreamChunk,
   ToolCallInfo,
 } from '../../../core/types';
-import type { ClaudianSettings, PermissionMode } from '../../../core/types/settings';
+import type { CodianSettings, PermissionMode } from '../../../core/types/settings';
 import { stripCurrentNoteContext } from '../../../utils/context';
 import { getEnhancedPath, getMissingNodeError, parseEnvironmentVariables } from '../../../utils/env';
 import { getVaultPath } from '../../../utils/path';
@@ -108,6 +108,7 @@ import {
 } from './ClaudeQueryOptionsBuilder';
 import { executeClaudeRewind } from './ClaudeRewindService';
 import { SessionManager } from './ClaudeSessionManager';
+import { ClaudeTurnInputs, getReplayedClaudeUserMessageId } from './ClaudeTurnInputs';
 import {
   buildClaudePromptWithImages,
   buildClaudeSDKUserMessage,
@@ -146,7 +147,7 @@ function isImageAttachmentArray(value: unknown): value is ImageAttachment[] {
     !!value[0] && typeof value[0] === 'object' && 'mediaType' in value[0] && 'data' in value[0];
 }
 
-export class ClaudianService implements ChatRuntime {
+export class ClaudeChatRuntime implements ChatRuntime {
   readonly providerId = CLAUDE_PROVIDER_CAPABILITIES.providerId;
   private plugin: ProviderHost;
   private agentManager: Pick<AppAgentManager, 'setBuiltinAgentNames'> | null;
@@ -169,6 +170,11 @@ export class ClaudianService implements ChatRuntime {
 
   private persistentQuery: Query | null = null;
   private messageChannel: MessageChannel | null = null;
+  private activeTurnInputs: ClaudeTurnInputs | null = null;
+  private pendingClaudeSteers = new Map<string, {
+    content: string;
+    resolve: (accepted: boolean) => void;
+  }>();
   private queryAbortController: AbortController | null = null;
   private responseHandlers: ResponseHandler[] = [];
   private responseConsumerRunning = false;
@@ -714,6 +720,13 @@ export class ClaudianService implements ChatRuntime {
    */
   closePersistentQuery(_reason?: string, options?: ClosePersistentQueryOptions): void {
     this.persistentQueryGeneration += 1;
+    const preserveSteerlessTurn = options?.preserveHandlers === true
+      && this.activeTurnInputs !== null
+      && !this.activeTurnInputs.hasSteers();
+    if (!preserveSteerlessTurn) {
+      this.resolvePendingClaudeSteers(false);
+      this.activeTurnInputs = null;
+    }
     if (!this.persistentQuery) {
       return;
     }
@@ -799,7 +812,7 @@ export class ClaudianService implements ChatRuntime {
   /**
    * Builds the base query options context from current state.
    */
-  private getScopedSettings(): ClaudianSettings {
+  private getScopedSettings(): CodianSettings {
     const settings = ProviderSettingsCoordinator.getProviderSettingsSnapshot(
       this.plugin.settings,
       this.providerId,
@@ -940,7 +953,13 @@ export class ClaudianService implements ChatRuntime {
             return;
           }
 
-          if (!this.crashRecoveryAttempted && messageToReplay && handler && !handler.sawAnyChunk) {
+          if (
+            !this.crashRecoveryAttempted
+            && messageToReplay
+            && handler
+            && !handler.sawAnyChunk
+            && !this.activeTurnInputs?.hasSteers()
+          ) {
             this.crashRecoveryAttempted = true;
             try {
               await this.ensureReady({ force: true, preserveHandlers: true });
@@ -1026,12 +1045,61 @@ export class ClaudianService implements ChatRuntime {
    * The next message only dequeues after onTurnComplete(), which calls onDone()
    * on the current handler. A new handler is registered only when the next query starts.
    */
+  private resolvePendingClaudeSteers(accepted: boolean, inputs?: ClaudeTurnInputs): void {
+    for (const [id, pending] of this.pendingClaudeSteers) {
+      if (inputs && !inputs.ids.includes(id)) continue;
+      this.pendingClaudeSteers.delete(id);
+      pending.resolve(accepted);
+    }
+  }
+
+  private acceptPendingClaudeSteer(id: string, handler: ResponseHandler | undefined): void {
+    const pending = this.pendingClaudeSteers.get(id);
+    if (!pending) return;
+    this.pendingClaudeSteers.delete(id);
+    if (!handler) {
+      pending.resolve(false);
+      return;
+    }
+
+    handler.onChunk({
+      type: 'user_message_start',
+      content: pending.content,
+      itemId: id,
+    });
+    pending.resolve(true);
+  }
+
+  private acceptConsumedClaudeSteers(inputs: ClaudeTurnInputs, handler: ResponseHandler | undefined): void {
+    for (const id of inputs.ids) {
+      if (inputs.wasConsumed(id)) this.acceptPendingClaudeSteer(id, handler);
+    }
+  }
+
   private async routeMessage(message: SDKMessage, sourceQuery?: Query): Promise<void> {
     // Note: Session expiration errors are handled in catch blocks (queryViaSDK, handleAbort)
     // The SDK throws errors as exceptions, not as message types
 
     // Safe to use last handler - design guarantees single handler at a time
     const handler = this.responseHandlers[this.responseHandlers.length - 1];
+    const turnInputs = this.activeTurnInputs;
+    const replayedInputId = getReplayedClaudeUserMessageId(message);
+    if (replayedInputId && turnInputs?.ids.includes(replayedInputId)) {
+      const deliveredInputId = turnInputs.observe(message);
+      if (deliveredInputId) this.acceptPendingClaudeSteer(deliveredInputId, handler);
+      return;
+    }
+
+    if (message.type === 'result' && turnInputs) {
+      if (turnInputs.matches(message) === false) return;
+      turnInputs.observe(message);
+      this.acceptConsumedClaudeSteers(turnInputs, handler);
+      if (turnInputs.settled) {
+        this.resolvePendingClaudeSteers(false, turnInputs);
+        if (this.activeTurnInputs === turnInputs) this.activeTurnInputs = null;
+      }
+    }
+
     // Transform SDK message to StreamChunks
     for (const event of transformSDKMessage(message, this.getTransformOptions())) {
       if (sourceQuery && this.persistentQuery !== sourceQuery) return;
@@ -1132,7 +1200,12 @@ export class ClaudianService implements ChatRuntime {
     }
 
     // Check for turn completion
-    if (isTurnCompleteMessage(message)) {
+    const awaitingSteerConsumption = message.type === 'assistant'
+      && turnInputs?.hasUnconsumedSteers() === true;
+    const awaitingQueuedNativeTurn = message.type === 'result'
+      && turnInputs !== null
+      && !turnInputs.settled;
+    if (isTurnCompleteMessage(message) && !awaitingSteerConsumption && !awaitingQueuedNativeTurn) {
       // Signal turn complete to message channel
       this.messageChannel?.onTurnComplete();
 
@@ -1492,6 +1565,64 @@ export class ClaudianService implements ChatRuntime {
     }
   }
 
+  async steer(turn: PreparedChatTurn): Promise<boolean> {
+    const query = this.persistentQuery;
+    const inputs = this.activeTurnInputs;
+    const hasActiveHandler = this.responseHandlers.length > 0;
+    if (
+      turn.isCompact
+      || this.shuttingDown
+      || !query
+      || typeof query.streamInput !== 'function'
+      || !inputs
+      || inputs.settled
+      || !hasActiveHandler
+    ) {
+      return false;
+    }
+
+    const message = this.buildSDKUserMessage(turn.prompt, turn.request.images);
+    const messageId = message.uuid;
+    if (typeof messageId !== 'string' || messageId.length === 0) {
+      return false;
+    }
+    message.priority = 'next';
+
+    try {
+      inputs.addSteer(messageId);
+    } catch {
+      return false;
+    }
+
+    const acceptance = new Promise<boolean>((resolve) => {
+      this.pendingClaudeSteers.set(messageId, {
+        content: turn.request.text,
+        resolve,
+      });
+    });
+
+    try {
+      const input = (async function* () {
+        yield message;
+      })();
+      void query.streamInput(input).catch(() => {
+        if (
+          this.pendingClaudeSteers.has(messageId)
+          && this.activeTurnInputs === inputs
+          && this.persistentQuery === query
+        ) {
+          // The SDK may have partially handed off the message before rejecting. Replacing the
+          // persistent process recalls it, so a restored composer message cannot be duplicated.
+          this.closePersistentQuery('steer input failed');
+        }
+      });
+    } catch {
+      this.closePersistentQuery('steer input failed');
+    }
+
+    return acceptance;
+  }
+
   private buildHistoryRebuildRequest(
     prompt: string,
     conversationHistory: ChatMessage[]
@@ -1559,6 +1690,12 @@ export class ClaudianService implements ChatRuntime {
     void this.refreshAuthoritativeContextWindow();
 
     const message = this.buildSDKUserMessage(prompt, images);
+    const primaryInputId = message.uuid;
+    if (typeof primaryInputId !== 'string' || primaryInputId.length === 0) {
+      throw new Error('Claude SDK user message is missing its input ID');
+    }
+    const turnInputs = new ClaudeTurnInputs(primaryInputId);
+    this.activeTurnInputs = turnInputs;
 
     // Create a promise-based handler to yield chunks
     // Use a mutable state object to work around TypeScript's control flow analysis
@@ -1658,6 +1795,10 @@ export class ClaudianService implements ChatRuntime {
     } finally {
       this.unregisterResponseHandler(handlerId);
       this.currentAllowedTools = null;
+      if (this.activeTurnInputs === turnInputs) {
+        this.activeTurnInputs = null;
+        this.resolvePendingClaudeSteers(false, turnInputs);
+      }
     }
   }
 

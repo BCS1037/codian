@@ -4,9 +4,9 @@ import { Notice } from 'obsidian';
 import { SessionStorage } from '../../core/bootstrap/SessionStorage';
 import type { SharedAppStorage } from '../../core/bootstrap/storage';
 import {
-  CLAUDIAN_SETTINGS_PATH,
-  CLAUDIAN_STORAGE_PATH,
-  LEGACY_CLAUDIAN_STORAGE_PATH,
+  CODIAN_SETTINGS_PATH,
+  CODIAN_STORAGE_PATH,
+  LEGACY_CODIAN_STORAGE_PATH,
 } from '../../core/bootstrap/StoragePaths';
 import {
   isValidTabManagerState,
@@ -14,7 +14,7 @@ import {
 } from '../../core/bootstrap/tabManagerState';
 import type { AppTabManagerState } from '../../core/providers/types';
 import { VaultFileAdapter } from '../../core/storage/VaultFileAdapter';
-import { ClaudianSettingsStorage, type StoredClaudianSettings } from '../settings/ClaudianSettingsStorage';
+import { CodianSettingsStorage, type StoredCodianSettings } from '../settings/CodianSettingsStorage';
 
 const LEGACY_PLUGIN_ID = 'codian';
 const CURRENT_PLUGIN_ID = 'codianz';
@@ -24,7 +24,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export class SharedStorageService implements SharedAppStorage {
-  readonly claudianSettings: ClaudianSettingsStorage;
+  readonly codianSettings: CodianSettingsStorage;
   readonly sessions: SessionStorage;
 
   private adapter: VaultFileAdapter;
@@ -33,22 +33,22 @@ export class SharedStorageService implements SharedAppStorage {
   constructor(plugin: Plugin) {
     this.plugin = plugin;
     this.adapter = new VaultFileAdapter(plugin.app);
-    this.claudianSettings = new ClaudianSettingsStorage(this.adapter);
+    this.codianSettings = new CodianSettingsStorage(this.adapter);
     this.sessions = new SessionStorage(this.adapter);
   }
 
   async initialize(): Promise<{
-    claudian: Record<string, unknown>;
+    codianz: Record<string, unknown>;
     migratedLegacyPluginData: boolean;
   }> {
     const migratedLegacyPluginData = await this.migrateLegacyPluginData();
     await this.migrateLegacyClaudianStorage();
-    const claudian = await this.claudianSettings.load();
-    return { claudian, migratedLegacyPluginData };
+    const codian = await this.codianSettings.load();
+    return { codianz: codian, migratedLegacyPluginData };
   }
 
-  async saveClaudianSettings(settings: Record<string, unknown>): Promise<void> {
-    await this.claudianSettings.save(settings as StoredClaudianSettings);
+  async saveCodianSettings(settings: Record<string, unknown>): Promise<void> {
+    await this.codianSettings.save(settings as StoredCodianSettings);
   }
 
   async setTabManagerState(state: AppTabManagerState): Promise<void> {
@@ -84,11 +84,11 @@ export class SharedStorageService implements SharedAppStorage {
   }
 
   private async migrateLegacyClaudianStorage(): Promise<void> {
-    const legacyFiles = await this.adapter.listFilesRecursive(LEGACY_CLAUDIAN_STORAGE_PATH);
+    const legacyFiles = await this.adapter.listFilesRecursive(LEGACY_CODIAN_STORAGE_PATH);
     for (const legacyPath of legacyFiles) {
-      const targetPath = legacyPath === `${LEGACY_CLAUDIAN_STORAGE_PATH}/claudian-settings.json`
-        ? CLAUDIAN_SETTINGS_PATH
-        : `${CLAUDIAN_STORAGE_PATH}${legacyPath.slice(LEGACY_CLAUDIAN_STORAGE_PATH.length)}`;
+      const targetPath = legacyPath === `${LEGACY_CODIAN_STORAGE_PATH}/codian-settings.json`
+        ? CODIAN_SETTINGS_PATH
+        : `${CODIAN_STORAGE_PATH}${legacyPath.slice(LEGACY_CODIAN_STORAGE_PATH.length)}`;
       if (await this.adapter.exists(targetPath)) {
         continue;
       }

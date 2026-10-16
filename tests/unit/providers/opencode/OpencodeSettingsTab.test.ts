@@ -314,6 +314,9 @@ function createElement(): any {
       if (attrs && typeof attrs.cls === 'string') {
         child.cls = attrs.cls;
       }
+      if (attrs && typeof attrs.text === 'string') {
+        child.text = attrs.text;
+      }
       createdElements.push({
         cls: child.cls,
         tag: child.tag,
@@ -335,6 +338,9 @@ function createContainer(): any {
       child.tag = 'div';
       if (attrs && typeof attrs.cls === 'string') {
         child.cls = attrs.cls;
+      }
+      if (attrs && typeof attrs.text === 'string') {
+        child.text = attrs.text;
       }
       createdElements.push({
         cls: child.cls,
@@ -486,13 +492,25 @@ describe('OpencodeSettingsTab', () => {
     expect(mockRenderEnvironmentSettingsSection).not.toHaveBeenCalled();
   });
 
+  it('guides users to authenticate OpenCode Zen when no models are available', async () => {
+    mockRuntimeEnsureReady.mockResolvedValue(true);
+    const plugin = createPlugin();
+
+    opencodeSettingsTabRenderer.render(createContainer(), createContext(plugin));
+    await flushPromises();
+
+    const emptyState = findElement('div', 'codian-provider-model-picker-empty');
+    expect(emptyState.text).toContain('opencode auth login');
+    expect(emptyState.text).toContain('OpenCode Zen');
+  });
+
   it('directs MCP setup to the native OpenCode CLI', () => {
     const plugin = createPlugin();
 
     opencodeSettingsTabRenderer.render(createContainer(), createContext(plugin));
 
     expect(findSetting('MCP Servers').heading).toBe(true);
-    const notice = findElement('div', 'claudian-mcp-settings-desc');
+    const notice = findElement('div', 'codian-mcp-settings-desc');
     const description = notice.createEl.mock.results[0].value;
     expect(description.appendText).toHaveBeenNthCalledWith(
       1,
@@ -628,18 +646,17 @@ describe('OpencodeSettingsTab', () => {
 
     opencodeSettingsTabRenderer.render(createContainer(), context);
 
-    const catalogEl = findElement('details', 'claudian-provider-model-picker-catalog');
+    const catalogEl = findElement('details', 'codian-provider-model-picker-catalog');
     catalogEl.open = true;
     await catalogEl.dispatchMockEvent('toggle');
     await flushPromises();
 
     expect(mockRuntimeSyncConversationState).toHaveBeenCalledWith({
-      providerState: { databasePath: ':memory:' },
       sessionId: null,
     });
     expect(mockRuntimeEnsureReady).toHaveBeenCalledWith(
       plugin,
-      { allowSessionCreation: true },
+      { allowSessionCreation: false },
     );
     expect(mockRuntimeCleanup).toHaveBeenCalledTimes(1);
     expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('opencode');
@@ -675,12 +692,11 @@ describe('OpencodeSettingsTab', () => {
     await Promise.resolve();
 
     expect(mockRuntimeSyncConversationState).toHaveBeenCalledWith({
-      providerState: { databasePath: ':memory:' },
       sessionId: null,
     });
     expect(mockRuntimeEnsureReady).toHaveBeenCalledWith(
       plugin,
-      { allowSessionCreation: true },
+      { allowSessionCreation: false },
     );
     expect(mockRuntimeCleanup).toHaveBeenCalledTimes(1);
     expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('opencode');
@@ -715,9 +731,12 @@ describe('OpencodeSettingsTab', () => {
     await Promise.resolve();
     await Promise.resolve();
 
+    expect(mockRuntimeSyncConversationState).toHaveBeenCalledWith({
+      sessionId: null,
+    });
     expect(mockRuntimeEnsureReady).toHaveBeenCalledWith(
       plugin,
-      { allowSessionCreation: true },
+      { allowSessionCreation: false },
     );
     expect(context.notifyProviderModelOptionsChanged).toHaveBeenCalledWith('opencode');
   });
@@ -781,7 +800,7 @@ describe('OpencodeSettingsTab', () => {
 
     opencodeSettingsTabRenderer.render(createContainer(), context);
 
-    const aliasInput = findElement('input', 'claudian-provider-model-picker-selected-alias');
+    const aliasInput = findElement('input', 'codian-provider-model-picker-selected-alias');
     aliasInput.value = 'V4 Pro';
     await aliasInput.dispatchMockEvent('blur');
     await flushPromises();

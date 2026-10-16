@@ -12,6 +12,7 @@ import {
   setToolIcon,
   updateToolCallResult,
 } from '@/features/chat/rendering/ToolCallRenderer';
+import { setLocale } from '@/i18n/i18n';
 
 // Mock obsidian
 jest.mock('obsidian', () => ({
@@ -67,6 +68,25 @@ describe('ToolCallRenderer', () => {
       expect(header.getAttribute('tabindex')).toBe('0');
     });
 
+    it('keeps live tool output eager and replaces it when the result completes', () => {
+      const parentEl = createMockEl();
+      const toolCall = createToolCall({
+        id: 'live-read',
+        status: 'running',
+        result: 'partial output',
+      });
+      const toolCallElements = new Map<string, HTMLElement>();
+
+      const toolEl = renderToolCall(parentEl, toolCall, toolCallElements);
+      expect(toolEl.querySelector('.codian-tool-result-text')?.textContent).toBe('Running...');
+
+      toolCall.status = 'completed';
+      toolCall.result = 'final output';
+      updateToolCallResult(toolCall.id, toolCall, toolCallElements);
+
+      expect(toolEl.querySelector('.codian-tool-line')?.textContent).toBe('final output');
+    });
+
     it('should track isExpanded on toolCall object', () => {
       const parentEl = createMockEl();
       const toolCall = createToolCall();
@@ -83,12 +103,12 @@ describe('ToolCallRenderer', () => {
       const toolCallElements = new Map<string, HTMLElement>();
 
       const toolEl = renderToolCall(parentEl, toolCall, toolCallElements, { initiallyExpanded: true });
-      const header = toolEl.querySelector('.claudian-tool-header');
-      const content = toolEl.querySelector('.claudian-tool-content');
+      const header = toolEl.querySelector('.codian-tool-header');
+      const content = toolEl.querySelector('.codian-tool-content');
 
       expect(toolCall.isExpanded).toBe(true);
       expect(toolEl.hasClass('expanded')).toBe(true);
-      expect(content?.hasClass('claudian-hidden')).toBe(false);
+      expect(content?.hasClass('codian-hidden')).toBe(false);
       expect(header?.getAttribute('aria-expanded')).toBe('true');
     });
 
@@ -99,16 +119,16 @@ describe('ToolCallRenderer', () => {
         input: { command: 'npm test' },
       });
       const toolEl = renderToolCall(parentEl, toolCall, new Map());
-      const header = toolEl.querySelector('.claudian-tool-header');
-      const content = toolEl.querySelector('.claudian-tool-content');
+      const header = toolEl.querySelector('.codian-tool-header');
+      const content = toolEl.querySelector('.codian-tool-content');
 
-      expect(toolEl.hasClass('claudian-tool-call-bash')).toBe(true);
-      expect(toolEl.querySelector('.claudian-tool-bash-command')?.textContent).toBe('$ npm test');
+      expect(toolEl.hasClass('codian-tool-call-bash')).toBe(true);
+      expect(toolEl.querySelector('.codian-tool-bash-command')?.textContent).toBe('$ npm test');
       expect(setIcon).toHaveBeenCalledWith(expect.anything(), 'terminal');
 
       (header as HTMLElement | null)?.click();
       expect(toolCall.isExpanded).toBe(true);
-      expect(content?.hasClass('claudian-hidden')).toBe(false);
+      expect(content?.hasClass('codian-hidden')).toBe(false);
     });
 
     it('builds TodoWrite preview, content, icon, and toggle handlers', () => {
@@ -120,19 +140,19 @@ describe('ToolCallRenderer', () => {
         },
       });
       const toolEl = renderToolCall(parentEl, toolCall, new Map());
-      const header = toolEl.querySelector('.claudian-tool-header');
-      const currentTask = toolEl.querySelector('.claudian-tool-current');
-      const status = toolEl.querySelector('.claudian-tool-status');
-      const content = toolEl.querySelector('.claudian-tool-content');
+      const header = toolEl.querySelector('.codian-tool-header');
+      const currentTask = toolEl.querySelector('.codian-tool-current');
+      const status = toolEl.querySelector('.codian-tool-status');
+      const content = toolEl.querySelector('.codian-tool-content');
 
       expect(currentTask?.textContent).toBe('Working');
-      expect(content?.hasClass('claudian-tool-content-todo')).toBe(true);
+      expect(content?.hasClass('codian-tool-content-todo')).toBe(true);
       expect(setIcon).toHaveBeenCalledWith(expect.anything(), 'list-checks');
 
       (header as HTMLElement | null)?.click();
       expect(toolCall.isExpanded).toBe(true);
-      expect(currentTask?.hasClass('claudian-hidden')).toBe(true);
-      expect(status?.hasClass('claudian-hidden')).toBe(true);
+      expect(currentTask?.hasClass('codian-hidden')).toBe(true);
+      expect(status?.hasClass('codian-hidden')).toBe(true);
     });
 
     it('builds AskUserQuestion content and renders resolved answers through its dedicated updater', () => {
@@ -144,19 +164,89 @@ describe('ToolCallRenderer', () => {
       });
       const toolCallElements = new Map<string, HTMLElement>();
       const toolEl = renderToolCall(parentEl, toolCall, toolCallElements);
-      const content = toolEl.querySelector('.claudian-tool-content');
+      const content = toolEl.querySelector('.codian-tool-content');
 
-      expect(content?.hasClass('claudian-tool-content-ask')).toBe(true);
+      expect(content?.hasClass('codian-tool-content-ask')).toBe(true);
       expect(setIcon).toHaveBeenCalledWith(expect.anything(), 'help-circle');
 
       toolCall.status = 'completed';
       toolCall.result = 'answered';
       updateToolCallResult(toolCall.id, toolCall, toolCallElements);
-      expect(toolEl.querySelector('.claudian-ask-review-a-text')?.textContent).toBe('Blue');
+      expect(toolEl.querySelector('.codian-ask-review-a-text')?.textContent).toBe('Blue');
     });
   });
 
   describe('renderStoredToolCall', () => {
+    it('defers completed tool result rendering until first expansion and reuses it afterward', () => {
+      const parentEl = createMockEl();
+      const toolCall = createToolCall({
+        status: 'completed',
+        result: 'stored output',
+      });
+
+      const toolEl = renderStoredToolCall(parentEl, toolCall);
+      const header = toolEl.querySelector('.codian-tool-header');
+      const content = toolEl.querySelector('.codian-tool-content');
+
+      expect(content?.children).toHaveLength(0);
+
+      (header as HTMLElement | null)?.click();
+      const renderedLine = content?.querySelector('.codian-tool-line');
+      expect(renderedLine?.textContent).toBe('stored output');
+
+      (header as HTMLElement | null)?.click();
+      (header as HTMLElement | null)?.click();
+      expect(content?.querySelector('.codian-tool-line')).toBe(renderedLine);
+    });
+
+    it('renders stored tool result immediately when initially expanded', () => {
+      const parentEl = createMockEl();
+      const toolCall = createToolCall({
+        status: 'completed',
+        result: 'visible on restore',
+      });
+
+      const toolEl = renderStoredToolCall(parentEl, toolCall, { initiallyExpanded: true });
+      const header = toolEl.querySelector('.codian-tool-header');
+
+      expect(header?.getAttribute('aria-expanded')).toBe('true');
+      expect(toolEl.querySelector('.codian-tool-line')?.textContent).toBe('visible on restore');
+    });
+
+    it('defers stored error details while preserving the error status', () => {
+      const parentEl = createMockEl();
+      const toolCall = createToolCall({
+        status: 'error',
+        result: 'file read failed',
+      });
+
+      const toolEl = renderStoredToolCall(parentEl, toolCall);
+      const header = toolEl.querySelector('.codian-tool-header');
+      const content = toolEl.querySelector('.codian-tool-content');
+
+      expect(content?.children).toHaveLength(0);
+      expect(setIcon).toHaveBeenCalledWith(expect.anything(), 'x');
+
+      (header as HTMLElement | null)?.click();
+      expect(toolEl.querySelector('.codian-tool-line')?.textContent).toBe('file read failed');
+    });
+
+    it('creates empty-result fallback only after expansion', () => {
+      const parentEl = createMockEl();
+      const toolCall = createToolCall({
+        status: 'completed',
+        result: undefined,
+      });
+
+      const toolEl = renderStoredToolCall(parentEl, toolCall);
+      const content = toolEl.querySelector('.codian-tool-content');
+
+      expect(content?.children).toHaveLength(0);
+
+      (toolEl.querySelector('.codian-tool-header') as HTMLElement).click();
+      expect(toolEl.querySelector('.codian-tool-empty')?.textContent).toBe('No result');
+    });
+
     it('should show completed status icon', () => {
       const parentEl = createMockEl();
       const toolCall = createToolCall({ status: 'completed' });
@@ -185,7 +275,7 @@ describe('ToolCallRenderer', () => {
       });
 
       const toolEl = renderStoredToolCall(parentEl, toolCall);
-      const answerEls = toolEl.querySelectorAll('.claudian-ask-review-a-text');
+      const answerEls = toolEl.querySelectorAll('.codian-ask-review-a-text');
 
       expect(answerEls).toHaveLength(1);
       expect(answerEls[0].textContent).toBe('Blue');
@@ -201,7 +291,7 @@ describe('ToolCallRenderer', () => {
       });
 
       const toolEl = renderStoredToolCall(parentEl, toolCall);
-      const answerEls = toolEl.querySelectorAll('.claudian-ask-review-a-text');
+      const answerEls = toolEl.querySelectorAll('.codian-ask-review-a-text');
 
       expect(answerEls).toHaveLength(1);
       expect(answerEls[0].textContent).toBe('Blue');
@@ -225,9 +315,9 @@ describe('ToolCallRenderer', () => {
       });
 
       const toolEl = renderStoredToolCall(parentEl, toolCall);
-      const labelEls = toolEl.querySelectorAll('.claudian-ask-item-label');
-      const descEls = toolEl.querySelectorAll('.claudian-ask-item-desc');
-      const checkEls = toolEl.querySelectorAll('.claudian-ask-check');
+      const labelEls = toolEl.querySelectorAll('.codian-ask-item-label');
+      const descEls = toolEl.querySelectorAll('.codian-ask-item-desc');
+      const checkEls = toolEl.querySelectorAll('.codian-ask-check');
 
       expect(Array.from(labelEls, el => el.textContent)).toEqual(['Non-blocking', 'Blocking']);
       expect(Array.from(descEls, el => el.textContent)).toEqual(['Generate title later.', 'Wait for title first.']);
@@ -248,7 +338,7 @@ describe('ToolCallRenderer', () => {
       toolCall.result = 'Success';
       updateToolCallResult('tool-1', toolCall, toolCallElements);
 
-      const statusEl = toolEl.querySelector('.claudian-tool-status');
+      const statusEl = toolEl.querySelector('.codian-tool-status');
       expect(statusEl?.hasClass('status-completed')).toBe(true);
     });
 
@@ -267,7 +357,7 @@ describe('ToolCallRenderer', () => {
 
       updateToolCallResult('ask-1', toolCall, toolCallElements);
 
-      const promptEl = toolEl.querySelector('.claudian-ask-review-prompt');
+      const promptEl = toolEl.querySelector('.codian-ask-review-prompt');
       expect(promptEl?.textContent).toBe('Answer submitted successfully.');
     });
   });
@@ -601,7 +691,8 @@ describe('ToolCallRenderer', () => {
       });
 
       const toolEl = renderStoredToolCall(parentEl, toolCall);
-      const lines = Array.from(toolEl.querySelectorAll('.claudian-tool-line')).map(line => line.textContent);
+      (toolEl.querySelector('.codian-tool-header') as HTMLElement).click();
+      const lines = Array.from(toolEl.querySelectorAll('.codian-tool-line')).map(line => line.textContent);
 
       expect(lines).toContain('Query: obsidian plugin API');
       expect(lines).toContain('Alt query: obsidian docs');
@@ -621,13 +712,43 @@ describe('ToolCallRenderer', () => {
       });
 
       const toolEl = renderStoredToolCall(parentEl, toolCall);
-      const links = toolEl.querySelectorAll('.claudian-tool-link');
-      const lines = Array.from(toolEl.querySelectorAll('.claudian-tool-line')).map(line => line.textContent);
+      (toolEl.querySelector('.codian-tool-header') as HTMLElement).click();
+      const links = toolEl.querySelectorAll('.codian-tool-link');
+      const lines = Array.from(toolEl.querySelectorAll('.codian-tool-line')).map(line => line.textContent);
 
       expect(lines).toContain('Open page');
       expect(links).toHaveLength(1);
       expect(links[0].getAttribute('href')).toBe('https://example.com/docs');
-      expect(links[0].querySelector('.claudian-tool-link-title')?.textContent).toBe('https://example.com/docs');
+      expect(links[0].querySelector('.codian-tool-link-title')?.textContent).toBe('https://example.com/docs');
+    });
+  });
+
+  describe('Read result formatting', () => {
+    it('preserves literal arrow prefixes when provider marks result as plain text', () => {
+      const parentEl = createMockEl();
+      const toolCall = createToolCall({
+        status: 'completed',
+        result: '1→literal arrow',
+        resultFormat: 'plain',
+      } as any);
+
+      const toolEl = renderStoredToolCall(parentEl, toolCall);
+      (toolEl.querySelector('.codian-tool-header') as HTMLElement).click();
+
+      expect(toolEl.querySelector('.codian-tool-line')?.textContent).toBe('1→literal arrow');
+    });
+
+    it('continues stripping numbered line prefixes for default Read results', () => {
+      const parentEl = createMockEl();
+      const toolCall = createToolCall({
+        status: 'completed',
+        result: '1→numbered line',
+      });
+
+      const toolEl = renderStoredToolCall(parentEl, toolCall);
+      (toolEl.querySelector('.codian-tool-header') as HTMLElement).click();
+
+      expect(toolEl.querySelector('.codian-tool-line')?.textContent).toBe('numbered line');
     });
   });
 
@@ -651,12 +772,13 @@ describe('ToolCallRenderer', () => {
       });
 
       const toolEl = renderStoredToolCall(parentEl, toolCall);
-      const headers = Array.from(toolEl.querySelectorAll('.claudian-tool-patch-header')).map(el => el.textContent);
-      const statusEl = toolEl.querySelector('.claudian-tool-status');
-      const diffTexts = Array.from(toolEl.querySelectorAll('.claudian-diff-text')).map(el => el.textContent);
+      (toolEl.querySelector('.codian-tool-header') as HTMLElement).click();
+      const headers = Array.from(toolEl.querySelectorAll('.codian-tool-patch-header')).map(el => el.textContent);
+      const statusEl = toolEl.querySelector('.codian-tool-status');
+      const diffTexts = Array.from(toolEl.querySelectorAll('.codian-diff-text')).map(el => el.textContent);
 
       expect(headers).toHaveLength(0);
-      expect(statusEl?.hasClass('claudian-write-edit-stats')).toBe(true);
+      expect(statusEl?.hasClass('codian-write-edit-stats')).toBe(true);
       expect(statusEl?.querySelector('.added')?.textContent).toBe('+1');
       expect(statusEl?.querySelector('.removed')?.textContent).toBe('-1');
       expect(statusEl?.getAttribute('aria-label')).toBe('Changes: +1 -1');
@@ -684,11 +806,11 @@ describe('ToolCallRenderer', () => {
       });
 
       const toolEl = renderStoredToolCall(parentEl, toolCall);
-      const header = toolEl.querySelector('.claudian-tool-header');
-      const content = toolEl.querySelector('.claudian-tool-content');
+      const header = toolEl.querySelector('.codian-tool-header');
+      const content = toolEl.querySelector('.codian-tool-content');
 
       expect(toolEl.hasClass('expanded')).toBe(false);
-      expect(content?.hasClass('claudian-hidden')).toBe(true);
+      expect(content?.hasClass('codian-hidden')).toBe(true);
       expect(header?.getAttribute('aria-expanded')).toBe('false');
     });
 
@@ -711,11 +833,11 @@ describe('ToolCallRenderer', () => {
       });
 
       const toolEl = renderStoredToolCall(parentEl, toolCall, { initiallyExpanded: true });
-      const header = toolEl.querySelector('.claudian-tool-header');
-      const content = toolEl.querySelector('.claudian-tool-content');
+      const header = toolEl.querySelector('.codian-tool-header');
+      const content = toolEl.querySelector('.codian-tool-content');
 
       expect(toolEl.hasClass('expanded')).toBe(true);
-      expect(content?.hasClass('claudian-hidden')).toBe(false);
+      expect(content?.hasClass('codian-hidden')).toBe(false);
       expect(header?.getAttribute('aria-expanded')).toBe('true');
     });
 
@@ -737,12 +859,13 @@ describe('ToolCallRenderer', () => {
       });
 
       const toolEl = renderStoredToolCall(parentEl, toolCall);
-      const headers = Array.from(toolEl.querySelectorAll('.claudian-tool-patch-header')).map(el => el.textContent);
-      const statusEl = toolEl.querySelector('.claudian-tool-status');
-      const diffTexts = Array.from(toolEl.querySelectorAll('.claudian-diff-text')).map(el => el.textContent);
+      (toolEl.querySelector('.codian-tool-header') as HTMLElement).click();
+      const headers = Array.from(toolEl.querySelectorAll('.codian-tool-patch-header')).map(el => el.textContent);
+      const statusEl = toolEl.querySelector('.codian-tool-status');
+      const diffTexts = Array.from(toolEl.querySelectorAll('.codian-diff-text')).map(el => el.textContent);
 
       expect(headers).toHaveLength(0);
-      expect(statusEl?.hasClass('claudian-write-edit-stats')).toBe(true);
+      expect(statusEl?.hasClass('codian-write-edit-stats')).toBe(true);
       expect(statusEl?.querySelector('.added')?.textContent).toBe('+1');
       expect(statusEl?.querySelector('.removed')?.textContent).toBe('-1');
       expect(setIcon).not.toHaveBeenCalledWith(expect.anything(), 'check');
@@ -773,7 +896,7 @@ describe('ToolCallRenderer', () => {
       });
 
       const toolEl = renderStoredToolCall(parentEl, toolCall);
-      const statusEl = toolEl.querySelector('.claudian-tool-status');
+      const statusEl = toolEl.querySelector('.codian-tool-status');
 
       expect(statusEl?.querySelector('.added')?.textContent).toBe('+3');
       expect(statusEl?.querySelector('.removed')?.textContent).toBe('-2');
@@ -798,10 +921,10 @@ describe('ToolCallRenderer', () => {
       });
 
       const toolEl = renderStoredToolCall(parentEl, toolCall);
-      const statusEl = toolEl.querySelector('.claudian-tool-status');
+      const statusEl = toolEl.querySelector('.codian-tool-status');
 
       expect(statusEl?.hasClass('status-error')).toBe(true);
-      expect(statusEl?.hasClass('claudian-write-edit-stats')).toBe(false);
+      expect(statusEl?.hasClass('codian-write-edit-stats')).toBe(false);
       expect(setIcon).toHaveBeenCalledWith(expect.anything(), 'x');
     });
 
@@ -832,10 +955,10 @@ describe('ToolCallRenderer', () => {
 
       updateToolCallResult('patch-1', toolCall, toolCallElements);
 
-      const statusEl = toolEl.querySelector('.claudian-tool-status');
-      const diffTexts = Array.from(toolEl.querySelectorAll('.claudian-diff-text')).map(el => el.textContent);
+      const statusEl = toolEl.querySelector('.codian-tool-status');
+      const diffTexts = Array.from(toolEl.querySelectorAll('.codian-diff-text')).map(el => el.textContent);
 
-      expect(statusEl?.hasClass('claudian-write-edit-stats')).toBe(true);
+      expect(statusEl?.hasClass('codian-write-edit-stats')).toBe(true);
       expect(statusEl?.querySelector('.added')?.textContent).toBe('+1');
       expect(statusEl?.querySelector('.removed')?.textContent).toBe('-1');
       expect(setIcon).not.toHaveBeenCalledWith(expect.anything(), 'check');
@@ -855,7 +978,8 @@ describe('ToolCallRenderer', () => {
       });
 
       const toolEl = renderStoredToolCall(parentEl, toolCall);
-      const lines = Array.from(toolEl.querySelectorAll('.claudian-tool-line')).map(el => el.textContent);
+      (toolEl.querySelector('.codian-tool-header') as HTMLElement).click();
+      const lines = Array.from(toolEl.querySelectorAll('.codian-tool-line')).map(el => el.textContent);
 
       expect(lines).toContain('src/main.ts');
       expect(lines).not.toContain('update: src/main.ts');
@@ -872,8 +996,8 @@ describe('ToolCallRenderer', () => {
         ],
       };
       renderTodoWriteResult(container as unknown as HTMLElement, input);
-      expect(container.hasClass('claudian-todo-panel-content')).toBe(true);
-      expect(container.hasClass('claudian-todo-list-container')).toBe(true);
+      expect(container.hasClass('codian-todo-panel-content')).toBe(true);
+      expect(container.hasClass('codian-todo-list-container')).toBe(true);
     });
 
     it('should show fallback text when no todos array', () => {
@@ -913,7 +1037,7 @@ describe('ToolCallRenderer', () => {
       };
       updateToolCallResult('todo-1', toolCall, toolCallElements);
 
-      const statusEl = parentEl.querySelector('.claudian-tool-status');
+      const statusEl = parentEl.querySelector('.codian-tool-status');
       expect(statusEl?.hasClass('status-completed')).toBe(true);
     });
 
@@ -939,6 +1063,42 @@ describe('ToolCallRenderer', () => {
 
       const toolEl = renderStoredToolCall(parentEl, toolCall);
       expect(toolEl).toBeDefined();
+    });
+  });
+
+  describe('localization', () => {
+    afterEach(() => {
+      setLocale('en');
+    });
+
+    it.each([
+      ['Bash', 'Bash: 命令'],
+      ['Glob', 'Glob: 文件'],
+      ['Grep', 'Grep: 匹配模式'],
+      ['Skill', 'Skill: skill'],
+      ['ToolSearch', 'ToolSearch: 工具'],
+    ])('localizes the %s placeholder through getToolLabel', (name, expected) => {
+      setLocale('zh-CN');
+      expect(getToolLabel(name, {})).toBe(expected);
+    });
+
+    it('localizes plan mode labels in zh-CN', () => {
+      setLocale('zh-CN');
+      expect(getToolName('EnterPlanMode', {})).toBe('正在进入规划模式');
+      expect(getToolName('ExitPlanMode', {})).toBe('规划完成');
+    });
+
+    it('localizes TodoWrite task counts in zh-CN', () => {
+      setLocale('zh-CN');
+      const todos = [{ status: 'completed' }, { status: 'in_progress' }];
+      expect(getToolName('TodoWrite', { todos })).toBe('任务 1/2');
+      expect(getToolLabel('TodoWrite', { todos })).toBe('任务（1/2）');
+    });
+
+    it.each([1, 2])('localizes wait summaries for %s agents without changing input', count => {
+      setLocale('zh-CN');
+      const ids = Array.from({ length: count }, (_, index) => `agent-${index}`);
+      expect(getToolSummary('wait', { ids, timeout_ms: 5000 })).toBe(`${count} 个代理, 5s`);
     });
   });
 });

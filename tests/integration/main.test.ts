@@ -5,7 +5,7 @@ import { ProviderRegistry } from '@/core/providers/ProviderRegistry';
 import { ProviderSettingsCoordinator } from '@/core/providers/ProviderSettingsCoordinator';
 import { ProviderWorkspaceRegistry } from '@/core/providers/ProviderWorkspaceRegistry';
 import { TOOL_SUBAGENT } from '@/core/tools/toolNames';
-import { VIEW_TYPE_CLAUDIAN } from '@/core/types';
+import { VIEW_TYPE_CODIAN } from '@/core/types';
 import * as sdkSession from '@/providers/claude/history/ClaudeHistoryStore';
 import { SessionStorage } from '@/providers/claude/storage/SessionStorage';
 import { DEFAULT_SETTINGS } from '@/providers/claude/types/settings';
@@ -21,15 +21,15 @@ import {
   updateGrokProviderSettings,
 } from '@/providers/grok/settings';
 
-// Mock fs for ClaudianService
+// Mock fs for ClaudeChatRuntime
 jest.mock('fs');
 
 // Now import the plugin after mocking
-import ClaudianPlugin from '@/main';
+import CodianPlugin from '@/main';
 import { CODIAN_RIBBON_ICON_ID, CODIAN_RIBBON_ICON_SVG } from '@/shared/codianLogo';
 
-describe('ClaudianPlugin', () => {
-  let plugin: ClaudianPlugin;
+describe('CodianPlugin', () => {
+  let plugin: CodianPlugin;
   let mockApp: any;
   let mockManifest: any;
 
@@ -47,7 +47,7 @@ describe('ClaudianPlugin', () => {
 
   function installVaultFiles(initialFiles: Record<string, string>): Map<string, string> {
     const files = new Map(Object.entries(initialFiles));
-    const folders = new Set<string>(['.claudian']);
+    const folders = new Set<string>(['.codian']);
     mockApp.vault.adapter.exists.mockImplementation(async (path: string) => (
       files.has(path) || folders.has(path)
     ));
@@ -117,13 +117,13 @@ describe('ClaudianPlugin', () => {
     };
 
     mockManifest = {
-      id: 'claudian',
-      name: 'Claudian',
+      id: 'codianz',
+      name: 'Codian',
       version: '0.1.0',
     };
 
     // Create plugin instance with mocked app
-    plugin = new ClaudianPlugin(mockApp, mockManifest);
+    plugin = new CodianPlugin(mockApp, mockManifest);
     (plugin.loadData as jest.Mock).mockResolvedValue({});
   });
 
@@ -142,7 +142,7 @@ describe('ClaudianPlugin', () => {
       await plugin.onload();
 
       expect((plugin.registerView as jest.Mock)).toHaveBeenCalledWith(
-        VIEW_TYPE_CLAUDIAN,
+        VIEW_TYPE_CODIAN,
         expect.any(Function)
       );
     });
@@ -669,7 +669,7 @@ describe('ClaudianPlugin', () => {
       expect(pendingGeneration).toEqual(expect.any(Number));
 
       plugin.onunload();
-      const restartedPlugin = new ClaudianPlugin(mockApp, mockManifest);
+      const restartedPlugin = new CodianPlugin(mockApp, mockManifest);
       (restartedPlugin.loadData as jest.Mock).mockResolvedValue({});
       const restartedSaveMetadataSpy = jest.spyOn(
         SessionStorage.prototype,
@@ -827,7 +827,7 @@ describe('ClaudianPlugin', () => {
 
       expect(mockApp.workspace.getRightLeaf).toHaveBeenCalledWith(false);
       expect(mockRightLeaf.setViewState).toHaveBeenCalledWith({
-        type: VIEW_TYPE_CLAUDIAN,
+        type: VIEW_TYPE_CODIAN,
         active: true,
       });
     });
@@ -847,7 +847,7 @@ describe('ClaudianPlugin', () => {
       expect(mockApp.workspace.getRightLeaf).not.toHaveBeenCalled();
       expect(mockApp.workspace.getLeaf).not.toHaveBeenCalled();
       expect(mockLeftLeaf.setViewState).toHaveBeenCalledWith({
-        type: VIEW_TYPE_CLAUDIAN,
+        type: VIEW_TYPE_CODIAN,
         active: true,
       });
     });
@@ -877,7 +877,7 @@ describe('ClaudianPlugin', () => {
       expect(mockApp.workspace.getRightLeaf).not.toHaveBeenCalled();
       expect(mockApp.workspace.getLeftLeaf).not.toHaveBeenCalled();
       expect(mockMainLeaf.setViewState).toHaveBeenCalledWith({
-        type: VIEW_TYPE_CLAUDIAN,
+        type: VIEW_TYPE_CODIAN,
         active: true,
       });
     });
@@ -895,7 +895,7 @@ describe('ClaudianPlugin', () => {
 
   describe('loadSettings', () => {
     it('should merge saved data with defaults', async () => {
-      // Mock claudian-settings.json exists with custom values (Claudian-specific settings)
+      // Mock codian-settings.json exists with custom values (Codian-specific settings)
       mockApp.vault.adapter.exists.mockImplementation(async (path: string) => {
         return path === '.codian/codian-settings.json';
       });
@@ -989,7 +989,7 @@ describe('ClaudianPlugin', () => {
     });
 
     it('should reconcile model from environment and persist when changed', async () => {
-      // Mock claudian-settings.json with environment variables
+      // Mock codian-settings.json with environment variables
       mockApp.vault.adapter.exists.mockImplementation(async (path: string) => {
         return path === '.codian/codian-settings.json';
       });
@@ -1017,7 +1017,7 @@ describe('ClaudianPlugin', () => {
 
       await plugin.saveSettings();
 
-      // Claudian-specific settings should be written to .claudian/claudian-settings.json
+      // Codian-specific settings should be written to .codian/codian-settings.json
       expect(mockApp.vault.adapter.write).toHaveBeenCalledWith(
         '.codian/codian-settings.json',
         expect.any(String)
@@ -1035,7 +1035,7 @@ describe('ClaudianPlugin', () => {
       expect(content).toHaveProperty('lastCustomModel');
       expect(content).not.toHaveProperty('enableBlocklist');
       expect(content).not.toHaveProperty('blockedCommands');
-      // Permissions are now in .claude/settings.json (CC format), not claudian-settings.json
+      // Permissions are now in .claude/settings.json (CC format), not codian-settings.json
       expect(content).not.toHaveProperty('permissions');
     });
   });
@@ -1853,7 +1853,7 @@ describe('ClaudianPlugin', () => {
       });
     });
 
-    it('restarts affected runtimes in every open Claudian view', async () => {
+    it('restarts affected runtimes in every open Codian view', async () => {
       await plugin.onload();
 
       const createView = () => {
@@ -2282,7 +2282,7 @@ describe('ClaudianPlugin', () => {
       expect(command.checkCallback(true)).toBe(false);
     });
 
-    it('keeps tab commands unavailable while a Claudian leaf view is not initialized', async () => {
+    it('keeps tab commands unavailable while a Codian leaf view is not initialized', async () => {
       await plugin.onload();
 
       mockApp.workspace.getLeavesOfType.mockReturnValue([{ view: {} }]);
@@ -2445,7 +2445,7 @@ describe('ClaudianPlugin', () => {
       expect(result?.id).toBe(conversation.id);
       expect(plugin.getConversationList()).toHaveLength(1);
       expect(mockApp.vault.adapter.remove).not.toHaveBeenCalledWith(
-        '.claudian/sessions/session-removed-after-startup.meta.json',
+        '.codian/sessions/session-removed-after-startup.meta.json',
       );
       availabilitySpy.mockRestore();
     });
@@ -2472,7 +2472,7 @@ describe('ClaudianPlugin', () => {
         previousProviderSessionIds: ['session-from-previous-vault-path'],
       }));
       expect(mockApp.vault.adapter.remove).not.toHaveBeenCalledWith(
-        '.claudian/sessions/session-from-previous-vault-path.meta.json',
+        '.codian/sessions/session-from-previous-vault-path.meta.json',
       );
       availabilitySpy.mockRestore();
       loadSpy.mockRestore();
@@ -2542,29 +2542,24 @@ describe('ClaudianPlugin', () => {
       deleteNativeSpy.mockRestore();
     });
 
-    it('should reset every open tab that references the deleted conversation', async () => {
+    it('retires the deleted conversation and delegates open-tab reset', async () => {
       await plugin.onload();
       const conv = await plugin.createConversation();
-      const cancelStreaming = jest.fn();
-      const createNew = jest.fn().mockResolvedValue(undefined);
+      const resetDeletedConversation = jest.fn();
+      const retireConversation = jest.spyOn(plugin.sessionRuntimePool, 'retireConversation');
       mockApp.workspace.getLeavesOfType.mockReturnValue([{
         view: {
           getTabManager: () => ({
-            getAllTabs: () => [{
-              conversationId: conv.id,
-              controllers: {
-                inputController: { cancelStreaming },
-                conversationController: { createNew },
-              },
-            }],
+            resetDeletedConversation,
           }),
         },
       }]);
 
       await plugin.deleteConversation(conv.id, { deleteProviderSession: false });
 
-      expect(cancelStreaming).toHaveBeenCalledTimes(1);
-      expect(createNew).toHaveBeenCalledWith({ force: true });
+      expect(retireConversation).toHaveBeenCalledWith(conv.id);
+      expect(resetDeletedConversation).toHaveBeenCalledWith(conv.id);
+      expect(plugin.getConversationList().find(item => item.id === conv.id)).toBeUndefined();
     });
   });
 
@@ -2821,7 +2816,7 @@ describe('ClaudianPlugin', () => {
         if (path === '.codian/sessions' || path === '.codian/sessions/conv-saved-1.meta.json') {
           return true;
         }
-        // claudian-settings.json exists
+        // codian-settings.json exists
         if (path === '.codian/codian-settings.json') {
           return true;
         }
@@ -2877,7 +2872,7 @@ describe('ClaudianPlugin', () => {
       });
       mockApp.vault.adapter.read.mockImplementation(async (path: string) => {
         if (path === '.codian/codian-settings.json') {
-          // All these fields are now in claudian-settings.json
+          // All these fields are now in codian-settings.json
           return JSON.stringify({
             lastEnvHash: 'old-hash',
             environmentVariables: 'ANTHROPIC_BASE_URL=https://api.example.com',

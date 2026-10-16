@@ -1,5 +1,6 @@
 import { setIcon } from 'obsidian';
 
+import { t } from '../../../i18n/i18n';
 import {
   cancelScheduledAnimationFrame,
   scheduleAnimationFrame,
@@ -66,7 +67,7 @@ export class ComposerContextTray {
   constructor(containerEl: HTMLElement, options: ComposerContextTrayOptions = {}) {
     this.containerEl = containerEl;
     this.options = options;
-    this.containerEl.addClass('claudian-context-row');
+    this.containerEl.addClass('codian-context-row');
     this.observeSize();
     this.render();
   }
@@ -89,52 +90,54 @@ export class ComposerContextTray {
 
   refreshLayout(): void {
     const chips = Array.from(
-      this.containerEl.querySelectorAll<HTMLElement>('.claudian-context-chip')
+      this.containerEl.querySelectorAll<HTMLElement>('.codian-context-chip')
     );
-    const moreButton = this.containerEl.querySelector<HTMLElement>('.claudian-context-more');
+    const moreButton = this.containerEl.querySelector<HTMLElement>('.codian-context-more');
     if (!moreButton || chips.length === 0) return;
 
     for (const chip of chips) {
-      chip.removeClass('claudian-context-chip--overflow-hidden');
+      chip.removeClass('codian-context-chip--overflow-hidden');
     }
-    moreButton.addClass('claudian-hidden');
+    moreButton.addClass('codian-hidden');
 
     const rows = this.getRows(chips);
     const hasOverflow = rows.length > MAX_COLLAPSED_ROWS;
     if (!hasOverflow) {
       this.expanded = false;
-      this.containerEl.removeClass('claudian-context-row--expanded');
+      this.containerEl.removeClass('codian-context-row--expanded');
       moreButton.setAttribute('aria-expanded', 'false');
       return;
     }
 
-    moreButton.removeClass('claudian-hidden');
+    moreButton.removeClass('codian-hidden');
     if (this.expanded) {
-      this.containerEl.addClass('claudian-context-row--expanded');
-      moreButton.textContent = 'Show less';
+      this.containerEl.addClass('codian-context-row--expanded');
+      const label = t('chat.composer.showLess');
+      moreButton.textContent = label;
+      moreButton.setAttribute('aria-label', label);
       moreButton.setAttribute('aria-expanded', 'true');
       return;
     }
 
-    this.containerEl.removeClass('claudian-context-row--expanded');
+    this.containerEl.removeClass('codian-context-row--expanded');
     moreButton.setAttribute('aria-expanded', 'false');
 
     const lastVisibleRow = rows[MAX_COLLAPSED_ROWS - 1];
     let visibleCount = lastVisibleRow.lastIndex + 1;
 
     for (let index = visibleCount; index < chips.length; index++) {
-      chips[index].addClass('claudian-context-chip--overflow-hidden');
+      chips[index].addClass('codian-context-chip--overflow-hidden');
     }
 
     const minimumVisibleCount = Math.max(1, lastVisibleRow.firstIndex);
     while (visibleCount > minimumVisibleCount && moreButton.offsetTop >= lastVisibleRow.bottom) {
       visibleCount -= 1;
-      chips[visibleCount].addClass('claudian-context-chip--overflow-hidden');
+      chips[visibleCount].addClass('codian-context-chip--overflow-hidden');
     }
 
     const hiddenCount = chips.length - visibleCount;
-    moreButton.textContent = `+${hiddenCount} more`;
-    moreButton.setAttribute('aria-label', `Show ${hiddenCount} more context items`);
+    moreButton.textContent = t('chat.composer.moreItems', { count: hiddenCount });
+    moreButton.setAttribute('aria-label', t('chat.composer.moreContext', { count: hiddenCount }));
   }
 
   destroy(): void {
@@ -147,12 +150,12 @@ export class ComposerContextTray {
     this.itemsBySlot.clear();
     this.containerEl.empty();
     this.containerEl.removeClass('has-content');
-    this.containerEl.removeClass('claudian-context-row--expanded');
+    this.containerEl.removeClass('codian-context-row--expanded');
   }
 
   private render(): void {
     this.containerEl.empty();
-    this.containerEl.removeClass('claudian-context-row--expanded');
+    this.containerEl.removeClass('codian-context-row--expanded');
 
     const entries = SLOT_ORDER.flatMap(slot =>
       (this.itemsBySlot.get(slot) ?? []).map(item => ({ item, slot }))
@@ -165,7 +168,7 @@ export class ComposerContextTray {
 
     if (entries.length > 0) {
       const moreButton = this.containerEl.createEl('button', {
-        cls: 'claudian-context-more claudian-hidden',
+        cls: 'codian-context-more codian-hidden',
         attr: {
           type: 'button',
           'aria-expanded': 'false',
@@ -184,17 +187,17 @@ export class ComposerContextTray {
 
   private renderItem(slot: ComposerContextSlot, item: ComposerContextItem): void {
     const chipEl = this.containerEl.createDiv({
-      cls: `claudian-context-chip claudian-context-chip--${item.kind}`,
+      cls: `codian-context-chip codian-context-chip--${item.kind}`,
     });
     chipEl.dataset.contextSlot = slot;
     chipEl.dataset.contextId = item.id;
 
     const contentEl = item.onActivate
       ? chipEl.createEl('button', {
-        cls: 'claudian-context-chip-main',
+        cls: 'codian-context-chip-main',
         attr: { type: 'button' },
       })
-      : chipEl.createSpan({ cls: 'claudian-context-chip-main' });
+      : chipEl.createSpan({ cls: 'codian-context-chip-main' });
 
     if (item.title) {
       contentEl.setAttribute('title', item.title);
@@ -205,19 +208,19 @@ export class ComposerContextTray {
     }
 
     if (item.icon) {
-      const iconEl = contentEl.createSpan({ cls: 'claudian-context-chip-icon' });
+      const iconEl = contentEl.createSpan({ cls: 'codian-context-chip-icon' });
       setIcon(iconEl, item.icon);
     }
 
-    contentEl.createSpan({ cls: 'claudian-context-chip-label', text: item.label });
+    contentEl.createSpan({ cls: 'codian-context-chip-label', text: item.label });
 
     if (item.onRemove) {
       const removeButton = chipEl.createEl('button', {
-        cls: 'claudian-context-chip-remove',
+        cls: 'codian-context-chip-remove',
         text: '\u00D7',
         attr: {
           type: 'button',
-          'aria-label': `Remove ${item.ariaLabel ?? item.label}`,
+          'aria-label': t('chat.removeItem', { item: item.ariaLabel ?? item.label }),
         },
       });
       removeButton.addEventListener('click', item.onRemove);

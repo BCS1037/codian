@@ -1,14 +1,14 @@
-.claudian-claude-services {
+.codian-claude-services {
   margin-top: 18px;
 }
 
-.claudian-claude-service-list {
+.codian-claude-service-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.claudian-claude-service-row {
+.codian-claude-service-row {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -18,17 +18,17 @@
   background: var(--background-secondary);
 }
 
-.claudian-claude-service-copy {
+.codian-claude-service-copy {
   flex: 1;
   min-width: 0;
 }
 
-.claudian-claude-service-name {
+.codian-claude-service-name {
   color: var(--text-normal);
   font-weight: var(--font-semibold);
 }
 
-.claudian-claude-service-meta {
+.codian-claude-service-meta {
   overflow: hidden;
   margin-top: 3px;
   color: var(--text-muted);
@@ -38,26 +38,26 @@
   white-space: nowrap;
 }
 
-.claudian-claude-service-actions,
-.claudian-settings-action-row {
+.codian-claude-service-actions,
+.codian-settings-action-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.claudian-settings-action-row {
+.codian-settings-action-row {
   justify-content: flex-end;
   margin-top: 16px;
 }
 
-.claudian-settings-action-row .setting-item-description {
+.codian-settings-action-row .setting-item-description {
   flex-basis: 100%;
   text-align: right;
 }
 
 @media (max-width: 760px) {
-  .claudian-claude-service-row {
+  .codian-claude-service-row {
     align-items: stretch;
     flex-direction: column;
   }

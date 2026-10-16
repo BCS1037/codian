@@ -25,6 +25,7 @@ export interface StructuredPatchHunk {
 
 /** Shape of the SDK's toolUseResult object for Write/Edit tools. */
 export interface SDKToolUseResult {
+  resultFormat?: 'plain';
   structuredPatch?: StructuredPatchHunk[];
   filePath?: string;
   [key: string]: unknown;

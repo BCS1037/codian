@@ -15,7 +15,7 @@ import {
 import { buildGrokRuntimeEnv } from '@/providers/grok/runtime/GrokRuntimeEnvironment';
 import { getHostnameKey } from '@/utils/env';
 
-const VAULT_PATH = '/tmp/claudian-grok-runtime-vault';
+const VAULT_PATH = '/tmp/codian-grok-runtime-vault';
 const CAPABILITIES: ProviderCapabilities = {
   providerId: 'grok',
   reasoningControl: 'effort',
@@ -330,7 +330,7 @@ function record(value: unknown): Record<string, unknown> {
 }
 
 function createRewindHistoryDirectory(): string {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'claudian-grok-runtime-rewind-'));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codian-grok-runtime-rewind-'));
   const records = [{
     _meta: { promptIndex: 0 },
     content: { text: 'First prompt', type: 'text' },
@@ -972,7 +972,7 @@ describe('GrokChatRuntime', () => {
   });
 
   it('materializes a pending Grok fork before loading and prompting the child session', async () => {
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'claudian-grok-fork-'));
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codian-grok-fork-'));
     const sourceCwd = path.join(tempRoot, 'previous-vault');
     const sourceDirectory = path.join(
       tempRoot,
@@ -1055,7 +1055,7 @@ describe('GrokChatRuntime', () => {
   });
 
   it('uses Grok cwd metadata when forking a hash-directory session', async () => {
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'claudian-grok-hash-fork-'));
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codian-grok-hash-fork-'));
     const sourceCwd = path.join(tempRoot, 'a'.repeat(260), 'previous-vault');
     const cwdDirectory = path.join(tempRoot, 'sessions', 'previous-vault-0123456789abcdef');
     const sourceDirectory = path.join(cwdDirectory, 'session-fixture');
@@ -1088,7 +1088,7 @@ describe('GrokChatRuntime', () => {
   });
 
   it('rejects a hash-directory fork when its source cwd metadata is missing', async () => {
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'claudian-grok-bad-hash-fork-'));
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codian-grok-bad-hash-fork-'));
     const sourceDirectory = path.join(
       tempRoot,
       'sessions',
@@ -1463,7 +1463,7 @@ describe('GrokChatRuntime', () => {
     ]);
   });
 
-  it('retains Grok metadata event IDs when content chunks omit ACP message IDs', async () => {
+  it('uses Grok prompt checkpoints when content chunks omit ACP message IDs', async () => {
     const harness = createHarness({
       handlers: {
         prompt(message, process) {
@@ -1493,17 +1493,55 @@ describe('GrokChatRuntime', () => {
 
     expect(chunks).toContainEqual({
       content: 'Prompt',
-      itemId: 'user-event-id',
+      itemId: 'prompt-id',
       type: 'user_message_start',
     });
     expect(chunks).toContainEqual({
-      itemId: 'assistant-event-id',
+      itemId: 'prompt-id',
       type: 'assistant_message_start',
     });
     expect(harness.runtime.consumeTurnMetadata()).toMatchObject({
-      assistantMessageId: 'assistant-event-id',
-      userMessageId: 'user-event-id',
+      assistantMessageId: 'prompt-id',
+      userMessageId: 'prompt-id',
     });
+  });
+
+  it('keeps token chunks with changing event IDs in one prompt-checkpoint message', async () => {
+    const harness = createHarness({
+      handlers: {
+        prompt(message, process) {
+          ['Hello', ',', ' world'].forEach((text, index) => {
+            process.notify('x.ai/session/update', {
+              _meta: { eventId: `event-${index}`, promptId: 'prompt-token-stream' },
+              sessionId: 'session-new',
+              update: {
+                content: { text, type: 'text' },
+                sessionUpdate: 'agent_message_chunk',
+              },
+            });
+          });
+          process.respond(message, promptResponse());
+        },
+      },
+    });
+
+    const chunks = await collect(harness.runtime);
+    const assistantStarts = chunks.flatMap((chunk) => {
+      if (!chunk || typeof chunk !== 'object' || !('type' in chunk)
+        || chunk.type !== 'assistant_message_start') return [];
+      return [chunk as { itemId: string; type: 'assistant_message_start' }];
+    });
+    const textChunks = chunks.flatMap((chunk) => {
+      if (!chunk || typeof chunk !== 'object' || !('type' in chunk) || chunk.type !== 'text') return [];
+      return [chunk as { content: string; type: 'text' }];
+    });
+
+    expect(assistantStarts).toEqual([
+      { itemId: 'prompt-token-stream', type: 'assistant_message_start' },
+    ]);
+    expect(textChunks.map(chunk => chunk.content).join(''))
+      .toBe('Hello, world');
+    expect(harness.runtime.consumeTurnMetadata().assistantMessageId).toBe('prompt-token-stream');
   });
 
   it.each([

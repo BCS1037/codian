@@ -2,6 +2,8 @@ import { createMockEl } from '@test/helpers/mockElement';
 import { loadPrism } from 'obsidian';
 
 import {
+  getPluginFenceLanguageSet,
+  hasDeferredDiagramFence,
   prepareDisplayOnlyCodeFences,
   restoreDisplayOnlyCodeFences,
 } from '@/features/chat/rendering/DisplayOnlyCodeFences';
@@ -24,20 +26,20 @@ describe('DisplayOnlyCodeFences', () => {
     const prepared = prepareDisplayOnlyCodeFences(markdown);
 
     expect(prepared.markdown).toBe([
-      '> ```claudian-display-only-fence-0',
+      '> ```codian-display-only-fence-0',
       '> TABLE file.name',
       '> ```',
-      '- ~~~claudian-display-only-fence-1 title="sample"',
+      '- ~~~codian-display-only-fence-1 title="sample"',
       '  const value = 1;',
       '  ~~~',
     ].join('\n'));
     expect(prepared.fences).toEqual([
       {
-        placeholderLanguage: 'claudian-display-only-fence-0',
+        placeholderLanguage: 'codian-display-only-fence-0',
         originalLanguage: 'dataview',
       },
       {
-        placeholderLanguage: 'claudian-display-only-fence-1',
+        placeholderLanguage: 'codian-display-only-fence-1',
         originalLanguage: 'typescript',
       },
     ]);
@@ -55,7 +57,7 @@ describe('DisplayOnlyCodeFences', () => {
     const prepared = prepareDisplayOnlyCodeFences(markdown);
 
     expect(prepared.markdown).toBe([
-      '````claudian-display-only-fence-0',
+      '````codian-display-only-fence-0',
       '```dataview',
       'TABLE file.name',
       '```',
@@ -82,7 +84,7 @@ describe('DisplayOnlyCodeFences', () => {
       '```',
       'plain code',
       '```',
-      '```claudian-display-only-fence-0',
+      '```codian-display-only-fence-0',
       'TABLE file.name',
     ].join('\n'));
     expect(prepared.fences).toHaveLength(1);
@@ -93,16 +95,16 @@ describe('DisplayOnlyCodeFences', () => {
     (loadPrism as jest.Mock).mockResolvedValueOnce({ highlightElement });
     const container = createMockEl();
     const code = container.createEl('code', {
-      cls: 'language-claudian-display-only-fence-0 extra-class',
+      cls: 'language-codian-display-only-fence-0 extra-class',
       text: 'const value = 1;',
     });
 
     await restoreDisplayOnlyCodeFences(container, [{
-      placeholderLanguage: 'claudian-display-only-fence-0',
+      placeholderLanguage: 'codian-display-only-fence-0',
       originalLanguage: 'typescript',
     }]);
 
-    expect(code.hasClass('language-claudian-display-only-fence-0')).toBe(false);
+    expect(code.hasClass('language-codian-display-only-fence-0')).toBe(false);
     expect(code.hasClass('language-typescript')).toBe(true);
     expect(code.hasClass('extra-class')).toBe(true);
     expect(highlightElement).toHaveBeenCalledWith(code);
@@ -112,15 +114,63 @@ describe('DisplayOnlyCodeFences', () => {
     (loadPrism as jest.Mock).mockRejectedValueOnce(new Error('Prism unavailable'));
     const container = createMockEl();
     const code = container.createEl('code', {
-      cls: 'language-claudian-display-only-fence-0',
+      cls: 'language-codian-display-only-fence-0',
       text: 'TABLE file.name',
     });
 
     await expect(restoreDisplayOnlyCodeFences(container, [{
-      placeholderLanguage: 'claudian-display-only-fence-0',
+      placeholderLanguage: 'codian-display-only-fence-0',
       originalLanguage: 'dataview',
     }])).resolves.toBeUndefined();
 
     expect(code.hasClass('language-dataview')).toBe(true);
+  });
+
+  describe('plugin fence languages', () => {
+    it('leaves opted-in plugin languages untouched and excludes them from fences', () => {
+      const markdown = [
+        '```Vega-Lite',
+        '{"mark": "bar"}',
+        '```',
+        '```dataview',
+        'TABLE file.name',
+        '```',
+        '```typescript',
+        'const x = 1;',
+        '```',
+      ].join('\n');
+
+      const pluginLanguages = new Set(['vega-lite', 'dataview']);
+      const prepared = prepareDisplayOnlyCodeFences(markdown, pluginLanguages);
+
+      expect(prepared.markdown).toContain('```Vega-Lite\n{"mark": "bar"}\n```');
+      expect(prepared.markdown).toContain('```dataview\nTABLE file.name\n```');
+      expect(prepared.markdown).toContain('```codian-display-only-fence-0\nconst x = 1;\n```');
+      expect(prepared.fences).toEqual([
+        {
+          placeholderLanguage: 'codian-display-only-fence-0',
+          originalLanguage: 'typescript',
+        },
+      ]);
+    });
+
+    it('normalizes fence languages in getPluginFenceLanguageSet', () => {
+      expect(getPluginFenceLanguageSet(undefined)).toEqual(new Set());
+      expect(getPluginFenceLanguageSet([])).toEqual(new Set());
+      expect(getPluginFenceLanguageSet([' Vega-Lite ', 'DATAVIEW', '', '  ', 'tasks'])).toEqual(
+        new Set(['vega-lite', 'dataview', 'tasks']),
+      );
+    });
+
+    it('detects deferred diagram and plugin fences in hasDeferredDiagramFence', () => {
+      const pluginLanguages = new Set(['vega-lite']);
+
+      expect(hasDeferredDiagramFence('```mermaid\ngraph TD;\n```', pluginLanguages)).toBe(true);
+      expect(hasDeferredDiagramFence('```Mermaid\ngraph TD;\n```', new Set())).toBe(true);
+      expect(hasDeferredDiagramFence('```Vega-Lite\n{"mark": "bar"}\n```', pluginLanguages)).toBe(true);
+      expect(hasDeferredDiagramFence('<div>\n```vega-lite\n{"mark": "bar"}\n```\n</div>', pluginLanguages)).toBe(true);
+      expect(hasDeferredDiagramFence('```dataview\nTABLE file.name\n```', pluginLanguages)).toBe(false);
+      expect(hasDeferredDiagramFence('```python\nprint(1)\n```', pluginLanguages)).toBe(false);
+    });
   });
 });

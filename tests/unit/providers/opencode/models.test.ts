@@ -142,7 +142,7 @@ describe('opencodeChatUIConfig', () => {
 
     expect(options).toEqual([
       {
-        description: 'ACP runtime',
+        description: 'OpenCode runtime',
         label: 'OpenAI/GPT-5',
         value: 'opencode:openai/gpt-5',
       },
@@ -170,12 +170,12 @@ describe('opencodeChatUIConfig', () => {
 
     expect(options).toEqual([
       {
-        description: 'ACP runtime',
+        description: 'OpenCode runtime',
         label: 'OpenAI/GPT-5',
         value: 'opencode:openai/gpt-5',
       },
       {
-        description: 'ACP runtime',
+        description: 'OpenCode runtime',
         label: 'Sonnet',
         value: 'opencode:anthropic/claude-sonnet-4',
       },

@@ -1,4 +1,5 @@
 import { createMockEl } from '@test/helpers/mockElement';
+import { FileView, TextFileView } from 'obsidian';
 
 import { SelectionController } from '@/features/chat/controllers/SelectionController';
 import { hideSelectionHighlight, showSelectionHighlight } from '@/shared/components/SelectionHighlight';
@@ -434,7 +435,7 @@ describe('SelectionController', () => {
 
       expect(showSelectionHighlight).not.toHaveBeenCalled();
       expect(mockHighlights.set).toHaveBeenCalledWith(
-        'claudian-selection',
+        'codian-selection',
         expect.any(Object),
       );
     });
@@ -458,7 +459,7 @@ describe('SelectionController', () => {
       controller.showHighlight();
 
       expect(mockHighlights.set).toHaveBeenCalledWith(
-        'claudian-selection',
+        'codian-selection',
         expect.any(Object),
       );
     });
@@ -549,7 +550,7 @@ describe('SelectionController', () => {
       );
       jest.advanceTimersByTime(250);
 
-      expect(mockHighlights.delete).toHaveBeenCalledWith('claudian-selection');
+      expect(mockHighlights.delete).toHaveBeenCalledWith('codian-selection');
     });
 
     it('skips CSS highlight for disconnected DOM ranges', () => {
@@ -604,7 +605,7 @@ describe('SelectionController', () => {
       controller.showHighlight();
 
       expect(mockHighlights.set).toHaveBeenCalledWith(
-        'claudian-selection',
+        'codian-selection',
         { ranges: [secondRange] },
       );
     });
@@ -670,6 +671,178 @@ describe('SelectionController', () => {
         lineCount: 1,
       });
       expect(showSelectionHighlight).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('non-Markdown FileView and TextFileView selection', () => {
+    class TestDocumentViewer extends FileView {
+      getViewType(): string {
+        return 'test-document-viewer';
+      }
+    }
+
+    class TestSourceViewer extends TextFileView {
+      getViewType(): string {
+        return 'test-source-viewer';
+      }
+
+      clear(): void {}
+
+      getViewData(): string {
+        return this.data;
+      }
+
+      setViewData(data: string): void {
+        this.data = data;
+      }
+    }
+
+    it('captures DOM selection from a non-text FileView without startLine', () => {
+      const docContainer = createMockEl();
+      docContainer.contains = jest.fn().mockReturnValue(true);
+      const docView = Object.assign(new TestDocumentViewer({} as any), {
+        file: { path: 'docs/paper.pdf' },
+        containerEl: docContainer,
+      });
+      app.workspace.getActiveViewOfType.mockImplementation((type: any) => (type === FileView ? docView : null));
+
+      const anchorNode = {};
+      const mockSel = createMockDOMSelection('Attention is all you need', anchorNode);
+      (global as any).document = {
+        activeElement: null,
+        getSelection: jest.fn().mockReturnValue(mockSel),
+      };
+
+      controller.start();
+      jest.advanceTimersByTime(250);
+
+      expect(controller.hasSelection()).toBe(true);
+      expect(controller.getContext()).toEqual({
+        notePath: 'docs/paper.pdf',
+        mode: 'selection',
+        selectedText: 'Attention is all you need',
+        lineCount: 1,
+      });
+    });
+
+    it('captures DOM selection from a TextFileView with exact startLine when source text matches verbatim', () => {
+      const source = '# header\nvalue = "中文"\nprint(value)\n';
+      const container = createMockEl();
+      const codeNode = {
+        textContent: source,
+        parentNode: container,
+      };
+      container.contains = jest.fn((node: any) => node === codeNode || node === container);
+
+      const textFileView = Object.assign(new TestSourceViewer({} as any), {
+        file: { path: 'code/test.py' },
+        data: source,
+        containerEl: container,
+      });
+      app.workspace.getActiveViewOfType.mockImplementation((type: any) => (type === FileView ? textFileView : null));
+
+      // Selection on "print(value)"
+      const startOffsetInSource = source.indexOf('print(value)');
+      const range: any = {
+        commonAncestorContainer: codeNode,
+        startContainer: codeNode,
+        startOffset: startOffsetInSource,
+        endContainer: codeNode,
+        endOffset: startOffsetInSource + 'print(value)'.length,
+        cloneRange: () => range,
+      };
+
+      let prefixString = '';
+      const prefixRange: any = {
+        selectNodeContents: jest.fn(),
+        setEnd: jest.fn((_node: any, offset: number) => {
+          prefixString = source.slice(0, offset);
+        }),
+        toString: () => prefixString,
+      };
+
+      container.ownerDocument = {
+        createRange: jest.fn().mockReturnValue(prefixRange),
+      };
+
+      const mockSel = {
+        toString: () => 'print(value)',
+        anchorNode: codeNode,
+        focusNode: codeNode,
+        rangeCount: 1,
+        getRangeAt: jest.fn(() => range),
+        removeAllRanges: jest.fn(),
+        _range: range,
+      };
+
+      (global as any).document = {
+        activeElement: null,
+        getSelection: jest.fn().mockReturnValue(mockSel),
+      };
+
+      controller.start();
+      jest.advanceTimersByTime(250);
+
+      expect(controller.hasSelection()).toBe(true);
+      expect(controller.getContext()).toEqual({
+        notePath: 'code/test.py',
+        mode: 'selection',
+        selectedText: 'print(value)',
+        lineCount: 1,
+        startLine: 3,
+      });
+    });
+
+    it('omits startLine from TextFileView when rendered text does not match source', () => {
+      const source = '# header\nvalue = "中文"\nprint(value)\n';
+      const container = createMockEl();
+      const codeNode = {
+        textContent: 'different content',
+        parentNode: container,
+      };
+      container.contains = jest.fn((node: any) => node === codeNode || node === container);
+
+      const textFileView = Object.assign(new TestSourceViewer({} as any), {
+        file: { path: 'code/test.py' },
+        data: source,
+        containerEl: container,
+      });
+      app.workspace.getActiveViewOfType.mockImplementation((type: any) => (type === FileView ? textFileView : null));
+
+      const range: any = {
+        commonAncestorContainer: codeNode,
+        startContainer: codeNode,
+        startOffset: 0,
+        endContainer: codeNode,
+        endOffset: 5,
+        cloneRange: () => range,
+      };
+
+      const mockSel = {
+        toString: () => 'diff',
+        anchorNode: codeNode,
+        focusNode: codeNode,
+        rangeCount: 1,
+        getRangeAt: jest.fn(() => range),
+        removeAllRanges: jest.fn(),
+        _range: range,
+      };
+
+      (global as any).document = {
+        activeElement: null,
+        getSelection: jest.fn().mockReturnValue(mockSel),
+      };
+
+      controller.start();
+      jest.advanceTimersByTime(250);
+
+      expect(controller.hasSelection()).toBe(true);
+      expect(controller.getContext()).toEqual({
+        notePath: 'code/test.py',
+        mode: 'selection',
+        selectedText: 'diff',
+        lineCount: 1,
+      });
     });
   });
 

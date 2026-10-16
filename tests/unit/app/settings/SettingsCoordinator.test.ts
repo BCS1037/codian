@@ -27,6 +27,35 @@ describe('SettingsCoordinator', () => {
     ]);
   });
 
+  it('exposes last committed values while a settings save is pending', async () => {
+    const settings: Record<string, unknown> = { reasoning: 'high' };
+    let releasePersist!: () => void;
+    let notifyPersistStarted!: () => void;
+    const persistStarted = new Promise<void>((resolve) => {
+      notifyPersistStarted = resolve;
+    });
+    const coordinator = new SettingsCoordinator(settings, async () => {
+      notifyPersistStarted();
+      await new Promise<void>((resolve) => {
+        releasePersist = resolve;
+      });
+    });
+
+    const update = coordinator.mutate(current => {
+      current.reasoning = 'low';
+    });
+    await persistStarted;
+
+    expect(settings.reasoning).toBe('low');
+    expect(coordinator.getCommittedSettings()).toEqual({ reasoning: 'high' });
+
+    releasePersist();
+    await update;
+
+    expect(coordinator.getCommittedSettings()).toBe(settings);
+    expect(coordinator.getCommittedSettings()).toEqual({ reasoning: 'low' });
+  });
+
   it('publishes committed side effects before the next queued mutation starts', async () => {
     const settings: Record<string, unknown> = { value: 0 };
     const events: string[] = [];

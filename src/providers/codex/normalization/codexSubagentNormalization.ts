@@ -10,6 +10,7 @@ import type { SubagentInfo, ToolCallInfo } from '../../../core/types';
 interface CodexSpawnResult {
   agentId?: string;
   nickname?: string;
+  aliases?: string[];
 }
 
 interface CodexWaitStatus {
@@ -63,10 +64,13 @@ export function extractCodexSpawnResult(
   const nickname = parsed && typeof parsed.nickname === 'string'
     ? parsed.nickname
     : undefined;
+  const aliases = [...new Set([parsed?.task_name, inputTaskName]
+    .filter((value): value is string => typeof value === 'string' && !!value && value !== agentId))];
 
   return {
     ...(agentId ? { agentId } : {}),
     ...(nickname ? { nickname } : {}),
+    ...(aliases.length ? { aliases } : {}),
   };
 }
 
@@ -107,15 +111,20 @@ export function extractCodexWaitResult(raw: string | undefined): CodexWaitResult
 }
 
 function extractCodexAgentSnapshots(parsed: Record<string, unknown>): CodexAgentSnapshot[] {
-  if (!Array.isArray(parsed.agents)) return [];
-
-  return parsed.agents.flatMap((value): CodexAgentSnapshot[] => {
+  const snapshots = (Array.isArray(parsed.agents) ? parsed.agents : []).flatMap((value): CodexAgentSnapshot[] => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
     const agent = value as Record<string, unknown>;
     const agentId = firstString(agent, ['agent_name', 'task_name', 'agent_id', 'name']);
     const status = normalizeCodexAgentStatus(agent.agent_status ?? agent.status);
     return agentId && status ? [{ agentId, ...status }] : [];
   });
+  if (parsed.status && typeof parsed.status === 'object' && !Array.isArray(parsed.status)) {
+    for (const [agentId, value] of Object.entries(parsed.status as Record<string, unknown>)) {
+      const status = normalizeCodexAgentStatus(value);
+      if (status) snapshots.push({ agentId, ...status });
+    }
+  }
+  return snapshots;
 }
 
 function normalizeCodexAgentStatus(
@@ -185,7 +194,10 @@ function resolveCodexWaitCompletion(
   spawnToolCall: ToolCallInfo,
   siblingToolCalls: ToolCallInfo[],
 ): { status: SubagentInfo['status']; result?: string } {
-  let completion: { status: SubagentInfo['status']; result?: string } = { status: 'running' };
+  const spawnSnapshot = parseJsonObject(spawnToolCall.result);
+  let completion: { status: SubagentInfo['status']; result?: string } = spawnSnapshot
+    ? findCodexAgentSnapshot(spawnSnapshot, spawnResult) ?? { status: 'running' }
+    : { status: 'running' };
   const spawnIndex = siblingToolCalls.indexOf(spawnToolCall);
   const followingToolCalls = spawnIndex >= 0
     ? siblingToolCalls.slice(spawnIndex + 1)
@@ -209,13 +221,19 @@ function resolveCodexWaitCompletion(
     if (isCodexCloseTool(toolCall.name)) {
       if (
         spawnResult.agentId
-        && getCodexLifecycleTargetIds(toolCall).includes(spawnResult.agentId)
+        && getCodexLifecycleTargetIds(toolCall).some(id => id === spawnResult.agentId || spawnResult.aliases?.includes(id))
         && toolCall.status !== 'running'
       ) {
-        completion = {
-          status: 'error',
-          result: toolCall.result || 'Agent interrupted',
-        };
+        const parsed = parseJsonObject(toolCall.result);
+        const previous = parsed ? normalizeCodexAgentStatus(parsed.previous_status) : null;
+        const snapshot = parsed ? findCodexAgentSnapshot(parsed, spawnResult) : undefined;
+        if (previous?.status === 'completed') {
+          completion = previous;
+        } else if (snapshot && snapshot.status !== 'running') {
+          completion = snapshot;
+        } else if (completion.status === 'running') {
+          completion = { status: 'error', result: toolCall.result || 'Agent interrupted' };
+        }
       }
       continue;
     }
@@ -249,6 +267,18 @@ function resolveCodexWaitCompletion(
   }
 
   return completion;
+}
+
+function findCodexAgentSnapshot(
+  parsed: Record<string, unknown>,
+  spawnResult: CodexSpawnResult,
+): Omit<CodexAgentSnapshot, 'agentId'> | undefined {
+  const snapshots = extractCodexAgentSnapshots(parsed);
+  const ids = [...(spawnResult.aliases ?? []), spawnResult.agentId].filter((id): id is string => !!id);
+  const snapshot = ids.length
+    ? ids.map(id => snapshots.find(agent => agent.agentId === id)).find(Boolean)
+    : snapshots.length === 1 ? snapshots[0] : undefined;
+  return snapshot ? { status: snapshot.status, ...(snapshot.result ? { result: snapshot.result } : {}) } : undefined;
 }
 
 export function buildCodexSubagentInfo(
@@ -297,7 +327,7 @@ export function isCodexSubagentSpawnToolCall(toolCall: ToolCallInfo): boolean {
 
 function getCodexLifecycleTargetIds(toolCall: ToolCallInfo): string[] {
   const targetIds = new Set(Object.keys(extractCodexWaitResult(toolCall.result).statuses));
-  for (const key of ['target', 'agent_id', 'task_name'] as const) {
+  for (const key of ['id', 'target', 'agent_id', 'task_name'] as const) {
     const target = toolCall.input[key];
     if (typeof target === 'string' && target) targetIds.add(target);
   }

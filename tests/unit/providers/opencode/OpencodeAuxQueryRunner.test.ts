@@ -1,18 +1,12 @@
 import '@/providers';
 
-import { AcpClientConnection, AcpJsonRpcTransport, AcpSubprocess } from '@/providers/acp';
+import { OpencodeHttpClient, type OpencodeHttpEvent } from '@/providers/opencode/http/OpencodeHttpClient';
 import { OpencodeAuxQueryRunner } from '@/providers/opencode/runtime/OpencodeAuxQueryRunner';
 import { prepareOpencodeLaunchArtifacts } from '@/providers/opencode/runtime/OpencodeLaunchArtifacts';
 
-jest.mock('@/providers/acp', () => {
-  const actual = jest.requireActual('@/providers/acp');
-  return {
-    ...actual,
-    AcpClientConnection: jest.fn(),
-    AcpJsonRpcTransport: jest.fn(),
-    AcpSubprocess: jest.fn(),
-  };
-});
+jest.mock('@/providers/opencode/http/OpencodeHttpClient', () => ({
+  OpencodeHttpClient: jest.fn(),
+}));
 
 jest.mock('@/providers/opencode/runtime/OpencodeLaunchArtifacts', () => {
   const actual = jest.requireActual('@/providers/opencode/runtime/OpencodeLaunchArtifacts');
@@ -22,9 +16,7 @@ jest.mock('@/providers/opencode/runtime/OpencodeLaunchArtifacts', () => {
   };
 });
 
-const MockAcpClientConnection = AcpClientConnection as jest.MockedClass<typeof AcpClientConnection>;
-const MockAcpJsonRpcTransport = AcpJsonRpcTransport as jest.MockedClass<typeof AcpJsonRpcTransport>;
-const MockAcpSubprocess = AcpSubprocess as jest.MockedClass<typeof AcpSubprocess>;
+const MockOpencodeHttpClient = OpencodeHttpClient as jest.MockedClass<typeof OpencodeHttpClient>;
 const mockPrepareOpencodeLaunchArtifacts = prepareOpencodeLaunchArtifacts as jest.MockedFunction<typeof prepareOpencodeLaunchArtifacts>;
 
 function createMockPlugin(settings: Record<string, unknown> = {}) {
@@ -45,101 +37,99 @@ function createMockPlugin(settings: Record<string, unknown> = {}) {
     app: {
       vault: {
         adapter: {
-          basePath: '/tmp/claudian-test-vault',
+          basePath: '/tmp/codian-test-vault',
         },
       },
     },
   } as any;
 }
 
+function createHttpClientFixture() {
+  let eventListener: ((event: OpencodeHttpEvent) => void) | null = null;
+  let beforePrompt: (() => void) | null = null;
+  const client = {
+    dispose: jest.fn().mockResolvedValue(undefined),
+    isAlive: true,
+    isClosed: false,
+    request: jest.fn(async (route: string, options?: {
+      body?: unknown;
+      method?: string;
+    }) => {
+      if (route === '/api/model') {
+        return {
+          data: [
+            { id: 'gpt-4.1', providerID: 'openai', name: 'GPT-4.1', variants: [] },
+            { id: 'gpt-5', providerID: 'openai', name: 'GPT-5', variants: [] },
+            { id: 'gpt-5.4', providerID: 'openai', name: 'GPT-5.4', variants: [] },
+          ],
+        };
+      }
+      if (route === '/api/command') return { data: [] };
+      if (route === '/api/session' && options?.method === 'POST') {
+        return {
+          data: {
+            id: 'session-1',
+            model: { id: 'gpt-4.1', providerID: 'openai' },
+          },
+        };
+      }
+      if (route.endsWith('/prompt') && options?.method === 'POST') {
+        beforePrompt?.();
+        const emit = eventListener;
+        emit?.({ type: 'message.updated', data: {
+          info: { id: 'assistant-1', role: 'assistant' },
+          sessionID: 'session-1',
+        } });
+        emit?.({ type: 'message.part.updated', data: {
+          part: { id: 'part-1', messageID: 'assistant-1', text: 'Fix title', type: 'text' },
+          sessionID: 'session-1',
+        } });
+        emit?.({ type: 'message.part.updated', data: {
+          part: { id: 'part-1', messageID: 'assistant-1', text: 'Fix title now', type: 'text' },
+          sessionID: 'session-1',
+        } });
+        emit?.({ type: 'message.updated', data: {
+          info: { id: 'assistant-1', role: 'assistant', time: { completed: Date.now() } },
+          sessionID: 'session-1',
+        } });
+        return { data: { id: 'user-1' } };
+      }
+      return { data: {} };
+    }),
+    subscribe: jest.fn(async (onEvent: (event: OpencodeHttpEvent) => void) => {
+      eventListener = onEvent;
+      onEvent({ type: 'server.connected', data: {} });
+    }),
+  };
+
+  return {
+    client,
+    emit(event: OpencodeHttpEvent) {
+      eventListener?.(event);
+    },
+    setBeforePrompt(callback: () => void) {
+      beforePrompt = callback;
+    },
+  };
+}
+
 describe('OpencodeAuxQueryRunner', () => {
-  let mockConnection: {
-    cancel: jest.Mock;
-    dispose: jest.Mock;
-    initialize: jest.Mock;
-    newSession: jest.Mock;
-    onSessionNotification: jest.Mock;
-    prompt: jest.Mock;
-    setConfigOption: jest.Mock;
-  };
-  let mockProcess: {
-    getStderrSnapshot: jest.Mock;
-    isAlive: jest.Mock;
-    onClose: jest.Mock;
-    shutdown: jest.Mock;
-    start: jest.Mock;
-    stdin: Record<string, never>;
-    stdout: Record<string, never>;
-  };
-  let mockTransport: {
-    dispose: jest.Mock;
-    isClosed: boolean;
-    start: jest.Mock;
-  };
-  let sessionNotificationListener: ((notification: any) => void | Promise<void>) | null;
+  let fixture: ReturnType<typeof createHttpClientFixture>;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    sessionNotificationListener = null;
-
-    mockConnection = {
-      cancel: jest.fn(),
-      dispose: jest.fn(),
-      initialize: jest.fn().mockResolvedValue({}),
-      newSession: jest.fn().mockResolvedValue({ sessionId: 'session-1' }),
-      onSessionNotification: jest.fn((listener) => {
-        sessionNotificationListener = listener;
-        return jest.fn();
-      }),
-      prompt: jest.fn().mockImplementation(async () => {
-        await sessionNotificationListener?.({
-          sessionId: 'session-1',
-          update: {
-            content: { text: 'Fix title', type: 'text' },
-            messageId: 'assistant-1',
-            sessionUpdate: 'agent_message_chunk',
-          },
-        });
-        await sessionNotificationListener?.({
-          sessionId: 'session-1',
-          update: {
-            content: { text: ' now', type: 'text' },
-            messageId: 'assistant-1',
-            sessionUpdate: 'agent_message_chunk',
-          },
-        });
-        return { stopReason: 'end_turn' };
-      }),
-      setConfigOption: jest.fn().mockResolvedValue({ configOptions: [] }),
-    };
-    mockProcess = {
-      getStderrSnapshot: jest.fn().mockReturnValue(''),
-      isAlive: jest.fn().mockReturnValue(true),
-      onClose: jest.fn(),
-      shutdown: jest.fn().mockResolvedValue(undefined),
-      start: jest.fn(),
-      stdin: {},
-      stdout: {},
-    };
-    mockTransport = {
-      dispose: jest.fn(),
-      isClosed: false,
-      start: jest.fn(),
-    };
-
-    MockAcpClientConnection.mockImplementation(() => mockConnection as any);
-    MockAcpJsonRpcTransport.mockImplementation(() => mockTransport as any);
-    MockAcpSubprocess.mockImplementation(() => mockProcess as any);
+    fixture = createHttpClientFixture();
+    MockOpencodeHttpClient.mockImplementation(() => fixture.client as any);
     mockPrepareOpencodeLaunchArtifacts.mockResolvedValue({
-      configPath: '/tmp/claudian-opencode-aux/config.json',
-      configContent: '{"default_agent":"claudian-aux-passive"}\n',
+      configPath: '/tmp/codian-opencode-aux/config.json',
+      configContent: '{"default_agent":"codian-aux-passive"}\n',
       databasePath: null,
       launchKey: 'launch-key',
-      systemPromptPath: '/tmp/claudian-opencode-aux/system.md',
+      systemPromptPath: '/tmp/codian-opencode-aux/system.md',
     });
   });
 
-  it('launches an auxiliary ACP session and streams assistant text', async () => {
+  it('runs auxiliary queries in a dedicated V2 HTTP session and streams assistant text', async () => {
     const runner = new OpencodeAuxQueryRunner(createMockPlugin(), {
       agentProfile: 'passive',
       artifactPurpose: 'title-gen',
@@ -153,32 +143,46 @@ describe('OpencodeAuxQueryRunner', () => {
 
     expect(mockPrepareOpencodeLaunchArtifacts).toHaveBeenCalledWith(expect.objectContaining({
       artifactsSubdir: 'opencode/auxiliary/title-gen',
-      defaultAgentId: 'claudian-aux-passive',
-      managedAgents: [expect.objectContaining({ id: 'claudian-aux-passive' })],
+      defaultAgentId: 'codian-aux-passive',
+      managedAgents: [expect.objectContaining({
+        id: 'codian-aux-passive',
+        definition: expect.objectContaining({
+          mode: 'primary',
+          permission: { '*': 'deny', external_directory: 'deny' },
+        }),
+      })],
       systemPromptKey: 'Use this custom system prompt.',
       systemPromptText: 'Use this custom system prompt.',
     }));
-    expect(mockConnection.newSession).toHaveBeenCalledWith({
-      cwd: '/tmp/claudian-test-vault',
-      mcpServers: [],
-    });
-    expect(mockConnection.setConfigOption).toHaveBeenCalledWith({
-      configId: 'mode',
-      sessionId: 'session-1',
-      type: 'select',
-      value: 'claudian-aux-passive',
-    });
-    expect(mockConnection.setConfigOption).toHaveBeenCalledWith({
-      configId: 'model',
-      sessionId: 'session-1',
-      type: 'select',
-      value: 'openai/gpt-5',
-    });
+    expect(MockOpencodeHttpClient).toHaveBeenCalledWith(
+      '/usr/local/bin/opencode',
+      '/tmp/codian-test-vault',
+      expect.objectContaining({ OPENCODE_CONFIG_CONTENT: expect.any(String) }),
+    );
+    expect(fixture.client.request).toHaveBeenCalledWith('/api/session', expect.objectContaining({
+      method: 'POST',
+      body: { location: { directory: '/tmp/codian-test-vault' } },
+    }));
+    expect(fixture.client.request).toHaveBeenCalledWith('/api/session/session-1/agent', expect.objectContaining({
+      method: 'POST',
+      body: { agent: 'codian-aux-passive' },
+    }));
+    expect(fixture.client.request).toHaveBeenCalledWith('/api/session/session-1/model', expect.objectContaining({
+      method: 'POST',
+      body: { model: { id: 'gpt-5', providerID: 'openai' } },
+    }));
+    expect(fixture.client.request).toHaveBeenCalledWith('/api/session/session-1/prompt', expect.objectContaining({
+      method: 'POST',
+      body: expect.objectContaining({
+        id: expect.stringMatching(/^msg_/),
+        prompt: { text: 'Generate a title' },
+      }),
+    }));
     expect(onTextChunk).toHaveBeenNthCalledWith(1, 'Fix title');
     expect(onTextChunk).toHaveBeenNthCalledWith(2, 'Fix title now');
   });
 
-  it('falls back to opencode from PATH when no CLI path is configured', async () => {
+  it('uses opencode from PATH when no CLI path is configured', async () => {
     const plugin = createMockPlugin();
     plugin.getResolvedProviderCliPath.mockReturnValue(null);
     const runner = new OpencodeAuxQueryRunner(plugin, {
@@ -190,57 +194,29 @@ describe('OpencodeAuxQueryRunner', () => {
       systemPrompt: 'Use this custom system prompt.',
     }, 'Generate a title')).resolves.toBe('Fix title now');
 
-    expect(MockAcpSubprocess).toHaveBeenCalledWith(expect.objectContaining({
-      command: 'opencode',
-    }));
+    expect(MockOpencodeHttpClient).toHaveBeenCalledWith(
+      'opencode',
+      '/tmp/codian-test-vault',
+      expect.any(Object),
+    );
   });
 
-  it('restarts the auxiliary ACP subprocess when the cached transport closed', async () => {
-    const firstTransport = {
-      dispose: jest.fn(),
-      isClosed: false,
-      start: jest.fn(),
-    };
-    const secondTransport = {
-      dispose: jest.fn(),
-      isClosed: false,
-      start: jest.fn(),
-    };
-    MockAcpJsonRpcTransport
-      .mockImplementationOnce(() => firstTransport as any)
-      .mockImplementationOnce(() => secondTransport as any);
+  it('restarts its isolated V2 server when the client closes', async () => {
     const runner = new OpencodeAuxQueryRunner(createMockPlugin(), {
       agentProfile: 'passive',
       artifactPurpose: 'title-gen',
     });
 
-    await expect(runner.query({
-      systemPrompt: 'Use this custom system prompt.',
-    }, 'Generate a title')).resolves.toBe('Fix title now');
+    await runner.query({ systemPrompt: 'Use this custom system prompt.' }, 'Generate a title');
+    fixture.client.isAlive = false;
+    await runner.query({ systemPrompt: 'Use this custom system prompt.' }, 'Generate another title');
 
-    firstTransport.isClosed = true;
-
-    await expect(runner.query({
-      systemPrompt: 'Use this custom system prompt.',
-    }, 'Generate another title')).resolves.toBe('Fix title now');
-
-    expect(firstTransport.dispose).toHaveBeenCalledTimes(1);
-    expect(MockAcpSubprocess).toHaveBeenCalledTimes(2);
-    expect(MockAcpJsonRpcTransport).toHaveBeenCalledTimes(2);
+    expect(fixture.client.dispose).toHaveBeenCalledTimes(1);
+    expect(MockOpencodeHttpClient).toHaveBeenCalledTimes(2);
+    expect(fixture.client.request).toHaveBeenCalledWith('/api/session', expect.any(Object));
   });
 
-  it('uses an explicit encoded OpenCode model override from the active chat tab', async () => {
-    mockConnection.newSession.mockResolvedValue({
-      models: {
-        availableModels: [
-          { id: 'openai/gpt-4.1', name: 'GPT-4.1' },
-          { id: 'openai/gpt-5.4', name: 'GPT-5.4' },
-        ],
-        currentModelId: 'openai/gpt-4.1',
-      },
-      sessionId: 'session-1',
-    });
-
+  it('applies an explicit model override from the active chat tab', async () => {
     const runner = new OpencodeAuxQueryRunner(createMockPlugin({
       providerConfigs: {
         opencode: {
@@ -258,106 +234,51 @@ describe('OpencodeAuxQueryRunner', () => {
       systemPrompt: 'Use this custom system prompt.',
     }, 'Generate a title')).resolves.toBe('Fix title now');
 
-    expect(mockConnection.setConfigOption).toHaveBeenCalledWith({
-      configId: 'model',
-      sessionId: 'session-1',
-      type: 'select',
-      value: 'openai/gpt-5.4',
-    });
-    expect(mockConnection.setConfigOption).toHaveBeenCalledWith({
-      configId: 'mode',
-      sessionId: 'session-1',
-      type: 'select',
-      value: 'claudian-aux-passive',
-    });
+    expect(fixture.client.request).toHaveBeenCalledWith('/api/session/session-1/model', expect.objectContaining({
+      method: 'POST',
+      body: { model: { id: 'gpt-5.4', providerID: 'openai' } },
+    }));
   });
 
-  it('rejects permission prompts even for the read-only aux profile', async () => {
+  it('rejects native permission requests in read-only auxiliary sessions', async () => {
     const runner = new OpencodeAuxQueryRunner(createMockPlugin(), {
       agentProfile: 'readonly',
       artifactPurpose: 'inline',
-      allowReadTextFile: true,
     });
+    fixture.setBeforePrompt(() => fixture.emit({ type: 'permission.asked', data: {
+      action: 'read', id: 'approval-1', resources: ['note.md'], sessionID: 'session-1',
+    } }));
 
-    await expect((runner as any).handlePermissionRequest({
-      options: [
-        { kind: 'allow_once', name: 'Allow once', optionId: 'allow-now' },
-        { kind: 'reject_once', name: 'Reject', optionId: 'reject-now' },
-      ],
-      sessionId: 'session-1',
-      toolCall: {
-        kind: 'read',
-        rawInput: { path: 'note.md' },
-        title: 'read',
-        toolCallId: 'tool-1',
-      },
-    })).resolves.toEqual({
-      outcome: {
-        optionId: 'reject-now',
-        outcome: 'selected',
-      },
-    });
+    await expect(runner.query({
+      systemPrompt: 'Read only prompt.',
+    }, 'Summarize this selection')).resolves.toBe('Fix title now');
 
-    await expect((runner as any).handlePermissionRequest({
-      options: [
-        { kind: 'allow_once', name: 'Allow once', optionId: 'allow-now' },
-        { kind: 'reject_once', name: 'Reject', optionId: 'reject-now' },
-      ],
-      sessionId: 'session-1',
-      toolCall: {
-        kind: 'edit',
-        rawInput: { path: 'note.md' },
-        title: 'edit',
-        toolCallId: 'tool-2',
-      },
-    })).resolves.toEqual({
-      outcome: {
-        optionId: 'reject-now',
-        outcome: 'selected',
-      },
-    });
+    expect(fixture.client.request).toHaveBeenCalledWith(
+      '/api/session/session-1/permission/approval-1/reply',
+      expect.objectContaining({ method: 'POST', body: { decision: 'reject' } }),
+    );
+    expect(mockPrepareOpencodeLaunchArtifacts).toHaveBeenCalledWith(expect.objectContaining({
+      managedAgents: [expect.objectContaining({
+        definition: expect.objectContaining({
+          permission: expect.objectContaining({
+            external_directory: 'deny',
+            read: { '*': 'allow', '*.env': 'deny', '*.env.*': 'deny', '*.env.example': 'allow' },
+          }),
+        }),
+      })],
+    }));
   });
 
-  it('rejects all permissions in deny-all mode', async () => {
+  it('disposes the isolated V2 client when reset', async () => {
     const runner = new OpencodeAuxQueryRunner(createMockPlugin(), {
       agentProfile: 'passive',
       artifactPurpose: 'instructions',
     });
 
-    await expect((runner as any).handlePermissionRequest({
-      options: [
-        { kind: 'allow_once', name: 'Allow once', optionId: 'allow-now' },
-        { kind: 'reject_once', name: 'Reject', optionId: 'reject-now' },
-      ],
-      sessionId: 'session-1',
-      toolCall: {
-        kind: 'read',
-        rawInput: { path: 'note.md' },
-        title: 'read',
-        toolCallId: 'tool-1',
-      },
-    })).resolves.toEqual({
-      outcome: {
-        optionId: 'reject-now',
-        outcome: 'selected',
-      },
-    });
-  });
+    await runner.query({ systemPrompt: 'Refine prompt.' }, 'Clarify this instruction');
+    runner.reset();
+    await Promise.resolve();
 
-  it('rejects aux reads outside the workspace root', () => {
-    const runner = new OpencodeAuxQueryRunner(createMockPlugin(), {
-      agentProfile: 'readonly',
-      artifactPurpose: 'inline',
-      allowReadTextFile: true,
-    });
-
-    (runner as any).sessionCwds.set('session-1', '/tmp/claudian-test-vault');
-
-    expect(() => (runner as any).resolveSessionPath('session-1', '/tmp/outside.md')).toThrow(
-      'OpenCode aux read access is limited to the current workspace.',
-    );
-    expect((runner as any).resolveSessionPath('session-1', '/tmp/claudian-test-vault/notes/today.md')).toBe(
-      '/tmp/claudian-test-vault/notes/today.md',
-    );
+    expect(fixture.client.dispose).toHaveBeenCalledTimes(1);
   });
 });

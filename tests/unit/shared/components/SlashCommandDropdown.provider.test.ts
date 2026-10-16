@@ -30,6 +30,7 @@ jest.mock('@/core/commands/builtInCommands', () => ({
 }));
 
 function createMockInput(): any {
+  const attributes = new Map<string, string>();
   return {
     value: '',
     selectionStart: 0,
@@ -37,6 +38,9 @@ function createMockInput(): any {
     focus: jest.fn(),
     addEventListener: jest.fn(),
     removeEventListener: jest.fn(),
+    setAttribute: jest.fn((name: string, value: string) => attributes.set(name, value)),
+    getAttribute: (name: string) => attributes.get(name) ?? null,
+    removeAttribute: jest.fn((name: string) => attributes.delete(name)),
   };
 }
 
@@ -50,13 +54,13 @@ function createMockCallbacks(overrides: Partial<SlashCommandDropdownCallbacks> =
 
 function getRenderedItems(containerEl: any): { name: string; description: string }[] {
   const dropdownEl = containerEl.children.find(
-    (c: any) => c.hasClass('claudian-slash-dropdown')
+    (c: any) => c.hasClass('codian-slash-dropdown')
   );
   if (!dropdownEl) return [];
-  const items = dropdownEl.querySelectorAll('.claudian-slash-item');
+  const items = dropdownEl.querySelectorAll('.codian-slash-item');
   return items.map((item: any) => {
-    const nameSpan = item.children.find((c: any) => c.hasClass('claudian-slash-name'));
-    const descDiv = item.children.find((c: any) => c.hasClass('claudian-slash-desc'));
+    const nameSpan = item.children.find((c: any) => c.hasClass('codian-slash-name'));
+    const descDiv = item.children.find((c: any) => c.hasClass('codian-slash-desc'));
     return {
       name: nameSpan?.textContent ?? '',
       description: descDiv?.textContent ?? '',
@@ -70,17 +74,17 @@ function getRenderedCommandNames(containerEl: any): string[] {
 
 function getDiscoveryState(containerEl: any): { text: string; retry: any | null } | null {
   const dropdownEl = containerEl.children.find(
-    (c: any) => c.hasClass('claudian-slash-dropdown')
+    (c: any) => c.hasClass('codian-slash-dropdown')
   );
   const stateEl = dropdownEl?.children.find(
-    (c: any) => c.hasClass('claudian-slash-provider-state')
+    (c: any) => c.hasClass('codian-slash-provider-state')
   );
   if (!stateEl) return null;
   const messageEl = stateEl.children.find(
-    (c: any) => c.hasClass('claudian-slash-provider-state-message')
+    (c: any) => c.hasClass('codian-slash-provider-state-message')
   );
   const retry = stateEl.children.find(
-    (c: any) => c.hasClass('claudian-slash-provider-retry')
+    (c: any) => c.hasClass('codian-slash-provider-retry')
   ) ?? null;
   return { text: messageEl?.textContent ?? '', retry };
 }
@@ -429,10 +433,10 @@ describe('SlashCommandDropdown - provider catalog', () => {
 
   describe('typed provider discovery', () => {
     it.each([
-      ['codex', ['/', '$'], 'claudian-v2-shared', '$'],
-      ['grok', ['/'], 'claudian-v2-shared', '/'],
-      ['pi', ['/'], 'skill:claudian-v2-shared', '/'],
-      ['opencode', ['/'], 'claudian-v2-shared', '/'],
+      ['codex', ['/', '$'], 'codian-v2-shared', '$'],
+      ['grok', ['/'], 'codian-v2-shared', '/'],
+      ['pi', ['/'], 'skill:codian-v2-shared', '/'],
+      ['opencode', ['/'], 'codian-v2-shared', '/'],
     ] as const)(
       'settles discovery and renders every %s protocol entry before a prompt',
       async (providerId, triggerChars, commandName, displayPrefix) => {

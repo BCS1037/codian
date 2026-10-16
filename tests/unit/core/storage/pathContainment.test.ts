@@ -21,7 +21,7 @@ describe('isPathWithinRoot', () => {
   it('rejects an existing symlink that escapes the trusted root', () => {
     if (process.platform === 'win32') return;
 
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudian-path-trust-'));
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codian-path-trust-'));
     const root = path.join(tempDir, 'root');
     const outside = path.join(tempDir, 'outside');
     fs.mkdirSync(root);

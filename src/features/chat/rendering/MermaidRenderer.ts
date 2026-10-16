@@ -1,0 +1,110 @@
+import { loadMermaid, setIcon } from 'obsidian';
+
+interface MermaidApi {
+  render(id: string, source: string, container: HTMLElement): Promise<{ svg: string }>;
+}
+
+let nextDiagramId = 0;
+
+/**
+ * Mermaid serializes with HTML rules, so HTML labels can contain void tags such as `<br>` and
+ * named entities that an SVG image document rejects as malformed XML. Re-serialize the markup
+ * as XML through an inert parsed document.
+ */
+function toXmlSvg(svg: string): string | null {
+  const root = new DOMParser().parseFromString(svg, 'text/html').body.firstElementChild;
+  if (root?.localName !== 'svg') return null;
+  // The HTML parser keeps label `xmlns` as plain attributes; some serializers then emit a
+  // duplicate declaration. The serializer derives declarations from element namespaces anyway.
+  for (const element of [root, ...Array.from(root.querySelectorAll('*'))]) {
+    element.removeAttribute('xmlns');
+  }
+  return new XMLSerializer().serializeToString(root);
+}
+
+/** Uses the bundled diagram API directly, never Markdown code-block processors. */
+export async function renderMermaidDiagrams(
+  container: HTMLElement,
+  isCurrent: () => boolean,
+): Promise<void> {
+  const blocks = Array.from(container.querySelectorAll<HTMLElement>('pre > code'))
+    .filter(code => Array.from(code.classList).some(name => name.toLowerCase() === 'language-mermaid'));
+
+  for (const code of blocks) {
+    let staging: HTMLElement | undefined;
+    try {
+      const mermaid = (await loadMermaid()) as MermaidApi;
+      if (!isCurrent() || !container.contains(code)) return;
+      const doc = container.ownerDocument;
+      staging = doc.body.createDiv({ cls: 'codian-mermaid-staging' });
+      const { svg } = await mermaid.render(`codian-mermaid-${nextDiagramId++}`, code.textContent ?? '', staging);
+      if (!isCurrent() || !container.contains(code) || typeof svg !== 'string') continue;
+      const direct = new DOMParser().parseFromString(svg, 'image/svg+xml');
+      // An HTML reparse is lossy for SVG content outside labels, so keep well-formed output as is.
+      const markup = direct.querySelector('parsererror') ? toXmlSvg(svg) : svg;
+      if (!markup) continue;
+      const parsed = markup === svg ? direct : new DOMParser().parseFromString(markup, 'image/svg+xml');
+      if (
+        parsed.documentElement.localName !== 'svg'
+        || parsed.querySelector('parsererror, .error-icon, .error-text')
+        || !parsed.documentElement.children.length
+      ) {
+        continue;
+      }
+
+      const wrapper = code.closest<HTMLElement>('.codian-code-wrapper');
+      if (!wrapper) continue;
+      const diagram = staging.createDiv({ cls: 'codian-mermaid' });
+      const image = diagram.createEl('img');
+      image.alt = 'Mermaid diagram';
+      // An image document cannot execute SVG scripts or bind Mermaid click callbacks.
+      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
+      const source = diagram.createDiv();
+      source.hidden = true;
+      const toggle = diagram.createEl('button', {
+        cls: 'codian-mermaid-toggle',
+        attr: { type: 'button' },
+      });
+      toggle.setAttribute('aria-label', 'Show diagram source');
+      setIcon(toggle, 'code-2');
+      source.tabIndex = -1;
+      const showSource = (visible: boolean) => {
+        source.hidden = !visible;
+        image.hidden = visible;
+        toggle.hidden = visible;
+        diagram.classList.toggle('codian-mermaid--source', visible);
+      };
+      toggle.addEventListener('click', () => {
+        showSource(true);
+        source.focus({ preventScroll: true });
+        const selection = doc.getSelection();
+        const range = doc.createRange();
+        range.selectNodeContents(code);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      });
+      source.addEventListener('focusout', event => {
+        if (event.relatedTarget instanceof doc.defaultView!.Node && source.contains(event.relatedTarget)) return;
+        if (!image.parentElement) return;
+        const selection = doc.getSelection();
+        if (selection?.anchorNode && code.contains(selection.anchorNode)) selection.removeAllRanges();
+        showSource(false);
+      });
+      wrapper.before(diagram);
+      source.appendChild(wrapper);
+      image.addEventListener(
+        'error',
+        () => {
+          showSource(true);
+          toggle.remove();
+          image.remove();
+        },
+        { once: true },
+      );
+    } catch {
+      // The original code and its copy controls remain usable on any render failure.
+    } finally {
+      staging?.remove();
+    }
+  }
+}

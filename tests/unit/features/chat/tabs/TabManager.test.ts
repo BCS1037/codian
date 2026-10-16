@@ -2,7 +2,9 @@ import { TEST_CODEX_MODEL } from '@test/helpers/codexModels';
 import { createMockEl } from '@test/helpers/mockElement';
 
 import { ProviderWorkspaceRegistry } from '@/core/providers/ProviderWorkspaceRegistry';
+import { SessionRuntimePool } from '@/features/chat/tabs/SessionRuntimePool';
 import { TabManager } from '@/features/chat/tabs/TabManager';
+import { TabSession } from '@/features/chat/tabs/TabSession';
 import {
   DEFAULT_MAX_TABS,
   type PersistedTabManagerState,
@@ -156,6 +158,7 @@ function createMockView(): any {
   return {
     leaf: { id: 'leaf-1' },
     getTabManager: jest.fn().mockReturnValue(null),
+    isWideLayout: jest.fn().mockReturnValue(false),
   };
 }
 
@@ -166,12 +169,22 @@ async function flushMicrotasks(count = 4): Promise<void> {
 }
 
 function createMockTabData(overrides: Record<string, any> = {}): any {
+  const id = overrides.id ?? `tab-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const conversationId = overrides.conversationId ?? null;
+  const lifecycleState = overrides.lifecycleState ?? (conversationId ? 'bound_active' : 'blank');
   const defaultState = {
     isStreaming: false,
     hasPendingConversationSave: false,
     attention: null,
+    markReviewRequired: jest.fn(),
+    acknowledgeReview: jest.fn(),
     messages: [],
     currentConversationId: null,
+    isRewinding: false,
+    isCreatingConversation: false,
+    isSwitchingConversation: false,
+    queuedMessage: null,
+    requiresAction: false,
   };
 
   const defaultControllers = {
@@ -197,11 +210,18 @@ function createMockTabData(overrides: Record<string, any> = {}): any {
   };
 
   return {
-    id: `tab-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-    lifecycleState: 'blank',
+    id,
+    session: overrides.session ?? new TabSession({
+      id,
+      conversationId,
+      draftModel: null,
+      lifecycleState,
+      providerId: overrides.providerId ?? 'claude',
+    }),
+    lifecycleState,
     hydrationState: 'ready',
     providerId: 'claude',
-    conversationId: null,
+    conversationId,
     service: null,
     runtimeSupervisor,
     serviceInitialized: false,
@@ -213,9 +233,13 @@ function createMockTabData(overrides: Record<string, any> = {}): any {
       ...defaultControllers,
       ...(controllersOverrides || {}),
     },
+    services: {
+      subagentManager: { hasActiveWork: false },
+    },
     dom: {
       contentEl: createMockEl(),
       messagesEl: createMockEl(),
+      inputComposerEl: createMockEl(),
     },
     ui: {
       externalContextSelector: null,
@@ -445,13 +469,41 @@ describe('TabManager - Tab Lifecycle', () => {
       const switchPromise = manager.switchToTab(tab1!.id);
 
       expect(tab1!.hydrationState).toBe('loading');
-      expect(tab1!.dom.messagesEl.querySelector('.claudian-tab-hydration')).not.toBeNull();
+      expect(tab1!.dom.messagesEl.querySelector('.codian-tab-hydration')).not.toBeNull();
       expect(tab1!.controllers.conversationController!.switchTo).not.toHaveBeenCalled();
 
       await switchPromise;
 
       expect(tab1!.hydrationState).toBe('ready');
       expect(tab1!.controllers.conversationController!.switchTo).toHaveBeenCalledWith('conv-1');
+    });
+
+    it('resolves hydration paint wait on safety timeout if animation frame does not fire', async () => {
+      jest.useFakeTimers();
+      try {
+        const manager = createManager();
+        const tab1 = await manager.createTab();
+        await manager.createTab();
+        tab1!.conversationId = 'conv-timeout';
+        tab1!.hydrationState = 'idle';
+        tab1!.state.messages = [];
+
+        const win = tab1!.dom.contentEl.ownerDocument?.defaultView as any;
+        const origRaf = win.requestAnimationFrame;
+        win.requestAnimationFrame = jest.fn().mockReturnValue(999);
+
+        const switchPromise = manager.switchToTab(tab1!.id);
+        expect(tab1!.hydrationState).toBe('loading');
+
+        jest.advanceTimersByTime(100);
+        await switchPromise;
+
+        expect(tab1!.hydrationState).toBe('ready');
+        expect(tab1!.controllers.conversationController!.switchTo).toHaveBeenCalledWith('conv-timeout');
+        win.requestAnimationFrame = origRaf;
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('does not rehydrate an already-ready conversation with an empty transcript', async () => {
@@ -472,7 +524,7 @@ describe('TabManager - Tab Lifecycle', () => {
       await manager.switchToTab(tab1!.id);
 
       expect(tab1!.controllers.conversationController!.switchTo).not.toHaveBeenCalled();
-      expect(tab1!.dom.messagesEl.querySelector('.claudian-tab-hydration')).toBeNull();
+      expect(tab1!.dom.messagesEl.querySelector('.codian-tab-hydration')).toBeNull();
       expect(tab1!.dom.messagesEl.contains(readyMarker)).toBe(true);
     });
 
@@ -490,7 +542,7 @@ describe('TabManager - Tab Lifecycle', () => {
       await manager.switchToTab(tab1!.id);
 
       expect(tab1!.hydrationState).toBe('failed');
-      const retryButton = tab1!.dom.messagesEl.querySelector('.claudian-tab-hydration-retry');
+      const retryButton = tab1!.dom.messagesEl.querySelector('.codian-tab-hydration-retry');
       expect(retryButton).not.toBeNull();
 
       (retryButton as HTMLElement).click();
@@ -510,7 +562,7 @@ describe('TabManager - Tab Lifecycle', () => {
       expect(tab).not.toBeNull();
       expect(tab!.hydrationState).toBe('failed');
       expect(tab!.controllers.conversationController!.initializeWelcome).not.toHaveBeenCalled();
-      const retryButton = tab!.dom.messagesEl.querySelector('.claudian-tab-hydration-retry');
+      const retryButton = tab!.dom.messagesEl.querySelector('.codian-tab-hydration-retry');
       expect(retryButton).not.toBeNull();
 
       (retryButton as HTMLElement).click();
@@ -547,7 +599,7 @@ describe('TabManager - Tab Lifecycle', () => {
 
         expect(await settled).toBe(true);
         expect(tab1!.hydrationState).toBe('failed');
-        expect(tab1!.dom.messagesEl.querySelector('.claudian-tab-hydration-error')?.textContent)
+        expect(tab1!.dom.messagesEl.querySelector('.codian-tab-hydration-error')?.textContent)
           .toContain('timed out');
       } finally {
         jest.useRealTimers();
@@ -625,6 +677,59 @@ describe('TabManager - Tab Lifecycle', () => {
 
       expect(closed).toBe(true);
       expect(mockDestroyTab).toHaveBeenCalled();
+    });
+
+    it('detaches a running session on close and reattaches the same tab state by conversation', async () => {
+      const tab = createMockTabData({
+        id: 'running-session-tab',
+        conversationId: 'conversation-running',
+        state: { isStreaming: true },
+      });
+      const cancel = jest.fn();
+      tab.service = { cancel };
+      tab.session.activeTurn = new Promise<void>(() => {});
+      const sessionRuntimePool = new SessionRuntimePool(mockDestroyTab);
+      const plugin = createMockPlugin({ sessionRuntimePool });
+      const manager = createManager({
+        plugin,
+        tabFactory: n => n === 1 ? tab : createMockTabData({ id: `fallback-${n}` }),
+      });
+      await manager.createTab();
+
+      await expect(manager.closeTab(tab.id)).resolves.toBe(true);
+
+      expect(sessionRuntimePool.isConversationRunning('conversation-running')).toBe(true);
+      expect(tab.owner).toBeNull();
+      expect(cancel).not.toHaveBeenCalled();
+      expect(mockDestroyTab).not.toHaveBeenCalled();
+
+      await manager.openConversation('conversation-running');
+
+      expect(manager.getTab(tab.id)).toBe(tab);
+      expect(tab.owner).not.toBeNull();
+      expect(sessionRuntimePool.size).toBe(0);
+      expect(mockDestroyTab).not.toHaveBeenCalled();
+    });
+
+    it('detaches running sessions when the view closes', async () => {
+      const tab = createMockTabData({
+        id: 'view-session-tab',
+        conversationId: 'conversation-view',
+        state: { isStreaming: true },
+      });
+      tab.session.activeTurn = new Promise<void>(() => {});
+      const sessionRuntimePool = new SessionRuntimePool(mockDestroyTab);
+      const manager = createManager({
+        plugin: createMockPlugin({ sessionRuntimePool }),
+        tabFactory: () => tab,
+      });
+      await manager.createTab();
+
+      await manager.detachRunningSessions();
+
+      expect(manager.getTabCount()).toBe(0);
+      expect(sessionRuntimePool.isConversationRunning('conversation-view')).toBe(true);
+      expect(mockDestroyTab).not.toHaveBeenCalled();
     });
 
     it('does not close or persist a tab while rewind is in progress, even when forced', async () => {
@@ -877,7 +982,7 @@ describe('TabManager - Tab Bar Data', () => {
         id: `tab-${n}`,
         state: {
           isStreaming: n === 2,
-          attention: n === 3 ? { kind: 'review', since: 1 } : null,
+          attention: n === 3 ? { kind: 'review', outcome: 'completed', since: 1 } : null,
         },
       }),
     });
@@ -921,6 +1026,23 @@ describe('TabManager - Tab Bar Data', () => {
 
       expect(items[0].isStreaming).toBe(false);
       expect(items[1].isStreaming).toBe(true);
+    });
+
+    it('acknowledges completed review when a conversation tab becomes visible', async () => {
+      const tab = createMockTabData({
+        id: 'review-tab',
+        conversationId: 'conversation-review',
+        state: {
+          currentConversationId: 'conversation-review',
+          attention: { kind: 'review', outcome: 'completed', since: 123 },
+        },
+      });
+      mockCreateTab.mockReturnValueOnce(tab);
+      manager = createManager();
+
+      await manager.createTab('conversation-review');
+
+      expect(tab.state.acknowledgeReview).toHaveBeenCalledTimes(1);
     });
 
     it('should resolve badge provider from the live tab context', async () => {
@@ -988,6 +1110,60 @@ describe('TabManager - Conversation Management', () => {
       expect(switchSpy).toHaveBeenCalledWith('tab-with-conv');
     });
 
+    it('reloads stored messages when opening an existing ready tab with an empty transcript', async () => {
+      const storedMessage = {
+        id: 'stored-message',
+        role: 'user',
+        content: 'History content',
+        timestamp: 1,
+      };
+      const tab = createMockTabData({
+        id: 'tab-empty-history',
+        conversationId: 'conv-empty-history',
+        state: { currentConversationId: 'conv-empty-history', messages: [] },
+      });
+      const loadActive = jest.fn(async () => {
+        tab.state.messages = [storedMessage];
+      });
+      tab.controllers.conversationController.loadActive = loadActive;
+      mockCreateTab.mockReturnValueOnce(tab);
+      await manager.createTab('conv-empty-history');
+
+      let finishSwitch!: () => void;
+      const switchToTab = jest.spyOn(manager, 'switchToTab').mockImplementation(() => (
+        new Promise<void>(resolve => { finishSwitch = resolve; })
+      ));
+      const openPromise = manager.openConversation('conv-empty-history');
+      await flushMicrotasks();
+
+      expect(switchToTab).toHaveBeenCalledWith('tab-empty-history');
+      expect(loadActive).toHaveBeenCalledTimes(1);
+      expect(tab.state.messages).toEqual([storedMessage]);
+
+      finishSwitch();
+      await openPromise;
+    });
+
+    it('switches and loads conversation when opening an existing ready tab whose currentConversationId is out of sync', async () => {
+      const tab = createMockTabData({
+        id: 'tab-unsynced-history',
+        conversationId: 'conv-unsynced-history',
+        state: { currentConversationId: null, messages: [] },
+      });
+      const switchTo = jest.fn(async () => {
+        tab.state.currentConversationId = 'conv-unsynced-history';
+        tab.state.messages = [{ id: 'm1', role: 'user', content: 'test', timestamp: 1 }];
+      });
+      tab.controllers.conversationController.switchTo = switchTo;
+      mockCreateTab.mockReturnValueOnce(tab);
+      await manager.createTab('conv-unsynced-history');
+
+      await manager.openConversation('conv-unsynced-history');
+
+      expect(switchTo).toHaveBeenCalledWith('conv-unsynced-history');
+      expect(tab.state.messages.length).toBe(1);
+    });
+
     it('should create new tab when preferNewTab is true', async () => {
       plugin.getConversationById.mockResolvedValue({ id: 'conv-new' });
       plugin.getCachedConversation.mockReturnValue({ id: 'conv-new' });
@@ -1028,6 +1204,45 @@ describe('TabManager - Conversation Management', () => {
       await manager.openConversation('conv-123');
 
       expect(plugin.app.workspace.revealLeaf).toHaveBeenCalledWith({ id: 'other-leaf' });
+    });
+  });
+
+  describe('deleted conversation coordination', () => {
+    it('waits for the turn, resets without saving the deleted record, and restores unsent input', async () => {
+      const tab = createMockTabData({
+        id: 'deleted-session-tab',
+        conversationId: 'deleted-conversation',
+        state: { isStreaming: true },
+      });
+      const unsentInput = { content: 'retry me', images: undefined };
+      const captureUnsentInput = jest.fn().mockReturnValue(unsentInput);
+      const restoreUnsentInput = jest.fn();
+      tab.controllers.inputController = { captureUnsentInput, restoreUnsentInput };
+      let resolveTurn!: () => void;
+      tab.session.activeTurn = new Promise<void>(resolve => { resolveTurn = resolve; });
+      const createNew = jest.fn(async () => {
+        tab.conversationId = null;
+        tab.session.conversationId = null;
+      });
+      tab.controllers.conversationController = { createNew };
+      const manager = createManager({
+        plugin: createMockPlugin({ sessionRuntimePool: new SessionRuntimePool(mockDestroyTab) }),
+        tabFactory: () => tab,
+      });
+      await manager.createTab();
+
+      manager.resetDeletedConversation('deleted-conversation');
+      await flushMicrotasks();
+      expect(createNew).not.toHaveBeenCalled();
+
+      tab.state.isStreaming = false;
+      resolveTurn();
+      tab.session.activeTurn = null;
+      await flushMicrotasks(8);
+
+      expect(createNew).toHaveBeenCalledWith({ force: true, skipSave: true });
+      expect(captureUnsentInput).toHaveBeenCalledTimes(1);
+      expect(restoreUnsentInput).toHaveBeenCalledWith(unsentInput);
     });
   });
 
@@ -1094,6 +1309,36 @@ describe('TabManager - Persistence', () => {
   });
 
   describe('restoreState', () => {
+    it('reattaches a pooled running session before rebuilding its persisted tab', async () => {
+      const sessionRuntimePool = new SessionRuntimePool(mockDestroyTab);
+      const plugin = createMockPlugin({ sessionRuntimePool });
+      const tab = createMockTabData({
+        id: 'running-restore-tab',
+        conversationId: 'conversation-running-restore',
+        state: { isStreaming: true },
+      });
+      tab.session.activeTurn = new Promise<void>(() => {});
+
+      const sourceManager = createManager({ plugin, tabFactory: () => tab });
+      await sourceManager.createTab();
+      await sourceManager.detachRunningSessions();
+
+      const restoreManager = createManager({
+        plugin,
+        tabFactory: () => createMockTabData({ id: 'rebuilt-restore-tab' }),
+      });
+      await restoreManager.restoreState({
+        openTabs: [{ tabId: tab.id, conversationId: 'conversation-running-restore' }],
+        activeTabId: tab.id,
+      });
+
+      expect(restoreManager.getAllTabs()[0]).toBe(tab);
+      expect(restoreManager.getActiveTab()).toBe(tab);
+      expect(sessionRuntimePool.size).toBe(0);
+      expect(mockCreateTab).not.toHaveBeenCalled();
+      expect(mockDestroyTab).not.toHaveBeenCalled();
+    });
+
     it('should restore tabs from persisted state', async () => {
       const persistedState: PersistedTabManagerState = {
         openTabs: [
@@ -2781,6 +3026,35 @@ describe('TabManager - Callback Wiring', () => {
       );
     });
 
+    it('mirrors a bound tab attention into the runtime-only conversation pool', async () => {
+      const attentionPool = {
+        getConversationAttention: jest.fn().mockReturnValue(undefined),
+        setConversationAttention: jest.fn(),
+        takeByConversation: jest.fn().mockReturnValue(null),
+      };
+      let capturedCallbacks: any;
+      const tabData = createMockTabData({ id: 'unread-tab', conversationId: 'conversation-unread' });
+      mockCreateTab.mockImplementation((opts: any) => {
+        capturedCallbacks = opts;
+        return tabData;
+      });
+
+      const manager = new TabManager(
+        createMockPlugin({ sessionRuntimePool: attentionPool }),
+        createMockMcpManager(),
+        createMockEl(),
+        createMockView(),
+      );
+      await manager.createTab('conversation-unread');
+      const attention = { kind: 'review', outcome: 'completed', since: 123 } as const;
+      capturedCallbacks.onAttentionChanged(attention);
+
+      expect(attentionPool.setConversationAttention).toHaveBeenCalledWith(
+        'conversation-unread',
+        attention,
+      );
+    });
+
     it('should wire onConversationIdChanged callback to sync tab conversationId', async () => {
       const onTabConversationChanged = jest.fn();
       const callbacks: TabManagerCallbacks = { onTabConversationChanged };
@@ -3428,6 +3702,40 @@ describe('TabManager - switchToTab Session Sync', () => {
 });
 
 describe('TabManager - handleForkRequest (modal dispatch)', () => {
+  it('forks into the wide viewer session without asking for a tab target', async () => {
+    jest.clearAllMocks();
+    const plugin = createMockPlugin({
+      createConversation: jest.fn().mockResolvedValue({ id: 'fork-conv-wide', providerId: 'claude' }),
+      getCachedConversation: jest.fn().mockReturnValue({ id: 'fork-conv-wide', providerId: 'claude' }),
+      updateConversation: jest.fn().mockResolvedValue(undefined),
+    });
+    let tabNumber = 0;
+    mockCreateTab.mockImplementation((options: any) => createMockTabData({
+      id: `wide-tab-${++tabNumber}`,
+      conversationId: options.conversation?.id ?? null,
+    }));
+    let capturedForkCallback: any;
+    mockInitializeTabControllers.mockImplementation(
+      (_tab: any, _plugin: any, _view: any, forkCb: any) => {
+        capturedForkCallback = forkCb;
+      }
+    );
+    const view = createMockView();
+    view.isWideLayout.mockReturnValue(true);
+    const manager = new TabManager(plugin, createMockMcpManager(), createMockEl(), view);
+    await manager.createTab();
+
+    await capturedForkCallback({
+      messages: [{ id: 'msg-1', role: 'user', content: 'hello', timestamp: 1 }],
+      sourceSessionId: 'session-1',
+      resumeAt: 'asst-uuid-1',
+    });
+
+    expect(mockChooseForkTarget).not.toHaveBeenCalled();
+    expect(manager.getTabCount()).toBe(2);
+    expect(manager.getActiveTab()?.conversationId).toBe('fork-conv-wide');
+  });
+
   it('should fork to new tab when user selects "new-tab"', async () => {
     mockChooseForkTarget.mockResolvedValue('new-tab');
 

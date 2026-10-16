@@ -114,10 +114,10 @@ function resolveCodexServiceTier(
 }
 
 const LEGACY_WORKSPACE_DEPENDENCY_NOTICE =
-  'This conversation was created before Claudian added Codex workspace dependency tools. It can continue for other tasks, but skills that require load_workspace_dependencies are unavailable in this thread. Start a new conversation to use them.';
+  'This conversation was created before Codian added Codex workspace dependency tools. It can continue for other tasks, but skills that require load_workspace_dependencies are unavailable in this thread. Start a new conversation to use them.';
 
 const LEGACY_WORKSPACE_DEPENDENCY_INSTRUCTIONS =
-  'This thread predates Claudian client-hosted workspace dependency tools. If the user requests a skill that requires load_workspace_dependencies, explain that they must start a new conversation in Claudian. Do not emulate the tool, search for dependency paths, or install replacement dependencies.';
+  'This thread predates Codian client-hosted workspace dependency tools. If the user requests a skill that requires load_workspace_dependencies, explain that they must start a new conversation in Codian. Do not emulate the tool, search for dependency paths, or install replacement dependencies.';
 
 const MISSED_TURN_COMPLETION_GRACE_MS = 1_000;
 const MISSED_TURN_COMPLETION_MAX_ATTEMPTS = 3;
@@ -802,17 +802,21 @@ export class CodexChatRuntime implements ChatRuntime {
     const sessionFilePath = this.session.getSessionFilePath() ?? this.currentThreadPath;
     const transcriptRootPath = this.resolveTranscriptRootHost(sessionFilePath);
 
-    // Preserve forkSource from existing conversation state
+    // Preserve forkSource and existing identifiers from existing conversation state
     const existingState = params.conversation
       ? getCodexState(params.conversation.providerState)
       : null;
 
+    const resolvedThreadId = threadId ?? existingState?.threadId ?? null;
+    const resolvedSessionFilePath = sessionFilePath ?? existingState?.sessionFilePath;
+    const resolvedTranscriptRoot = transcriptRootPath ?? existingState?.transcriptRootPath;
+
     const providerState: CodexProviderState = {
-      ...(threadId ? { threadId } : {}),
-      ...(sessionFilePath ? { sessionFilePath } : {}),
+      ...(resolvedThreadId ? { threadId: resolvedThreadId } : {}),
+      ...(resolvedSessionFilePath ? { sessionFilePath: resolvedSessionFilePath } : {}),
       ...(
-        transcriptRootPath || existingState?.transcriptRootPath
-          ? { transcriptRootPath: transcriptRootPath ?? existingState?.transcriptRootPath }
+        resolvedTranscriptRoot
+          ? { transcriptRootPath: resolvedTranscriptRoot }
           : {}
       ),
       ...(existingState?.forkSource ? { forkSource: existingState.forkSource } : {}),
@@ -833,18 +837,22 @@ export class CodexChatRuntime implements ChatRuntime {
       ),
     };
 
+    const hasState = Object.keys(providerState).length > 0;
     const updates: Partial<Conversation> = {
-      sessionId: threadId,
-      providerState: providerState as Record<string, unknown>,
+      sessionId: threadId ?? existingState?.threadId ?? null,
+      providerState: hasState ? (providerState as Record<string, unknown>) : undefined,
     };
 
     if (params.sessionInvalidated && params.conversation) {
       updates.sessionId = null;
-      updates.providerState = undefined;
+      if (!resolvedThreadId && !resolvedSessionFilePath) {
+        updates.providerState = undefined;
+      }
     }
 
     return { updates };
   }
+
 
   resolveSessionIdForFork(conversation: Conversation | null): string | null {
     const threadId = this.session.getThreadId();
@@ -1513,7 +1521,7 @@ export class CodexChatRuntime implements ChatRuntime {
 
     try {
       if (images && images.length > 0) {
-        tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudian-codex-images-'));
+        tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codian-codex-images-'));
         for (let i = 0; i < images.length; i++) {
           const img = images[i];
           if (!img.mediaType.startsWith('image/')) continue;

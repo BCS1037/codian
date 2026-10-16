@@ -45,7 +45,7 @@ export class CodexSkillModal extends Modal {
 
   onOpen() {
     this.setTitle(this.existing ? t('settings.codexSkills.modal.titleEdit') : t('settings.codexSkills.modal.titleAdd'));
-    this.modalEl.addClass('claudian-sp-modal');
+    this.modalEl.addClass('codian-sp-modal');
 
     const { contentEl } = this;
 
@@ -82,7 +82,7 @@ export class CodexSkillModal extends Modal {
       .setDesc(t('settings.codexSkills.modal.instructionsDesc'));
 
     const contentArea = contentEl.createEl('textarea', {
-      cls: 'claudian-sp-content-area',
+      cls: 'codian-sp-content-area',
       attr: { rows: '10', placeholder: t('settings.codexSkills.modal.instructionsPlaceholder') },
     });
     contentArea.value = this.existing?.content || '';
@@ -131,17 +131,17 @@ export class CodexSkillModal extends Modal {
     };
     this._triggerSave = doSave;
 
-    const buttonContainer = contentEl.createDiv({ cls: 'claudian-sp-modal-buttons' });
+    const buttonContainer = contentEl.createDiv({ cls: 'codian-sp-modal-buttons' });
 
     const cancelBtn = buttonContainer.createEl('button', {
       text: t('common.cancel'),
-      cls: 'claudian-cancel-btn',
+      cls: 'codian-cancel-btn',
     });
     cancelBtn.addEventListener('click', () => this.close());
 
     const saveBtn = buttonContainer.createEl('button', {
       text: t('common.save'),
-      cls: 'claudian-save-btn',
+      cls: 'codian-save-btn',
     });
     saveBtn.addEventListener('click', () => {
       void doSave();
@@ -189,55 +189,55 @@ export class CodexSkillSettings {
       this.entries = [];
     }
 
-    const headerEl = this.containerEl.createDiv({ cls: 'claudian-sp-header' });
-    headerEl.createSpan({ text: t('settings.codexSkills.header'), cls: 'claudian-sp-label' });
+    const headerEl = this.containerEl.createDiv({ cls: 'codian-sp-header' });
+    headerEl.createSpan({ text: t('settings.codexSkills.header'), cls: 'codian-sp-label' });
 
-    const actionsEl = headerEl.createDiv({ cls: 'claudian-sp-header-actions' });
+    const actionsEl = headerEl.createDiv({ cls: 'codian-sp-header-actions' });
     const refreshBtn = actionsEl.createEl('button', {
-      cls: 'claudian-settings-action-btn',
+      cls: 'codian-settings-action-btn',
       attr: { 'aria-label': t('common.refresh') },
     });
     setIcon(refreshBtn, 'refresh-cw');
     refreshBtn.addEventListener('click', () => { void this.refresh(); });
 
     const addBtn = actionsEl.createEl('button', {
-      cls: 'claudian-settings-action-btn',
+      cls: 'codian-settings-action-btn',
       attr: { 'aria-label': t('common.add') },
     });
     setIcon(addBtn, 'plus');
     addBtn.addEventListener('click', () => this.openModal(null));
 
     if (this.entries.length === 0) {
-      const emptyEl = this.containerEl.createDiv({ cls: 'claudian-sp-empty-state' });
+      const emptyEl = this.containerEl.createDiv({ cls: 'codian-sp-empty-state' });
       emptyEl.setText(t('settings.codexSkills.noSkills'));
       return;
     }
 
-    const listEl = this.containerEl.createDiv({ cls: 'claudian-sp-list' });
+    const listEl = this.containerEl.createDiv({ cls: 'codian-sp-list' });
     for (const entry of this.entries) {
       this.renderItem(listEl, entry);
     }
   }
 
   private renderItem(listEl: HTMLElement, entry: ProviderCommandEntry): void {
-    const itemEl = listEl.createDiv({ cls: 'claudian-sp-item' });
-    const infoEl = itemEl.createDiv({ cls: 'claudian-sp-info' });
+    const itemEl = listEl.createDiv({ cls: 'codian-sp-item' });
+    const infoEl = itemEl.createDiv({ cls: 'codian-sp-info' });
 
-    const headerRow = infoEl.createDiv({ cls: 'claudian-sp-item-header' });
-    const nameEl = headerRow.createSpan({ cls: 'claudian-sp-item-name' });
+    const headerRow = infoEl.createDiv({ cls: 'codian-sp-item-header' });
+    const nameEl = headerRow.createSpan({ cls: 'codian-sp-item-name' });
     nameEl.setText(`$${entry.name}`);
-    headerRow.createSpan({ text: t('settings.codexSkills.skillBadge'), cls: 'claudian-slash-item-badge' });
+    headerRow.createSpan({ text: t('settings.codexSkills.skillBadge'), cls: 'codian-slash-item-badge' });
 
     if (entry.description) {
-      const descEl = infoEl.createDiv({ cls: 'claudian-sp-item-desc' });
+      const descEl = infoEl.createDiv({ cls: 'codian-sp-item-desc' });
       descEl.setText(entry.description);
     }
 
-    const actionsEl = itemEl.createDiv({ cls: 'claudian-sp-item-actions' });
+    const actionsEl = itemEl.createDiv({ cls: 'codian-sp-item-actions' });
 
     if (entry.isEditable) {
       const editBtn = actionsEl.createEl('button', {
-        cls: 'claudian-settings-action-btn',
+        cls: 'codian-settings-action-btn',
         attr: { 'aria-label': t('common.edit') },
       });
       setIcon(editBtn, 'pencil');
@@ -246,7 +246,7 @@ export class CodexSkillSettings {
 
     if (entry.isDeletable) {
       const deleteBtn = actionsEl.createEl('button', {
-        cls: 'claudian-settings-action-btn claudian-settings-delete-btn',
+        cls: 'codian-settings-action-btn codian-settings-delete-btn',
         attr: { 'aria-label': t('common.delete') },
       });
       setIcon(deleteBtn, 'trash-2');

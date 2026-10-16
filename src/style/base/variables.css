@@ -1,55 +1,55 @@
 /* Brand & semantic color tokens */
-.claudian-container {
-  --claudian-brand: #D97757;
-  --claudian-brand-rgb: 217, 119, 87;
-  --claudian-brand-claude: #D97757;
-  --claudian-brand-claude-rgb: 217, 119, 87;
-  --claudian-brand-codex: #d0d0d0;
-  --claudian-brand-codex-rgb: 208, 208, 208;
-  --claudian-brand-opencode: #B8B8B8;
-  --claudian-brand-opencode-rgb: 184, 184, 184;
-  --claudian-brand-pi: #ffffff;
-  --claudian-brand-pi-rgb: 255, 255, 255;
-  --claudian-brand-grok: #ffffff;
-  --claudian-brand-grok-rgb: 255, 255, 255;
-  --claudian-error: #dc3545;
-  --claudian-error-rgb: 220, 53, 69;
-  --claudian-compact: #5bc0de;
+.codian-container {
+  --codian-brand: #D97757;
+  --codian-brand-rgb: 217, 119, 87;
+  --codian-brand-claude: #D97757;
+  --codian-brand-claude-rgb: 217, 119, 87;
+  --codian-brand-codex: #d0d0d0;
+  --codian-brand-codex-rgb: 208, 208, 208;
+  --codian-brand-opencode: #B8B8B8;
+  --codian-brand-opencode-rgb: 184, 184, 184;
+  --codian-brand-pi: #ffffff;
+  --codian-brand-pi-rgb: 255, 255, 255;
+  --codian-brand-grok: #ffffff;
+  --codian-brand-grok-rgb: 255, 255, 255;
+  --codian-error: #dc3545;
+  --codian-error-rgb: 220, 53, 69;
+  --codian-compact: #5bc0de;
 }
 
-body.theme-light .claudian-container {
-  --claudian-brand-codex: #000000;
-  --claudian-brand-codex-rgb: 0, 0, 0;
-  --claudian-brand-opencode: #707070;
-  --claudian-brand-opencode-rgb: 112, 112, 112;
-  --claudian-brand-pi: #000000;
-  --claudian-brand-pi-rgb: 0, 0, 0;
-  --claudian-brand-grok: #000000;
-  --claudian-brand-grok-rgb: 0, 0, 0;
+body.theme-light .codian-container {
+  --codian-brand-codex: #000000;
+  --codian-brand-codex-rgb: 0, 0, 0;
+  --codian-brand-opencode: #707070;
+  --codian-brand-opencode-rgb: 112, 112, 112;
+  --codian-brand-pi: #000000;
+  --codian-brand-pi-rgb: 0, 0, 0;
+  --codian-brand-grok: #000000;
+  --codian-brand-grok-rgb: 0, 0, 0;
 }
 
 /* Active-provider alias for single-provider surfaces. */
-.claudian-container[data-provider="claude"] {
-  --claudian-brand: var(--claudian-brand-claude);
-  --claudian-brand-rgb: var(--claudian-brand-claude-rgb);
+.codian-container[data-provider="claude"] {
+  --codian-brand: var(--codian-brand-claude);
+  --codian-brand-rgb: var(--codian-brand-claude-rgb);
 }
 
-.claudian-container[data-provider="codex"] {
-  --claudian-brand: var(--claudian-brand-codex);
-  --claudian-brand-rgb: var(--claudian-brand-codex-rgb);
+.codian-container[data-provider="codex"] {
+  --codian-brand: var(--codian-brand-codex);
+  --codian-brand-rgb: var(--codian-brand-codex-rgb);
 }
 
-.claudian-container[data-provider="opencode"] {
-  --claudian-brand: var(--claudian-brand-opencode);
-  --claudian-brand-rgb: var(--claudian-brand-opencode-rgb);
+.codian-container[data-provider="opencode"] {
+  --codian-brand: var(--codian-brand-opencode);
+  --codian-brand-rgb: var(--codian-brand-opencode-rgb);
 }
 
-.claudian-container[data-provider="pi"] {
-  --claudian-brand: var(--claudian-brand-pi);
-  --claudian-brand-rgb: var(--claudian-brand-pi-rgb);
+.codian-container[data-provider="pi"] {
+  --codian-brand: var(--codian-brand-pi);
+  --codian-brand-rgb: var(--codian-brand-pi-rgb);
 }
 
-.claudian-container[data-provider="grok"] {
-  --claudian-brand: var(--claudian-brand-grok);
-  --claudian-brand-rgb: var(--claudian-brand-grok-rgb);
+.codian-container[data-provider="grok"] {
+  --codian-brand: var(--codian-brand-grok);
+  --codian-brand-rgb: var(--codian-brand-grok-rgb);
 }

@@ -47,10 +47,10 @@ export class ChatSelectionController {
     const endElement = range?.endContainer instanceof HTMLElement
       ? range.endContainer
       : range?.endContainer.parentElement;
-    const startMessage = startElement?.closest<HTMLElement>('.claudian-message-assistant');
-    const endMessage = endElement?.closest<HTMLElement>('.claudian-message-assistant');
-    const startTextBlock = startElement?.closest<HTMLElement>('.claudian-text-block');
-    const endTextBlock = endElement?.closest<HTMLElement>('.claudian-text-block');
+    const startMessage = startElement?.closest<HTMLElement>('.codian-message-assistant');
+    const endMessage = endElement?.closest<HTMLElement>('.codian-message-assistant');
+    const startTextBlock = startElement?.closest<HTMLElement>('.codian-text-block');
+    const endTextBlock = endElement?.closest<HTMLElement>('.codian-text-block');
     if (!text.trim() || this.isStreaming() || !startMessage || startMessage !== endMessage
       || !startTextBlock || !endTextBlock || !this.messagesEl.contains(startMessage)) {
       this.hideToolbar();
@@ -64,7 +64,7 @@ export class ChatSelectionController {
     this.hideToolbar();
     const rect = range.getBoundingClientRect();
     if (!rect.width && !rect.height) return;
-    const toolbar = this.messagesEl.ownerDocument.createDiv({ cls: 'claudian-selection-toolbar' });
+    const toolbar = this.messagesEl.ownerDocument.createDiv({ cls: 'codian-selection-toolbar' });
     toolbar.setAttribute('role', 'toolbar');
     toolbar.setCssProps({
       left: `${Math.max(8, rect.left + rect.width / 2)}px`,

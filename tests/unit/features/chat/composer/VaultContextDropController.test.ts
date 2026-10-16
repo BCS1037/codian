@@ -131,9 +131,9 @@ describe('VaultContextDropController', () => {
     };
     dropZone.dispatchEvent(dragEnter);
 
-    const overlay = dropZone.querySelector('.claudian-drop-overlay');
+    const overlay = dropZone.querySelector('.codian-drop-overlay');
     expect(overlay?.hasClass('visible')).toBe(true);
-    const dropContent = dropZone.querySelector('.claudian-drop-content');
+    const dropContent = dropZone.querySelector('.codian-drop-content');
     expect(dropContent?.children[1]?.textContent).toBe('Drop to add context');
 
     dropZone.dispatchEvent({

@@ -1,3 +1,4 @@
+import { decodeSessionMessage } from '../../../core/session-tools/sessionMessageEnvelope';
 import { extractResolvedAnswers, extractResolvedAnswersFromResultText } from '../../../core/tools/toolInput';
 import { TOOL_ASK_USER_QUESTION } from '../../../core/tools/toolNames';
 import type {
@@ -13,6 +14,7 @@ import {
   parseImageDataUri,
 } from '../../../utils/imageAttachment';
 import { isCompactionCanceledStderr, isInterruptSignalText } from '../../../utils/interrupt';
+import { normalizeClaudeSessionToolName } from '../normalization/claudeSessionToolNames';
 import { extractToolResultContent } from '../sdk/toolResultContent';
 import type {
   AsyncSubagentResult,
@@ -109,9 +111,11 @@ function extractToolCalls(
 
   return toolUses.map(block => {
     const result = results.get(block.id);
+    const normalizedName = normalizeClaudeSessionToolName(block.name);
     return {
       id: block.id,
-      name: block.name,
+      name: normalizedName,
+      ...(normalizedName !== block.name ? { providerPayload: { rawName: block.name } } : {}),
       input: block.input ?? {},
       status: result ? (result.isError ? 'error' : 'completed') : 'running',
       result: result?.content,
@@ -206,6 +210,7 @@ export function parseSDKMessageToChat(
     displayContent = commandNameMatch ? commandNameMatch[1] : extractUserDisplayContent(textContent);
   }
 
+  const sessionMessage = sdkMsg.type === 'user' ? decodeSessionMessage(textContent) : null;
   const isInterrupt = sdkMsg.type === 'user' && isInterruptSignalText(textContent);
   const isRebuiltContext = sdkMsg.type === 'user' && isRebuiltContextContent(textContent);
 
@@ -214,6 +219,7 @@ export function parseSDKMessageToChat(
     role: sdkMsg.type,
     content: textContent,
     displayContent,
+    ...(sessionMessage ? { sessionMessage: { from: sessionMessage.from, sessionId: sessionMessage.sessionId } } : {}),
     timestamp,
     toolCalls: sdkMsg.type === 'assistant' ? extractToolCalls(content, toolResults) : undefined,
     contentBlocks: sdkMsg.type === 'assistant' ? mapContentBlocks(content) : undefined,

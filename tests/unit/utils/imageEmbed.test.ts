@@ -50,7 +50,7 @@ describe('replaceImageEmbedsWithHtml', () => {
 
       expect(result).toContain('<img');
       expect(result).toContain('src="app://local/image.png"');
-      expect(result).toContain('class="claudian-embedded-image"');
+      expect(result).toContain('class="codian-embedded-image"');
     });
 
     it('replaces image embed with folder path', () => {
@@ -164,7 +164,7 @@ describe('replaceImageEmbedsWithHtml', () => {
       const app = createMockApp(); // Empty vault
       const result = replaceImageEmbedsWithHtml('![[missing.png]]', app);
 
-      expect(result).toContain('class="claudian-embedded-image-fallback"');
+      expect(result).toContain('class="codian-embedded-image-fallback"');
       expect(result).toContain('![[missing.png]]');
     });
 
@@ -219,6 +219,93 @@ describe('replaceImageEmbedsWithHtml', () => {
 
       expect(result).toContain('src="app://local/section-b/image.png"');
       expect(result).not.toContain('section-a/image.png');
+    });
+
+    it('keeps media folder precedence over native resolution when source path is blank', () => {
+      const app = createMockApp(
+        new Map([
+          ['media/image.png', 'app://local/media/image.png'],
+          ['s/image.png', 'app://local/s/image.png'],
+        ]),
+        (linkPath, sourcePath, files) =>
+          linkPath === 'image.png' && sourcePath === ''
+            ? files.get('s/image.png') ?? null
+            : null
+      );
+
+      const result = replaceImageEmbedsWithHtml('![[image.png]]', app, {
+        sourcePath: '',
+        mediaFolder: 'media',
+      });
+
+      expect(result).toContain('src="app://local/media/image.png"');
+      expect(result).not.toContain('app://local/s/image.png');
+    });
+
+    it('keeps direct path before media folder fallback when native resolution misses for a note source path', () => {
+      const app = createMockApp(
+        new Map([
+          ['image.png', 'app://local/image.png'],
+          ['attachments/image.png', 'app://local/attachments/image.png'],
+        ]),
+        () => null
+      );
+
+      const result = replaceImageEmbedsWithHtml('![[image.png]]', app, {
+        sourcePath: 'note.md',
+        mediaFolder: 'attachments',
+      });
+
+      expect(result).toContain('src="app://local/image.png"');
+      expect(result).not.toContain('app://local/attachments/image.png');
+    });
+
+    it('falls back to the media folder when native resolution and direct path miss for a note source path', () => {
+      const app = createMockApp(
+        new Map([['attachments/image.png', 'app://local/attachments/image.png']]),
+        () => null
+      );
+
+      const result = replaceImageEmbedsWithHtml('![[image.png]]', app, {
+        sourcePath: 'note.md',
+        mediaFolder: 'attachments',
+      });
+
+      expect(result).toContain('src="app://local/attachments/image.png"');
+    });
+
+    it('preserves the vault-root hit when source path is blank', () => {
+      const app = createMockApp(
+        new Map([
+          ['image.png', 'app://local/image.png'],
+          ['section/image.png', 'app://local/section/image.png'],
+        ]),
+        (linkPath, _sourcePath, files) =>
+          linkPath === 'image.png' ? files.get('image.png') ?? null : null
+      );
+
+      const result = replaceImageEmbedsWithHtml('![[image.png]]', app, { sourcePath: '' });
+
+      expect(result).toContain('src="app://local/image.png"');
+      expect(result).not.toContain('app://local/section/image.png');
+    });
+
+    it('falls back to native resolution when source path is blank and direct and media paths miss', () => {
+      const app = createMockApp(
+        new Map([['section/image.png', 'app://local/section/image.png']]),
+        (linkPath, sourcePath, files) =>
+          linkPath === 'image.png' && sourcePath === ''
+            ? files.get('section/image.png') ?? null
+            : null
+      );
+
+      const result = replaceImageEmbedsWithHtml('![[image.png]]', app, {
+        sourcePath: '',
+        mediaFolder: 'media',
+      });
+
+      expect(result).toContain('src="app://local/section/image.png"');
+      expect(result).not.toContain('codian-embedded-image-fallback');
     });
   });
 
@@ -383,7 +470,7 @@ describe('replaceImageEmbedsWithHtml', () => {
 
       const result = replaceImageEmbedsWithHtml('![[test.png]]', app);
 
-      expect(result).toContain('class="claudian-embedded-image-fallback"');
+      expect(result).toContain('class="codian-embedded-image-fallback"');
     });
   });
 

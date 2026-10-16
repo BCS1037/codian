@@ -33,6 +33,22 @@ export const TOOL_WAIT_AGENT = 'wait_agent' as const;
 export const TOOL_RESUME_AGENT = 'resume_agent' as const;
 export const TOOL_CLOSE_AGENT = 'close_agent' as const;
 
+// Codian-hosted cross-session tools; distinct from runtime agent `send_message`.
+export const TOOL_CODIAN_LIST_DESTINATIONS = 'codian_list_destinations' as const;
+export const TOOL_CODIAN_SEND_MESSAGE = 'codian_send_message' as const;
+export const TOOL_CODIAN_READ_SESSION = 'codian_read_session' as const;
+
+export const SESSION_TOOLS = [
+  TOOL_CODIAN_LIST_DESTINATIONS,
+  TOOL_CODIAN_SEND_MESSAGE,
+  TOOL_CODIAN_READ_SESSION,
+] as const;
+export type SessionToolName = (typeof SESSION_TOOLS)[number];
+
+export function isSessionTool(name: string): name is SessionToolName {
+  return (SESSION_TOOLS as readonly string[]).includes(name);
+}
+
 export const AGENT_LIFECYCLE_TOOLS = [
   TOOL_SPAWN_AGENT,
   TOOL_SEND_INPUT,

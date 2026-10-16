@@ -1,4 +1,7 @@
-import * as fs from 'node:fs/promises';
+import type * as fs from 'node:fs';
+import * as fsp from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 
 import type {
   ProviderConversationHistoryService,
@@ -15,26 +18,87 @@ import {
 import {
   type CodexParsedTurn,
   deriveCodexSessionsRootFromSessionPath,
+  extractCodexThreadIdFromPath,
   findCodexSessionFileAsync,
   parseCodexSessionFileAsync,
   parseCodexSessionTurns,
+  readCodexSessionRecords,
 } from './CodexHistoryStore';
 
+/** Parsed transcript turns; a missing file has none, and other read failures reject. */
 async function readSessionTurns(sessionFilePath: string): Promise<CodexParsedTurn[]> {
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), 10_000);
-  try {
-    const content = await fs.readFile(sessionFilePath, {
-      encoding: 'utf-8',
-      signal: controller.signal,
-    });
-    return parseCodexSessionTurns(content);
-  } catch {
-    return [];
-  } finally {
-    window.clearTimeout(timer);
-  }
+  return parseCodexSessionTurns(await readCodexSessionRecords(sessionFilePath) ?? []);
 }
+
+export async function recoverCodexSessionFile(
+  conversation: Conversation,
+  sessionsRoot: string,
+  deadline: number,
+): Promise<string | null> {
+  if (!conversation.createdAt) return null;
+
+  const date = new Date(conversation.createdAt);
+  if (isNaN(date.getTime())) return null;
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const dirsToCheck = new Set<string>();
+
+  // UTC directory
+  dirsToCheck.add(path.join(
+    sessionsRoot,
+    String(date.getUTCFullYear()),
+    pad(date.getUTCMonth() + 1),
+    pad(date.getUTCDate()),
+  ));
+  // Local directory
+  dirsToCheck.add(path.join(
+    sessionsRoot,
+    String(date.getFullYear()),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+  ));
+
+  let bestMatch: { path: string; diffMs: number } | null = null;
+
+  for (const dir of dirsToCheck) {
+    if (Date.now() >= deadline) break;
+    let entries: fs.Dirent[];
+    try {
+      entries = await fsp.readdir(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      const match = entry.name.match(
+        /^rollout-(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})-(.+?)\.jsonl(?:\.zst)?$/,
+      );
+      if (!match) continue;
+
+      const timeStr = match[1].replace(/-/g, (m, offset) => (offset > 10 ? ':' : '-'));
+      const timeUtc = new Date(timeStr + 'Z').getTime();
+      const timeLocal = new Date(timeStr).getTime();
+
+      const diffUtc = !isNaN(timeUtc) ? Math.abs(timeUtc - conversation.createdAt) : Infinity;
+      const diffLocal = !isNaN(timeLocal) ? Math.abs(timeLocal - conversation.createdAt) : Infinity;
+      const minDiff = Math.min(diffUtc, diffLocal);
+
+      // Within 3 minutes (180,000 ms)
+      if (minDiff <= 180_000) {
+        if (!bestMatch || minDiff < bestMatch.diffMs) {
+          bestMatch = {
+            path: path.join(dir, entry.name),
+            diffMs: minDiff,
+          };
+        }
+      }
+    }
+  }
+
+  return bestMatch?.path ?? null;
+}
+
 
 export class CodexConversationHistoryService implements ProviderConversationHistoryService {
   private hydratedConversationPaths = new Map<string, string>();
@@ -126,8 +190,8 @@ export class CodexConversationHistoryService implements ProviderConversationHist
     }
 
     // Normal hydration
-    const threadId = state.threadId ?? conversation.sessionId ?? null;
-    const sessionFilePath = await resolveCodexSessionFileHint(
+    let threadId = state.threadId ?? conversation.sessionId ?? null;
+    let sessionFilePath = await resolveCodexSessionFileHint(
       state.sessionFilePath,
       threadId,
       pathContext,
@@ -139,6 +203,19 @@ export class CodexConversationHistoryService implements ProviderConversationHist
           Math.max(0, lookupDeadline - Date.now()),
         )
       : null);
+
+    if (!sessionFilePath) {
+      const fallbackRoot = transcriptRootPath ?? path.join(os.homedir(), '.codex', 'sessions');
+      sessionFilePath = await recoverCodexSessionFile(
+        conversation,
+        fallbackRoot,
+        lookupDeadline,
+      );
+      if (sessionFilePath && !threadId) {
+        threadId = extractCodexThreadIdFromPath(sessionFilePath);
+      }
+    }
+
     const resolvedTranscriptRootPath = transcriptRootPath
       ?? deriveCodexSessionsRootFromSessionPath(sessionFilePath);
 
@@ -155,7 +232,7 @@ export class CodexConversationHistoryService implements ProviderConversationHist
       return;
     }
 
-    if (sessionFilePath !== state.sessionFilePath) {
+    if (sessionFilePath !== state.sessionFilePath || (threadId && threadId !== state.threadId)) {
       conversation.providerState = {
         ...(conversation.providerState ?? {}),
         ...(threadId ? { threadId } : {}),
@@ -178,6 +255,7 @@ export class CodexConversationHistoryService implements ProviderConversationHist
 
     conversation.messages = sdkMessages;
     this.hydratedConversationPaths.set(conversation.id, hydrationKey);
+
   }
 
   async deleteConversationSession(

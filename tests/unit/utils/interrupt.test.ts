@@ -75,7 +75,7 @@ describe('interrupt utils', () => {
   describe('stripLegacyInterruptIndicator', () => {
     it('removes only the trailing Codian-owned or legacy Claudian interruption marker', () => {
       const codianMarker =
-        '<span class="claudian-interrupted">Interrupted</span> <span class="claudian-interrupted-hint">· What should Codian do instead?</span>';
+        '<span class="codian-interrupted">Interrupted</span> <span class="codian-interrupted-hint">· What should Codian do instead?</span>';
       const claudianMarker =
         '<span class="claudian-interrupted">Interrupted</span> <span class="claudian-interrupted-hint">· What should Claudian do instead?</span>';
 

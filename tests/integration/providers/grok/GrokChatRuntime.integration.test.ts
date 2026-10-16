@@ -62,7 +62,7 @@ describe('GrokChatRuntime JSON-RPC integration', () => {
   });
 
   it('orders initialize/new/prompt/update/cancel and initializes/load on resume', async () => {
-    tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'claudian-grok-agent-'));
+    tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'codian-grok-agent-'));
     const logPath = path.join(tempDirectory, 'requests.jsonl');
     const agentPath = path.join(tempDirectory, 'agent');
     await fs.writeFile(agentPath, fakeAgentSource(logPath), 'utf8');
@@ -106,7 +106,7 @@ describe('GrokChatRuntime JSON-RPC integration', () => {
   });
 
   it('renders and persists mirrored text and tool events once while preserving repeats', async () => {
-    tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'claudian-grok-agent-'));
+    tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'codian-grok-agent-'));
     const logPath = path.join(tempDirectory, 'requests.jsonl');
     const agentPath = path.join(tempDirectory, 'agent');
     await fs.writeFile(agentPath, fakeAgentSource(logPath), 'utf8');

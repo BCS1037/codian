@@ -1,4 +1,4 @@
-import type { ClaudianSettings, HiddenProviderCommands } from '../../types/settings';
+import type { CodianSettings, HiddenProviderCommands } from '../../types/settings';
 import type { ProviderId } from '../types';
 
 function normalizeHiddenCommandName(value: string): string {
@@ -60,14 +60,14 @@ export function normalizeHiddenProviderCommands(
 }
 
 export function getHiddenProviderCommands(
-  settings: Pick<ClaudianSettings, 'hiddenProviderCommands'>,
+  settings: Pick<CodianSettings, 'hiddenProviderCommands'>,
   providerId: ProviderId,
 ): string[] {
   return settings.hiddenProviderCommands?.[providerId] ?? [];
 }
 
 export function getHiddenProviderCommandSet(
-  settings: Pick<ClaudianSettings, 'hiddenProviderCommands'>,
+  settings: Pick<CodianSettings, 'hiddenProviderCommands'>,
   providerId: ProviderId,
 ): Set<string> {
   return new Set(getHiddenProviderCommands(settings, providerId).map((command) => command.toLowerCase()));

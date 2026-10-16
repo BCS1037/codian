@@ -1,4 +1,4 @@
-import type { ClaudianSettings } from '@/core/types/settings';
+import type { CodianSettings } from '@/core/types/settings';
 import type { QueryOptionsContext } from '@/providers/claude/runtime/ClaudeQueryOptionsBuilder';
 import { QueryOptionsBuilder } from '@/providers/claude/runtime/ClaudeQueryOptionsBuilder';
 import type { PersistentQueryConfig } from '@/providers/claude/runtime/types';
@@ -34,7 +34,7 @@ function createMockPluginManager() {
 }
 
 // Create a mock settings object
-function createMockSettings(overrides: Partial<ClaudianSettings> = {}): ClaudianSettings {
+function createMockSettings(overrides: Partial<CodianSettings> = {}): CodianSettings {
   return {
     permissions: [],
     permissionMode: 'yolo',
@@ -57,7 +57,7 @@ function createMockSettings(overrides: Partial<ClaudianSettings> = {}): Claudian
     claudeCliPath: '',
     enableChrome: false,
     ...overrides,
-  } as ClaudianSettings;
+  } as CodianSettings;
 }
 
 function createMockPersistentQueryConfig(
@@ -407,7 +407,7 @@ describe('QueryOptionsBuilder', () => {
 
       expect(options.permissionMode).toBe('auto');
       expect(options.allowDangerouslySkipPermissions).toBe(true);
-      expect(options.extraArgs).toEqual({ 'enable-auto-mode': null });
+      expect(options.extraArgs).toEqual({ 'enable-auto-mode': null, 'replay-user-messages': null });
     });
 
     it('passes auto mode opt-in whenever Claude safe mode is auto', () => {
@@ -421,7 +421,7 @@ describe('QueryOptionsBuilder', () => {
       const options = QueryOptionsBuilder.buildPersistentQueryOptions(ctx);
 
       expect(options.permissionMode).toBe('bypassPermissions');
-      expect(options.extraArgs).toEqual({ 'enable-auto-mode': null });
+      expect(options.extraArgs).toEqual({ 'enable-auto-mode': null, 'replay-user-messages': null });
     });
 
     it('ignores claudeSafeMode when permissionMode is yolo', () => {
@@ -521,7 +521,7 @@ describe('QueryOptionsBuilder', () => {
       const options = QueryOptionsBuilder.buildPersistentQueryOptions(ctx);
 
       expect(options.extraArgs).toBeDefined();
-      expect(options.extraArgs).toEqual({ chrome: null });
+      expect(options.extraArgs).toEqual({ chrome: null, 'replay-user-messages': null });
     });
 
     it('sets extraArgs with chrome and auto mode flags when both are enabled', () => {
@@ -534,10 +534,14 @@ describe('QueryOptionsBuilder', () => {
       };
       const options = QueryOptionsBuilder.buildPersistentQueryOptions(ctx);
 
-      expect(options.extraArgs).toEqual({ 'enable-auto-mode': null, chrome: null });
+      expect(options.extraArgs).toEqual({
+        'enable-auto-mode': null,
+        chrome: null,
+        'replay-user-messages': null,
+      });
     });
 
-    it('does not set extraArgs when enableChrome is disabled', () => {
+    it('requests replay acknowledgements when enableChrome is disabled', () => {
       const ctx = {
         ...createMockContext({
           settings: createMockSettings({ enableChrome: false }),
@@ -547,7 +551,7 @@ describe('QueryOptionsBuilder', () => {
       };
       const options = QueryOptionsBuilder.buildPersistentQueryOptions(ctx);
 
-      expect(options.extraArgs).toBeUndefined();
+      expect(options.extraArgs).toEqual({ 'replay-user-messages': null });
     });
 
     it('sets additionalDirectories when externalContextPaths provided', () => {

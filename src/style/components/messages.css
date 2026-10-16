@@ -1,5 +1,5 @@
 /* Messages wrapper (for scroll-to-bottom button positioning) */
-.claudian-messages-wrapper {
+.codian-messages-wrapper {
   position: relative;
   flex: 1;
   min-height: 0;
@@ -8,7 +8,7 @@
   overflow: hidden;
 }
 
-.claudian-messages {
+.codian-messages {
   flex: 1;
   overflow-y: auto;
   padding: 12px 0 0;
@@ -17,17 +17,17 @@
   gap: 12px;
 }
 
-.claudian-messages-wrapper.claudian-conversation-rail-host .claudian-messages {
+.codian-messages-wrapper.codian-conversation-rail-host .codian-messages {
   padding-left: 12px;
 }
 
 /* Focusable messages panel for vim-style navigation */
-.claudian-messages-focusable:focus {
+.codian-messages-focusable:focus {
   outline: none;
 }
 
 /* Welcome message - claude.ai style */
-.claudian-welcome {
+.codian-welcome {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -38,7 +38,7 @@
   min-height: 200px;
 }
 
-.claudian-welcome-greeting {
+.codian-welcome-greeting {
   font-family: 'Copernicus', 'Tiempos Headline', 'Tiempos', Georgia, 'Times New Roman', serif;
   font-size: 28px;
   font-weight: 300;
@@ -46,66 +46,80 @@
   letter-spacing: -0.01em;
 }
 
-.claudian-welcome-orb {
+.codian-welcome-orb {
   width: 112px;
   height: 112px;
   margin-bottom: 20px;
 }
 
-.claudian-message {
-  padding: 10px 14px;
-  border-radius: 8px;
-  max-width: 95%;
-  word-wrap: break-word;
+.codian-message {
+  overflow-wrap: break-word;
 }
 
-.claudian-message-user {
+.codian-message-user {
   position: relative;
-  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   align-self: flex-end;
+  max-width: 95%;
+  background: transparent;
+}
+
+.codian-message-user > .codian-message-content {
+  position: relative;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
   border-end-end-radius: 4px;
 }
 
-.claudian-message-user ol > li::marker {
+.codian-message-user ol {
+  list-style-position: inside;
+}
+
+.codian-message-user ol > li::marker {
   color: inherit;
 }
 
 /* Text selection in user messages - visible highlight */
-.claudian-message-user ::selection {
+.codian-message-user ::selection {
   background: rgba(255, 255, 255, 0.35);
   color: inherit;
 }
 
-.claudian-message-assistant {
-  background: transparent;
+.codian-message-assistant {
+  flex-shrink: 0;
   align-self: stretch;
   width: 100%;
-  max-width: 100%;
-  border-end-start-radius: 4px;
+  padding: 10px 14px;
   text-align: start;
 }
 
-.claudian-message-content {
+.codian-message-content {
   line-height: 1.5;
+  overflow-x: auto;
   user-select: text;
   -webkit-user-select: text;
   unicode-bidi: plaintext; /* Proper BiDi text handling for mixed RTL/LTR */
 }
 
-.claudian-interrupted {
+.codian-interrupted {
   color: #d45d5d;
 }
 
-.claudian-interrupted-hint {
+.codian-interrupted-hint {
   color: var(--text-muted);
 }
 
-.claudian-text-block {
+.codian-text-block {
   position: relative;
   margin: 0;
 }
 
-.claudian-selection-toolbar {
+.codian-selection-toolbar {
   position: fixed;
   z-index: 1000;
   display: flex;
@@ -118,7 +132,7 @@
   transform: translate(-50%, -100%);
 }
 
-.claudian-selection-toolbar button {
+.codian-selection-toolbar button {
   display: grid;
   width: 28px;
   height: 28px;
@@ -130,19 +144,19 @@
   cursor: pointer;
 }
 
-.claudian-selection-toolbar button:hover:not(:disabled) {
+.codian-selection-toolbar button:hover:not(:disabled) {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
-.claudian-sent-chat-selections {
+.codian-sent-chat-selections {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   margin-bottom: 6px;
 }
 
-.claudian-sent-chat-selection {
+.codian-sent-chat-selection {
   max-width: 9em;
   overflow: hidden;
   padding: 2px 7px;
@@ -154,7 +168,7 @@
   white-space: nowrap;
 }
 
-.claudian-text-copy-btn {
+.codian-text-copy-btn {
   position: absolute;
   bottom: 0;
   inset-inline-end: 0;
@@ -169,93 +183,93 @@
   gap: 4px;
 }
 
-.claudian-text-copy-btn svg {
+.codian-text-copy-btn svg {
   width: 16px;
   height: 16px;
 }
 
-.claudian-text-block:hover .claudian-text-copy-btn {
+.codian-text-block:hover .codian-text-copy-btn {
   opacity: 1;
 }
 
-.claudian-text-copy-btn:hover {
+.codian-text-copy-btn:hover {
   color: var(--text-normal);
 }
 
-.claudian-text-copy-btn.copied {
+.codian-text-copy-btn.copied {
   color: var(--text-accent);
   font-size: 11px;
   font-family: var(--font-monospace);
 }
 
-.claudian-text-block+.claudian-tool-call {
+.codian-text-block+.codian-tool-call {
   margin-top: 8px;
 }
 
-.claudian-tool-call+.claudian-text-block {
+.codian-tool-call+.codian-text-block {
   margin-top: 8px;
 }
 
-.claudian-message-content p {
+.codian-message-content p {
   margin: 0 0 8px 0;
 }
 
-.claudian-message-content p:last-child {
+.codian-message-content p:last-child {
   margin-bottom: 0;
 }
 
-.claudian-message-content ul,
-.claudian-message-content ol {
+.codian-message-content ul,
+.codian-message-content ol {
   margin: 8px 0;
   padding-inline-start: 20px;
 }
 
 /* Full-width tables */
-.claudian-message-content table {
+.codian-message-content table {
   width: 100%;
   border-collapse: collapse;
   margin: 8px 0;
 }
 
-.claudian-message-content th,
-.claudian-message-content td {
+.codian-message-content th,
+.codian-message-content td {
   border: 1px solid var(--background-modifier-border);
   padding: 6px 10px;
   text-align: start;
 }
 
-.claudian-message-content th {
+.codian-message-content th {
   background: var(--background-secondary);
   font-weight: 600;
 }
 
-.claudian-message-content tr:hover {
+.codian-message-content tr:hover {
   background: var(--background-secondary-alt);
 }
 
-.claudian-messages::-webkit-scrollbar {
+.codian-messages::-webkit-scrollbar {
   width: 6px;
 }
 
-.claudian-messages::-webkit-scrollbar-track {
+.codian-messages::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.claudian-messages::-webkit-scrollbar-thumb {
+.codian-messages::-webkit-scrollbar-thumb {
   background: var(--background-modifier-border);
   border-radius: 3px;
 }
 
-.claudian-messages::-webkit-scrollbar-thumb:hover {
+.codian-messages::-webkit-scrollbar-thumb:hover {
   background: var(--background-modifier-border-hover);
 }
 
 /* Response duration footer - styled as another line of content */
-.claudian-response-footer {
+.codian-response-footer {
   margin-top: 8px;
 }
 
-.claudian-baked-duration {
+.codian-baked-duration {
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 500;
@@ -263,68 +277,94 @@
 }
 
 /* Action buttons toolbar below user messages */
-.claudian-user-msg-actions {
-  position: absolute;
-  bottom: -20px;
-  right: 0;
+.codian-user-msg-actions {
   display: flex;
+  align-items: center;
   gap: 12px;
+  margin-top: 8px;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.15s;
   z-index: 1;
 }
 
-.claudian-message-user:hover .claudian-user-msg-actions {
-  opacity: 1;
+.codian-message-user > .codian-user-msg-actions {
+  justify-content: flex-end;
 }
 
-.claudian-user-msg-actions span {
+.codian-message-user:hover .codian-user-msg-actions,
+.codian-message-user:focus-within .codian-user-msg-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .codian-user-msg-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.codian-user-msg-actions span,
+.codian-user-msg-actions button {
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--text-faint);
   transition: color 0.15s;
 }
 
-.claudian-user-msg-actions span svg {
+.codian-user-msg-actions span svg,
+.codian-user-msg-actions button svg {
   width: 16px;
   height: 16px;
 }
 
-.claudian-user-msg-actions span:hover {
+.codian-user-msg-actions span:hover,
+.codian-user-msg-actions button:hover {
   color: var(--text-normal);
 }
 
-.claudian-user-msg-actions span.copied {
+.codian-message-branch-position {
+  align-self: center;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+}
+
+.codian-user-msg-actions span.copied {
   color: var(--text-accent);
   font-size: 11px;
   font-family: var(--font-monospace);
 }
 
 /* Compact boundary indicator */
-.claudian-compact-boundary {
+.codian-compact-boundary {
   display: flex;
   align-items: center;
   gap: 10px;
   margin: 12px 0;
 }
 
-.claudian-compact-boundary::before,
-.claudian-compact-boundary::after {
+.codian-compact-boundary::before,
+.codian-compact-boundary::after {
   content: '';
   flex: 1;
   height: 1px;
   background: var(--background-modifier-border);
 }
 
-.claudian-compact-boundary-label {
+.codian-compact-boundary-label {
   color: var(--text-muted);
   font-size: 11px;
   white-space: nowrap;
 }
 
-.claudian-tab-hydration {
+.codian-tab-hydration {
   min-height: 160px;
   display: flex;
   flex-direction: column;
@@ -335,7 +375,7 @@
   text-align: center;
 }
 
-.claudian-tab-hydration-loading::before {
+.codian-tab-hydration-loading::before {
   content: '';
   display: inline-block;
   width: 12px;
@@ -344,11 +384,54 @@
   border: 2px solid var(--background-modifier-border);
   border-top-color: var(--interactive-accent);
   border-radius: 50%;
-  animation: claudian-spin 0.8s linear infinite;
+  animation: codian-spin 0.8s linear infinite;
   vertical-align: -2px;
 }
 
-.claudian-tab-hydration-error {
+.codian-tab-hydration-error {
   max-width: 420px;
-  color: var(--text-error, var(--claudian-error));
+  color: var(--text-error, var(--codian-error));
+}
+
+/* Session links: text-styled native buttons that open another session from the transcript. */
+button.codian-session-link,
+button.codian-session-link:hover,
+button.codian-session-link:focus-visible,
+button.codian-session-link:active {
+  appearance: none;
+  display: inline;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: var(--link-color);
+  cursor: pointer;
+}
+
+button.codian-session-link:hover {
+  color: var(--link-color-hover);
+  text-decoration: underline;
+}
+
+button.codian-session-link:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+/* Sender of a message delivered from another session, above the message body. */
+.codian-session-message-sender {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.3em;
+  margin-bottom: 4px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
 }

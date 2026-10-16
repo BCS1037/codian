@@ -36,12 +36,12 @@ describe('McpStorage', () => {
       expect(servers).toEqual([]);
     });
 
-    it('loads servers with disabledTools from _claudian metadata', async () => {
+    it('loads servers with disabledTools from _codian metadata', async () => {
       const config = {
         mcpServers: {
           alpha: { command: 'alpha-cmd', args: ['--arg'] },
         },
-        _claudian: {
+        _codian: {
           servers: {
             alpha: {
               enabled: true,
@@ -73,7 +73,7 @@ describe('McpStorage', () => {
         mcpServers: {
           alpha: { command: 'alpha-cmd' },
         },
-        _claudian: {
+        _codian: {
           servers: {
             alpha: {
               disabledTools: ['valid', 123, null, 'also_valid'],
@@ -96,7 +96,7 @@ describe('McpStorage', () => {
         mcpServers: {
           alpha: { command: 'alpha-cmd' },
         },
-        _claudian: {
+        _codian: {
           servers: {
             alpha: {
               disabledTools: [],
@@ -159,7 +159,7 @@ describe('McpStorage', () => {
       expect(servers[0].name).toBe('valid');
     });
 
-    it('applies defaults when no _claudian metadata exists', async () => {
+    it('applies defaults when no _codian metadata exists', async () => {
       const config = {
         mcpServers: {
           alpha: { command: 'alpha-cmd' },
@@ -179,10 +179,10 @@ describe('McpStorage', () => {
       });
     });
 
-    it('loads description from _claudian metadata', async () => {
+    it('loads description from _codian metadata', async () => {
       const config = {
         mcpServers: { alpha: { command: 'cmd' } },
-        _claudian: {
+        _codian: {
           servers: {
             alpha: { description: 'My server' },
           },
@@ -198,7 +198,7 @@ describe('McpStorage', () => {
   });
 
   describe('save', () => {
-    it('saves disabledTools to _claudian metadata', async () => {
+    it('saves disabledTools to _codian metadata', async () => {
       const adapter = createMockAdapter();
       const storage = new McpStorage(adapter);
 
@@ -213,7 +213,7 @@ describe('McpStorage', () => {
       ]);
 
       const saved = JSON.parse(adapter._store['.claude/mcp.json']);
-      expect(saved._claudian.servers.alpha.disabledTools).toEqual(['tool_a', 'tool_b']);
+      expect(saved._codian.servers.alpha.disabledTools).toEqual(['tool_a', 'tool_b']);
     });
 
     it('trims and filters blank disabledTools on save', async () => {
@@ -231,7 +231,7 @@ describe('McpStorage', () => {
       ]);
 
       const saved = JSON.parse(adapter._store['.claude/mcp.json']);
-      expect(saved._claudian.servers.alpha.disabledTools).toEqual(['tool_a', 'tool_b']);
+      expect(saved._codian.servers.alpha.disabledTools).toEqual(['tool_a', 'tool_b']);
     });
 
     it('omits disabledTools from metadata when empty', async () => {
@@ -249,16 +249,16 @@ describe('McpStorage', () => {
       ]);
 
       const saved = JSON.parse(adapter._store['.claude/mcp.json']);
-      // No _claudian since all fields are default
-      expect(saved._claudian).toBeUndefined();
+      // No _codian since all fields are default
+      expect(saved._codian).toBeUndefined();
     });
 
-    it('preserves existing _claudian metadata when saving', async () => {
+    it('preserves existing _codian metadata when saving', async () => {
       const existing = {
         mcpServers: {
           alpha: { command: 'alpha-cmd' },
         },
-        _claudian: {
+        _codian: {
           customField: 'should be preserved',
           servers: {
             alpha: { enabled: false },
@@ -282,8 +282,8 @@ describe('McpStorage', () => {
       ]);
 
       const saved = JSON.parse(adapter._store['.claude/mcp.json']);
-      expect(saved._claudian.customField).toBe('should be preserved');
-      expect(saved._claudian.servers.alpha.disabledTools).toEqual(['tool_a']);
+      expect(saved._codian.customField).toBe('should be preserved');
+      expect(saved._codian.servers.alpha.disabledTools).toEqual(['tool_a']);
     });
 
     it('round-trips disabledTools correctly', async () => {
@@ -321,7 +321,7 @@ describe('McpStorage', () => {
       });
     });
 
-    it('saves description to _claudian metadata', async () => {
+    it('saves description to _codian metadata', async () => {
       const adapter = createMockAdapter();
       const storage = new McpStorage(adapter);
 
@@ -336,10 +336,10 @@ describe('McpStorage', () => {
       ]);
 
       const saved = JSON.parse(adapter._store['.claude/mcp.json']);
-      expect(saved._claudian.servers.alpha.description).toBe('A test server');
+      expect(saved._codian.servers.alpha.description).toBe('A test server');
     });
 
-    it('stores enabled=false in _claudian when different from default', async () => {
+    it('stores enabled=false in _codian when different from default', async () => {
       const adapter = createMockAdapter();
       const storage = new McpStorage(adapter);
 
@@ -353,10 +353,10 @@ describe('McpStorage', () => {
       ]);
 
       const saved = JSON.parse(adapter._store['.claude/mcp.json']);
-      expect(saved._claudian.servers.alpha.enabled).toBe(false);
+      expect(saved._codian.servers.alpha.enabled).toBe(false);
     });
 
-    it('stores contextSaving=false in _claudian when different from default', async () => {
+    it('stores contextSaving=false in _codian when different from default', async () => {
       const adapter = createMockAdapter();
       const storage = new McpStorage(adapter);
 
@@ -370,13 +370,13 @@ describe('McpStorage', () => {
       ]);
 
       const saved = JSON.parse(adapter._store['.claude/mcp.json']);
-      expect(saved._claudian.servers.alpha.contextSaving).toBe(false);
+      expect(saved._codian.servers.alpha.contextSaving).toBe(false);
     });
 
-    it('removes _claudian.servers when all metadata is default', async () => {
+    it('removes _codian.servers when all metadata is default', async () => {
       const existing = {
         mcpServers: { alpha: { command: 'cmd' } },
-        _claudian: { servers: { alpha: { enabled: false } } },
+        _codian: { servers: { alpha: { enabled: false } } },
       };
       const adapter = createMockAdapter({
         '.claude/mcp.json': JSON.stringify(existing),
@@ -393,13 +393,13 @@ describe('McpStorage', () => {
       ]);
 
       const saved = JSON.parse(adapter._store['.claude/mcp.json']);
-      expect(saved._claudian).toBeUndefined();
+      expect(saved._codian).toBeUndefined();
     });
 
-    it('preserves non-servers _claudian fields when removing servers', async () => {
+    it('preserves non-servers _codian fields when removing servers', async () => {
       const existing = {
         mcpServers: { alpha: { command: 'cmd' } },
-        _claudian: {
+        _codian: {
           customField: 'keep',
           servers: { alpha: { enabled: false } },
         },
@@ -419,7 +419,7 @@ describe('McpStorage', () => {
       ]);
 
       const saved = JSON.parse(adapter._store['.claude/mcp.json']);
-      expect(saved._claudian).toEqual({ customField: 'keep' });
+      expect(saved._codian).toEqual({ customField: 'keep' });
     });
 
     it('aborts on malformed JSON without replacing the original bytes', async () => {
