@@ -1,8 +1,8 @@
 /* Inline Edit (CM6 decorations) */
 
 /* Selection highlight (shared by inline edit and chat) */
-.cm-line .claudian-selection-highlight,
-.claudian-selection-highlight.claudian-selection-highlight {
+.cm-line .codian-selection-highlight,
+.codian-selection-highlight.codian-selection-highlight {
   background: var(--text-selection);
   border-radius: 2px;
   padding: 3px 0;
@@ -10,115 +10,115 @@
 }
 
 /* Preview mode selection highlight via CSS Custom Highlight API */
-::highlight(claudian-selection) {
+::highlight(codian-selection) {
   background: var(--text-selection);
 }
 
 /* CM6 widget container - ensure transparent background */
 .markdown-source-view.mod-cm6 .cm-widgetBuffer,
-.markdown-source-view.mod-cm6 .cm-line.claudian-inline-input-line {
+.markdown-source-view.mod-cm6 .cm-line.codian-inline-input-line {
   background: transparent;
 }
 
-/* Input container - fully transparent */
-.claudian-inline-input-container {
+/*
+ * Input widget container in the editor. Obsidian zeroes editor widget margins, so the widget root
+ * spaces the card with padding; the wider bottom gap separates it from the selected text it edits.
+ */
+.codian-inline-input-container {
+  padding: 4px 0 12px;
+}
+
+/*
+ * Composer card: one row with the instruction and optional spinner; a clarifying question sits above it.
+ * Secondary stays opaque when translucent themes clear the primary background.
+ */
+.codian-inline-composer {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  padding: 2px 0;
-  background: transparent;
-}
-
-/* Input wrapper - contains input and spinner */
-.claudian-inline-input-wrap {
-  flex: 1;
-  position: relative;
-  background: transparent;
-  overflow: visible;
-}
-
-/* Input - fully transparent */
-.claudian-inline-input-wrap input.claudian-inline-input {
-  width: 100%;
-  padding: 4px 8px;
-  padding-inline-end: 30px;
-  border-width: 1px;
-  border-style: solid;
-  border-color: var(--background-modifier-border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background-color: var(--background-secondary);
+  background-image: linear-gradient(var(--background-primary), var(--background-primary));
   font-family: var(--font-interface, -apple-system, BlinkMacSystemFont, sans-serif);
+}
+
+.codian-inline-composer:focus-within {
+  border-color: var(--background-modifier-border-hover);
+}
+
+.codian-inline-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding-inline-end: 4px;
+}
+
+/* The card owns the surface and focus treatment; the input stays bare in every state. */
+.codian-inline-input-wrap input.codian-inline-input,
+.codian-inline-input-wrap input.codian-inline-input:is(:hover, :focus, :focus-visible, :active, :disabled) {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: auto;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  color: var(--text-normal);
+  font-family: inherit;
   font-size: var(--font-ui-small, 13px);
 }
 
-.claudian-inline-input-wrap input.claudian-inline-input:focus,
-.claudian-inline-input-wrap input.claudian-inline-input:focus-visible {
-  outline: none;
-  box-shadow: none;
-}
-
-.claudian-inline-input-wrap input.claudian-inline-input::placeholder {
+.codian-inline-input-wrap input.codian-inline-input::placeholder {
   color: var(--text-faint);
 }
 
-.claudian-inline-input-wrap input.claudian-inline-input:disabled {
-  opacity: 0.6;
+.codian-inline-input-wrap input.codian-inline-input:disabled {
+  color: var(--text-muted);
 }
 
-/* Spinner - inside input box on end side */
-.claudian-inline-spinner {
-  position: absolute;
-  inset-inline-end: 8px;
-  top: 50%;
+/* While a request runs, the spinner takes place at the row's end. */
+.codian-inline-spinner {
+  flex: none;
   width: 14px;
   height: 14px;
-  margin-top: -7px;
+  margin-inline: 8px;
   border: 2px solid var(--background-modifier-border);
-  border-top-color: var(--claudian-brand);
+  border-top-color: var(--interactive-accent);
   border-radius: 50%;
   box-sizing: border-box;
-  animation: claudian-spin 0.8s linear infinite;
+  animation: codian-spin 0.8s linear infinite;
 }
 
-/* Agent reply - shown when agent asks clarifying question */
-.claudian-inline-agent-reply {
-  padding: 8px;
-  margin-bottom: 4px;
-  background: transparent;
-  border-width: 1px;
-  border-style: solid;
-  border-color: var(--background-modifier-border);
-  border-radius: 8px;
-  font-family: var(--font-interface, -apple-system, BlinkMacSystemFont, sans-serif);
+/* Clarifying question: the card's first section, above the reply row. */
+.codian-inline-agent-reply {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
   font-size: var(--font-ui-small, 13px);
-  line-height: 1.4;
-  color: var(--text-muted);
+  line-height: 1.45;
+  color: var(--text-normal);
   overflow-x: auto;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
-.claudian-inline-agent-reply > :first-child,
-.claudian-inline-diff-preview-body > :first-child {
+.codian-inline-agent-reply > :first-child,
+.codian-inline-diff-preview-body > :first-child {
   margin-top: 0;
 }
 
-.claudian-inline-agent-reply > :last-child,
-.claudian-inline-diff-preview-body > :last-child {
+.codian-inline-agent-reply > :last-child,
+.codian-inline-diff-preview-body > :last-child {
   margin-bottom: 0;
 }
 
-.claudian-inline-diff-preview {
-  margin: 4px 0 6px;
-  padding: 8px 10px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
-  background: var(--background-primary);
+.codian-inline-diff-preview {
+  margin: 2px 0 6px;
   color: var(--text-normal);
-  overflow: hidden;
 }
 
-.claudian-inline-diff-preview-body {
+.codian-inline-diff-preview-body {
   font-family: var(--font-text);
   font-size: var(--font-text-size);
   line-height: var(--line-height-normal);
@@ -127,152 +127,183 @@
   --heading-spacing: 0.5rem;
 }
 
-.claudian-inline-diff-preview img {
+.codian-inline-diff-preview img {
   max-width: 100%;
   height: auto;
 }
 
-.claudian-inline-diff-preview .markdown-rendered p {
+.codian-inline-diff-preview .markdown-rendered p {
   margin: 0 0 6px;
 }
 
-.claudian-inline-diff-preview .markdown-rendered p:last-child {
+.codian-inline-diff-preview .markdown-rendered p:last-child {
   margin-bottom: 0;
 }
 
-.claudian-inline-diff-preview .markdown-rendered h1,
-.claudian-inline-diff-preview .markdown-rendered h2,
-.claudian-inline-diff-preview .markdown-rendered h3,
-.claudian-inline-diff-preview .markdown-rendered h4,
-.claudian-inline-diff-preview .markdown-rendered h5,
-.claudian-inline-diff-preview .markdown-rendered h6 {
+.codian-inline-diff-preview .markdown-rendered h1,
+.codian-inline-diff-preview .markdown-rendered h2,
+.codian-inline-diff-preview .markdown-rendered h3,
+.codian-inline-diff-preview .markdown-rendered h4,
+.codian-inline-diff-preview .markdown-rendered h5,
+.codian-inline-diff-preview .markdown-rendered h6 {
   margin: 0 0 6px;
   line-height: 1.25;
 }
 
-.claudian-inline-diff-preview .markdown-rendered h1:first-child,
-.claudian-inline-diff-preview .markdown-rendered h2:first-child,
-.claudian-inline-diff-preview .markdown-rendered h3:first-child,
-.claudian-inline-diff-preview .markdown-rendered h4:first-child,
-.claudian-inline-diff-preview .markdown-rendered h5:first-child,
-.claudian-inline-diff-preview .markdown-rendered h6:first-child {
+.codian-inline-diff-preview .markdown-rendered h1:first-child,
+.codian-inline-diff-preview .markdown-rendered h2:first-child,
+.codian-inline-diff-preview .markdown-rendered h3:first-child,
+.codian-inline-diff-preview .markdown-rendered h4:first-child,
+.codian-inline-diff-preview .markdown-rendered h5:first-child,
+.codian-inline-diff-preview .markdown-rendered h6:first-child {
   margin-top: 0;
 }
 
-.claudian-inline-diff-preview .markdown-rendered ul,
-.claudian-inline-diff-preview .markdown-rendered ol {
+.codian-inline-diff-preview .markdown-rendered ul,
+.codian-inline-diff-preview .markdown-rendered ol {
   margin: 2px 0 8px;
   padding-inline-start: 1.5em;
 }
 
-.claudian-inline-diff-preview .markdown-rendered li {
+.codian-inline-diff-preview .markdown-rendered li {
   margin: 2px 0;
 }
 
-.claudian-inline-diff-preview .markdown-rendered li > p {
+.codian-inline-diff-preview .markdown-rendered li > p {
   margin: 0;
 }
 
-.claudian-inline-diff-preview .markdown-rendered pre,
-.claudian-inline-diff-preview .markdown-rendered table,
-.claudian-inline-diff-preview .markdown-rendered blockquote {
+.codian-inline-diff-preview .markdown-rendered pre,
+.codian-inline-diff-preview .markdown-rendered table,
+.codian-inline-diff-preview .markdown-rendered blockquote {
   margin: 2px 0 8px;
 }
 
-.claudian-inline-diff-preview .markdown-rendered .el-h1,
-.claudian-inline-diff-preview .markdown-rendered .el-h2,
-.claudian-inline-diff-preview .markdown-rendered .el-h3,
-.claudian-inline-diff-preview .markdown-rendered .el-h4,
-.claudian-inline-diff-preview .markdown-rendered .el-h5,
-.claudian-inline-diff-preview .markdown-rendered .el-h6,
-.claudian-inline-diff-preview .markdown-rendered .el-p,
-.claudian-inline-diff-preview .markdown-rendered .el-ul,
-.claudian-inline-diff-preview .markdown-rendered .el-ol,
-.claudian-inline-diff-preview .markdown-rendered .el-pre,
-.claudian-inline-diff-preview .markdown-rendered .el-table,
-.claudian-inline-diff-preview .markdown-rendered .el-blockquote {
+.codian-inline-diff-preview .markdown-rendered .el-h1,
+.codian-inline-diff-preview .markdown-rendered .el-h2,
+.codian-inline-diff-preview .markdown-rendered .el-h3,
+.codian-inline-diff-preview .markdown-rendered .el-h4,
+.codian-inline-diff-preview .markdown-rendered .el-h5,
+.codian-inline-diff-preview .markdown-rendered .el-h6,
+.codian-inline-diff-preview .markdown-rendered .el-p,
+.codian-inline-diff-preview .markdown-rendered .el-ul,
+.codian-inline-diff-preview .markdown-rendered .el-ol,
+.codian-inline-diff-preview .markdown-rendered .el-pre,
+.codian-inline-diff-preview .markdown-rendered .el-table,
+.codian-inline-diff-preview .markdown-rendered .el-blockquote {
   margin-block-start: 0;
   margin-block-end: 6px;
 }
 
-.claudian-inline-markdown-fallback {
+.codian-inline-markdown-fallback {
   white-space: pre-wrap;
   word-wrap: break-word;
 }
 
-.claudian-diff-block {
-  border-radius: 4px;
-  padding: 2px 4px;
+/*
+ * Removed and added blocks read as lines in the note, each marked by a gutter bar. Obsidian clips editor
+ * widgets to their box, so the bar stays inside the block.
+ */
+.codian-diff-block {
+  padding: 1px 8px 1px 10px;
 }
 
-.claudian-diff-block + .claudian-diff-block {
-  margin-top: 2px;
-}
-
-.claudian-diff-block > :first-child {
-  margin-top: 0;
-}
-
-.claudian-diff-block > :last-child {
-  margin-bottom: 0;
-}
-
-.claudian-diff-del:not(.claudian-diff-block) {
+.codian-diff-del:not(.codian-diff-block) {
   background: rgba(255, 80, 80, 0.2);
   text-decoration: line-through;
   color: var(--text-muted);
 }
 
-.claudian-diff-ins:not(.claudian-diff-block) {
+.codian-diff-ins:not(.codian-diff-block) {
   background: rgba(80, 200, 80, 0.2);
 }
 
-.claudian-diff-block.claudian-diff-del {
-  background: rgba(255, 80, 80, 0.14);
+.codian-diff-block.codian-diff-del {
+  background: rgb(255 80 80 / 10%);
+  box-shadow: inset 3px 0 rgb(240 90 90 / 85%);
   color: var(--text-muted);
+  text-decoration: line-through;
 }
 
-.claudian-diff-block.claudian-diff-ins {
-  background: rgba(80, 200, 80, 0.14);
+.codian-diff-block.codian-diff-ins {
+  background: rgb(80 200 120 / 12%);
+  box-shadow: inset 3px 0 rgb(70 190 110 / 90%);
 }
 
-.claudian-inline-preview-actions {
+/* Review bar: line counts, then Reject and Accept with their keys. */
+.codian-inline-preview-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--background-modifier-border);
-}
-
-.claudian-inline-preview-actions button.claudian-inline-preview-action {
-  min-height: 28px;
-  padding: 4px 10px;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 4px 4px 12px;
   border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  background: var(--background-secondary);
-  box-shadow: none;
-  color: var(--text-normal);
+  border-radius: 10px;
+  background-color: var(--background-secondary);
+  background-image: linear-gradient(var(--background-primary), var(--background-primary));
   font-family: var(--font-interface, -apple-system, BlinkMacSystemFont, sans-serif);
-  font-size: var(--font-ui-small, 13px);
-  line-height: 1.2;
-  cursor: pointer;
 }
 
-.claudian-inline-preview-actions button.claudian-inline-preview-action:hover {
-  background: var(--background-modifier-hover);
+.codian-inline-diff-stats {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+  font-variant-numeric: tabular-nums;
 }
 
-.claudian-inline-preview-actions button.claudian-inline-preview-action.reject {
+.codian-inline-diff-stat-del {
   color: var(--color-red);
 }
 
-.claudian-inline-preview-actions button.claudian-inline-preview-action.accept {
+.codian-inline-diff-stat-ins {
+  color: var(--color-green);
+}
+
+.codian-inline-preview-actions button.codian-inline-preview-action,
+.codian-inline-preview-actions button.codian-inline-preview-action:is(:hover, :focus, :active) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-normal);
+  font-family: inherit;
+  font-size: var(--font-ui-small, 13px);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.codian-inline-preview-actions button.codian-inline-preview-action.reject:hover {
+  background: var(--background-modifier-hover);
+}
+
+.codian-inline-preview-actions button.codian-inline-preview-action.accept,
+.codian-inline-preview-actions button.codian-inline-preview-action.accept:is(:hover, :focus, :active) {
   border-color: var(--interactive-accent);
   background: var(--interactive-accent);
   color: var(--text-on-accent);
 }
 
-.claudian-inline-preview-actions button.claudian-inline-preview-action.accept:hover {
+.codian-inline-preview-actions button.codian-inline-preview-action.accept:hover {
+  border-color: var(--interactive-accent-hover);
   background: var(--interactive-accent-hover);
+}
+
+.codian-inline-preview-key {
+  padding: 1px 4px;
+  border: 0;
+  border-radius: 3px;
+  background: rgb(0 0 0 / 18%);
+  box-shadow: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: 10.5px;
+  opacity: 0.8;
 }

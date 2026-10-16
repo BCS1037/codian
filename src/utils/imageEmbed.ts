@@ -1,5 +1,5 @@
 /**
- * Claudian - Image Embed Utilities
+ * Codian - Image Embed Utilities
  *
  * Replaces Obsidian image embeds ![[image.png]] with HTML <img> tags
  * before MarkdownRenderer processes the content.
@@ -40,6 +40,13 @@ function resolveImageFile(
   imagePath: string,
   options: Required<ReplaceImageEmbedsOptions>
 ): TFile | null {
+  // With a note context, resolve the embed through Obsidian's note-relative
+  // link resolution before the configured media-folder fallback.
+  if (options.sourcePath) {
+    const resolved = app.metadataCache.getFirstLinkpathDest(imagePath, options.sourcePath);
+    if (resolved) return resolved;
+  }
+
   let file = getVaultFileByPath(app, imagePath);
   if (file) return file;
 
@@ -49,10 +56,11 @@ function resolveImageFile(
     if (file) return file;
   }
 
-  const resolved = app.metadataCache.getFirstLinkpathDest(imagePath, options.sourcePath);
-  if (resolved) return resolved;
+  if (options.sourcePath) {
+    return null;
+  }
 
-  return null;
+  return app.metadataCache.getFirstLinkpathDest(imagePath, options.sourcePath);
 }
 
 
@@ -81,11 +89,11 @@ function createImageHtml(
   const alt = escapeHtml(altText || file.basename);
   const style = buildStyleAttribute(altText);
 
-  return `<span class="claudian-embedded-image"><img src="${escapeHtml(src)}" alt="${alt}" loading="lazy"${style}></span>`;
+  return `<span class="codian-embedded-image"><img src="${escapeHtml(src)}" alt="${alt}" loading="lazy"${style}></span>`;
 }
 
 function createFallbackHtml(wikilink: string): string {
-  return `<span class="claudian-embedded-image-fallback">${escapeHtml(wikilink)}</span>`;
+  return `<span class="codian-embedded-image-fallback">${escapeHtml(wikilink)}</span>`;
 }
 
 function normalizeOptions(options?: string | ReplaceImageEmbedsOptions): Required<ReplaceImageEmbedsOptions> {

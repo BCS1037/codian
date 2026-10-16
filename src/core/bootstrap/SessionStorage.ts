@@ -51,7 +51,7 @@ export class SessionStorage {
 
   async saveMetadata(metadata: SessionMetadata): Promise<void> {
     const filePath = this.getMetadataPath(metadata.id);
-    const content = JSON.stringify(metadata, null, 2);
+    const content = JSON.stringify(this.sanitizeMetadataForPersistence(metadata), null, 2);
     await this.adapter.write(filePath, content);
     await this.deleteLegacyMetadataIfPresent(metadata.id);
   }
@@ -78,6 +78,7 @@ export class SessionStorage {
     }
 
     if (filePath !== this.getMetadataPath(id)) {
+      metadata = this.sanitizeMetadataForPersistence(metadata);
       try {
         await this.saveMetadata(metadata);
       } catch {
@@ -137,13 +138,14 @@ export class SessionStorage {
         invalidMetadataCount += 1;
         return null;
       }
-      const raw = parsed as SessionMetadata;
+      let raw = parsed as SessionMetadata;
       if (raw.id !== fileId || !isValidSessionMetadataId(raw.id)) {
         invalidMetadataCount += 1;
         return null;
       }
 
       if (filePath.startsWith(`${LEGACY_SESSIONS_PATH}/`)) {
+        raw = this.sanitizeMetadataForPersistence(raw);
         try {
           await this.saveMetadata(raw);
         } catch {
@@ -210,6 +212,24 @@ export class SessionStorage {
       resumeAtMessageId: conversation.resumeAtMessageId,
       pinned: conversation.pinned,
       archived: conversation.archived,
+    };
+  }
+
+  private sanitizeMetadataForPersistence(metadata: SessionMetadata): SessionMetadata {
+    if (!metadata.providerState) return metadata;
+
+    const providerId = metadata.providerId ?? DEFAULT_CHAT_PROVIDER_ID;
+    if (!ProviderRegistry.getRegisteredProviderIds().includes(providerId)) return metadata;
+
+    const historyService = ProviderRegistry.getConversationHistoryService(providerId);
+    if (!historyService.sanitizePersistedProviderState) return metadata;
+
+    const providerState = historyService.sanitizePersistedProviderState(metadata.providerState);
+    return {
+      ...metadata,
+      providerState: providerState && Object.keys(providerState).length > 0
+        ? providerState
+        : undefined,
     };
   }
 

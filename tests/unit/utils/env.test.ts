@@ -5,6 +5,7 @@ const fs = jest.requireActual<typeof fsType>('fs');
 const path = jest.requireActual<typeof pathType>('path');
 
 import * as env from '../../../src/utils/env';
+import { parsePathEntries } from '../../../src/utils/path';
 
 const {
   cliPathRequiresNode,
@@ -253,6 +254,66 @@ describe('getEnhancedPath', () => {
 
       expect(segments).toContain(path.join('/mock/home', '.opencode', 'bin'));
     });
+
+    it('uses mise shim environment overrides in precedence order', () => {
+      const explicitShims = path.join('/mock/mise data', 'custom shims');
+      const miseDataDir = path.join('/mock/mise data', 'unused data');
+      const xdgDataHome = path.join('/mock/mise data', 'unused xdg');
+      const currentPath = path.join('/mock/current path', 'bin');
+      process.env.MISE_SHIMS_DIR = explicitShims;
+      process.env.MISE_DATA_DIR = miseDataDir;
+      process.env.XDG_DATA_HOME = xdgDataHome;
+      process.env.PATH = currentPath;
+      const manualPath = path.join('/mock/manual path', 'bin');
+
+      const segments = getEnhancedPath(`"${manualPath}"`).split(SEP);
+
+      expect(segments[0]).toBe(manualPath);
+      expect(segments).toContain(explicitShims);
+      expect(segments.indexOf(explicitShims)).toBeLessThan(segments.indexOf(currentPath));
+      expect(segments).not.toContain(path.join(miseDataDir, 'shims'));
+      expect(segments).not.toContain(path.join(xdgDataHome, 'mise', 'shims'));
+    });
+
+    it('falls back from an empty MISE_SHIMS_DIR to MISE_DATA_DIR/shims', () => {
+      const miseDataDir = path.join('/mock/mise data', 'data');
+      const xdgDataHome = path.join('/mock/mise data', 'unused xdg');
+      process.env.MISE_SHIMS_DIR = '';
+      process.env.MISE_DATA_DIR = miseDataDir;
+      process.env.XDG_DATA_HOME = xdgDataHome;
+
+      const segments = getEnhancedPath().split(SEP);
+
+      expect(segments).toContain(path.join(miseDataDir, 'shims'));
+      expect(segments).not.toContain(path.join(xdgDataHome, 'mise', 'shims'));
+    });
+
+    it('uses XDG_DATA_HOME/mise/shims when no mise-specific directory is configured', () => {
+      delete process.env.MISE_SHIMS_DIR;
+      delete process.env.MISE_DATA_DIR;
+      const xdgDataHome = path.join('/mock/xdg data', 'root');
+      process.env.XDG_DATA_HOME = xdgDataHome;
+
+      expect(getEnhancedPath().split(SEP)).toContain(
+        path.join(xdgDataHome, 'mise', 'shims'),
+      );
+    });
+
+    it('uses the platform mise shims default when no override is configured', () => {
+      delete process.env.MISE_SHIMS_DIR;
+      delete process.env.MISE_DATA_DIR;
+      delete process.env.XDG_DATA_HOME;
+      process.env.HOME = '/mock/user home';
+      const homeDir = process.env.HOME;
+      const localAppData = '/mock/local appdata';
+      process.env.LOCALAPPDATA = localAppData;
+
+      const expected = isWindows
+        ? path.join(localAppData, 'mise', 'shims')
+        : path.join(homeDir, '.local', 'share', 'mise', 'shims');
+
+      expect(getEnhancedPath().split(SEP)).toContain(expected);
+    });
   });
 
   describe('Unix environment variable paths', () => {
@@ -282,18 +343,69 @@ describe('getEnhancedPath', () => {
       delete process.env.ASDF_DIR;
     });
 
-    it('includes FNM_MULTISHELL_PATH when set', () => {
-      process.env.FNM_MULTISHELL_PATH = '/tmp/fnm_multishell';
-      const result = getEnhancedPath();
-      expect(result).toContain('/tmp/fnm_multishell');
-      delete process.env.FNM_MULTISHELL_PATH;
+    describe('fnm aliases (Unix)', () => {
+      if (isWindows) return;
+
+      it('includes default Node.js bins without the fnm shell hook', () => {
+        delete process.env.XDG_DATA_HOME;
+        process.env.FNM_DIR = '/custom/fnm';
+        process.env.HOME = '/fake/home';
+        const entries = parsePathEntries(getEnhancedPath());
+        expect(entries).toEqual(expect.arrayContaining([
+          '/custom/fnm/aliases/default/bin',
+          '/fake/home/.local/share/fnm/aliases/default/bin',
+          '/fake/home/.fnm/aliases/default/bin',
+          ...(process.platform === 'darwin' ? ['/fake/home/Library/Application Support/fnm/aliases/default/bin'] : []),
+        ]));
+      });
     });
 
-    it('includes FNM_DIR when set', () => {
-      process.env.FNM_DIR = '/custom/fnm';
-      const result = getEnhancedPath();
-      expect(result).toContain('/custom/fnm');
-      delete process.env.FNM_DIR;
+    describe('other Node.js and CLI managers (Unix)', () => {
+      if (isWindows) return;
+
+      const managerVariables = ['NODENV_ROOT', 'PROTO_HOME', 'PNPM_HOME', 'N_PREFIX', 'NVS_HOME', 'XDG_DATA_HOME'];
+
+      it('includes default locations without shell variables', () => {
+        for (const key of managerVariables) delete process.env[key];
+        process.env.HOME = '/fake/home';
+        const entries = parsePathEntries(getEnhancedPath());
+        expect(entries).toEqual(expect.arrayContaining([
+          '/fake/home/.local/share/pi-node/current/bin',
+          '/fake/home/.nodenv/shims',
+          '/fake/home/.proto/shims',
+          '/fake/home/.proto/bin',
+          '/fake/home/.local/share/pnpm',
+          '/fake/home/.nvs/default/bin',
+          '/fake/home/.nix-profile/bin',
+          '/nix/var/nix/profiles/default/bin',
+          '/run/current-system/sw/bin',
+          '/opt/local/bin',
+          '/home/linuxbrew/.linuxbrew/bin',
+          ...(process.platform === 'darwin' ? ['/fake/home/Library/pnpm'] : []),
+        ]));
+      });
+
+      it('follows manager home variables', () => {
+        process.env.HOME = '/fake/home';
+        process.env.XDG_DATA_HOME = '/xdg';
+        process.env.NODENV_ROOT = '/custom/nodenv';
+        process.env.PROTO_HOME = '/custom/proto';
+        process.env.PNPM_HOME = '/custom/pnpm';
+        process.env.N_PREFIX = '/custom/n';
+        process.env.NVS_HOME = '/custom/nvs';
+        const entries = parsePathEntries(getEnhancedPath());
+        expect(entries).toEqual(expect.arrayContaining([
+          '/xdg/pi-node/current/bin',
+          '/xdg/pnpm',
+          '/custom/nodenv/shims',
+          '/custom/proto/shims',
+          '/custom/proto/bin',
+          '/custom/pnpm',
+          '/custom/n/bin',
+          '/custom/nvs/default/bin',
+        ]));
+        expect(entries).not.toContain('/fake/home/.nodenv/shims');
+      });
     });
 
     it('includes NVM_BIN when set', () => {
@@ -427,6 +539,22 @@ describe('getEnhancedPath', () => {
           expect(result).not.toContain('v20.10.0');
         }
       );
+
+      it('resolves a custom v-prefixed alias through its alias file', () => {
+        delete process.env.NVM_BIN;
+        process.env.NVM_DIR = '/custom/nvm';
+        mockNvm({
+          nvmDir: '/custom/nvm',
+          aliasFiles: {
+            '/custom/nvm/alias/default': 'vault-node',
+            '/custom/nvm/alias/vault-node': 'v24.16.0',
+          },
+          versions: ['v24.16.0'],
+        });
+
+        const entries = getEnhancedPath().split(SEP);
+        expect(entries).toContain('/custom/nvm/versions/node/v24.16.0/bin');
+      });
     });
   });
 
@@ -1098,29 +1226,42 @@ describe('getExtraBinaryPaths (Windows branches)', () => {
     expect(result).toContain('.volta');
   });
 
-  it('includes FNM_MULTISHELL_PATH when set', () => {
-    process.env.FNM_MULTISHELL_PATH = '/mock/fnm/multishell';
-    process.env.HOME = '/mock/home';
-    const mod = loadWithWindowsPlatform();
-    const result = mod.getEnhancedPath();
-    expect(result).toContain('/mock/fnm/multishell');
-  });
-
-  it('includes FNM_DIR when set', () => {
-    process.env.FNM_DIR = '/mock/fnm/dir';
-    process.env.HOME = '/mock/home';
-    const mod = loadWithWindowsPlatform();
-    const result = mod.getEnhancedPath();
-    expect(result).toContain('/mock/fnm/dir');
-  });
-
-  it('falls back to LOCALAPPDATA/fnm when FNM_DIR not set', () => {
-    delete process.env.FNM_DIR;
+  it('includes fnm default Node.js aliases without the PowerShell hook', () => {
+    process.env.APPDATA = '/mock/AppData/Roaming';
     process.env.LOCALAPPDATA = '/mock/AppData/Local';
     process.env.HOME = '/mock/home';
-    const mod = loadWithWindowsPlatform();
-    const result = mod.getEnhancedPath();
-    expect(result).toContain('fnm');
+    process.env.FNM_DIR = '/mock/fnm';
+    const entries = loadWithWindowsPlatform().getEnhancedPath().split(';');
+    expect(entries).toEqual(expect.arrayContaining([
+      '/mock/fnm/aliases/default',
+      '/mock/AppData/Roaming/fnm/aliases/default',
+      '/mock/AppData/Local/fnm/aliases/default',
+    ]));
+    expect(entries).not.toContain('/mock/fnm/aliases/default/bin');
+  });
+
+  it('includes pnpm, proto, nvs, Yarn, and WinGet locations', () => {
+    for (const key of ['PNPM_HOME', 'PROTO_HOME', 'NVS_HOME']) delete process.env[key];
+    process.env.LOCALAPPDATA = '/mock/AppData/Local';
+    process.env.USERPROFILE = '/mock/home';
+    process.env.HOME = '/mock/home';
+    let entries = loadWithWindowsPlatform().getEnhancedPath().split(';');
+    expect(entries).toEqual(expect.arrayContaining([
+      '/mock/AppData/Local/pnpm',
+      '/mock/home/.proto/shims',
+      '/mock/home/.proto/bin',
+      '/mock/AppData/Local/nvs/default',
+      '/mock/AppData/Local/Yarn/bin',
+      '/mock/AppData/Local/Microsoft/WinGet/Links',
+    ]));
+
+    process.env.PNPM_HOME = '/custom/pnpm';
+    process.env.PROTO_HOME = '/custom/proto';
+    process.env.NVS_HOME = '/custom/nvs';
+    entries = loadWithWindowsPlatform().getEnhancedPath().split(';');
+    expect(entries).toEqual(expect.arrayContaining([
+      '/custom/pnpm', '/custom/proto/shims', '/custom/proto/bin', '/custom/nvs/default',
+    ]));
   });
 
   it('includes ChocolateyInstall/bin when set', () => {
@@ -1186,6 +1327,80 @@ describe('getExtraBinaryPaths (Windows branches)', () => {
     const mod = loadWithWindowsPlatform();
     const result = mod.getEnhancedPath();
     expect(result).toContain(';');
+  });
+
+  it('uses MISE_SHIMS_DIR before other mise roots on Windows', () => {
+    process.env.PATH = '';
+    const explicitShims = '/mock/custom mise shims';
+    const miseDataDir = '/mock/unused mise data';
+    const xdgDataHome = '/mock/unused xdg';
+    process.env.MISE_SHIMS_DIR = explicitShims;
+    process.env.MISE_DATA_DIR = miseDataDir;
+    process.env.XDG_DATA_HOME = xdgDataHome;
+    const mod = loadWithWindowsPlatform();
+
+    const segments = mod.getEnhancedPath().split(';');
+
+    expect(segments).toContain(explicitShims);
+    expect(segments).not.toContain(path.join(miseDataDir, 'shims'));
+    expect(segments).not.toContain(path.join(xdgDataHome, 'mise', 'shims'));
+  });
+
+  it('uses MISE_DATA_DIR/shims on Windows when MISE_SHIMS_DIR is empty', () => {
+    process.env.PATH = '';
+    process.env.MISE_SHIMS_DIR = '';
+    const miseDataDir = '/mock/mise data';
+    process.env.MISE_DATA_DIR = miseDataDir;
+    process.env.XDG_DATA_HOME = '/mock/unused xdg';
+    const mod = loadWithWindowsPlatform();
+
+    const segments = mod.getEnhancedPath().split(';');
+
+    expect(segments).toContain(path.join(miseDataDir, 'shims'));
+    expect(segments).not.toContain(path.join(process.env.XDG_DATA_HOME ?? '', 'mise', 'shims'));
+  });
+
+  it('uses XDG_DATA_HOME/mise/shims on Windows when no mise directory override is set', () => {
+    process.env.PATH = '';
+    delete process.env.MISE_SHIMS_DIR;
+    delete process.env.MISE_DATA_DIR;
+    const xdgDataHome = '/mock/xdg data';
+    process.env.XDG_DATA_HOME = xdgDataHome;
+    const mod = loadWithWindowsPlatform();
+
+    expect(mod.getEnhancedPath().split(';')).toContain(
+      path.join(xdgDataHome, 'mise', 'shims'),
+    );
+  });
+
+  it('uses LOCALAPPDATA/mise/shims by default on Windows', () => {
+    process.env.PATH = '';
+    delete process.env.MISE_SHIMS_DIR;
+    delete process.env.MISE_DATA_DIR;
+    delete process.env.XDG_DATA_HOME;
+    const localAppData = '/mock/Local AppData';
+    process.env.LOCALAPPDATA = localAppData;
+    const mod = loadWithWindowsPlatform();
+
+    expect(mod.getEnhancedPath().split(';')).toContain(
+      path.join(localAppData, 'mise', 'shims'),
+    );
+  });
+
+  it('falls back to USERPROFILE/AppData/Local/mise/shims on Windows', () => {
+    process.env.PATH = '';
+    delete process.env.MISE_SHIMS_DIR;
+    delete process.env.MISE_DATA_DIR;
+    delete process.env.XDG_DATA_HOME;
+    delete process.env.LOCALAPPDATA;
+    delete process.env.HOME;
+    const userProfile = '/mock/user profile';
+    process.env.USERPROFILE = userProfile;
+    const mod = loadWithWindowsPlatform();
+
+    expect(mod.getEnhancedPath().split(';')).toContain(
+      path.join(userProfile, 'AppData', 'Local', 'mise', 'shims'),
+    );
   });
 });
 

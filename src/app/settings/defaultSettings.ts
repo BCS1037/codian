@@ -1,9 +1,9 @@
 import { getDefaultHiddenProviderCommands } from '../../core/providers/commands/hiddenCommands';
 import { DEFAULT_REASONING_VALUE } from '../../core/providers/reasoning';
-import { type ClaudianSettings } from '../../core/types/settings';
+import { type CodianSettings } from '../../core/types/settings';
 import { getBuiltInProviderDefaultConfigs } from '../../providers/defaultProviderConfigs';
 
-export const DEFAULT_CLAUDIAN_SETTINGS: ClaudianSettings = {
+export const DEFAULT_CODIAN_SETTINGS: CodianSettings = {
   userName: '',
 
   permissionMode: 'yolo',
@@ -50,6 +50,7 @@ export const DEFAULT_CLAUDIAN_SETTINGS: ClaudianSettings = {
   maxTabs: 3,
   enableAutoScroll: true,
   deferMathRenderingDuringStreaming: true,
+  pluginRenderedFenceLanguages: [],
   expandFileEditsByDefault: false,
   chatViewPlacement: 'right-sidebar',
   chatNavigationMode: 'conversation-rail',

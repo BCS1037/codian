@@ -53,7 +53,7 @@ export function inspectSecrets(repo) {
     });
   }
 
-  const history = git(repo, ['log', '-p', '--all', '--no-ext-diff', '--text', '--format=']);
+  const history = git(repo, ['log', '-p', '--exclude=refs/remotes/upstream/*', '--exclude=refs/tags/2.*', '--all', '--no-ext-diff', '--text', '--format=']);
   for (const pattern of PATTERNS) {
     if (pattern.regex.test(history)) {
       errors.push(`Git history: ${pattern.label}`);

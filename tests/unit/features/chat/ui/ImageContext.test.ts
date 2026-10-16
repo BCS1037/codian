@@ -30,7 +30,7 @@ function createMockCallbacks() {
 
 function createContainerWithInputWrapper(): { container: any; inputWrapper: any } {
   const container = createMockEl();
-  const inputWrapper = container.createDiv({ cls: 'claudian-input-wrapper' });
+  const inputWrapper = container.createDiv({ cls: 'codian-input-wrapper' });
   return { container, inputWrapper };
 }
 
@@ -183,7 +183,7 @@ describe('ImageContextManager', () => {
 
       const mgr = new ImageContextManager(c, input, cb, previewContainer);
       expect(mgr).toBeDefined();
-      const trayEl = previewContainer.querySelector('.claudian-context-row');
+      const trayEl = previewContainer.querySelector('.codian-context-row');
       expect(trayEl).not.toBeNull();
     });
 
@@ -197,7 +197,7 @@ describe('ImageContextManager', () => {
 
       new ImageContextManager(c, input, cb, previewContainer);
       expect(previewContainer.children).toContain(existingContent);
-      expect(previewContainer.querySelector('.claudian-context-row')).not.toBeNull();
+      expect(previewContainer.querySelector('.codian-context-row')).not.toBeNull();
     });
   });
 });
@@ -336,6 +336,33 @@ describe('ImageContextManager - Private Helpers', () => {
   });
 
   describe('addImageFromFile', () => {
+    it.each(['clear', 'replace', 'disable', 'destroy'] as const)(
+      'does not attach an image whose read finishes after draft %s',
+      async action => {
+        let finishRead!: (buffer: ArrayBuffer) => void;
+        const arrayBuffer = jest.fn(() => new Promise<ArrayBuffer>((resolve) => {
+          finishRead = resolve;
+        }));
+        const file = {
+          name: 'pending.png',
+          type: 'image/png',
+          size: 16,
+          arrayBuffer,
+        } as unknown as File;
+        const pendingRead = manager['addImageFromFile'](file, 'paste');
+        const existing = createImageAttachment({ id: 'replacement', name: 'replacement.png' });
+
+        if (action === 'clear') manager.clearImages();
+        if (action === 'replace') manager.setImages([existing]);
+        if (action === 'disable') manager.setEnabled(false);
+        if (action === 'destroy') manager.destroy();
+        finishRead(new ArrayBuffer(16));
+
+        await expect(pendingRead).resolves.toBe(false);
+        expect(manager.getAttachedImages()).toEqual(action === 'replace' ? [existing] : []);
+      },
+    );
+
     it('should reject files exceeding size limit', async () => {
       const file = {
         name: 'huge.png',
@@ -446,6 +473,38 @@ describe('ImageContextManager - Private Helpers', () => {
   });
 
   describe('Drag and Drop handlers', () => {
+    it('stops remaining files when draft ownership changes during a pending read', async () => {
+      let finishRead!: (buffer: ArrayBuffer) => void;
+      const firstFile = {
+        name: 'first.png',
+        type: 'image/png',
+        size: 16,
+        arrayBuffer: jest.fn(() => new Promise<ArrayBuffer>((resolve) => {
+          finishRead = resolve;
+        })),
+      } as unknown as File;
+      const secondFile = {
+        name: 'second.png',
+        type: 'image/png',
+        size: 16,
+        arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(16)),
+      } as unknown as File;
+      const files = { length: 2, 0: firstFile, 1: secondFile };
+      const drop = manager['handleDrop']({
+        preventDefault: jest.fn(),
+        stopPropagation: jest.fn(),
+        dataTransfer: { files },
+      } as any);
+      await Promise.resolve();
+      manager.clearImages();
+      finishRead(new ArrayBuffer(16));
+
+      await drop;
+
+      expect(secondFile.arrayBuffer).not.toHaveBeenCalled();
+      expect(manager.getAttachedImages()).toEqual([]);
+    });
+
     it('handleDragEnter should show overlay when dragging files', () => {
       const event = {
         preventDefault: jest.fn(),
@@ -638,16 +697,16 @@ describe('ImageContextManager - Private Helpers', () => {
       manager.setImages([createImageAttachment({ id: 'img-1', name: 'photo.png', size: 2048 })]);
 
       const trayEl = manager['contextTray']['containerEl'];
-      const chipEl = trayEl.querySelector('.claudian-context-chip--image');
+      const chipEl = trayEl.querySelector('.codian-context-chip--image');
       expect(chipEl).not.toBeNull();
 
-      const thumbEl = chipEl.querySelector('.claudian-context-chip-thumbnail');
+      const thumbEl = chipEl.querySelector('.codian-context-chip-thumbnail');
       expect(thumbEl).toBeNull();
 
-      const labelEl = chipEl.querySelector('.claudian-context-chip-label');
+      const labelEl = chipEl.querySelector('.codian-context-chip-label');
       expect(labelEl?.textContent).toBe('Image');
 
-      const removeEl = chipEl.querySelector('.claudian-context-chip-remove');
+      const removeEl = chipEl.querySelector('.codian-context-chip-remove');
       expect(removeEl).not.toBeNull();
     });
 
@@ -658,7 +717,7 @@ describe('ImageContextManager - Private Helpers', () => {
       ]);
 
       const trayEl = manager['contextTray']['containerEl'];
-      const labels = trayEl.querySelectorAll('.claudian-context-chip-label');
+      const labels = trayEl.querySelectorAll('.codian-context-chip-label');
 
       expect(labels.map((label: any) => label.textContent)).toEqual(['Image 1', 'Image 2']);
     });
@@ -678,8 +737,8 @@ describe('ImageContextManager - Private Helpers', () => {
       cb.onImagesChanged.mockClear();
 
       const trayEl = mgr['contextTray']['containerEl'];
-      const firstChip = trayEl.querySelector('.claudian-context-chip--image');
-      const removeEl = firstChip.querySelector('.claudian-context-chip-remove');
+      const firstChip = trayEl.querySelector('.codian-context-chip--image');
+      const removeEl = firstChip.querySelector('.codian-context-chip-remove');
       removeEl.dispatchEvent({ type: 'click', stopPropagation: jest.fn() });
 
       expect(mgr.getAttachedImages()).toHaveLength(1);
@@ -717,7 +776,7 @@ describe('ImageContextManager - Private Helpers', () => {
       const image = createImageAttachment({ name: 'test.png', mediaType: 'image/png', data: 'abc123' });
       manager['showFullImage'](image);
 
-      expect(mockBody.createDiv).toHaveBeenCalledWith({ cls: 'claudian-image-modal-overlay' });
+      expect(mockBody.createDiv).toHaveBeenCalledWith({ cls: 'codian-image-modal-overlay' });
     });
 
     it('should register Escape key handler and close button', () => {

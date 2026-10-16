@@ -2,6 +2,7 @@ import { Notice } from 'obsidian';
 import * as path from 'path';
 
 import type { ImageAttachment, ImageMediaType } from '../../../core/types';
+import { t } from '../../../i18n/i18n';
 import { ComposerContextTray } from './ComposerContextTray';
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -26,7 +27,9 @@ export class ImageContextManager {
   private inputEl: HTMLTextAreaElement;
   private dropOverlay: HTMLElement | null = null;
   private attachedImages: Map<string, ImageAttachment> = new Map();
+  private attachmentGeneration = 0;
   private enabled = true;
+  private destroyed = false;
 
   constructor(
     containerEl: HTMLElement,
@@ -41,7 +44,7 @@ export class ImageContextManager {
     if (contextTray) {
       this.contextTray = contextTray;
     } else {
-      const ownedTrayContainer = (previewContainerEl ?? containerEl).createDiv({ cls: 'claudian-context-row' });
+      const ownedTrayContainer = (previewContainerEl ?? containerEl).createDiv({ cls: 'codian-context-row' });
       this.contextTray = new ComposerContextTray(ownedTrayContainer);
       this.ownedContextTray = this.contextTray;
     }
@@ -51,7 +54,9 @@ export class ImageContextManager {
   }
 
   setEnabled(enabled: boolean): void {
+    if (this.destroyed || this.enabled === enabled) return;
     this.enabled = enabled;
+    this.attachmentGeneration += 1;
     if (!enabled && this.attachedImages.size > 0) {
       this.clearImages();
     }
@@ -66,6 +71,7 @@ export class ImageContextManager {
   }
 
   clearImages() {
+    this.attachmentGeneration += 1;
     this.attachedImages.clear();
     this.updateImagePreview();
     this.callbacks.onImagesChanged?.();
@@ -73,6 +79,8 @@ export class ImageContextManager {
 
   /** Sets images directly (used for queued messages). */
   setImages(images: ImageAttachment[]) {
+    if (this.destroyed) return;
+    this.attachmentGeneration += 1;
     this.attachedImages.clear();
     for (const image of images) {
       this.attachedImages.set(image.id, image);
@@ -82,17 +90,21 @@ export class ImageContextManager {
   }
 
   destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.attachmentGeneration += 1;
+    this.attachedImages.clear();
     this.contextTray.clearItems('images');
     this.ownedContextTray?.destroy();
     this.ownedContextTray = null;
   }
 
   private setupDragAndDrop() {
-    const inputWrapper = this.containerEl.querySelector('.claudian-input-wrapper') as HTMLElement;
+    const inputWrapper = this.containerEl.querySelector('.codian-input-wrapper') as HTMLElement;
     if (!inputWrapper) return;
 
-    this.dropOverlay = inputWrapper.createDiv({ cls: 'claudian-drop-overlay' });
-    const dropContent = this.dropOverlay.createDiv({ cls: 'claudian-drop-content' });
+    this.dropOverlay = inputWrapper.createDiv({ cls: 'codian-drop-overlay' });
+    const dropContent = this.dropOverlay.createDiv({ cls: 'codian-drop-content' });
     const svg = dropContent.createSvg('svg');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('width', '32');
@@ -113,7 +125,7 @@ export class ImageContextManager {
     svg.appendChild(polyline);
     svg.appendChild(line);
     dropContent.appendChild(svg);
-    dropContent.createSpan({ text: 'Drop image here' });
+    dropContent.createSpan({ text: t('chat.composer.dropImage') });
 
     const dropZone = inputWrapper;
 
@@ -143,7 +155,7 @@ export class ImageContextManager {
     e.preventDefault();
     e.stopPropagation();
 
-    const inputWrapper = this.containerEl.querySelector('.claudian-input-wrapper');
+    const inputWrapper = this.containerEl.querySelector('.codian-input-wrapper');
     if (!inputWrapper) {
       this.dropOverlay?.removeClass('visible');
       return;
@@ -167,11 +179,14 @@ export class ImageContextManager {
 
     const files = e.dataTransfer?.files;
     if (!files) return;
+    const generation = this.attachmentGeneration;
 
     for (let i = 0; i < files.length; i++) {
+      if (generation !== this.attachmentGeneration || this.destroyed || !this.enabled) return;
       const file = files[i];
       if (this.isImageFile(file)) {
         await this.addImageFromFile(file, 'drop');
+        if (generation !== this.attachmentGeneration || this.destroyed || !this.enabled) return;
       }
     }
   }
@@ -181,6 +196,7 @@ export class ImageContextManager {
       void (async (): Promise<void> => {
       const items = e.clipboardData?.items;
       if (!items) return;
+      const generation = this.attachmentGeneration;
 
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
@@ -190,6 +206,7 @@ export class ImageContextManager {
           if (file) {
             await this.addImageFromFile(file, 'paste');
           }
+          if (generation !== this.attachmentGeneration || this.destroyed || !this.enabled) return;
           return;
         }
       }
@@ -207,24 +224,29 @@ export class ImageContextManager {
   }
 
   private async addImageFromFile(file: File, source: 'paste' | 'drop'): Promise<boolean> {
+    if (this.destroyed) return false;
     if (!this.enabled) {
-      new Notice('Image attachments are not supported by this provider.');
+      new Notice(t('chat.images.unsupportedProvider'));
       return false;
     }
 
     if (file.size > MAX_IMAGE_SIZE) {
-      this.notifyImageError(`Image exceeds ${this.formatSize(MAX_IMAGE_SIZE)} limit.`);
+      this.notifyImageError(t('chat.images.tooLarge', { size: this.formatSize(MAX_IMAGE_SIZE) }));
       return false;
     }
 
     const mediaType = this.getMediaType(file.name) || (file.type as ImageMediaType);
     if (!mediaType) {
-      this.notifyImageError('Unsupported image type.');
+      this.notifyImageError(t('chat.images.unsupportedType'));
       return false;
     }
 
+    const generation = this.attachmentGeneration;
     try {
       const base64 = await this.fileToBase64(file);
+      if (generation !== this.attachmentGeneration || this.destroyed || !this.enabled) {
+        return false;
+      }
 
       const attachment: ImageAttachment = {
         id: this.generateId(),
@@ -240,7 +262,10 @@ export class ImageContextManager {
       this.callbacks.onImagesChanged?.();
       return true;
     } catch (error) {
-      this.notifyImageError('Failed to attach image.', error);
+      if (generation !== this.attachmentGeneration || this.destroyed || !this.enabled) {
+        return false;
+      }
+      this.notifyImageError(t('chat.images.attachFailed'), error);
       return false;
     }
   }
@@ -265,9 +290,9 @@ export class ImageContextManager {
     this.contextTray.setItems('images', images.map(([id, image], index) => ({
       id,
       kind: 'image' as const,
-      label: images.length === 1 ? 'Image' : `Image ${index + 1}`,
+      label: images.length === 1 ? t('chat.images.label') : t('chat.images.numbered', { number: index + 1 }),
       title: `${image.name} · ${this.formatSize(image.size)}`,
-      ariaLabel: `Image attachment: ${image.name}`,
+      ariaLabel: t('chat.images.attachment', { name: image.name, size: this.formatSize(image.size) }),
       onActivate: () => this.showFullImage(image),
       onRemove: () => {
         this.attachedImages.delete(id);
@@ -279,8 +304,11 @@ export class ImageContextManager {
 
   private showFullImage(image: ImageAttachment) {
     const ownerDocument = this.containerEl.ownerDocument ?? window.document;
-    const overlay = ownerDocument.body.createDiv({ cls: 'claudian-image-modal-overlay' });
-    const modal = overlay.createDiv({ cls: 'claudian-image-modal' });
+    const overlay = ownerDocument.body.createDiv({ cls: 'codian-image-modal-overlay' });
+    const modal = overlay.createDiv({ cls: 'codian-image-modal' });
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', t('chat.images.preview', { name: image.name }));
 
     modal.createEl('img', {
       attr: {
@@ -289,7 +317,8 @@ export class ImageContextManager {
       },
     });
 
-    const closeBtn = modal.createDiv({ cls: 'claudian-image-modal-close' });
+    const closeBtn = modal.createDiv({ cls: 'codian-image-modal-close' });
+    closeBtn.setAttribute('aria-label', t('chat.images.closePreview'));
     closeBtn.setText('\u00D7');
 
     const handleEsc = (e: KeyboardEvent) => {
@@ -324,9 +353,9 @@ export class ImageContextManager {
     let userMessage = message;
     if (error instanceof Error) {
       if (error.message.includes('ENOENT') || error.message.includes('no such file')) {
-        userMessage = `${message} (File not found)`;
+        userMessage = t('chat.images.fileNotFound', { message });
       } else if (error.message.includes('EACCES') || error.message.includes('permission denied')) {
-        userMessage = `${message} (Permission denied)`;
+        userMessage = t('chat.images.permissionDenied', { message });
       }
     }
     new Notice(userMessage);

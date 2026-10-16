@@ -6,7 +6,7 @@ import type { ChatRewindConflict, ChatRewindMode } from '../../../core/runtime/t
 import { type ChatMessage, compareConversationIndexOrder, type Conversation } from '../../../core/types';
 import { t } from '../../../i18n/i18n';
 import { confirm } from '../../../shared/modals/ConfirmModal';
-import { extractUserDisplayContent } from '../../../utils/context';
+import { getUserDisplayText } from '../../../utils/context';
 import type { FeatureHost } from '../../FeatureHost';
 import type {
   ConversationBrowserEnhancement,
@@ -18,6 +18,7 @@ import { cleanupThinkingBlock } from '../rendering/ThinkingBlockRenderer';
 import { findRewindContext } from '../rewind';
 import type { SubagentManager } from '../services/SubagentManager';
 import type { ChatState } from '../state/ChatState';
+import type { TabAttention } from '../state/types';
 import type { FileContextManager } from '../ui/FileContext';
 import type { ImageContextManager } from '../ui/ImageContext';
 import type { ExternalContextSelector, McpServerSelector } from '../ui/InputToolbar';
@@ -74,6 +75,7 @@ export interface ConversationControllerDeps {
   getSelectedModel?: () => string | null;
   ensureServiceForConversation?: (conversation: Conversation | null) => Promise<void>;
   dismissPendingInlinePrompts?: () => void;
+  isVisible?: () => boolean;
   conversationBrowserEnhancement?: ConversationBrowserEnhancement | null;
   onConversationReset?: () => void;
   awaitBackgroundWork?: () => Promise<void>;
@@ -91,9 +93,21 @@ export type HistoryConversationOpenState = 'closed' | 'open' | 'current';
 export type HistoryConversationStatus = {
   openState: HistoryConversationOpenState;
   isRunning: boolean;
+  attention?: TabAttention;
   location?: 'current-view' | 'other-view';
   tabIndex?: number;
 };
+
+type HistoryStatusIndicator = 'action-required' | 'running' | 'error' | 'unread';
+
+function historyStatusIndicator(status: HistoryConversationStatus): HistoryStatusIndicator | null {
+  if (status.attention?.kind === 'action-required') return 'action-required';
+  if (status.isRunning) return 'running';
+  if (status.attention?.kind === 'review') {
+    return status.attention.outcome === 'error' ? 'error' : 'unread';
+  }
+  return null;
+}
 
 type HistoryRenderOptions = {
   onSelectConversation: (id: string) => Promise<void>;
@@ -128,6 +142,10 @@ export class ConversationController {
     return this.deps.getAgentService?.() ?? null;
   }
 
+  get visibleMessages(): readonly ChatMessage[] {
+    return this.deps.state.messages;
+  }
+
   // ============================================
   // Conversation Lifecycle
   // ============================================
@@ -138,7 +156,7 @@ export class ConversationController {
    * Entry point is a blank UI state - no conversation is created until the
    * first message is sent. This prevents empty conversations cluttering history.
    */
-  async createNew(options: { force?: boolean } = {}): Promise<void> {
+  async createNew(options: { force?: boolean; skipSave?: boolean } = {}): Promise<void> {
     const { plugin, state, subagentManager } = this.deps;
     const force = !!options.force;
     if (state.isStreaming && !force) return;
@@ -165,7 +183,7 @@ export class ConversationController {
       subagentManager.orphanAllActive();
 
       // Persist terminalized background tasks before clearing their runtime state.
-      if (state.currentConversationId && state.messages.length > 0) {
+      if (!options.skipSave && state.currentConversationId && state.messages.length > 0) {
         await this.save();
       }
 
@@ -183,6 +201,7 @@ export class ConversationController {
 
       // Reset to entry point state - no conversation created yet
       state.currentConversationId = null;
+      state.clearAttention();
       state.clearMessages();
       state.usage = null;
       state.currentTodos = null;
@@ -203,7 +222,7 @@ export class ConversationController {
       messagesEl.empty();
 
       // Recreate welcome element first (before StatusPanel for consistent ordering)
-      const welcomeEl = messagesEl.createDiv({ cls: 'claudian-welcome' });
+      const welcomeEl = messagesEl.createDiv({ cls: 'codian-welcome' });
       renderWelcomeContent(welcomeEl, this.getGreeting());
       this.deps.setWelcomeEl(welcomeEl);
 
@@ -246,6 +265,7 @@ export class ConversationController {
     // No active conversation - start at entry point
     if (!conversation) {
       state.currentConversationId = null;
+      state.clearAttention();
       state.clearMessages();
       state.usage = null;
       state.currentTodos = null;
@@ -487,9 +507,7 @@ export class ConversationController {
       state.truncateAt(userMessageId);
       state.usage = null;
 
-      const restoredContent = userMsg.displayContent
-        ?? extractUserDisplayContent(userMsg.content)
-        ?? userMsg.content;
+      const restoredContent = getUserDisplayText(userMsg);
       if (this.deps.restoreMessageToComposer) {
         this.deps.restoreMessageToComposer({
           content: restoredContent,
@@ -535,6 +553,123 @@ export class ConversationController {
           ? t('chat.rewind.noticeConversationOnly')
           : t('chat.rewind.notice', { count: String(filesChanged) })
       );
+    } finally {
+      state.isRewinding = false;
+    }
+  }
+
+  async navigateBranch(userMessageId: string, branchMessageId: string): Promise<void> {
+    const { state, renderer } = this.deps;
+    if (
+      this.deps.isDisposed?.()
+      || state.isStreaming
+      || state.isRewinding
+      || state.isSwitchingConversation
+      || state.isCreatingConversation
+    ) return;
+
+    const conversationId = state.currentConversationId;
+    if (!conversationId) return;
+    let runtime = this.getAgentService();
+    const targetIsAdjacent = (message: ChatMessage | undefined): boolean => !!message?.branchNavigation
+      && (
+        message.branchNavigation.previousMessageId === branchMessageId
+        || message.branchNavigation.nextMessageId === branchMessageId
+      );
+    const targetMessage = state.messages.find(message => message.userMessageId === userMessageId);
+    if (!targetMessage?.userMessageId || !targetIsAdjacent(targetMessage)) {
+      new Notice(t('chat.branchNavigation.failed', {
+        error: t('chat.branchNavigation.unavailable'),
+      }));
+      return;
+    }
+
+    state.isRewinding = true;
+    try {
+      const runtimeBeforeInitialization = runtime;
+      if (this.deps.ensureServiceInitialized) {
+        const initialized = await this.deps.ensureServiceInitialized();
+        if (!initialized) {
+          new Notice(t('chat.branchNavigation.failed', {
+            error: t('chat.branchNavigation.runtimeUnavailable'),
+          }));
+          return;
+        }
+      }
+      runtime = this.getAgentService();
+
+      if (
+        this.deps.isDisposed?.()
+        || state.currentConversationId !== conversationId
+        || state.isStreaming
+        || (runtimeBeforeInitialization && runtime?.providerId !== runtimeBeforeInitialization.providerId)
+      ) return;
+
+      const navigateConversationBranch = runtime?.navigateConversationBranch;
+      if (!runtime?.getCapabilities().supportsConversationBranches || !navigateConversationBranch) {
+        new Notice(t('chat.branchNavigation.failed', {
+          error: t('chat.branchNavigation.unsupported'),
+        }));
+        return;
+      }
+      const navigationRuntime = runtime;
+
+      const currentTargetMessage = state.messages.find(message => message.userMessageId === userMessageId);
+      if (!targetIsAdjacent(currentTargetMessage)) {
+        new Notice(t('chat.branchNavigation.failed', {
+          error: t('chat.branchNavigation.unavailable'),
+        }));
+        return;
+      }
+
+      await this.save(false);
+      if (
+        this.deps.isDisposed?.()
+        || state.currentConversationId !== conversationId
+        || state.isStreaming
+        || this.getAgentService() !== navigationRuntime
+      ) return;
+
+      const result = await navigateConversationBranch.call(navigationRuntime, {
+        userMessageId,
+        branchMessageId,
+      });
+      if (result.status === 'cancelled') return;
+      if (result.status === 'failed' || result.status === 'recovery-required') {
+        new Notice(t(
+          result.status === 'recovery-required'
+            ? 'chat.branchNavigation.recoveryRequired'
+            : 'chat.branchNavigation.failed',
+          { error: result.error },
+        ));
+        return;
+      }
+      if (
+        this.deps.isDisposed?.()
+        || state.currentConversationId !== conversationId
+        || this.getAgentService() !== navigationRuntime
+      ) return;
+
+      state.messages = [...result.messages];
+      state.usage = result.usage ?? null;
+      state.currentTodos = null;
+      state.hasPendingConversationSave = true;
+      const welcomeEl = renderer.renderMessages(state.messages, () => this.getGreeting());
+      this.deps.setWelcomeEl(welcomeEl);
+      this.updateWelcomeVisibility();
+
+      try {
+        await this.save(false);
+      } catch (error) {
+        state.hasPendingConversationSave = true;
+        new Notice(t('chat.branchNavigation.saveFailed', {
+          error: error instanceof Error ? error.message : String(error),
+        }));
+      }
+    } catch (error) {
+      new Notice(t('chat.branchNavigation.failed', {
+        error: error instanceof Error ? error.message : String(error),
+      }));
     } finally {
       state.isRewinding = false;
     }
@@ -621,7 +756,16 @@ export class ConversationController {
   ): void {
     const { plugin, state, renderer } = this.deps;
 
+    const restoredAttention = plugin.sessionRuntimePool?.getConversationAttention(conversation.id);
     state.currentConversationId = conversation.id;
+    state.clearAttention();
+    if (restoredAttention?.kind === 'review') {
+      state.markReviewRequired(restoredAttention.outcome, restoredAttention.since);
+      if (this.deps.isVisible?.()) {
+        state.acknowledgeReview();
+        plugin.setConversationAttention(conversation.id, null);
+      }
+    }
     state.messages = [...conversation.messages];
     state.usage = conversation.usage ?? null;
     state.autoScrollEnabled = plugin.settings.enableAutoScroll ?? true;
@@ -757,11 +901,11 @@ export class ConversationController {
 
     container.empty();
 
-    const dropdownHeader = container.createDiv({ cls: 'claudian-history-header' });
+    const dropdownHeader = container.createDiv({ cls: 'codian-history-header' });
     dropdownHeader.createSpan({ text: 'Conversations' });
     this.renderHistoryFilters(dropdownHeader, options.onRerender);
 
-    const list = container.createDiv({ cls: 'claudian-history-list' });
+    const list = container.createDiv({ cls: 'codian-history-list' });
     const allConversations = [...plugin.getConversationList()].sort(compareConversationIndexOrder);
     const indexedConversations = allConversations.filter(conversation => (
       this.historyFilter === 'all'
@@ -811,7 +955,7 @@ export class ConversationController {
     } = presentation;
 
     if (conversations.length === 0) {
-      list.createDiv({ cls: 'claudian-history-empty', text: emptyText });
+      list.createDiv({ cls: 'codian-history-empty', text: emptyText });
       return;
     }
 
@@ -830,14 +974,16 @@ export class ConversationController {
       if (options.signal?.aborted) return;
       const conversationStatus = conversationStatuses.get(conv.id)!;
       const { openState, isRunning } = conversationStatus;
+      const statusIndicator = historyStatusIndicator(conversationStatus);
       const isCurrent = openState === 'current';
       const isOpen = openState === 'open';
       const item = list.createDiv({
         cls: [
-          'claudian-history-item',
+          'codian-history-item',
           isCurrent ? 'active' : '',
           isOpen ? 'open' : '',
           isRunning ? 'running' : '',
+          statusIndicator ? `status-${statusIndicator}` : '',
           conv.pinned ? 'pinned' : '',
           conv.archived ? 'archived' : '',
           conv.id === highlightedConversationId ? 'keyboard-selected' : '',
@@ -846,6 +992,7 @@ export class ConversationController {
       item.setAttribute('data-conversation-id', conv.id);
       item.setAttribute('data-open-state', openState);
       item.setAttribute('data-running', isRunning ? 'true' : 'false');
+      if (statusIndicator) item.setAttribute('data-status-indicator', statusIndicator);
       item.setAttribute('data-pinned', conv.pinned === true ? 'true' : 'false');
       item.setAttribute('data-archived', conv.archived === true ? 'true' : 'false');
       item.setAttribute('data-tab-location', conversationStatus.location ?? 'current-view');
@@ -853,24 +1000,41 @@ export class ConversationController {
         item.setAttribute('data-tab-index', String(conversationStatus.tabIndex));
       }
 
-      const iconEl = item.createDiv({ cls: 'claudian-history-item-icon' });
-      setIcon(iconEl, this.getHistoryItemIcon(openState, isRunning));
+      const iconEl = item.createDiv({ cls: 'codian-history-item-icon' });
+      const statusIcon = statusIndicator === 'action-required'
+        ? 'alert-circle'
+        : statusIndicator === 'error'
+          ? 'circle-x'
+          : null;
+      setIcon(iconEl, statusIcon ?? this.getHistoryItemIcon(openState, isRunning));
+      if (statusIndicator && statusIndicator !== 'unread') {
+        const statusLabel = statusIndicator === 'action-required'
+          ? t('chat.historySearch.needsInput')
+          : statusIndicator === 'error'
+            ? t('chat.historySearch.stoppedWithError')
+            : t('chat.historySearch.running');
+        iconEl.setAttribute('aria-label', statusLabel);
+      }
 
-      const content = item.createDiv({ cls: 'claudian-history-item-content' });
-      const titleEl = content.createDiv({ cls: 'claudian-history-item-title' });
+      const content = item.createDiv({ cls: 'codian-history-item-content' });
+      const titleEl = content.createDiv({ cls: 'codian-history-item-title' });
       presentation.renderTitle(titleEl, conv);
       if (conv.pinned) {
         const pinEl = titleEl.createSpan({
-          cls: 'claudian-history-item-pin',
+          cls: 'codian-history-item-pin',
           text: ` ${t('chat.historySearch.pinned')}`,
         });
         setIcon(pinEl, 'pin');
         pinEl.setAttribute('aria-label', t('chat.historySearch.pinned'));
       }
+      if (statusIndicator === 'unread') {
+        titleEl.createSpan({ cls: 'codian-history-item-unread-dot' })
+          .setAttribute('aria-label', t('chat.historySearch.unread'));
+      }
       titleEl.setAttribute('title', conv.title);
       presentation.renderPreview(content, conv);
       content.createDiv({
-        cls: 'claudian-history-item-date',
+        cls: 'codian-history-item-date',
         text: this.getHistoryItemStatusText(conversationStatus, conv.lastResponseAt ?? conv.createdAt),
       });
 
@@ -929,15 +1093,15 @@ export class ConversationController {
         );
       });
 
-      const actions = item.createDiv({ cls: 'claudian-history-item-actions' });
+      const actions = item.createDiv({ cls: 'codian-history-item-actions' });
 
       // Show regenerate button if title generation failed, or loading indicator if pending
       if (conv.titleGenerationStatus === 'pending') {
-        const loadingEl = actions.createEl('span', { cls: 'claudian-action-btn claudian-action-loading' });
+        const loadingEl = actions.createEl('span', { cls: 'codian-action-btn codian-action-loading' });
         setIcon(loadingEl, 'loader-2');
         loadingEl.setAttribute('aria-label', 'Generating title...');
       } else if (conv.titleGenerationStatus === 'failed') {
-        const regenerateBtn = actions.createEl('button', { cls: 'claudian-action-btn' });
+        const regenerateBtn = actions.createEl('button', { cls: 'codian-action-btn' });
         setIcon(regenerateBtn, 'refresh-cw');
         regenerateBtn.setAttribute('aria-label', 'Regenerate title');
         regenerateBtn.addEventListener('click', (e) => {
@@ -951,7 +1115,7 @@ export class ConversationController {
 
       if (openState === 'closed' && options.onOpenConversationInNewTab) {
         const openInNewTabBtn = actions.createEl('button', {
-          cls: 'claudian-action-btn claudian-open-new-tab-btn',
+          cls: 'codian-action-btn codian-open-new-tab-btn',
         });
         setIcon(openInNewTabBtn, 'square-plus');
         openInNewTabBtn.setAttribute('aria-label', 'Open in new tab');
@@ -967,7 +1131,7 @@ export class ConversationController {
         });
       }
 
-      const renameBtn = actions.createEl('button', { cls: 'claudian-action-btn' });
+      const renameBtn = actions.createEl('button', { cls: 'codian-action-btn' });
       setIcon(renameBtn, 'pencil');
       renameBtn.setAttribute('aria-label', 'Rename');
       renameBtn.addEventListener('click', (e) => {
@@ -975,7 +1139,7 @@ export class ConversationController {
         this.showRenameInput(item, conv.id, conv.title, options);
       });
 
-      const deleteBtn = actions.createEl('button', { cls: 'claudian-action-btn claudian-delete-btn' });
+      const deleteBtn = actions.createEl('button', { cls: 'codian-action-btn codian-delete-btn' });
       setIcon(deleteBtn, 'trash-2');
       deleteBtn.setAttribute('aria-label', 'Delete');
       deleteBtn.addEventListener('click', (e) => {
@@ -988,11 +1152,52 @@ export class ConversationController {
           'Failed to delete conversation',
         );
       });
+
+      const attention = conversationStatus.attention;
+      const canShowInlineHistoryActions = attention == null
+        || (attention.kind === 'review' && attention.outcome === 'completed');
+      if (canShowInlineHistoryActions) {
+        const pinButton = actions.createEl('button', {
+          cls: 'codian-action-btn codian-pin-btn',
+          attr: { type: 'button' },
+        });
+        setIcon(pinButton, conv.pinned ? 'pin-off' : 'pin');
+        pinButton.setAttribute(
+          'aria-label',
+          t(conv.pinned ? 'chat.historySearch.unpin' : 'chat.historySearch.pin'),
+        );
+        pinButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          runConversationAction(
+            () => this.updateHistoryIndexFlag(conv.id, 'pinned', conv.pinned !== true, options),
+            t('chat.historySearch.updateFailed'),
+          );
+        });
+
+        const archiveButton = actions.createEl('button', {
+          cls: 'codian-action-btn codian-archive-btn',
+          attr: { type: 'button' },
+        });
+        setIcon(archiveButton, conv.archived ? 'archive-restore' : 'archive');
+        archiveButton.setAttribute(
+          'aria-label',
+          t(conv.archived ? 'chat.historySearch.unarchive' : 'chat.historySearch.archive'),
+        );
+        archiveButton.disabled = isRunning && conv.archived !== true;
+        archiveButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (archiveButton.disabled) return;
+          runConversationAction(
+            () => this.updateHistoryIndexFlag(conv.id, 'archived', conv.archived !== true, options),
+            t('chat.historySearch.updateFailed'),
+          );
+        });
+      }
     }
 
     if (visibleConversations.length < conversations.length && !options.signal?.aborted) {
       const loadMoreButton = list.createEl('button', {
-        cls: 'claudian-history-load-more',
+        cls: 'codian-history-load-more',
         text: `Load more (${conversations.length - visibleConversations.length} remaining)`,
       });
       loadMoreButton.addEventListener('click', () => {
@@ -1095,7 +1300,8 @@ export class ConversationController {
   ): void {
     const menu = new Menu();
     const fallbackOpenState: HistoryConversationOpenState = isCurrent ? 'current' : 'closed';
-    const { openState } = this.getHistoryConversationStatus(conversationId, fallbackOpenState, options);
+    const status = this.getHistoryConversationStatus(conversationId, fallbackOpenState, options);
+    const { openState } = status;
 
     if (openState !== 'current') {
       if (openState === 'closed' && options.onOpenConversationInNewTab) {
@@ -1135,6 +1341,29 @@ export class ConversationController {
           t('chat.historySearch.updateFailed'),
         );
       }));
+    if (!archived) {
+      const isCompletedReview = status.attention?.kind === 'review'
+        && status.attention.outcome === 'completed';
+      if (isCompletedReview) {
+        menu.addItem((menuItem) => menuItem
+          .setTitle(t('chat.historySearch.markRead'))
+          .onClick(() => {
+            this.deps.plugin.setConversationAttention(conversationId, null);
+            options.onRerender();
+          }));
+      } else if (status.attention == null && !status.isRunning) {
+        menu.addItem((menuItem) => menuItem
+          .setTitle(t('chat.historySearch.markUnread'))
+          .onClick(() => {
+            this.deps.plugin.setConversationAttention(conversationId, {
+              kind: 'review',
+              outcome: 'completed',
+              since: Date.now(),
+            });
+            options.onRerender();
+          }));
+      }
+    }
     menu.addItem((menuItem) => menuItem
       .setTitle(t(archived ? 'chat.historySearch.unarchive' : 'chat.historySearch.archive'))
       .onClick(() => {
@@ -1176,16 +1405,16 @@ export class ConversationController {
   }
 
   private renderHistoryFilters(header: HTMLElement, onRerender: () => void): void {
-    const filters = header.createDiv({ cls: 'claudian-history-filters' });
+    const filters = header.createDiv({ cls: 'codian-history-filters' });
     const filterOptions: Array<{ id: HistoryConversationFilter; label: string; cls: string }> = [
-      { id: 'active', label: t('chat.historySearch.filterActive'), cls: 'claudian-history-filter-active' },
-      { id: 'archived', label: t('chat.historySearch.filterArchived'), cls: 'claudian-history-filter-archived' },
-      { id: 'all', label: t('chat.historySearch.filterAll'), cls: 'claudian-history-filter-all' },
+      { id: 'active', label: t('chat.historySearch.filterActive'), cls: 'codian-history-filter-active' },
+      { id: 'archived', label: t('chat.historySearch.filterArchived'), cls: 'codian-history-filter-archived' },
+      { id: 'all', label: t('chat.historySearch.filterAll'), cls: 'codian-history-filter-all' },
     ];
 
     for (const option of filterOptions) {
       const button = filters.createEl('button', {
-        cls: `claudian-history-filter ${option.cls}`,
+        cls: `codian-history-filter ${option.cls}`,
         text: option.label,
         attr: {
           type: 'button',
@@ -1223,12 +1452,12 @@ export class ConversationController {
     currentTitle: string,
     options: HistoryRenderOptions,
   ): void {
-    const titleEl = item.querySelector('.claudian-history-item-title') as HTMLElement;
+    const titleEl = item.querySelector('.codian-history-item-title') as HTMLElement;
     if (!titleEl) return;
 
     const input = item.createEl('input');
     input.type = 'text';
-    input.className = 'claudian-rename-input';
+    input.className = 'codian-rename-input';
     input.value = currentTitle;
 
     titleEl.replaceWith(input);
@@ -1345,9 +1574,9 @@ export class ConversationController {
     if (!welcomeEl) return;
 
     if (this.deps.state.messages.length === 0) {
-      welcomeEl.removeClass('claudian-hidden');
+      welcomeEl.removeClass('codian-hidden');
     } else {
-      welcomeEl.addClass('claudian-hidden');
+      welcomeEl.addClass('codian-hidden');
     }
   }
 
@@ -1365,7 +1594,7 @@ export class ConversationController {
     fileCtx?.autoAttachActiveFile();
 
     // Render the full welcome surface once; new tabs begin with an empty shell.
-    if (!welcomeEl.querySelector('.claudian-welcome-greeting')) {
+    if (!welcomeEl.querySelector('.codian-welcome-greeting')) {
       renderWelcomeContent(welcomeEl, this.getGreeting());
     }
 
@@ -1400,9 +1629,7 @@ export class ConversationController {
     const firstUserMsg = fullConv.messages.find(m => m.role === 'user');
     if (!firstUserMsg) return;
 
-    const userContent = firstUserMsg.displayContent
-      ?? extractUserDisplayContent(firstUserMsg.content)
-      ?? firstUserMsg.content;
+    const userContent = getUserDisplayText(firstUserMsg);
 
     // Store current title to check if user renames during generation
     const expectedTitle = fullConv.title;
@@ -1450,12 +1677,12 @@ export class ConversationController {
   }
 
   // ============================================
-  // History Dropdown Rendering (for ClaudianView)
+  // History Dropdown Rendering (for CodianView)
   // ============================================
 
   /**
    * Renders the history dropdown content to a provided container.
-   * Used by ClaudianView to render the dropdown with custom selection callback.
+   * Used by CodianView to render the dropdown with custom selection callback.
    */
   renderHistoryDropdown(
     container: HTMLElement,

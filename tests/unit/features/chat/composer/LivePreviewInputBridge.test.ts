@@ -1,6 +1,10 @@
 /** @jest-environment jsdom */
 
+import { createMockEl } from '@test/helpers/mockElement';
+
 import { LivePreviewInputBridge } from '@/features/chat/composer/LivePreviewInputBridge';
+import { getAccessibleTextbox } from '@/shared/components/AccessibleTextbox';
+import { SelectableDropdown } from '@/shared/components/SelectableDropdown';
 
 describe('LivePreviewInputBridge', () => {
   it('keeps the shared textarea contract synchronized with the visible composer', () => {
@@ -28,7 +32,41 @@ describe('LivePreviewInputBridge', () => {
 
     sourceEl.focus();
     expect(document.activeElement).toBe(bridge.composer.contentDOM);
+    expect(getAccessibleTextbox(sourceEl)).toBe(bridge.composer.contentDOM);
 
+    bridge.destroy();
+    expect(getAccessibleTextbox(sourceEl)).toBe(sourceEl);
+  });
+
+  it('places popup relationships on the visible CodeMirror textbox instead of the hidden source', () => {
+    const sourceEl = document.createElement('textarea');
+    const hostEl = document.createElement('div');
+    document.body.append(sourceEl, hostEl);
+    const bridge = new LivePreviewInputBridge(sourceEl, hostEl);
+    const dropdown = new SelectableDropdown<string>(createMockEl(), {
+      listClassName: 'suggestions',
+      itemClassName: 'suggestion',
+      emptyClassName: 'empty',
+      ariaLabel: 'Input suggestions',
+      inputEl: sourceEl,
+    });
+
+    dropdown.render({
+      items: ['first'],
+      selectedIndex: 0,
+      emptyText: 'No matches',
+      renderItem: (item, itemEl) => itemEl.setText(item),
+    });
+
+    const listbox = dropdown.getElement()!;
+    const option = listbox.querySelector('.suggestion')!;
+    expect(bridge.composer.contentDOM.getAttribute('aria-controls'))
+      .toBe(listbox.getAttribute('id'));
+    expect(bridge.composer.contentDOM.getAttribute('aria-activedescendant'))
+      .toBe(option.getAttribute('id'));
+    expect(sourceEl.hasAttribute('aria-controls')).toBe(false);
+
+    dropdown.destroy();
     bridge.destroy();
   });
 

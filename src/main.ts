@@ -11,8 +11,8 @@ import type { Editor, WorkspaceLeaf } from 'obsidian';
 import { addIcon, MarkdownView, Notice, Plugin } from 'obsidian';
 
 import { ConversationRepository } from './app/conversations/ConversationRepository';
-import { ClaudianProviderHost } from './app/providers/ClaudianProviderHost';
-import { DEFAULT_CLAUDIAN_SETTINGS } from './app/settings/defaultSettings';
+import { CodianProviderHost } from './app/providers/CodianProviderHost';
+import { DEFAULT_CODIAN_SETTINGS } from './app/settings/defaultSettings';
 import type {
   ConditionalSettingsMutation,
   SettingsCommit,
@@ -43,33 +43,37 @@ import type {
 import type { AppTabManagerState } from './core/providers/types';
 import { DEFAULT_CHAT_PROVIDER_ID } from './core/providers/types';
 import type {
-  ClaudianSettings,
+  CodianSettings,
   Conversation,
   ConversationMeta,
   SessionMetadata,
 } from './core/types';
 import { compareConversationIndexOrder } from './core/types';
 import {
-  VIEW_TYPE_CLAUDIAN,
+  VIEW_TYPE_CODIAN,
 } from './core/types';
 import type { ChatViewPlacement, EnvironmentScope } from './core/types/settings';
-import { ClaudianView } from './features/chat/ClaudianView';
+import { CodianView } from './features/chat/CodianView';
 import { LivePreviewComposerEnhancement } from './features/chat/composer/LivePreviewComposerEnhancement';
 import type { ComposerEnhancement } from './features/chat/composer/types';
 import { SearchConversationBrowserEnhancement } from './features/chat/conversation-browser/SearchConversationBrowserEnhancement';
 import type { ConversationBrowserEnhancement } from './features/chat/conversation-browser/types';
 import { registerFileMenu } from './features/chat/fileMenu';
+import type { TabAttention } from './features/chat/state/types';
+import { SessionRuntimePool } from './features/chat/tabs/SessionRuntimePool';
+import { destroyTab } from './features/chat/tabs/Tab';
 import { type InlineEditContext, InlineEditModal } from './features/inline-edit/ui/InlineEditModal';
-import { ClaudianSettingTab } from './features/settings/ClaudianSettings';
+import { CodianSettingTab } from './features/settings/CodianSettings';
 import { t } from './i18n/i18n';
 import { syncLocaleWithObsidian } from './i18n/obsidianLocale';
 import { OPENCODE_PLAN_MODE_ID, OPENCODE_SAFE_MODE_ID } from './providers/opencode/modes';
 import { CODIAN_RIBBON_ICON_ID, CODIAN_RIBBON_ICON_SVG } from './shared/codianLogo';
 import { buildCursorContext } from './utils/editor';
+import { resolveLoginShellPath } from './utils/loginShellPath';
 import { revealWorkspaceLeaf } from './utils/obsidianCompat';
 import { getVaultPath } from './utils/path';
 
-function isClaudianView(value: unknown): value is ClaudianView {
+function isCodianView(value: unknown): value is CodianView {
   return !!value
     && typeof value === 'object'
     && typeof (value as { getTabManager?: unknown }).getTabManager === 'function';
@@ -118,13 +122,14 @@ function hasSamePendingProviderSessionInvalidations(
     && entries.every(([providerId, generation]) => pending.get(providerId) === generation);
 }
 
-export default class ClaudianPlugin extends Plugin {
-  settings!: ClaudianSettings;
+export default class CodianPlugin extends Plugin {
+  settings!: CodianSettings;
   storage!: SharedAppStorage;
-  readonly providerHost = new ClaudianProviderHost(this);
+  readonly sessionRuntimePool = new SessionRuntimePool(tab => destroyTab(tab));
+  readonly providerHost = new CodianProviderHost(this);
   private readonly composerEnhancement: ComposerEnhancement = new LivePreviewComposerEnhancement();
   private readonly conversationBrowserEnhancement: ConversationBrowserEnhancement = new SearchConversationBrowserEnhancement();
-  private settingsCoordinator!: SettingsCoordinator<ClaudianSettings>;
+  private settingsCoordinator!: SettingsCoordinator<CodianSettings>;
   private conversationRepository!: ConversationRepository;
   private lastKnownTabManagerState: AppTabManagerState | null = null;
   private pendingSessionMetadataScan = false;
@@ -148,8 +153,8 @@ export default class ClaudianPlugin extends Plugin {
       // Provider workspace services are initialized lazily on first use.
 
       this.registerView(
-        VIEW_TYPE_CLAUDIAN,
-        (leaf) => new ClaudianView(leaf, this)
+        VIEW_TYPE_CODIAN,
+        (leaf) => new CodianView(leaf, this)
       );
       registerFileMenu(this);
 
@@ -276,7 +281,13 @@ export default class ClaudianPlugin extends Plugin {
         },
       });
 
-      this.addSettingTab(new ClaudianSettingTab(this.app, this));
+      this.addSettingTab(new CodianSettingTab(this.app, this));
+      // Started early so the first provider launch rarely waits for the shell.
+      if (typeof this.app.workspace.onLayoutReady === 'function') {
+        this.app.workspace.onLayoutReady(() => { void resolveLoginShellPath(); });
+      } else {
+        void resolveLoginShellPath();
+      }
       this.scheduleRemainingSessionMetadataLoad();
     } finally {
       StartupProfiler.finishOnload();
@@ -285,13 +296,18 @@ export default class ClaudianPlugin extends Plugin {
 
   onunload(): void {
     this.isUnloading = true;
+    this.sessionRuntimePool.beginShutdown();
     if (this.sessionMetadataLoadTimer !== null) {
       window.clearTimeout(this.sessionMetadataLoadTimer);
       this.sessionMetadataLoadTimer = null;
     }
     StartupProfiler.freeze();
     void this.persistOpenTabStates().catch(() => undefined);
-    void ProviderWorkspaceRegistry.disposeInitialized();
+    void (async () => {
+      await Promise.allSettled(this.getAllViews().map(view => view.disposeSessions?.()));
+      await this.sessionRuntimePool.dispose();
+      await ProviderWorkspaceRegistry.disposeInitialized();
+    })();
   }
 
   private async persistOpenTabStates(): Promise<void> {
@@ -305,13 +321,13 @@ export default class ClaudianPlugin extends Plugin {
 
   async activateView() {
     const { workspace } = this.app;
-    let leaf = workspace.getLeavesOfType(VIEW_TYPE_CLAUDIAN)[0];
+    let leaf = workspace.getLeavesOfType(VIEW_TYPE_CODIAN)[0];
 
     if (!leaf) {
       const newLeaf = this.getLeafForPlacement(this.settings.chatViewPlacement);
       if (newLeaf) {
         await newLeaf.setViewState({
-          type: VIEW_TYPE_CLAUDIAN,
+          type: VIEW_TYPE_CODIAN,
           active: true,
         });
         leaf = newLeaf;
@@ -336,7 +352,7 @@ export default class ClaudianPlugin extends Plugin {
   }
 
   private canCreateNewTab(): boolean {
-    const hasClaudianLeaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_CLAUDIAN).length > 0;
+    const hasCodianLeaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODIAN).length > 0;
     const view = this.getView();
     const tabManager = view?.getTabManager();
 
@@ -344,14 +360,14 @@ export default class ClaudianPlugin extends Plugin {
       return tabManager.canCreateTab();
     }
 
-    if (hasClaudianLeaf) {
+    if (hasCodianLeaf) {
       return false;
     }
 
     return this.getLastKnownOpenTabCount() < this.getMaxTabsLimit();
   }
 
-  private async ensureViewOpen(): Promise<ClaudianView | null> {
+  private async ensureViewOpen(): Promise<CodianView | null> {
     const existingView = this.getView();
     if (existingView) {
       return existingView;
@@ -386,19 +402,19 @@ export default class ClaudianPlugin extends Plugin {
   async loadSettings(options: { deferNonRestoredSessionMetadata?: boolean } = {}) {
     this.hasLoadedAllSessionMetadata = false;
     this.storage = new SharedStorageService(this);
-    const { claudian, migratedLegacyPluginData } = await this.storage.initialize();
+    const { codianz, migratedLegacyPluginData } = await this.storage.initialize();
     this.lastKnownTabManagerState = await this.storage.getTabManagerState();
 
     this.settings = {
-      ...DEFAULT_CLAUDIAN_SETTINGS,
-      ...claudian,
+      ...DEFAULT_CODIAN_SETTINGS,
+      ...codianz,
     };
     this.settingsCoordinator = new SettingsCoordinator(
       this.settings,
       async (settings) => {
         ProviderSettingsCoordinator.normalizeProviderSelection(settings);
         ProviderSettingsCoordinator.persistProjectedProviderState(settings);
-        await this.storage.saveClaudianSettings(settings);
+        await this.storage.saveCodianSettings(settings);
       },
     );
     const didNormalizePendingSessionInvalidations = this.syncPendingSessionInvalidations();
@@ -646,7 +662,7 @@ export default class ClaudianPlugin extends Plugin {
   }
 
   private markPendingSessionInvalidations(
-    settings: ClaudianSettings,
+    settings: CodianSettings,
     providerIds: ProviderId[],
   ): Map<ProviderId, number> {
     const marked = this.stagePendingSessionInvalidations(settings, providerIds);
@@ -655,7 +671,7 @@ export default class ClaudianPlugin extends Plugin {
   }
 
   private stagePendingSessionInvalidations(
-    settings: ClaudianSettings,
+    settings: CodianSettings,
     providerIds: ProviderId[],
   ): Map<ProviderId, number> {
     const pending = readPendingProviderSessionInvalidations(settings);
@@ -787,10 +803,14 @@ export default class ClaudianPlugin extends Plugin {
   }
 
   async mutateSettings(
-    mutation: SettingsMutation<ClaudianSettings>,
-    onCommitted?: SettingsCommit<ClaudianSettings>,
+    mutation: SettingsMutation<CodianSettings>,
+    onCommitted?: SettingsCommit<CodianSettings>,
   ): Promise<void> {
     await this.settingsCoordinator.mutate(mutation, onCommitted);
+  }
+
+  getCommittedSettings(): Readonly<CodianSettings> {
+    return this.settingsCoordinator.getCommittedSettings();
   }
 
   getAgentSkillResourceGeneration(): number {
@@ -811,14 +831,14 @@ export default class ClaudianPlugin extends Plugin {
   }
 
   async mutateSettingsConditionally(
-    mutation: ConditionalSettingsMutation<ClaudianSettings>,
+    mutation: ConditionalSettingsMutation<CodianSettings>,
   ): Promise<void> {
     await this.settingsCoordinator.mutateConditionally(mutation);
   }
 
   async mutateProviderSettingsAndRecycleRuntimes(
     providerId: ProviderId,
-    mutation: SettingsMutation<ClaudianSettings>,
+    mutation: SettingsMutation<CodianSettings>,
   ): Promise<void> {
     const transition = await ProviderWorkspaceRegistry
       .beginAuxiliaryServicesEnvironmentChange([providerId]);
@@ -1035,7 +1055,7 @@ export default class ClaudianPlugin extends Plugin {
   }
 
   private async restartEnvironmentAffectedRuntimes(
-    view: ClaudianView,
+    view: CodianView,
     affectedProviderIds: ProviderId[],
     sessionInvalidationProviderIds: ProviderId[],
   ): Promise<number> {
@@ -1125,6 +1145,8 @@ export default class ClaudianPlugin extends Plugin {
     providerId: ProviderId,
     context?: ProviderCliResolutionContext,
   ): Promise<string | null> {
+    // Provider launches resolve their CLI here first, so the login-shell PATH is ready for them.
+    await resolveLoginShellPath();
     if (context?.providerTransitionOwner !== true) {
       await ProviderWorkspaceRegistry.ensureInitialized(
         this.providerHost,
@@ -1198,16 +1220,11 @@ export default class ClaudianPlugin extends Plugin {
   }
 
   private async resetDeletedConversationTabs(id: string): Promise<void> {
+    this.sessionRuntimePool.retireConversation(id);
     for (const view of this.getAllViews()) {
       const tabManager = view.getTabManager();
       if (!tabManager) continue;
-
-      for (const tab of tabManager.getAllTabs()) {
-        if (tab.conversationId === id) {
-          tab.controllers.inputController?.cancelStreaming();
-          await tab.controllers.conversationController?.createNew({ force: true });
-        }
-      }
+      tabManager.resetDeletedConversation?.(id);
     }
   }
 
@@ -1224,6 +1241,20 @@ export default class ClaudianPlugin extends Plugin {
 
   async updateConversation(id: string, updates: Partial<Conversation>): Promise<void> {
     await this.conversationRepository.update(id, updates);
+  }
+
+  setConversationAttention(id: string, attention: TabAttention): void {
+    for (const view of this.getAllViews()) {
+      for (const tab of view.getTabManager()?.getAllTabs() ?? []) {
+        if (tab.conversationId !== id) continue;
+        if (attention?.kind === 'review') {
+          tab.state.markReviewRequired(attention.outcome, attention.since);
+        } else if (attention === null) {
+          tab.state.acknowledgeReview();
+        }
+      }
+    }
+    this.sessionRuntimePool.setConversationAttention(id, attention);
   }
 
   async getConversationById(id: string): Promise<Conversation | null> {
@@ -1262,17 +1293,17 @@ export default class ClaudianPlugin extends Plugin {
     await this.storage.setTabManagerState(state);
   }
 
-  getView(): ClaudianView | null {
-    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CLAUDIAN);
-    return leaves.map(leaf => leaf.view).find(isClaudianView) ?? null;
+  getView(): CodianView | null {
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODIAN);
+    return leaves.map(leaf => leaf.view).find(isCodianView) ?? null;
   }
 
-  getAllViews(): ClaudianView[] {
-    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CLAUDIAN);
-    return leaves.map(leaf => leaf.view).filter(isClaudianView);
+  getAllViews(): CodianView[] {
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODIAN);
+    return leaves.map(leaf => leaf.view).filter(isCodianView);
   }
 
-  findConversationAcrossViews(conversationId: string): { view: ClaudianView; tabId: string } | null {
+  findConversationAcrossViews(conversationId: string): { view: CodianView; tabId: string } | null {
     for (const view of this.getAllViews()) {
       const tabManager = view.getTabManager();
       if (!tabManager) continue;

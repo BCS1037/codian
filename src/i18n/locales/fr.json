@@ -1,5 +1,6 @@
 {
   "common": {
+    "inputSuggestions": "Suggestions de saisie",
     "save": "Enregistrer",
     "cancel": "Annuler",
     "delete": "Supprimer",
@@ -22,7 +23,9 @@
     "rewind": "Rembobiner",
     "enable": "Activer",
     "disable": "Désactiver",
-    "legacyPluginDataMigrated": "Paramètres migrés depuis l’ancien plugin Codian. Désactivez l’ancien plugin \"codian\" avant d’utiliser Codian."
+    "legacyPluginDataMigrated": "Paramètres migrés depuis l’ancien plugin Codian. Désactivez l’ancien plugin \"codian\" avant d’utiliser Codian.",
+    "retry": "Réessayer",
+    "none": "Aucun"
   },
   "chat": {
     "drop": {
@@ -32,6 +35,8 @@
     },
     "providerRetry": "Nouvelle tentative de l’API Claude (tentative {attempt}/{maxRetries} ; raison : {reason}).",
     "providerWorkspaceInitializationTimeout": "L’initialisation du Provider {provider} a expiré après {seconds} s. Réessayez de changer d’onglet.",
+    "deletedConversationResetFailed": "Impossible de réinitialiser la conversation supprimée. La saisie non envoyée a été restaurée.",
+    "resizeConversations": "Redimensionner la liste des conversations",
     "historySearch": {
       "placeholder": "Rechercher des conversations",
       "noMatches": "Aucune conversation correspondante",
@@ -44,6 +49,12 @@
       "archive": "Archiver",
       "unarchive": "Désarchiver",
       "pinned": "Épinglée",
+      "markUnread": "Marquer comme non lu",
+      "markRead": "Marquer comme lu",
+      "unread": "Non lu",
+      "needsInput": "Votre intervention est requise",
+      "stoppedWithError": "Arrêté avec une erreur",
+      "running": "En cours",
       "archived": "Archivée",
       "updateFailed": "Impossible de mettre à jour l’index des conversations"
     },
@@ -107,10 +118,327 @@
       "selectedReply": "Réponse IA sélectionnée"
     },
     "navigation": {
-      "jumpToPrompt": "Aller à la demande {index}"
+      "jumpToPrompt": "Aller à la demande {index}",
+      "scrollToTop": "Défiler vers le haut",
+      "previousMessage": "Message précédent",
+      "directory": "Sommaire de la conversation",
+      "nextMessage": "Message suivant",
+      "scrollToBottom": "Défiler vers le bas",
+      "emptyDirectory": "Aucun prompt utilisateur dans cette conversation"
+    },
+    "branchNavigation": {
+      "previous": "Branche précédente",
+      "next": "Branche suivante",
+      "position": "{position} / {count}",
+      "failed": "Impossible de changer de branche de conversation : {error}",
+      "recoveryRequired": "Le changement de branche Pi a échoué et peut nécessiter une récupération de session : {error}",
+      "saveFailed": "Branche changée, mais état de la conversation non enregistré : {error}",
+      "unavailable": "Cette branche n’est plus disponible.",
+      "unsupported": "Ce fournisseur ne prend pas en charge la navigation entre branches.",
+      "runtimeUnavailable": "L’environnement Pi est indisponible."
     },
     "welcomeOrb": {
       "solving": "Résolution en cours"
+    },
+    "promptSuggestionHint": "Tab pour accepter",
+    "selectAvailableModel": "Sélectionnez un modèle disponible avant d’envoyer.",
+    "selectAvailableTitleModel": "Sélectionnez un modèle de titre disponible dans les paramètres de Codian.",
+    "quote": {
+      "buttonLabel": "Citer"
+    },
+    "codeBlock": {
+      "copyAriaLabel": "Copier le code {language}",
+      "copied": "Copié !"
+    },
+    "sideChat": {
+      "title": "Conversation annexe",
+      "collapse": "Réduire",
+      "fullHeight": "Pleine hauteur",
+      "discard": "Abandonner",
+      "statusPreparing": "Préparation",
+      "statusQueued": "{count} en attente",
+      "statusWorking": "En cours",
+      "statusError": "Attention requise",
+      "statusActionRequired": "Saisie requise",
+      "placeholder": "Poser une question dans la conversation annexe",
+      "composerLabel": "Message de la conversation annexe",
+      "needsPrompt": "Ajoute une consigne après /side pour démarrer une conversation annexe.",
+      "unsupportedProvider": "Ce fournisseur ne prend pas en charge la conversation annexe.",
+      "unavailableBusy": "La conversation annexe exige une réponse terminée. Attends la fin du tour en cours.",
+      "unavailableNoCheckpoint": "Termine d'abord une réponse dans cette conversation.",
+      "unavailableNoSession": "Impossible de résoudre la session du fournisseur pour cette conversation.",
+      "alreadyExists": "Une conversation annexe existe déjà ici. Abandonne-la pour en démarrer une autre.",
+      "nestedUnavailable": "Une conversation annexe ne peut pas en démarrer une autre. Réduis d'abord vers la principale.",
+      "mainOnlyCommand": "/{command} n'est disponible que dans la conversation principale.",
+      "startFailed": "Impossible de démarrer la conversation annexe : {error}",
+      "queued": "Ajouté à la file de la discussion secondaire.",
+      "busySide": "La conversation annexe répond encore. Attends la fin."
+    },
+    "zen": {
+      "regionLabel": "Chat Codian",
+      "showHistory": "Afficher la conversation",
+      "move": "Déplacer le panneau de discussion",
+      "working": "En cours…",
+      "thinking": "Réflexion…",
+      "interrupted": "Interrompu",
+      "workedFor": "A travaillé pendant {duration}",
+      "workedForResult": "A travaillé pendant {duration} · {result}",
+      "actionRequired": "Votre réponse est requise",
+      "error": "Erreur : {message}",
+      "toolRunning": "{tool} · en cours",
+      "toolCompleted": "{tool} · terminé",
+      "toolFailed": "{tool} · échec",
+      "toolBlocked": "{tool} · bloqué"
+    },
+    "composer": {
+      "placeholder": "Demandez des modifications, mentionnez des fichiers avec @, lancez des /commandes",
+      "message": "Message",
+      "dropImage": "Déposez une image ici",
+      "moreContext": "Afficher {count} autres éléments de contexte",
+      "showLess": "Afficher moins",
+      "moreItems": "+{count} de plus"
+    },
+    "worked": "Travail effectué",
+    "taskNotification": "Notification de tâche",
+    "copyMessage": "Copier le message",
+    "renderFailed": "Impossible d’afficher le contenu du message.",
+    "interruptedHint": "· Que doit faire Codian à la place ?",
+    "sessions": {
+      "empty": "Aucune conversation",
+      "noMatch": "Aucune session correspondante",
+      "resume": "Reprendre la conversation",
+      "loading": "Chargement de la conversation…",
+      "current": "Session actuelle",
+      "loadFailed": "Impossible de charger la conversation"
+    },
+    "linkedContent": {
+      "label": "Contenu lié :",
+      "choices": "Choix du contenu lié",
+      "noMatch": "Aucun fichier ou dossier correspondant",
+      "missing": "Contenu manquant",
+      "path": "Contenu lié : {path}",
+      "missingPath": "Contenu lié : {path}. Contenu manquant",
+      "noContent": "Aucun contenu lié",
+      "missingNotice": "Contenu lié manquant : {path}",
+      "openFailed": "Impossible d’ouvrir le contenu lié : {error}"
+    },
+    "questions": {
+      "title": "Question",
+      "submit": "Envoyer",
+      "review": "Vérifiez vos réponses",
+      "ready": "Prêt à envoyer vos réponses ?",
+      "sending": "Envoi en cours…",
+      "submitAnswers": "Envoyer les réponses",
+      "notAnswered": "Sans réponse",
+      "customAnswer": "Saisissez votre réponse…",
+      "secret": "Saisissez la valeur secrète…",
+      "editAnswer": "Modifier la réponse à {question}",
+      "waiting": "En attente d’une réponse…",
+      "noOptions": "Aucune option enregistrée",
+      "sendFailed": "Impossible d’envoyer la réponse. Réessayez.",
+      "answerBelow": "Répondez dans le panneau de questions ci-dessous.",
+      "expired": "La question a expiré.",
+      "notSent": "La réponse n’a pas été envoyée. Réessayez.",
+      "unsupportedReply": "Cette question ne peut pas accepter cette réponse.",
+      "uncertainDelivery": "La remise de la réponse n’a pas pu être confirmée. Elle n’a pas été remise en file pour éviter un double envoi.",
+      "differentConversation": "Cette question appartient à une autre conversation.",
+      "sideUnavailable": "Cette conversation secondaire n’est plus disponible."
+    },
+    "tools": {
+      "calls": "Appels d’outils",
+      "output": "Sortie",
+      "noResult": "Aucun résultat",
+      "noMatches": "Aucun résultat trouvé",
+      "tasksUpdated": "Tâches mises à jour",
+      "noChanges": "Aucune modification",
+      "moreLines": "… {count} lignes supplémentaires",
+      "moreCharacters": "… {count} caractères supplémentaires",
+      "running": "En cours…",
+      "noOutput": "Aucune sortie",
+      "status": {
+        "running": "Statut : en cours",
+        "completed": "Statut : terminé",
+        "error": "Statut : erreur",
+        "cancelled": "Statut : annulé",
+        "blocked": "Statut : bloqué"
+      },
+      "inProgress": "Statut : en cours",
+      "writing": "Écriture en cours…",
+      "done": "TERMINÉ",
+      "errorResult": "ERREUR",
+      "tasks": "Tâches",
+      "taskProgress": "Tâches {completed}/{total}",
+      "taskProgressLabel": "Tâches ({completed}/{total})",
+      "changes": "Modifications : +{added} -{removed}",
+      "fileDeleted": "Fichier supprimé",
+      "noTextDiff": "Aucune différence textuelle disponible",
+      "patch": "correctif",
+      "files": "{count} fichiers",
+      "file": "fichier",
+      "enteringPlan": "Passage en mode planification",
+      "planComplete": "Plan terminé",
+      "messageAgent": "Envoyer un message à l’agent",
+      "continueAgent": "Continuer l’agent",
+      "listAgents": "Lister les agents",
+      "interruptAgent": "Interrompre l’agent",
+      "allAgents": "Tous les agents",
+      "commandPlaceholder": "commande",
+      "filesPlaceholder": "fichiers",
+      "patternPlaceholder": "motif",
+      "toolsPlaceholder": "outils",
+      "agentCount": "{count} agent",
+      "agentCountPlural": "{count} agents",
+      "listDestinations": "Lister les destinations",
+      "messageSession": "Envoyer un message à la session",
+      "stopSession": "Arrêter la session",
+      "readSession": "Lire la session"
+    },
+    "citations": {
+      "memoryUsed": "Mémoire utilisée",
+      "source": "{count} source",
+      "sources": "{count} sources"
+    },
+    "web": {
+      "findInPage": "Rechercher dans la page",
+      "openPage": "Ouvrir la page",
+      "urlUnavailable": "URL indisponible",
+      "clickLink": "Cliquer sur le lien {id}",
+      "pattern": "Motif : {pattern}",
+      "query": "Requête : {query}",
+      "altQuery": "Autre requête : {query}",
+      "search": "Rechercher sur le web",
+      "moreQueries": "… {count} autres requêtes",
+      "clickInPage": "Cliquer sur le lien {id} dans {url}",
+      "open": "Ouvrir {url}",
+      "find": "Rechercher « {pattern} »",
+      "inPage": "{action} dans {url}",
+      "operations": "{count} opérations web",
+      "searchTerm": "recherche"
+    },
+    "permissionMode": {
+      "label": "Mode d’autorisation",
+      "current": "Mode d’autorisation : {mode}",
+      "changeFailed": "Impossible de modifier le mode d’autorisation",
+      "claude": {
+        "auto": "Automatique",
+        "manual": "Manuel",
+        "acceptEdits": "Accepter les modifications",
+        "yolo": "YOLO",
+        "autoDesc": "Claude décide des autorisations",
+        "manualDesc": "Toujours demander avant de modifier",
+        "acceptEditsDesc": "Accepter automatiquement toutes les modifications de fichiers",
+        "yoloDesc": "Accorder toutes les autorisations sans demander"
+      },
+      "codex": {
+        "autoReview": "Approuver pour moi",
+        "normal": "Demander l’approbation",
+        "yolo": "Accès complet",
+        "autoReviewDesc": "Examiner automatiquement les accès supplémentaires.",
+        "readOnlyDesc": "Demander avant de modifier ou d’utiliser internet.",
+        "normalDesc": "Demander avant tout accès supplémentaire.",
+        "yoloDesc": "Accès illimité aux fichiers et à internet."
+      }
+    },
+    "thinking": {
+      "active": "Réflexion depuis {seconds}s…",
+      "completed": "Réflexion pendant {seconds}s",
+      "label": "Réflexion"
+    },
+    "suggestions": {
+      "loading": "Chargement…",
+      "noMatches": "Aucune correspondance",
+      "loadFailed": "Impossible de charger les suggestions",
+      "retryHint": "Saisissez à nouveau pour réessayer",
+      "providerLoading": "Chargement des commandes du fournisseur…",
+      "providerRetry": "Réessayer la découverte des commandes du fournisseur"
+    },
+    "approval": {
+      "title": "Autorisation requise",
+      "question": "Autoriser cette action ?",
+      "deny": "Refuser",
+      "allowOnce": "Autoriser une fois",
+      "alwaysAllow": "Toujours autoriser",
+      "mcpRequest": "Requête MCP",
+      "mcpServer": "Serveur MCP : {server}",
+      "decline": "Refuser",
+      "allow": "Autoriser",
+      "cancelRequest": "Annuler cette requête.",
+      "declineRequest": "Refuser cette requête.",
+      "acceptRequest": "Accepter cette requête.",
+      "fileChange": "Modification de fichier",
+      "fileChangeReason": "Modification de fichier : {reason}",
+      "permissionRequest": "Demande d’autorisation",
+      "permissionReason": "Demande d’autorisation : {reason}",
+      "networkAccess": "Autoriser l’accès {protocol} à {host}",
+      "execute": "Exécuter : {command}",
+      "executeCommand": "Exécuter une commande",
+      "allowSimilar": "Autoriser les commandes similaires",
+      "execPolicy": "Approuver et enregistrer une modification de la politique d’exécution.",
+      "host": "hôte",
+      "allowHost": "Autoriser {host} pour cette session",
+      "denyHost": "Refuser {host} pour cette session",
+      "allowRule": "Appliquer une règle d’autorisation pour {host}.",
+      "denyRule": "Appliquer une règle de refus pour {host}.",
+      "details": "Détails de l’autorisation de {tool}",
+      "unexpectedSelection": "Choix d’autorisation inattendu : « {value} »",
+      "runCommand": "Exécuter la commande : {pattern}",
+      "readFile": "Lire le fichier : {pattern}",
+      "writeFile": "Écrire dans le fichier : {pattern}",
+      "editFile": "Modifier le fichier : {pattern}",
+      "searchFiles": "Rechercher les fichiers correspondant à : {pattern}",
+      "searchContent": "Rechercher le contenu correspondant à : {pattern}",
+      "unknownPattern": "(inconnu)",
+      "deepseekRequest": "DeepSeek demande une autorisation."
+    },
+    "disclosure": {
+      "expand": "{label} - cliquer pour développer",
+      "collapse": "{label} - cliquer pour réduire"
+    },
+    "removeItem": "Retirer {item}",
+    "agent": "Agent : {agent}",
+    "images": {
+      "unsupportedProvider": "Ce fournisseur ne prend pas en charge les images jointes.",
+      "tooLarge": "L’image dépasse la limite de {size}.",
+      "unsupportedType": "Format d’image non pris en charge.",
+      "attachFailed": "Impossible de joindre l’image.",
+      "label": "Image",
+      "numbered": "Image {number}",
+      "attachment": "Image jointe : {name} · {size}",
+      "fileNotFound": "{message} (Fichier introuvable)",
+      "permissionDenied": "{message} (Accès refusé)",
+      "preview": "Aperçu de l’image : {name}",
+      "closePreview": "Fermer l’aperçu de l’image"
+    },
+    "pi": {
+      "extension": "Extension Pi",
+      "notification": "Notification de l’extension Pi."
+    },
+    "sessionMessage": {
+      "undelivered": "Les messages de {senders} n’ont pas pu être remis.",
+      "fromLabel": "De la session :"
+    },
+    "sessionTools": {
+      "noSessions": "Aucune session",
+      "thisSession": "Cette session",
+      "truncated": "D’autres sessions ne sont pas affichées",
+      "recipient": "Destinataire",
+      "model": "Modèle",
+      "reasoning": "Raisonnement",
+      "message": "Message",
+      "openSession": "Ouvrir la session {sessionId}",
+      "openProviderSession": "Ouvrir la session {provider} {sessionId}",
+      "sessionMissing": "Cette session n’existe plus.",
+      "openFailed": "Impossible d’ouvrir la session : {message}",
+      "openUnavailable": "Les sessions ne peuvent pas être ouvertes ici.",
+      "providersIncluded": "Fournisseurs et modèles disponibles inclus",
+      "newSession": "Nouvelle session",
+      "session": "Session",
+      "turns": "Tours",
+      "turnRange": "{from}–{to} sur {total}",
+      "noTurns": "Aucun pour l’instant",
+      "mode": "Remise",
+      "modeSteer": "Orienter le tour en cours",
+      "modeInterrupt": "Interrompre le travail en cours"
     }
   },
   "settings": {
@@ -123,7 +451,8 @@
       "workspace": "Espace de travail",
       "about": "À propos",
       "environment": "Environnement",
-      "pro": "Pro"
+      "pro": "Pro",
+      "skills": "Skills"
     },
     "display": "Affichage",
     "conversations": "Conversations",
@@ -171,7 +500,9 @@
     "titleModel": {
       "name": "Modèle de génération de titre",
       "desc": "Modèle utilisé pour générer automatiquement les titres de conversation.",
-      "auto": "Automatique (Haiku)"
+      "auto": "Automatique (Haiku)",
+      "select": "Sélectionner un modèle",
+      "unavailableWarning": "La génération automatique des titres est suspendue. Sélectionnez un modèle disponible pour les titres."
     },
     "navMappings": {
       "name": "Mappages de navigation style Vim",
@@ -226,6 +557,39 @@
     "slashCommands": {
       "name": "Commandes et compétences",
       "desc": "Gérez les commandes et compétences au niveau du vault stockées dans .claude/commands/ et .claude/skills/. Déclenchées par /nom."
+    },
+    "skillMigration": {
+      "name": "Aperçu de migration des compétences Claude",
+      "desc": "Examine les compétences natives de Claude et migre les packages valides sélectionnés vers les compétences partagées. Les destinations existantes et les packages liés sont exclus ; les sources restent intactes.",
+      "previewButton": "Vérifier et migrer",
+      "modalTitle": "Migration des compétences Claude",
+      "loading": "Analyse des dossiers de compétences…",
+      "empty": "Aucune compétence ni commande Claude trouvée.",
+      "failed": "Impossible de créer l’aperçu.",
+      "status": {
+        "reviewRequired": "Compétence valide ; vérification nécessaire",
+        "conversionPolicyRequired": "Règles de conversion des commandes à vérifier",
+        "symlinkNotInspected": "Lien symbolique ; cible non inspectée",
+        "missingSkillMarkdown": "SKILL.md manquant",
+        "invalidSkill": "Métadonnées de compétence invalides",
+        "unreadable": "Source illisible",
+        "unsupportedEntry": "Élément non pris en charge ; conservé"
+      },
+      "target": {
+        "absent": "Aucune destination du même nom",
+        "entry": "Une destination du même nom existe",
+        "symlink": "La destination est un lien ; non inspectée",
+        "ambiguous": "Plusieurs destinations du même nom",
+        "unknown": "Destination impossible à inspecter"
+      },
+      "diagnostics": "Éléments impossibles à inspecter",
+      "additionalEntries": "Autres éléments du paquet :",
+      "diagnostic": "Détail :",
+      "selectInstruction": "Sélectionnez des packages valides dont la destination partagée est vide. Le package entier est copié et la source Claude est conservée.",
+      "applySelected": "Migrer les compétences sélectionnées",
+      "migrationSucceeded": "Migrées :",
+      "migrationFailed": "Échec de migration :",
+      "stalePreview": "L'aperçu a expiré. Actualisez et vérifiez le package avant de réessayer."
     },
     "hiddenSlashCommands": {
       "name": "Commandes et compétences masquées",
@@ -334,14 +698,21 @@
         "save": "Enregistrer",
         "update": "Mettre à jour",
         "cancel": "Annuler"
-      }
+      },
+      "saveCurrent": "Enregistrer l'environnement actuel comme extrait",
+      "insert": "Insérer",
+      "insertFailed": "Impossible d'insérer le snippet",
+      "deleteConfirm": "Supprimer le snippet d'environnement « {name} » ?",
+      "deleteFailed": "Impossible de supprimer le snippet"
     },
     "customModelOverrides": {
       "name": "Remplacements de modèles personnalisés",
       "desc": "Définissez les alias dans le sélecteur de modèle et les tailles de fenêtre de contexte pour les modèles personnalisés."
     },
     "customModelAliases": {
-      "placeholder": "Alias"
+      "placeholder": "Alias",
+      "ariaLabel": "Alias pour {model}",
+      "ariaDescription": "Libellé personnalisé affiché dans le sélecteur de modèle. Laissez vide pour utiliser la valeur par défaut."
     },
     "customContextLimits": {
       "name": "Limites de contexte personnalisées",
@@ -395,8 +766,13 @@
       "descUnix": "Collez la sortie de \"which claude\" — fonctionne pour les installations natives et npm/pnpm/yarn.",
       "validation": {
         "notExist": "Le chemin n'existe pas",
-        "isDirectory": "Le chemin est un répertoire, pas un fichier"
-      }
+        "isDirectory": "Le chemin est un répertoire, pas un fichier",
+        "mustBeAbsolute": "Le chemin doit être absolu",
+        "notFile": "Le chemin doit pointer vers un fichier",
+        "notAccessible": "Le chemin n'est pas accessible",
+        "notExecutable": "Le chemin doit être exécutable"
+      },
+      "genericName": "Chemin de la CLI"
     },
     "language": {
       "name": "Langue",
@@ -405,7 +781,9 @@
     "providerEnablement": {
       "name": "Activer {provider}",
       "desc": "Rendre les modèles {provider} activés disponibles pour les nouvelles conversations. Les sessions existantes sont conservées après la désactivation.",
-      "atLeastOne": "Au moins un fournisseur doit rester activé."
+      "atLeastOne": "Au moins un fournisseur doit rester activé.",
+      "lastProviderWarning": "Au moins un fournisseur doit rester activé pour que Codian fonctionne.",
+      "noModelsWarning": "Aucun modèle {provider} n’est activé. Dans la section Modèles ci-dessous, activez au moins un modèle."
     },
     "codex": {
       "installationMethod": {
@@ -474,6 +852,21 @@
       "enableProvider": {
         "name": "Activer le fournisseur Codex",
         "desc": "Lorsque cette option est activée, les modèles Codex apparaissent dans le sélecteur de modèles des nouvelles conversations. Les sessions Codex existantes sont conservées."
+      },
+      "responseStyle": {
+        "name": "Style de réponse",
+        "desc": "Choisissez le style de communication de Codex sur les modèles compatibles.",
+        "pragmatic": "Pragmatique",
+        "friendly": "Amical",
+        "neutral": "Neutre"
+      },
+      "responseVerbosity": {
+        "name": "Niveau de détail des réponses",
+        "desc": "Choisissez le niveau de détail des réponses pour les modèles compatibles. Par défaut, votre configuration Codex est utilisée.",
+        "default": "Par défaut",
+        "low": "Faible",
+        "medium": "Moyen",
+        "high": "Élevé"
       }
     },
     "agentSkills": {
@@ -505,13 +898,16 @@
         "descriptionPlaceholder": "Reviews code for correctness and maintainability",
         "instructions": "Instructions",
         "instructionsDesc": "Required SKILL.md instructions",
-        "instructionsPlaceholder": "Review the supplied code and report actionable findings..."
+        "instructionsPlaceholder": "Review the supplied code and report actionable findings...",
+        "titleFix": "Corriger le skill"
       },
       "delete": {
         "title": "Delete Shared Skill",
         "description": "The entire skill folder, including scripts, references, and assets, will be moved to trash.",
         "confirm": "Move to trash"
-      }
+      },
+      "fix": "Corriger",
+      "fixed": "Skill « {name} » corrigé."
     },
     "codexSkills": {
       "modal": {
@@ -682,6 +1078,7 @@
     },
     "providerCatalog": {
       "empty": "Aucun modèle {provider} détecté. Sélectionnez Détecter.",
+      "opencodeEmpty": "Aucun modèle OpenCode trouvé. Exécutez `opencode auth login` pour connecter OpenCode Zen ou un autre fournisseur, puis sélectionnez Détecter.",
       "failed": "Impossible de charger le catalogue {provider}. Vérifiez le chemin CLI et la connexion.",
       "loading": "Chargement du catalogue {provider}...",
       "discoveryFailed": "Échec de la détection des modèles {provider} : {message}"
@@ -707,11 +1104,23 @@
       "subagents": "Sous-agents",
       "subagentsDesc": "Gérez les sous-agents du coffre dans .opencode/agent/ et l’ancien chemin .opencode/agents/. Les nouvelles entrées apparaissent dans le menu @mention.",
       "environmentVariables": "Variables d’environnement",
-      "environmentVariablesDesc": "Variables d’environnement supplémentaires pour OpenCode. `OPENCODE_ENABLE_EXA=1` est activé par défaut."
+      "environmentVariablesDesc": "Variables d’environnement supplémentaires pour OpenCode. `OPENCODE_ENABLE_EXA=1` est activé par défaut.",
+      "environment": {
+        "name": "Variables d'environnement OpenCode",
+        "desc": "Variables d'environnement supplémentaires transmises à OpenCode."
+      },
+      "migrationNotice": {
+        "text": "Codian prend désormais en charge OpenCode v2. La prise en charge d'OpenCode v1 prend fin le 30 octobre 2026.",
+        "link": "Migrer vers OpenCode v2"
+      }
     },
     "pi": {
       "environmentVariables": "Variables d’environnement Pi",
-      "environmentVariablesDesc": "Variables d’environnement transmises uniquement à Pi."
+      "environmentVariablesDesc": "Variables d’environnement transmises uniquement à Pi.",
+      "environment": {
+        "name": "Variables d'environnement Pi",
+        "desc": "Variables d'environnement transmises uniquement à Pi."
+      }
     },
     "livePreviewComposer": {
       "name": "Aperçu en direct dans la saisie",
@@ -722,6 +1131,17 @@
       "enableProvider": {
         "name": "Activer le fournisseur Claude",
         "desc": "Lorsque cette option est activée, les modèles Claude apparaissent dans le sélecteur de modèles des nouvelles conversations. Les sessions Claude existantes sont conservées."
+      },
+      "promptSuggestions": {
+        "name": "Suggestions de prompt",
+        "desc": "Afficher le prochain prompt prédit par Claude dans le champ vide. Chaque suggestion est une requête Claude supplémentaire après chaque tour et peut épuiser vos limites d’utilisation plus vite."
+      },
+      "configuration": "Configuration",
+      "responseStyle": {
+        "name": "Style de réponse",
+        "desc": "Style de sortie de Claude Code pour les réponses, y compris les styles personnalisés. « Paramètre de Claude Code » suit votre configuration Claude Code. La liste se met à jour lors de l'actualisation des modèles ou au démarrage d'une discussion.",
+        "default": "Par défaut",
+        "inherit": "Paramètre de Claude Code"
       }
     },
     "claudeServices": {
@@ -768,6 +1188,204 @@
         "defaultModel": "Default model ID is required.",
         "lightModel": "Lightweight model ID is required."
       }
+    },
+    "providerSettings": {
+      "unavailable": "Les réglages du fournisseur ne sont pas disponibles.",
+      "loadFailed": "Impossible de charger les réglages du fournisseur : {message}"
+    },
+    "responses": "Réponses",
+    "codexSandbox": {
+      "name": "Sandbox",
+      "desc": "Accès aux fichiers dans les modes Approuver pour moi et Demander l’approbation. Lecture seule demande avant chaque modification ; Accès complet l'ignore."
+    },
+    "sharedEnvironment": {
+      "name": "Environnement partagé",
+      "desc": "Variables d'exécution indépendantes du fournisseur, partagées entre tous les fournisseurs. Utilisez ceci pour les variables PATH, de proxy, de certificats et de fichiers temporaires."
+    },
+    "enableDualPane": {
+      "name": "Activer le mode double volet",
+      "desc": "Afficher automatiquement le gestionnaire de sessions à côté du chat lorsque la vue mesure au moins 600 px de large."
+    },
+    "restoreTabsOnStartup": {
+      "name": "Restaurer les onglets au démarrage",
+      "desc": "Rouvrir tous les onglets en mode volet unique, ou uniquement le dernier onglet actif en mode double volet."
+    },
+    "sessionAutoArchiveAfter": {
+      "name": "Archiver automatiquement les sessions inactives",
+      "desc": "Archive les sessions non épinglées sans activité pendant la période choisie. Les sessions ouvertes et en cours sont ignorées.",
+      "multiSelectHint": "Cliquez sur des sessions en maintenant Option (Alt sous Windows et Linux) pour en sélectionner plusieurs, puis faites un clic droit pour les épingler ou les archiver.",
+      "off": "Désactivé",
+      "days7": "Après 7 jours",
+      "days14": "Après 14 jours",
+      "days30": "Après 30 jours"
+    },
+    "dualPaneSide": {
+      "name": "Côté du double volet",
+      "desc": "Choisir de quel côté du chat le gestionnaire de sessions apparaît.",
+      "left": "Gauche",
+      "right": "Droite"
+    },
+    "showMessageTimestamps": {
+      "name": "Afficher les horodatages des messages",
+      "desc": "Afficher l’heure locale d’envoi ou d’arrivée de chaque message dans le fil de discussion."
+    },
+    "enableZenMode": {
+      "name": "Activer le mode zen",
+      "desc": "Garde une interface de chat minimale visible lorsque la barre latérale est masquée."
+    },
+    "cliInstallation": {
+      "disclosure": "Installation de {name}",
+      "description": "Chemin CLI facultatif pour cet ordinateur. Laissez vide pour une détection automatique.",
+      "checking": "Vérification du CLI…",
+      "versionUnavailable": "Version indisponible",
+      "notFound": "Introuvable",
+      "custom": "Chemin personnalisé",
+      "auto": "Détecté automatiquement",
+      "checkFailed": "Impossible de vérifier le CLI",
+      "saveFailed": "Impossible d’enregistrer le chemin. Réessayez."
+    },
+    "modelPicker": {
+      "name": "Modèles visibles",
+      "desc": "Choisissez les modèles disponibles dans le sélecteur du chat. Faites-les glisser pour les réordonner ; le fournisseur utilise le premier modèle actuellement utilisable comme modèle par défaut. Sélectionnez au moins un modèle pour utiliser ce fournisseur.",
+      "browse": "Parcourir les modèles",
+      "filterLabel": "Filtrer les modèles {provider}",
+      "searchPlaceholder": "Filtrer par modèle, fournisseur ou ID...",
+      "providerFilterLabel": "Filtrer les fournisseurs de modèles",
+      "allProviders": "Tous les fournisseurs ({count})",
+      "discover": "Découvrir",
+      "visible": "Visibles : ",
+      "ofDiscovered": " sur {count} découverts",
+      "oneProvider": " | 1 fournisseur",
+      "manyProviders": " | {count} fournisseurs",
+      "loadingModels": "Chargement des modèles...",
+      "loading": "Chargement...",
+      "available": "{count} disponible(s)",
+      "noneDiscovered": "Aucun modèle découvert pour l'instant",
+      "selected": "Sélectionnés ({count})",
+      "clearAllLabel": "Effacer tous les modèles {provider} sélectionnés",
+      "reorderLabel": "Réordonner {model} ; faites glisser ou utilisez les flèches Haut et Bas",
+      "default": "Par défaut",
+      "unavailable": "Indisponible",
+      "aliasLabel": "Alias (facultatif)",
+      "removeLabel": "Retirer {model}",
+      "noMatch": "Aucun modèle ne correspond à votre filtre.",
+      "emptyCatalog": "Aucun modèle {provider} signalé. Vérifiez votre configuration et cliquez sur Découvrir.",
+      "loadingCatalog": "Chargement des modèles {provider}…",
+      "stale": "Le catalogue de modèles {provider} est obsolète. Cliquez sur Découvrir pour l'actualiser."
+    },
+    "grok": {
+      "environment": {
+        "name": "Variables d'environnement Grok Build",
+        "desc": "Variables d'environnement transmises uniquement à Grok Build. Les secrets des modèles personnalisés restent dans la portée de ce fournisseur et sont référencés depuis la configuration native par env_key."
+      }
+    },
+    "deepseek": {
+      "installation": {
+        "desc": "La détection automatique privilégie dsh, puis cherche Desktop sur macOS ou Windows. Si les deux sont installés, saisissez le chemin .app de Desktop ou son dossier d’installation Windows pour le choisir. Ouvrez d’abord Desktop pour terminer sa configuration.",
+        "desktop": "Utilisation de votre profil Desktop natif.",
+        "web": "Utilisation de votre profil Web natif."
+      },
+      "preset": "Preset",
+      "codeMode": {
+        "name": "Activer le mode code",
+        "desc": "S'applique à partir du prochain tour de chaque conversation, y compris les conversations existantes. Ajoute run_code natif aux outils directs."
+      },
+      "presetPlugins": {
+        "name": "Plugins de preset supplémentaires",
+        "desc": "Avancé. Une liste YAML (format de dsh) de lignes de plugins dsh natifs ajoutées au preset de discussion de Codian, chacune avec son propre « id » et son propre « name ». Ces lignes ne peuvent pas remplacer celles de Codian. L'enregistrement redémarre DeepSeek Harness, ce qui arrête les tours en cours. Les plugins sans interface dans Codian, comme le mode plan, peuvent ne pas fonctionner."
+      },
+      "presetPreview": "Aperçu du preset",
+      "environment": {
+        "name": "Variables d'environnement DeepSeek Harness",
+        "desc": "Variables d’environnement transmises uniquement à DeepSeek Harness. Utilise le profil Web ou Desktop natif sélectionné, vos identifiants, modèles et serveurs MCP."
+      }
+    },
+    "skills": {
+      "subTabs": {
+        "claude": "Claude Code",
+        "shared": "Autres fournisseurs"
+      },
+      "claudeHelp": "Skills Claude Code dans .claude/skills/ et commandes dans .claude/commands/.",
+      "sharedHelp": "Skills partagés dans .agents/skills/ pour Codex, OpenCode, Pi, Grok Build et DeepSeek Harness.",
+      "status": {
+        "error": "Impossible de lire les dossiers de skills : {message}"
+      },
+      "synced": "Synchronisé",
+      "actions": {
+        "sync": "Synchroniser",
+        "resync": "Resynchroniser"
+      },
+      "commands": {
+        "title": "Commandes Claude Code",
+        "hint": "Les commandes ne fonctionnent que dans Claude Code. Il est recommandé de les convertir en skills.",
+        "badge": "commande",
+        "empty": "Aucune commande dans .claude/commands.",
+        "convert": "Convertir en skill",
+        "editTitle": "Modifier la commande",
+        "convertTitle": "Convertir la commande en skill",
+        "nameDesc": "Chemin dans .claude/commands sans .md ; les commandes imbriquées utilisent /",
+        "descriptionDesc": "Description facultative affichée dans le menu des commandes",
+        "updated": "Commande « {name} » mise à jour.",
+        "converted": "Commande convertie en skill « {name} ».",
+        "deleted": "Commande « {name} » placée dans la corbeille.",
+        "deleteTitle": "Supprimer la commande",
+        "deleteDescription": "Le fichier de la commande sera placé dans la corbeille.",
+        "collisionFailed": "Une commande nommée « {name} » existe déjà."
+      },
+      "droppedFrontmatterWarning": "L'enregistrement ne conserve que le nom et la description. Ces clés seront supprimées et le comportement des fournisseurs peut changer : {keys}",
+      "hidden": {
+        "name": "Commandes et skills masqués",
+        "desc": "Masque des commandes et des skills dans le menu de commandes de tous les fournisseurs. Saisissez les noms exacts sans barre oblique initiale, un par ligne (les skills Pi utilisent skill:nom).",
+        "placeholder": "commit\ncompact\nskill:review"
+      },
+      "sync": {
+        "title": "Synchroniser les skills",
+        "repairTitle": "Réparer le lien des skills",
+        "loading": "Vérification des dossiers de skills...",
+        "intro": "La synchronisation regroupe les skills et commandes Claude Code dans .agents/skills et y relie .claude/skills.",
+        "pros": {
+          "oneList": "Une seule liste pour tous les fournisseurs.",
+          "newSkills": "Les nouveaux skills apparaissent partout."
+        },
+        "cons": {
+          "dropped": "Seuls le nom et la description sont conservés ; les réglages propres à chaque fournisseur sont supprimés et le comportement peut changer.",
+          "claudeSyntax": "La syntaxe propre à Claude Code ne fonctionne pas chez les autres fournisseurs : {names}"
+        },
+        "attentionTitle": "À vérifier",
+        "nothingNeedsAttention": "Rien à vérifier.",
+        "nameField": "Nom",
+        "descriptionField": "Description",
+        "ready": "Prêt",
+        "problems": {
+          "name": "Nom invalide. Utilisez des minuscules, des chiffres et des tirets.",
+          "description": "Description manquante.",
+          "instructions": "Aucune instruction. Ajoutez-les au fichier et resynchronisez.",
+          "unreadable": "Son frontmatter est illisible. Corrigez le fichier et resynchronisez.",
+          "sharedConflict": "Un skill partagé nommé « {name} » existe déjà.",
+          "itemConflict": "Un autre élément s'appelle aussi « {name} »."
+        },
+        "options": {
+          "fix": "Corriger",
+          "replace": "Remplacer le skill partagé",
+          "discard": "Abandonner (mettre à la corbeille)",
+          "keep": "Garder comme commande"
+        },
+        "continue": "Continuer",
+        "confirmTitle": "Remplacer .claude/skills par un lien ?",
+        "confirmBody": ".claude/skills sera remplacé par un lien vers .agents/skills. Cette action est irréversible.",
+        "repairBody": ".claude/skills sera remplacé par un lien vers .agents/skills. Le dossier vers lequel il pointe actuellement n'est pas modifié.",
+        "linkBody": "Crée .claude/skills comme lien vers .agents/skills pour que Claude Code utilise les skills partagés. Aucun fichier n'est déplacé.",
+        "linkWithItemsBody": "Les commandes deviennent des skills, puis .claude/skills est créé comme lien vers .agents/skills. Cette action est irréversible.",
+        "devicesWarning": "Ce coffre est synchronisé entre appareils ? Le lien risque de ne pas l'être ; synchronisez sur chaque appareil.",
+        "confirm": "Synchroniser et lier",
+        "partial": "La synchronisation s'est arrêtée avant la création du lien. Corrigez les éléments ci-dessous et relancez-la.",
+        "failed": "Échec de la synchronisation : {message}",
+        "summary": "Déplacés {moved}, convertis {converted}, à la corbeille {trashed}, {unlinked} lien(s) supprimé(s)."
+      }
+    },
+    "pluginRenderedFenceLanguages": {
+      "name": "Langages de blocs de code rendus par des plugins",
+      "desc": "Langages de blocs de code, un par ligne, transmis au plugin qui les affiche dans les notes (par exemple vega-lite). Ils sont rendus une fois la réponse terminée. Les autres blocs de code restent affichés comme du code."
     }
   }
 }

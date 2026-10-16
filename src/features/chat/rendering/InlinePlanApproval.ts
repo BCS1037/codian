@@ -27,18 +27,18 @@ export class InlinePlanApproval {
   }
 
   render(): void {
-    this.rootEl = this.containerEl.createDiv({ cls: 'claudian-plan-approval-inline' });
+    this.rootEl = this.containerEl.createDiv({ cls: 'codian-plan-approval-inline' });
 
-    this.rootEl.createDiv({ cls: 'claudian-plan-inline-title', text: 'Plan complete' });
+    this.rootEl.createDiv({ cls: 'codian-plan-inline-title', text: 'Plan complete' });
 
-    const actionsEl = this.rootEl.createDiv({ cls: 'claudian-ask-list' });
+    const actionsEl = this.rootEl.createDiv({ cls: 'codian-ask-list' });
 
     // 1. Implement
-    const implementRow = actionsEl.createDiv({ cls: 'claudian-ask-item' });
+    const implementRow = actionsEl.createDiv({ cls: 'codian-ask-item' });
     implementRow.addClass('is-focused');
-    implementRow.createSpan({ text: '\u203A', cls: 'claudian-ask-cursor' });
-    implementRow.createSpan({ text: '1. ', cls: 'claudian-ask-item-num' });
-    implementRow.createSpan({ text: 'Implement', cls: 'claudian-ask-item-label' });
+    implementRow.createSpan({ text: '\u203A', cls: 'codian-ask-cursor' });
+    implementRow.createSpan({ text: '1. ', cls: 'codian-ask-item-num' });
+    implementRow.createSpan({ text: 'Implement', cls: 'codian-ask-item-label' });
     implementRow.addEventListener('click', () => {
       this.focusedIndex = 0;
       this.updateFocus();
@@ -47,12 +47,12 @@ export class InlinePlanApproval {
     this.items.push(implementRow);
 
     // 2. Revise (with feedback input)
-    const reviseRow = actionsEl.createDiv({ cls: 'claudian-ask-item claudian-ask-custom-item' });
-    reviseRow.createSpan({ text: '\u00A0', cls: 'claudian-ask-cursor' });
-    reviseRow.createSpan({ text: '2. ', cls: 'claudian-ask-item-num' });
+    const reviseRow = actionsEl.createDiv({ cls: 'codian-ask-item codian-ask-custom-item' });
+    reviseRow.createSpan({ text: '\u00A0', cls: 'codian-ask-cursor' });
+    reviseRow.createSpan({ text: '2. ', cls: 'codian-ask-item-num' });
     this.feedbackInput = reviseRow.createEl('input', {
       type: 'text',
-      cls: 'claudian-ask-custom-text',
+      cls: 'codian-ask-custom-text',
       placeholder: 'Enter feedback to revise plan...',
     });
     this.feedbackInput.addEventListener('focus', () => { this.isInputFocused = true; });
@@ -64,10 +64,10 @@ export class InlinePlanApproval {
     this.items.push(reviseRow);
 
     // 3. Cancel
-    const cancelRow = actionsEl.createDiv({ cls: 'claudian-ask-item' });
-    cancelRow.createSpan({ text: '\u00A0', cls: 'claudian-ask-cursor' });
-    cancelRow.createSpan({ text: '3. ', cls: 'claudian-ask-item-num' });
-    cancelRow.createSpan({ text: 'Cancel', cls: 'claudian-ask-item-label' });
+    const cancelRow = actionsEl.createDiv({ cls: 'codian-ask-item' });
+    cancelRow.createSpan({ text: '\u00A0', cls: 'codian-ask-cursor' });
+    cancelRow.createSpan({ text: '3. ', cls: 'codian-ask-item-num' });
+    cancelRow.createSpan({ text: 'Cancel', cls: 'codian-ask-item-label' });
     cancelRow.addEventListener('click', () => {
       this.focusedIndex = 2;
       this.updateFocus();
@@ -75,7 +75,7 @@ export class InlinePlanApproval {
     });
     this.items.push(cancelRow);
 
-    this.rootEl.createDiv({ text: HINTS_TEXT, cls: 'claudian-ask-hints' });
+    this.rootEl.createDiv({ text: HINTS_TEXT, cls: 'codian-ask-hints' });
 
     this.rootEl.setAttribute('tabindex', '0');
     this.rootEl.addEventListener('keydown', this.boundKeyDown);
@@ -146,14 +146,14 @@ export class InlinePlanApproval {
   private updateFocus(): void {
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
-      const cursor = item.querySelector('.claudian-ask-cursor');
+      const cursor = item.querySelector('.codian-ask-cursor');
       if (i === this.focusedIndex) {
         item.addClass('is-focused');
         if (cursor) cursor.textContent = '\u203A';
         item.scrollIntoView({ block: 'nearest' });
 
-        if (item.hasClass('claudian-ask-custom-item')) {
-          const input = item.querySelector('.claudian-ask-custom-text') as HTMLInputElement;
+        if (item.hasClass('codian-ask-custom-item')) {
+          const input = item.querySelector('.codian-ask-custom-text') as HTMLInputElement;
           if (input) {
             input.focus();
             this.isInputFocused = true;
@@ -163,8 +163,8 @@ export class InlinePlanApproval {
         item.removeClass('is-focused');
         if (cursor) cursor.textContent = '\u00A0';
 
-        if (item.hasClass('claudian-ask-custom-item') && this.isInputFocused) {
-          const input = item.querySelector('.claudian-ask-custom-text') as HTMLInputElement;
+        if (item.hasClass('codian-ask-custom-item') && this.isInputFocused) {
+          const input = item.querySelector('.codian-ask-custom-text') as HTMLInputElement;
           if (input) {
             input.blur();
             this.isInputFocused = false;

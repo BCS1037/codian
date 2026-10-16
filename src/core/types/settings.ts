@@ -59,7 +59,7 @@ export const CHAT_VIEW_PLACEMENTS = [
   'main-tab',
 ] as const;
 
-/** Workspace location used when opening the Claudian chat view. */
+/** Workspace location used when opening the Codian chat view. */
 export type ChatViewPlacement = typeof CHAT_VIEW_PLACEMENTS[number];
 
 export const CHAT_NAVIGATION_MODES = [
@@ -91,13 +91,13 @@ export type HostnameCliPaths = Record<string, string>;
 export type ProviderConfigMap = Partial<Record<string, Record<string, unknown>>>;
 
 /**
- * Application settings stored in .claudian/claudian-settings.json.
+ * Application settings stored in .codian/codian-settings.json.
  *
  * Provider-specific fields (model, thinkingBudget, effortLevel, serviceTier, etc.) use
  * `string` here.  The active provider casts internally when it needs
  * narrower types.
  */
-export interface ClaudianSettings {
+export interface CodianSettings {
   // User preferences
   userName: string;
 
@@ -152,6 +152,8 @@ export interface ClaudianSettings {
   maxTabs: number;
   enableAutoScroll: boolean;
   deferMathRenderingDuringStreaming: boolean;
+  /** Fence languages dispatched to registered plugin code block processors in chat. */
+  pluginRenderedFenceLanguages: string[];
   expandFileEditsByDefault: boolean;
   chatViewPlacement: ChatViewPlacement;
   chatNavigationMode: ChatNavigationMode;

@@ -1,6 +1,6 @@
 import * as sdkModule from '@anthropic-ai/claude-agent-sdk';
 
-import type ClaudianPlugin from '@/main';
+import type CodianPlugin from '@/main';
 import { probeRuntimeCommands } from '@/providers/claude/commands/probeRuntimeCommands';
 
 const sdkMock = sdkModule as unknown as {
@@ -20,13 +20,13 @@ jest.mock('@/utils/env', () => ({
   findNodeExecutable: jest.fn().mockReturnValue('/usr/bin/node'),
 }));
 
-function createMockPlugin(settings: Record<string, unknown> = {}): ClaudianPlugin {
+function createMockPlugin(settings: Record<string, unknown> = {}): CodianPlugin {
   return {
     app: {},
     settings,
     getResolvedProviderCliPath: jest.fn().mockReturnValue('/mock/claude'),
     getActiveEnvironmentVariables: jest.fn().mockReturnValue(''),
-  } as unknown as ClaudianPlugin;
+  } as unknown as CodianPlugin;
 }
 
 describe('probeRuntimeCommands', () => {

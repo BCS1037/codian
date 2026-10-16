@@ -1,5 +1,5 @@
 /* Slash Command Dropdown */
-.claudian-slash-dropdown {
+.codian-slash-dropdown {
   display: none;
   position: absolute;
   bottom: 100%;
@@ -15,50 +15,50 @@
   overflow-y: auto;
 }
 
-.claudian-slash-dropdown.visible {
+.codian-slash-dropdown.visible {
   display: block;
 }
 
 /* Fixed positioning for inline editor */
-.claudian-slash-dropdown-fixed {
+.codian-slash-dropdown-fixed {
   position: fixed;
-  bottom: var(--claudian-fixed-dropdown-bottom);
-  left: var(--claudian-fixed-dropdown-left);
+  bottom: var(--codian-fixed-dropdown-bottom);
+  left: var(--codian-fixed-dropdown-left);
   right: auto;
-  width: var(--claudian-fixed-dropdown-width);
+  width: var(--codian-fixed-dropdown-width);
   z-index: 10001;
 }
 
-.claudian-slash-item {
+.codian-slash-item {
   padding: 8px 12px;
   cursor: pointer;
   transition: background 0.1s ease;
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.claudian-slash-item:last-child {
+.codian-slash-item:last-child {
   border-bottom: none;
 }
 
-.claudian-slash-item:hover,
-.claudian-slash-item.selected {
+.codian-slash-item:hover,
+.codian-slash-item.selected {
   background: var(--background-modifier-hover);
 }
 
-.claudian-slash-name {
+.codian-slash-name {
   font-size: 12px;
   font-weight: 500;
   color: var(--text-normal);
   font-family: var(--font-monospace);
 }
 
-.claudian-slash-hint {
+.codian-slash-hint {
   font-size: 12px;
   color: var(--text-muted);
   margin-left: 8px;
 }
 
-.claudian-slash-desc {
+.codian-slash-desc {
   font-size: 11px;
   color: var(--text-muted);
   margin-top: 2px;
@@ -67,7 +67,7 @@
   white-space: nowrap;
 }
 
-.claudian-slash-empty {
+.codian-slash-empty {
   padding: 16px;
   text-align: center;
   color: var(--text-muted);
@@ -75,15 +75,15 @@
 }
 
 /* Scrollbar */
-.claudian-slash-dropdown::-webkit-scrollbar {
+.codian-slash-dropdown::-webkit-scrollbar {
   width: 6px;
 }
 
-.claudian-slash-dropdown::-webkit-scrollbar-track {
+.codian-slash-dropdown::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.claudian-slash-dropdown::-webkit-scrollbar-thumb {
+.codian-slash-dropdown::-webkit-scrollbar-thumb {
   background: var(--background-modifier-border);
   border-radius: 3px;
 }

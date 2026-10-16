@@ -71,7 +71,7 @@ export class McpTestModal extends Modal {
 
   onOpen() {
     this.setTitle(`Verify: ${this.serverName}`);
-    this.modalEl.addClass('claudian-mcp-test-modal');
+    this.modalEl.addClass('codian-mcp-test-modal');
     this.contentEl_ = this.contentEl;
     this.renderLoading();
   }
@@ -92,9 +92,9 @@ export class McpTestModal extends Modal {
     if (!this.contentEl_) return;
     this.contentEl_.empty();
 
-    const loadingEl = this.contentEl_.createDiv({ cls: 'claudian-mcp-test-loading' });
+    const loadingEl = this.contentEl_.createDiv({ cls: 'codian-mcp-test-loading' });
 
-    const spinnerEl = loadingEl.createDiv({ cls: 'claudian-mcp-test-spinner' });
+    const spinnerEl = loadingEl.createDiv({ cls: 'codian-mcp-test-spinner' });
     appendSpinnerSvg(spinnerEl);
 
     loadingEl.createSpan({ text: 'Connecting to MCP server...' });
@@ -109,9 +109,9 @@ export class McpTestModal extends Modal {
       return;
     }
 
-    const statusEl = this.contentEl_.createDiv({ cls: 'claudian-mcp-test-status' });
+    const statusEl = this.contentEl_.createDiv({ cls: 'codian-mcp-test-status' });
 
-    const iconEl = statusEl.createSpan({ cls: 'claudian-mcp-test-icon' });
+    const iconEl = statusEl.createSpan({ cls: 'codian-mcp-test-icon' });
     if (this.result.success) {
       setIcon(iconEl, 'check-circle');
       iconEl.addClass('success');
@@ -120,7 +120,7 @@ export class McpTestModal extends Modal {
       iconEl.addClass('error');
     }
 
-    const textEl = statusEl.createSpan({ cls: 'claudian-mcp-test-text' });
+    const textEl = statusEl.createSpan({ cls: 'codian-mcp-test-text' });
     if (this.result.success) {
       let statusText = 'Connected successfully';
       if (this.result.serverName) {
@@ -135,7 +135,7 @@ export class McpTestModal extends Modal {
     }
 
     if (this.result.error) {
-      const errorEl = this.contentEl_.createDiv({ cls: 'claudian-mcp-test-error' });
+      const errorEl = this.contentEl_.createDiv({ cls: 'codian-mcp-test-error' });
       errorEl.setText(this.result.error);
     }
 
@@ -143,26 +143,26 @@ export class McpTestModal extends Modal {
     this.toolElements.clear();
 
     if (this.result.tools.length > 0) {
-      const toolsSection = this.contentEl_.createDiv({ cls: 'claudian-mcp-test-tools' });
+      const toolsSection = this.contentEl_.createDiv({ cls: 'codian-mcp-test-tools' });
 
-      const toolsHeader = toolsSection.createDiv({ cls: 'claudian-mcp-test-tools-header' });
+      const toolsHeader = toolsSection.createDiv({ cls: 'codian-mcp-test-tools-header' });
       toolsHeader.setText(`Available Tools (${this.result.tools.length})`);
 
-      const toolsList = toolsSection.createDiv({ cls: 'claudian-mcp-test-tools-list' });
+      const toolsList = toolsSection.createDiv({ cls: 'codian-mcp-test-tools-list' });
 
       for (const tool of this.result.tools) {
         this.renderTool(toolsList, tool);
       }
     } else if (this.result.success) {
-      const noToolsEl = this.contentEl_.createDiv({ cls: 'claudian-mcp-test-no-tools' });
+      const noToolsEl = this.contentEl_.createDiv({ cls: 'codian-mcp-test-no-tools' });
       noToolsEl.setText('No tools information available. Tools will be loaded when used in chat.');
     }
 
-    const buttonContainer = this.contentEl_.createDiv({ cls: 'claudian-mcp-test-buttons' });
+    const buttonContainer = this.contentEl_.createDiv({ cls: 'codian-mcp-test-buttons' });
 
     if (this.result.tools.length > 0 && this.onToolToggle) {
       this.toggleAllBtn = buttonContainer.createEl('button', {
-        cls: 'claudian-mcp-toggle-all-btn',
+        cls: 'codian-mcp-toggle-all-btn',
       });
       this.updateToggleAllButton();
       this.toggleAllBtn.addEventListener('click', () => {
@@ -178,17 +178,17 @@ export class McpTestModal extends Modal {
   }
 
   private renderTool(container: HTMLElement, tool: McpTool) {
-    const toolEl = container.createDiv({ cls: 'claudian-mcp-test-tool' });
+    const toolEl = container.createDiv({ cls: 'codian-mcp-test-tool' });
 
-    const headerEl = toolEl.createDiv({ cls: 'claudian-mcp-test-tool-header' });
+    const headerEl = toolEl.createDiv({ cls: 'codian-mcp-test-tool-header' });
 
-    const iconEl = headerEl.createSpan({ cls: 'claudian-mcp-test-tool-icon' });
+    const iconEl = headerEl.createSpan({ cls: 'codian-mcp-test-tool-icon' });
     setIcon(iconEl, 'wrench');
 
-    const nameEl = headerEl.createSpan({ cls: 'claudian-mcp-test-tool-name' });
+    const nameEl = headerEl.createSpan({ cls: 'codian-mcp-test-tool-name' });
     nameEl.setText(tool.name);
 
-    const toggleEl = headerEl.createDiv({ cls: 'claudian-mcp-test-tool-toggle' });
+    const toggleEl = headerEl.createDiv({ cls: 'codian-mcp-test-tool-toggle' });
     const toggleContainer = toggleEl.createDiv({ cls: 'checkbox-container' });
     const checkbox = toggleContainer.createEl('input', {
       type: 'checkbox',
@@ -217,7 +217,7 @@ export class McpTestModal extends Modal {
     }
 
     if (tool.description) {
-      const descEl = toolEl.createDiv({ cls: 'claudian-mcp-test-tool-desc' });
+      const descEl = toolEl.createDiv({ cls: 'codian-mcp-test-tool-desc' });
       descEl.setText(tool.description);
     }
   }
@@ -266,7 +266,7 @@ export class McpTestModal extends Modal {
   }
 
   private updateToolState(toolEl: HTMLElement, enabled: boolean) {
-    toolEl.toggleClass('claudian-mcp-test-tool-disabled', !enabled);
+    toolEl.toggleClass('codian-mcp-test-tool-disabled', !enabled);
   }
 
   private updateToggleAllButton() {

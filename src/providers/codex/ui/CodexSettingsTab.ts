@@ -90,7 +90,7 @@ export const codexSettingsTabRenderer: ProviderSettingsTabRenderer = {
       .setDesc(getCliPathCopy().desc);
 
     const validationEl = container.createDiv({
-      cls: 'claudian-cli-path-validation claudian-setting-validation claudian-setting-validation-error claudian-hidden',
+      cls: 'codian-cli-path-validation codian-setting-validation codian-setting-validation-error codian-hidden',
     });
 
     const validatePath = (value: string): string | null => {
@@ -120,16 +120,16 @@ export const codexSettingsTabRenderer: ProviderSettingsTabRenderer = {
       const error = validatePath(value);
       if (error) {
         validationEl.setText(error);
-        validationEl.toggleClass('claudian-hidden', false);
+        validationEl.toggleClass('codian-hidden', false);
         if (inputEl) {
-          inputEl.toggleClass('claudian-input-error', true);
+          inputEl.toggleClass('codian-input-error', true);
         }
         return false;
       }
 
-      validationEl.toggleClass('claudian-hidden', true);
+      validationEl.toggleClass('codian-hidden', true);
       if (inputEl) {
-        inputEl.toggleClass('claudian-input-error', false);
+        inputEl.toggleClass('codian-input-error', false);
       }
       return true;
     };
@@ -147,7 +147,7 @@ export const codexSettingsTabRenderer: ProviderSettingsTabRenderer = {
         updateCliPathValidation(cliPathInputEl.value, cliPathInputEl);
       }
       if (wslDistroSettingEl) {
-        wslDistroSettingEl.toggleClass('claudian-hidden', installationMethod !== 'wsl');
+        wslDistroSettingEl.toggleClass('codian-hidden', installationMethod !== 'wsl');
       }
       if (wslDistroInputEl) {
         wslDistroInputEl.disabled = installationMethod !== 'wsl';
@@ -183,7 +183,7 @@ export const codexSettingsTabRenderer: ProviderSettingsTabRenderer = {
         .onChange(async (value) => {
           await persistCliPath(value);
         });
-      text.inputEl.addClass('claudian-settings-cli-path-input');
+      text.inputEl.addClass('codian-settings-cli-path-input');
       cliPathInputEl = text.inputEl;
 
       updateCliPathValidation(currentValue, text.inputEl);
@@ -205,7 +205,7 @@ export const codexSettingsTabRenderer: ProviderSettingsTabRenderer = {
             });
           });
 
-        text.inputEl.addClass('claudian-settings-cli-path-input');
+        text.inputEl.addClass('codian-settings-cli-path-input');
         text.inputEl.disabled = installationMethod !== 'wsl';
         wslDistroInputEl = text.inputEl;
       });
@@ -289,13 +289,13 @@ export const codexSettingsTabRenderer: ProviderSettingsTabRenderer = {
     if (codexCatalog) {
       new Setting(container).setName(t('settings.codex.skills.name')).setHeading();
 
-      const skillsDesc = container.createDiv({ cls: 'claudian-sp-settings-desc' });
+      const skillsDesc = container.createDiv({ cls: 'codian-sp-settings-desc' });
       skillsDesc.createEl('p', {
         cls: 'setting-item-description',
         text: t('settings.codex.skills.desc'),
       });
 
-      const skillsContainer = container.createDiv({ cls: 'claudian-slash-commands-container' });
+      const skillsContainer = container.createDiv({ cls: 'codian-slash-commands-container' });
       new CodexSkillSettings(skillsContainer, codexCatalog, context.plugin.app);
     }
 
@@ -311,13 +311,13 @@ export const codexSettingsTabRenderer: ProviderSettingsTabRenderer = {
 
     new Setting(container).setName(t('settings.codex.subagents.name')).setHeading();
 
-    const subagentDesc = container.createDiv({ cls: 'claudian-sp-settings-desc' });
+    const subagentDesc = container.createDiv({ cls: 'codian-sp-settings-desc' });
     subagentDesc.createEl('p', {
       cls: 'setting-item-description',
       text: t('settings.codex.subagents.desc'),
     });
 
-    const subagentContainer = container.createDiv({ cls: 'claudian-slash-commands-container' });
+    const subagentContainer = container.createDiv({ cls: 'codian-slash-commands-container' });
     new CodexSubagentSettings(subagentContainer, codexWorkspace.subagentStorage, context.plugin.app, () => {
       void codexWorkspace.refreshAgentMentions?.();
     });

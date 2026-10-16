@@ -110,6 +110,22 @@ function createMockCallbacks(options: {
   };
 }
 
+function createMockInput(overrides: Record<string, unknown> = {}): HTMLTextAreaElement {
+  const attributes = new Map<string, string>();
+  return {
+    value: '',
+    selectionStart: 0,
+    selectionEnd: 0,
+    focus: jest.fn(),
+    setSelectionRange: jest.fn(),
+    dispatchEvent: jest.fn(),
+    setAttribute: jest.fn((name: string, value: string) => attributes.set(name, value)),
+    getAttribute: (name: string) => attributes.get(name) ?? null,
+    removeAttribute: jest.fn((name: string) => attributes.delete(name)),
+    ...overrides,
+  } as unknown as HTMLTextAreaElement;
+}
+
 describe('FileContextManager', () => {
   let containerEl: MockElement;
   let inputEl: HTMLTextAreaElement;
@@ -120,12 +136,7 @@ describe('FileContextManager', () => {
     mockVaultPath = '/vault';
     mockScanPaths.mockReturnValue([]);
     containerEl = createMockEl();
-    inputEl = {
-      value: '',
-      selectionStart: 0,
-      selectionEnd: 0,
-      focus: jest.fn(),
-    } as unknown as HTMLTextAreaElement;
+    inputEl = createMockInput();
   });
 
   afterEach(() => {
@@ -204,11 +215,11 @@ describe('FileContextManager', () => {
 
     manager.setCurrentNote('notes/chip.md');
 
-    const chip = findByClass(containerEl, 'claudian-context-chip--note');
+    const chip = findByClass(containerEl, 'codian-context-chip--note');
     expect(chip).toBeDefined();
     expect(containerEl.hasClass('has-content')).toBe(true);
 
-    const removeEl = findByClass(containerEl, 'claudian-context-chip-remove');
+    const removeEl = findByClass(containerEl, 'codian-context-chip-remove');
     expect(removeEl).toBeDefined();
 
     removeEl!.click();
@@ -228,14 +239,7 @@ describe('FileContextManager', () => {
         files: [createMockTFile('notes/alpha.md'), new (TFolder as any)('projects/demo')],
       },
     };
-    inputEl = {
-      value: 'Review ',
-      selectionStart: 7,
-      selectionEnd: 7,
-      focus: jest.fn(),
-      setSelectionRange: jest.fn(),
-      dispatchEvent: jest.fn(),
-    } as unknown as HTMLTextAreaElement;
+    inputEl = createMockInput({ value: 'Review ', selectionStart: 7, selectionEnd: 7 });
     const manager = new FileContextManager(
       app,
       containerEl as any,
@@ -256,14 +260,14 @@ describe('FileContextManager', () => {
     });
 
     expect(inputEl.value).toBe('Review @notes/alpha.md @projects/demo/ ');
-    expect(findAllByClass(containerEl, 'claudian-context-chip--note')).toHaveLength(1);
-    expect(findAllByClass(containerEl, 'claudian-context-chip--folder')).toHaveLength(1);
+    expect(findAllByClass(containerEl, 'codian-context-chip--note')).toHaveLength(1);
+    expect(findAllByClass(containerEl, 'codian-context-chip--folder')).toHaveLength(1);
 
     inputEl.value = 'Review @notes/alpha.md ';
     manager.handleInputChange();
 
-    expect(findAllByClass(containerEl, 'claudian-context-chip--note')).toHaveLength(1);
-    expect(findAllByClass(containerEl, 'claudian-context-chip--folder')).toHaveLength(0);
+    expect(findAllByClass(containerEl, 'codian-context-chip--note')).toHaveLength(1);
+    expect(findAllByClass(containerEl, 'codian-context-chip--folder')).toHaveLength(0);
 
     manager.destroy();
     dropController.destroy();
@@ -292,7 +296,7 @@ describe('FileContextManager', () => {
     expect(onVaultReferencesChanged).toHaveBeenLastCalledWith([
       { path: 'notes/pasted.md', kind: 'file' },
     ]);
-    expect(findAllByClass(containerEl, 'claudian-context-chip--note')).toHaveLength(0);
+    expect(findAllByClass(containerEl, 'codian-context-chip--note')).toHaveLength(0);
     manager.destroy();
   });
 
@@ -302,14 +306,7 @@ describe('FileContextManager', () => {
     (app as any).dragManager = {
       draggable: { type: 'file', file: new (TFolder as any)('projects/old') },
     };
-    inputEl = {
-      value: '',
-      selectionStart: 0,
-      selectionEnd: 0,
-      focus: jest.fn(),
-      setSelectionRange: jest.fn(),
-      dispatchEvent: jest.fn(),
-    } as unknown as HTMLTextAreaElement;
+    inputEl = createMockInput();
     const manager = new FileContextManager(
       app,
       containerEl as any,
@@ -334,14 +331,14 @@ describe('FileContextManager', () => {
     renameHandler(new (TFolder as any)('projects/new'), 'projects/old');
 
     expect(inputEl.value).toBe('@projects/new/ ');
-    expect(findAllByClass(containerEl, 'claudian-context-chip--folder')).toHaveLength(1);
+    expect(findAllByClass(containerEl, 'codian-context-chip--folder')).toHaveLength(1);
 
     const deleteHandler = (app.vault.on as jest.Mock).mock.calls
       .find((call: any[]) => call[0] === 'delete')?.[1];
     deleteHandler(new (TFolder as any)('projects/new'));
 
     expect(inputEl.value).toBe(' ');
-    expect(findAllByClass(containerEl, 'claudian-context-chip--folder')).toHaveLength(0);
+    expect(findAllByClass(containerEl, 'codian-context-chip--folder')).toHaveLength(0);
 
     manager.destroy();
     dropController.destroy();
@@ -353,14 +350,7 @@ describe('FileContextManager', () => {
     (app as any).dragManager = {
       draggable: { type: 'file', file: createMockTFile('notes/alpha.md') },
     };
-    inputEl = {
-      value: '',
-      selectionStart: 0,
-      selectionEnd: 0,
-      focus: jest.fn(),
-      setSelectionRange: jest.fn(),
-      dispatchEvent: jest.fn(),
-    } as unknown as HTMLTextAreaElement;
+    inputEl = createMockInput();
     const manager = new FileContextManager(
       app,
       containerEl as any,
@@ -381,12 +371,12 @@ describe('FileContextManager', () => {
       dataTransfer: { files: [] },
     });
 
-    expect(findAllByClass(containerEl, 'claudian-context-chip--note')).toHaveLength(1);
+    expect(findAllByClass(containerEl, 'codian-context-chip--note')).toHaveLength(1);
 
-    findByClass(containerEl, 'claudian-context-chip-remove')!.click();
+    findByClass(containerEl, 'codian-context-chip-remove')!.click();
 
     expect(inputEl.value).not.toContain('@notes/alpha.md');
-    expect(findAllByClass(containerEl, 'claudian-context-chip--note')).toHaveLength(0);
+    expect(findAllByClass(containerEl, 'codian-context-chip--note')).toHaveLength(0);
     dropController.destroy();
 
     manager.destroy();
@@ -436,7 +426,7 @@ describe('FileContextManager', () => {
     manager.handleInputChange();
     jest.advanceTimersByTime(200);
 
-    const pathEl = findByClass(containerEl, 'claudian-mention-path');
+    const pathEl = findByClass(containerEl, 'codian-mention-path');
     expect(pathEl?.textContent).toBe('clipping/file.md');
 
     manager.handleMentionKeydown({ key: 'Enter', preventDefault: jest.fn() } as any);
@@ -469,7 +459,7 @@ describe('FileContextManager', () => {
     jest.advanceTimersByTime(200);
 
     expect(getFoldersSpy).toHaveBeenCalled();
-    const folderLabel = findByClass(containerEl, 'claudian-mention-name-folder');
+    const folderLabel = findByClass(containerEl, 'codian-mention-name-folder');
     expect(folderLabel?.textContent).toBe('@src/');
 
     manager.destroy();
@@ -502,7 +492,7 @@ describe('FileContextManager', () => {
     manager.handleInputChange();
     jest.advanceTimersByTime(200);
 
-    const nameEls = findAllByClass(containerEl, 'claudian-mention-name-context');
+    const nameEls = findAllByClass(containerEl, 'codian-mention-name-context');
     expect(nameEls[0]?.textContent).toBe('src/app.md');
 
     manager.handleMentionKeydown({ key: 'Enter', preventDefault: jest.fn() } as any);

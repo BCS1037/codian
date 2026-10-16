@@ -105,4 +105,18 @@ describe('PiLaunchSpec', () => {
       'max',
     ]);
   });
+
+  it('loads the native tree extension when a branch-capable runtime supplies it', () => {
+    const spec = buildPiLaunchSpec({
+      command: 'pi',
+      cwd: '/vault',
+      settings: baseSettings,
+      treeExtensionPath: '/tmp/codian-pi-tree/extension.ts',
+    });
+
+    expect(spec.args.slice(-2)).toEqual([
+      '--extension',
+      '/tmp/codian-pi-tree/extension.ts',
+    ]);
+  });
 });

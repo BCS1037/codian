@@ -26,6 +26,7 @@ const locales = {
 } as const;
 
 const localizedKeys = [
+  'common.inputSuggestions',
   'common.enable',
   'common.disable',
   'chat.rewind.confirmMessageConversationOnly',
@@ -191,6 +192,23 @@ describe('locale files', () => {
     expect(simplifiedChinese['chat.historySearch.placeholder']).toBe('搜索会话');
     expect(simplifiedChinese['chat.historySearch.noMatches']).toBe('没有匹配的会话');
     expect(simplifiedChinese['chat.historySearch.clear']).toBe('清除搜索');
+  });
+
+  it('localizes the composer input suggestions list name', () => {
+    const simplifiedChinese = flattenTranslations(zhCN as unknown as TranslationTree);
+
+    expect(english['common.inputSuggestions']).toBe('Input suggestions');
+    expect(simplifiedChinese['common.inputSuggestions']).toBe('输入建议');
+  });
+
+  it('preserves interpolation parameters in every locale', () => {
+    const parameters = (value: string) => [...value.matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort();
+    for (const translations of Object.values(locales)) {
+      const localized = flattenTranslations(translations as unknown as TranslationTree);
+      for (const [key, value] of Object.entries(english)) {
+        expect({ key, parameters: parameters(localized[key]) }).toEqual({ key, parameters: parameters(value) });
+      }
+    }
   });
 
   it('keeps every locale structurally aligned with English', () => {

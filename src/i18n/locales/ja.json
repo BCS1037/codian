@@ -1,5 +1,6 @@
 {
   "common": {
+    "inputSuggestions": "入力候補",
     "save": "保存",
     "cancel": "キャンセル",
     "delete": "削除",
@@ -22,7 +23,9 @@
     "rewind": "巻き戻し",
     "enable": "有効にする",
     "disable": "無効にする",
-    "legacyPluginDataMigrated": "旧 Codian プラグインから設定を移行しました。Codian を使う前に旧プラグイン「codian」を無効にしてください。"
+    "legacyPluginDataMigrated": "旧 Codian プラグインから設定を移行しました。Codian を使う前に旧プラグイン「codian」を無効にしてください。",
+    "retry": "再試行",
+    "none": "なし"
   },
   "chat": {
     "drop": {
@@ -32,6 +35,8 @@
     },
     "providerRetry": "Claude API を再試行中（{attempt}/{maxRetries} 回目、理由: {reason}）。",
     "providerWorkspaceInitializationTimeout": "Provider {provider} の初期化が {seconds} 秒でタイムアウトしました。タブ切り替えを再試行してください。",
+    "deletedConversationResetFailed": "削除された会話をリセットできませんでした。未送信の入力は復元されました。",
+    "resizeConversations": "会話リストの幅を変更",
     "historySearch": {
       "placeholder": "会話を検索",
       "noMatches": "一致する会話がありません",
@@ -44,6 +49,12 @@
       "archive": "アーカイブ",
       "unarchive": "アーカイブを解除",
       "pinned": "ピン留め済み",
+      "markUnread": "未読にする",
+      "markRead": "既読にする",
+      "unread": "未読",
+      "needsInput": "入力が必要です",
+      "stoppedWithError": "エラーで停止しました",
+      "running": "実行中",
       "archived": "アーカイブ済み",
       "updateFailed": "会話インデックスの更新に失敗しました"
     },
@@ -107,10 +118,327 @@
       "selectedReply": "選択した AI 応答"
     },
     "navigation": {
-      "jumpToPrompt": "プロンプト {index} に移動"
+      "jumpToPrompt": "プロンプト {index} に移動",
+      "scrollToTop": "最上部へスクロール",
+      "previousMessage": "前のメッセージ",
+      "directory": "会話の目次",
+      "nextMessage": "次のメッセージ",
+      "scrollToBottom": "最下部へスクロール",
+      "emptyDirectory": "この会話にはユーザープロンプトがありません"
+    },
+    "branchNavigation": {
+      "previous": "前のブランチ",
+      "next": "次のブランチ",
+      "position": "{position} / {count}",
+      "failed": "会話のブランチを切り替えられませんでした：{error}",
+      "recoveryRequired": "Pi のブランチ切り替えに失敗しました。セッションの復旧が必要な場合があります：{error}",
+      "saveFailed": "ブランチは切り替わりましたが、会話状態を保存できませんでした：{error}",
+      "unavailable": "このブランチはもう利用できません。",
+      "unsupported": "この Provider はブランチ移動に対応していません。",
+      "runtimeUnavailable": "Pi ランタイムを利用できません。"
     },
     "welcomeOrb": {
       "solving": "解決中"
+    },
+    "promptSuggestionHint": "Tab で採用",
+    "selectAvailableModel": "送信する前に利用可能なモデルを選択してください。",
+    "selectAvailableTitleModel": "Codianの設定で利用可能なタイトル生成モデルを選択してください。",
+    "quote": {
+      "buttonLabel": "引用"
+    },
+    "codeBlock": {
+      "copyAriaLabel": "{language} のコードをコピー",
+      "copied": "コピーしました！"
+    },
+    "sideChat": {
+      "title": "サイドチャット",
+      "collapse": "折りたたむ",
+      "fullHeight": "全高表示",
+      "discard": "破棄",
+      "statusPreparing": "準備中",
+      "statusQueued": "{count} 件待機中",
+      "statusWorking": "実行中",
+      "statusError": "要確認",
+      "statusActionRequired": "入力が必要",
+      "placeholder": "サイドチャットで続けて質問",
+      "composerLabel": "サイドチャットのメッセージ",
+      "needsPrompt": "/side の後にプロンプトを入力してサイドチャットを開始してください。",
+      "unsupportedProvider": "このプロバイダーはサイドチャットに対応していません。",
+      "unavailableBusy": "サイドチャットには完了した返信が必要です。現在のターンの終了をお待ちください。",
+      "unavailableNoCheckpoint": "先にこの会話で返信を完了してからサイドチャットを開始してください。",
+      "unavailableNoSession": "この会話のプロバイダーセッションを解決できませんでした。",
+      "alreadyExists": "この会話にはすでにサイドチャットがあります。破棄してから新しく開始してください。",
+      "nestedUnavailable": "サイドチャットから別のサイドチャットは開始できません。先にメインへ折りたたんでください。",
+      "mainOnlyCommand": "/{command} はメインチャットでのみ使用できます。",
+      "startFailed": "サイドチャットを開始できませんでした：{error}",
+      "queued": "サイドチャットのキューに追加しました。",
+      "busySide": "サイドチャットが応答中です。完了までお待ちください。"
+    },
+    "zen": {
+      "regionLabel": "Codian チャット",
+      "showHistory": "会話を表示",
+      "move": "チャットパネルを移動",
+      "working": "処理中…",
+      "thinking": "思考中…",
+      "interrupted": "中断されました",
+      "workedFor": "{duration} 作業しました",
+      "workedForResult": "{duration} 作業しました · {result}",
+      "actionRequired": "入力が必要です",
+      "error": "エラー: {message}",
+      "toolRunning": "{tool} · 実行中",
+      "toolCompleted": "{tool} · 完了",
+      "toolFailed": "{tool} · 失敗",
+      "toolBlocked": "{tool} · ブロック"
+    },
+    "composer": {
+      "placeholder": "変更を依頼、@でファイルを指定、/コマンドを実行",
+      "message": "メッセージ",
+      "dropImage": "ここに画像をドロップ",
+      "moreContext": "他 {count} 件のコンテキストを表示",
+      "showLess": "折りたたむ",
+      "moreItems": "他 {count} 件"
+    },
+    "worked": "作業完了",
+    "taskNotification": "タスク通知",
+    "copyMessage": "メッセージをコピー",
+    "renderFailed": "メッセージの表示に失敗しました。",
+    "interruptedHint": "· Codian は代わりに何をすべきですか？",
+    "sessions": {
+      "empty": "会話がありません",
+      "noMatch": "一致するセッションがありません",
+      "resume": "会話を再開",
+      "loading": "会話を読み込み中…",
+      "current": "現在のセッション",
+      "loadFailed": "会話の読み込みに失敗しました"
+    },
+    "linkedContent": {
+      "label": "リンクされたコンテンツ：",
+      "choices": "リンクするコンテンツの選択肢",
+      "noMatch": "一致するファイルやフォルダーがありません",
+      "missing": "コンテンツが見つかりません",
+      "path": "リンクされたコンテンツ：{path}",
+      "missingPath": "リンクされたコンテンツ：{path}。コンテンツが見つかりません",
+      "noContent": "リンクされたコンテンツなし",
+      "missingNotice": "リンクされたコンテンツが見つかりません：{path}",
+      "openFailed": "リンクされたコンテンツを開けませんでした：{error}"
+    },
+    "questions": {
+      "title": "質問",
+      "submit": "送信",
+      "review": "回答を確認",
+      "ready": "回答を送信しますか？",
+      "sending": "送信中…",
+      "submitAnswers": "回答を送信",
+      "notAnswered": "未回答",
+      "customAnswer": "回答を入力…",
+      "secret": "秘密情報を入力…",
+      "editAnswer": "「{question}」への回答を編集",
+      "waiting": "回答を待機中…",
+      "noOptions": "選択肢の記録がありません",
+      "sendFailed": "回答を送信できませんでした。再試行してください。",
+      "answerBelow": "下の質問パネルで回答してください。",
+      "expired": "質問の有効期限が切れました。",
+      "notSent": "回答が送信されませんでした。再試行してください。",
+      "unsupportedReply": "この質問はその回答を受け付けられません。",
+      "uncertainDelivery": "回答の送信を確認できませんでした。重複送信を避けるため、再キューイングしませんでした。",
+      "differentConversation": "この質問は別の会話に属しています。",
+      "sideUnavailable": "このサイドチャットは利用できなくなりました。"
+    },
+    "tools": {
+      "calls": "ツール呼び出し",
+      "output": "出力",
+      "noResult": "結果なし",
+      "noMatches": "一致する結果がありません",
+      "tasksUpdated": "タスクを更新しました",
+      "noChanges": "変更なし",
+      "moreLines": "…他 {count} 行",
+      "moreCharacters": "…他 {count} 文字",
+      "running": "実行中…",
+      "noOutput": "出力なし",
+      "status": {
+        "running": "状態：実行中",
+        "completed": "状態：完了",
+        "error": "状態：エラー",
+        "cancelled": "状態：キャンセル済み",
+        "blocked": "状態：ブロック済み"
+      },
+      "inProgress": "状態：進行中",
+      "writing": "書き込み中…",
+      "done": "完了",
+      "errorResult": "エラー",
+      "tasks": "タスク",
+      "taskProgress": "タスク {completed}/{total}",
+      "taskProgressLabel": "タスク（{completed}/{total}）",
+      "changes": "変更：+{added} -{removed}",
+      "fileDeleted": "ファイルを削除しました",
+      "noTextDiff": "テキスト差分がありません",
+      "patch": "パッチ",
+      "files": "{count} 個のファイル",
+      "file": "ファイル",
+      "enteringPlan": "計画モードに移行中",
+      "planComplete": "計画完了",
+      "messageAgent": "エージェントにメッセージを送信",
+      "continueAgent": "エージェントを継続",
+      "listAgents": "エージェント一覧",
+      "interruptAgent": "エージェントを中断",
+      "allAgents": "すべてのエージェント",
+      "commandPlaceholder": "コマンド",
+      "filesPlaceholder": "ファイル",
+      "patternPlaceholder": "パターン",
+      "toolsPlaceholder": "ツール",
+      "agentCount": "エージェント {count} 件",
+      "agentCountPlural": "エージェント {count} 件",
+      "listDestinations": "送信先を一覧表示",
+      "messageSession": "セッションにメッセージを送信",
+      "stopSession": "セッションを停止",
+      "readSession": "セッションを読む"
+    },
+    "citations": {
+      "memoryUsed": "使用したメモリ",
+      "source": "{count} 件のソース",
+      "sources": "{count} 件のソース"
+    },
+    "web": {
+      "findInPage": "ページ内を検索",
+      "openPage": "ページを開く",
+      "urlUnavailable": "URL がありません",
+      "clickLink": "リンク {id} をクリック",
+      "pattern": "パターン：{pattern}",
+      "query": "検索語：{query}",
+      "altQuery": "別の検索語：{query}",
+      "search": "ウェブを検索",
+      "moreQueries": "…他 {count} 件の検索語",
+      "clickInPage": "{url} のリンク {id} をクリック",
+      "open": "{url} を開く",
+      "find": "「{pattern}」を検索",
+      "inPage": "{url} で{action}",
+      "operations": "{count} 件のウェブ操作",
+      "searchTerm": "検索"
+    },
+    "permissionMode": {
+      "label": "権限モード",
+      "current": "権限モード：{mode}",
+      "changeFailed": "権限モードの変更に失敗しました",
+      "claude": {
+        "auto": "自動",
+        "manual": "手動",
+        "acceptEdits": "編集を許可",
+        "yolo": "YOLO",
+        "autoDesc": "Claude が権限を判断",
+        "manualDesc": "変更前に毎回確認",
+        "acceptEditsDesc": "すべてのファイル編集を自動許可",
+        "yoloDesc": "確認せずすべての権限を許可"
+      },
+      "codex": {
+        "autoReview": "承認を任せる",
+        "normal": "承認を求める",
+        "yolo": "フルアクセス",
+        "autoReviewDesc": "追加アクセスを自動審査。",
+        "readOnlyDesc": "編集やインターネット利用前に確認。",
+        "normalDesc": "追加アクセス前に確認。",
+        "yoloDesc": "ファイルとインターネットへの無制限アクセス。"
+      }
+    },
+    "thinking": {
+      "active": "思考中 {seconds}秒…",
+      "completed": "{seconds}秒間思考しました",
+      "label": "思考"
+    },
+    "suggestions": {
+      "loading": "読み込み中…",
+      "noMatches": "一致する項目なし",
+      "loadFailed": "候補を読み込めませんでした",
+      "retryHint": "再入力して再試行",
+      "providerLoading": "プロバイダーのコマンドを読み込み中…",
+      "providerRetry": "プロバイダーのコマンド検出を再試行"
+    },
+    "approval": {
+      "title": "権限が必要です",
+      "question": "この操作を許可しますか？",
+      "deny": "拒否",
+      "allowOnce": "今回のみ許可",
+      "alwaysAllow": "常に許可",
+      "mcpRequest": "MCP リクエスト",
+      "mcpServer": "MCP サーバー：{server}",
+      "decline": "辞退",
+      "allow": "許可",
+      "cancelRequest": "このリクエストをキャンセル。",
+      "declineRequest": "このリクエストを辞退。",
+      "acceptRequest": "このリクエストを許可。",
+      "fileChange": "ファイル変更",
+      "fileChangeReason": "ファイル変更：{reason}",
+      "permissionRequest": "権限リクエスト",
+      "permissionReason": "権限リクエスト：{reason}",
+      "networkAccess": "{host} への {protocol} アクセスを許可",
+      "execute": "実行：{command}",
+      "executeCommand": "コマンドを実行",
+      "allowSimilar": "同様のコマンドを許可",
+      "execPolicy": "実行ポリシーの変更を承認して保存。",
+      "host": "ホスト",
+      "allowHost": "このセッションで {host} を許可",
+      "denyHost": "このセッションで {host} を拒否",
+      "allowRule": "{host} に許可ルールを適用。",
+      "denyRule": "{host} に拒否ルールを適用。",
+      "details": "{tool} の承認詳細",
+      "unexpectedSelection": "予期しない承認選択：「{value}」",
+      "runCommand": "コマンドを実行：{pattern}",
+      "readFile": "ファイルを読み込み：{pattern}",
+      "writeFile": "ファイルに書き込み：{pattern}",
+      "editFile": "ファイルを編集：{pattern}",
+      "searchFiles": "一致するファイルを検索：{pattern}",
+      "searchContent": "一致する内容を検索：{pattern}",
+      "unknownPattern": "（不明）",
+      "deepseekRequest": "DeepSeek が権限を要求しています。"
+    },
+    "disclosure": {
+      "expand": "{label} - クリックして展開",
+      "collapse": "{label} - クリックして折りたたむ"
+    },
+    "removeItem": "{item} を削除",
+    "agent": "エージェント：{agent}",
+    "images": {
+      "unsupportedProvider": "このプロバイダーは画像添付に対応していません。",
+      "tooLarge": "画像が {size} の制限を超えています。",
+      "unsupportedType": "未対応の画像形式です。",
+      "attachFailed": "画像の添付に失敗しました。",
+      "label": "画像",
+      "numbered": "画像 {number}",
+      "attachment": "添付画像：{name} · {size}",
+      "fileNotFound": "{message}（ファイルが見つかりません）",
+      "permissionDenied": "{message}（アクセスが拒否されました）",
+      "preview": "画像プレビュー：{name}",
+      "closePreview": "画像プレビューを閉じる"
+    },
+    "pi": {
+      "extension": "Pi 拡張機能",
+      "notification": "Pi 拡張機能の通知。"
+    },
+    "sessionMessage": {
+      "undelivered": "{senders} からのメッセージを配信できませんでした。",
+      "fromLabel": "送信元セッション:"
+    },
+    "sessionTools": {
+      "noSessions": "セッションはありません",
+      "thisSession": "このセッション",
+      "truncated": "表示されていないセッションがあります",
+      "recipient": "宛先",
+      "model": "モデル",
+      "reasoning": "推論",
+      "message": "メッセージ",
+      "openSession": "セッション {sessionId} を開く",
+      "openProviderSession": "{provider} のセッション {sessionId} を開く",
+      "sessionMissing": "そのセッションはもう存在しません。",
+      "openFailed": "セッションを開けませんでした: {message}",
+      "openUnavailable": "ここからはセッションを開けません。",
+      "providersIncluded": "利用可能なプロバイダーとモデルを含めました",
+      "newSession": "新しいセッション",
+      "session": "セッション",
+      "turns": "ターン",
+      "turnRange": "{from}–{to} / {total}",
+      "noTurns": "まだありません",
+      "mode": "配信",
+      "modeSteer": "実行中のターンに追加",
+      "modeInterrupt": "現在の作業を中断"
     }
   },
   "settings": {
@@ -123,7 +451,8 @@
       "workspace": "ワークスペース",
       "about": "について",
       "environment": "環境変数",
-      "pro": "Pro"
+      "pro": "Pro",
+      "skills": "スキル"
     },
     "display": "表示",
     "conversations": "会話",
@@ -171,7 +500,9 @@
     "titleModel": {
       "name": "タイトル生成モデル",
       "desc": "会話タイトルを自動生成するために使用されるモデル。",
-      "auto": "自動 (Haiku)"
+      "auto": "自動 (Haiku)",
+      "select": "モデルを選択",
+      "unavailableWarning": "タイトルの自動生成は一時停止中です。利用可能なタイトル用モデルを選択してください。"
     },
     "navMappings": {
       "name": "Vimスタイルナビゲーションマッピング",
@@ -226,6 +557,39 @@
     "slashCommands": {
       "name": "コマンドとスキル",
       "desc": ".claude/commands/ と .claude/skills/ に保存された Vault レベルのコマンドとスキルを管理します。/名前 でトリガーされます。"
+    },
+    "skillMigration": {
+      "name": "Claude スキル移行プレビュー",
+      "desc": "Claude ネイティブスキルを確認し、選択した有効なパッケージを共有スキルへ移行します。既存の移行先とリンクを含むパッケージは除外し、元のパッケージを保持します。",
+      "previewButton": "確認して移行",
+      "modalTitle": "Claude スキルの移行",
+      "loading": "スキルフォルダーをスキャン中…",
+      "empty": "Claude のスキルまたはコマンドが見つかりません。",
+      "failed": "プレビューを作成できませんでした。",
+      "status": {
+        "reviewRequired": "有効なスキルです。移行ルールの確認が必要です",
+        "conversionPolicyRequired": "コマンド変換ルールの確認が必要です",
+        "symlinkNotInspected": "シンボリックリンクです。リンク先は確認していません",
+        "missingSkillMarkdown": "SKILL.md がありません",
+        "invalidSkill": "スキルのメタデータが無効です",
+        "unreadable": "ソースを読み取れません",
+        "unsupportedEntry": "未対応の項目です。保持します"
+      },
+      "target": {
+        "absent": "同名の移行先はありません",
+        "entry": "同名の移行先があります",
+        "symlink": "移行先はリンクです。確認していません",
+        "ambiguous": "同名の移行先が複数あります",
+        "unknown": "移行先を確認できません"
+      },
+      "diagnostics": "確認できなかった項目",
+      "additionalEntries": "パッケージ内の追加項目：",
+      "diagnostic": "詳細：",
+      "selectInstruction": "共有先が空の有効なスキルパッケージを選択してください。パッケージ全体をコピーし、Claude の元データを保持します。",
+      "applySelected": "選択したスキルを移行",
+      "migrationSucceeded": "移行済み：",
+      "migrationFailed": "移行失敗：",
+      "stalePreview": "プレビューの有効期限が切れました。更新して内容を確認してから再試行してください。"
     },
     "hiddenSlashCommands": {
       "name": "非表示のコマンドとスキル",
@@ -334,14 +698,21 @@
         "save": "保存",
         "update": "更新",
         "cancel": "キャンセル"
-      }
+      },
+      "saveCurrent": "現在の環境をスニペットとして保存",
+      "insert": "挿入",
+      "insertFailed": "スニペットの挿入に失敗しました",
+      "deleteConfirm": "環境変数スニペット「{name}」を削除しますか?",
+      "deleteFailed": "スニペットの削除に失敗しました"
     },
     "customModelOverrides": {
       "name": "カスタムモデルの上書き",
       "desc": "カスタムモデルのモデルセレクター表示名とコンテキストウィンドウサイズを設定します。"
     },
     "customModelAliases": {
-      "placeholder": "エイリアス"
+      "placeholder": "エイリアス",
+      "ariaLabel": "{model} のエイリアス",
+      "ariaDescription": "モデルセレクターに表示されるカスタムラベル。空欄の場合はデフォルトを使用します。"
     },
     "customContextLimits": {
       "name": "カスタムコンテキスト制限",
@@ -395,8 +766,13 @@
       "descUnix": "\"which claude\" の出力を貼り付けてください - ネイティブと npm/pnpm/yarn インストールの両方で動作します。",
       "validation": {
         "notExist": "パスが存在しません",
-        "isDirectory": "パスはディレクトリでファイルではありません"
-      }
+        "isDirectory": "パスはディレクトリでファイルではありません",
+        "mustBeAbsolute": "パスは絶対パスである必要があります",
+        "notFile": "パスはファイルを指している必要があります",
+        "notAccessible": "パスにアクセスできません",
+        "notExecutable": "パスは実行可能である必要があります"
+      },
+      "genericName": "CLI パス"
     },
     "language": {
       "name": "言語",
@@ -405,7 +781,9 @@
     "providerEnablement": {
       "name": "{provider} を有効化",
       "desc": "有効にした {provider} モデルを新しい会話で使用できるようにします。無効にしても既存のセッションは保持されます。",
-      "atLeastOne": "少なくとも1つのプロバイダーを有効にしておく必要があります。"
+      "atLeastOne": "少なくとも1つのプロバイダーを有効にしておく必要があります。",
+      "lastProviderWarning": "Codian を使用するには、少なくとも 1 つのプロバイダーを有効にする必要があります。",
+      "noModelsWarning": "有効な {provider} モデルがありません。下の「モデル」で少なくとも1つのモデルを有効にしてください。"
     },
     "codex": {
       "installationMethod": {
@@ -474,6 +852,21 @@
       "enableProvider": {
         "name": "Codex プロバイダーを有効化",
         "desc": "有効にすると、新しい会話のモデルセレクターに Codex モデルが表示されます。既存の Codex セッションは保持されます。"
+      },
+      "responseStyle": {
+        "name": "応答スタイル",
+        "desc": "対応モデルでの Codex の話し方を選択します。",
+        "pragmatic": "実用的",
+        "friendly": "フレンドリー",
+        "neutral": "ニュートラル"
+      },
+      "responseVerbosity": {
+        "name": "回答の詳しさ",
+        "desc": "対応モデルの回答の詳しさを選択します。デフォルトでは Codex の設定を使用します。",
+        "default": "デフォルト",
+        "low": "低",
+        "medium": "中",
+        "high": "高"
       }
     },
     "agentSkills": {
@@ -505,13 +898,16 @@
         "descriptionPlaceholder": "Reviews code for correctness and maintainability",
         "instructions": "Instructions",
         "instructionsDesc": "Required SKILL.md instructions",
-        "instructionsPlaceholder": "Review the supplied code and report actionable findings..."
+        "instructionsPlaceholder": "Review the supplied code and report actionable findings...",
+        "titleFix": "スキルを修正"
       },
       "delete": {
         "title": "Delete Shared Skill",
         "description": "The entire skill folder, including scripts, references, and assets, will be moved to trash.",
         "confirm": "Move to trash"
-      }
+      },
+      "fix": "修正",
+      "fixed": "スキル「{name}」を修正しました。"
     },
     "codexSkills": {
       "modal": {
@@ -682,6 +1078,7 @@
     },
     "providerCatalog": {
       "empty": "{provider} モデルはまだ検出されていません。「検出」を選択してください。",
+      "opencodeEmpty": "OpenCode モデルが見つかりません。`opencode auth login` を実行して OpenCode Zen または別のプロバイダーに接続してから、「検出」を選択してください。",
       "failed": "{provider} モデルカタログを読み込めません。CLI パスとログイン状態を確認してください。",
       "loading": "{provider} モデルカタログを読み込み中...",
       "discoveryFailed": "{provider} モデルの検出に失敗しました：{message}"
@@ -707,11 +1104,23 @@
       "subagents": "サブエージェント",
       "subagentsDesc": ".opencode/agent/ と旧 .opencode/agents/ の Vault サブエージェントを管理します。新しい項目は @mention メニューに表示されます。",
       "environmentVariables": "環境変数",
-      "environmentVariablesDesc": "OpenCode に渡す追加環境変数です。`OPENCODE_ENABLE_EXA=1` はデフォルトで有効です。"
+      "environmentVariablesDesc": "OpenCode に渡す追加環境変数です。`OPENCODE_ENABLE_EXA=1` はデフォルトで有効です。",
+      "environment": {
+        "name": "OpenCode 環境変数",
+        "desc": "OpenCode に渡す追加の環境変数。"
+      },
+      "migrationNotice": {
+        "text": "Codian は OpenCode v2 に対応しました。OpenCode v1 のサポートは 2026年10月30日に終了します。",
+        "link": "OpenCode v2 に移行"
+      }
     },
     "pi": {
       "environmentVariables": "Pi 環境変数",
-      "environmentVariablesDesc": "Pi にのみ渡す環境変数です。"
+      "environmentVariablesDesc": "Pi にのみ渡す環境変数です。",
+      "environment": {
+        "name": "Pi 環境変数",
+        "desc": "Pi にのみ渡す環境変数。"
+      }
     },
     "livePreviewComposer": {
       "name": "入力欄のライブプレビュー",
@@ -722,6 +1131,17 @@
       "enableProvider": {
         "name": "Claude プロバイダーを有効化",
         "desc": "有効にすると、新しい会話のモデルセレクターに Claude モデルが表示されます。既存の Claude セッションは保持されます。"
+      },
+      "promptSuggestions": {
+        "name": "プロンプトの提案",
+        "desc": "空の入力欄に Claude が予測した次のプロンプトを表示します。提案ごとに各ターン後に追加の Claude リクエストが発生し、使用量の上限を早く消費する可能性があります。"
+      },
+      "configuration": "構成",
+      "responseStyle": {
+        "name": "応答スタイル",
+        "desc": "返信に使う Claude Code の出力スタイルです（カスタムスタイルを含む）。「Claude Code の設定」は Claude Code の構成に従います。モデルの更新時またはチャット開始時に一覧が更新されます。",
+        "default": "デフォルト",
+        "inherit": "Claude Code の設定"
       }
     },
     "claudeServices": {
@@ -768,6 +1188,204 @@
         "defaultModel": "Default model ID is required.",
         "lightModel": "Lightweight model ID is required."
       }
+    },
+    "providerSettings": {
+      "unavailable": "プロバイダー設定を利用できません。",
+      "loadFailed": "プロバイダー設定を読み込めませんでした: {message}"
+    },
+    "responses": "回答",
+    "codexSandbox": {
+      "name": "サンドボックス",
+      "desc": "承認を任せる と 承認を求める モードでのファイルアクセスです。読み取り専用では編集のたびに確認します。フルアクセス では無視されます。"
+    },
+    "sharedEnvironment": {
+      "name": "共有環境",
+      "desc": "すべてのプロバイダーで共有される、プロバイダー非依存のランタイム変数。PATH、プロキシ、証明書、一時ディレクトリの変数に使用します。"
+    },
+    "enableDualPane": {
+      "name": "デュアルペインモードを有効化",
+      "desc": "ビューの幅が 600 px 以上になると、チャットの横にセッションマネージャーを自動表示します。"
+    },
+    "restoreTabsOnStartup": {
+      "name": "起動時にタブを復元",
+      "desc": "シングルペインモードではすべてのタブを、デュアルペインモードでは最後にアクティブだったタブのみを再度開きます。"
+    },
+    "sessionAutoArchiveAfter": {
+      "name": "非アクティブなセッションを自動アーカイブ",
+      "desc": "選択した期間アクティビティのない、ピン留めされていないセッションをアーカイブします。開いているセッションと実行中のセッションはスキップされます。",
+      "multiSelectHint": "Option キー（Windows と Linux では Alt キー）を押しながらセッションをクリックすると複数選択でき、右クリックでピン留めまたはアーカイブできます。",
+      "off": "オフ",
+      "days7": "7日後",
+      "days14": "14日後",
+      "days30": "30日後"
+    },
+    "dualPaneSide": {
+      "name": "デュアルペインの位置",
+      "desc": "セッションマネージャーをチャットのどちら側に表示するか選択します。",
+      "left": "左",
+      "right": "右"
+    },
+    "showMessageTimestamps": {
+      "name": "メッセージのタイムスタンプを表示",
+      "desc": "チャットスレッド内で各メッセージのローカル送信時刻または到着時刻を表示します。"
+    },
+    "enableZenMode": {
+      "name": "Zen モードを有効化",
+      "desc": "サイドバーが非表示のときも、最小限のチャット UI を表示します。"
+    },
+    "cliInstallation": {
+      "disclosure": "{name} のインストール",
+      "description": "このコンピューター用の任意の CLI パス。空欄で自動検出します。",
+      "checking": "CLI を確認中…",
+      "versionUnavailable": "バージョンを取得できません",
+      "notFound": "見つかりません",
+      "custom": "カスタムパス",
+      "auto": "自動検出",
+      "checkFailed": "CLI を確認できません",
+      "saveFailed": "パスを保存できません。再試行してください。"
+    },
+    "modelPicker": {
+      "name": "表示するモデル",
+      "desc": "チャットのセレクターで利用できるモデルを選択します。ドラッグして並べ替えられます。プロバイダーは現在利用可能な最初のモデルをデフォルトとして使用します。このプロバイダーを使うには少なくとも1つのモデルを選択してください。",
+      "browse": "モデルを参照",
+      "filterLabel": "{provider} モデルを絞り込む",
+      "searchPlaceholder": "モデル、プロバイダー、ID で絞り込み...",
+      "providerFilterLabel": "モデルプロバイダーを絞り込む",
+      "allProviders": "すべてのプロバイダー ({count})",
+      "discover": "検出",
+      "visible": "表示: ",
+      "ofDiscovered": " / 検出 {count}",
+      "oneProvider": " | 1 プロバイダー",
+      "manyProviders": " | {count} プロバイダー",
+      "loadingModels": "モデルを読み込んでいます...",
+      "loading": "読み込み中...",
+      "available": "{count} 件利用可能",
+      "noneDiscovered": "まだモデルが検出されていません",
+      "selected": "選択済み ({count})",
+      "clearAllLabel": "選択したすべての {provider} モデルをクリア",
+      "reorderLabel": "{model} を並べ替え。ドラッグするか上下の矢印キーを使用します",
+      "default": "デフォルト",
+      "unavailable": "利用不可",
+      "aliasLabel": "エイリアス(任意)",
+      "removeLabel": "{model} を削除",
+      "noMatch": "フィルターに一致するモデルはありません。",
+      "emptyCatalog": "{provider} からモデルが報告されていません。設定を確認して「検出」をクリックしてください。",
+      "loadingCatalog": "{provider} モデルを読み込んでいます…",
+      "stale": "{provider} のモデルカタログが古くなっています。「検出」をクリックして更新してください。"
+    },
+    "grok": {
+      "environment": {
+        "name": "Grok Build 環境変数",
+        "desc": "Grok Build にのみ渡す環境変数。カスタムモデルのシークレットはこのプロバイダーのスコープ内に留まり、ネイティブ設定からは env_key で参照されます。"
+      }
+    },
+    "deepseek": {
+      "installation": {
+        "desc": "自動検出は dsh を優先し、次に macOS または Windows の Desktop を探します。両方がインストールされている場合、Desktop の .app パスまたは Windows のインストールフォルダーを入力すると選択できます。最初に Desktop を開いて初期設定を完了してください。",
+        "desktop": "ネイティブの Desktop プロファイルを使用します。",
+        "web": "ネイティブの Web プロファイルを使用します。"
+      },
+      "preset": "プリセット",
+      "codeMode": {
+        "name": "コードモードを有効化",
+        "desc": "既存の会話を含め、各会話の次のターンから適用されます。直接ツールに加えてネイティブの run_code を追加します。"
+      },
+      "presetPlugins": {
+        "name": "追加のプリセットプラグイン",
+        "desc": "上級者向け。Codian のチャットプリセットに追加するネイティブ dsh プラグイン行の YAML リスト（dsh の形式）です。各行には固有の \"id\" と \"name\" が必要です。Codian 自身の行は置き換えられません。保存すると DeepSeek Harness が再起動し、実行中のターンは停止します。プランモードなど、Codian に UI がないプラグインは動作しない場合があります。"
+      },
+      "presetPreview": "プリセットのプレビュー",
+      "environment": {
+        "name": "DeepSeek Harness 環境変数",
+        "desc": "DeepSeek Harness にのみ渡される環境変数。選択したネイティブの Web または Desktop プロファイル、認証情報、モデル、MCP サーバーを使用します。"
+      }
+    },
+    "skills": {
+      "subTabs": {
+        "claude": "Claude Code",
+        "shared": "その他のプロバイダー"
+      },
+      "claudeHelp": ".claude/skills/ の Claude Code スキルと .claude/commands/ のコマンド。",
+      "sharedHelp": "Codex、OpenCode、Pi、Grok Build、DeepSeek Harness 用の .agents/skills/ にある共有スキル。",
+      "status": {
+        "error": "スキルフォルダーを読み取れませんでした: {message}"
+      },
+      "synced": "同期済み",
+      "actions": {
+        "sync": "同期",
+        "resync": "再同期"
+      },
+      "commands": {
+        "title": "Claude Code コマンド",
+        "hint": "コマンドは Claude Code でのみ動作します。スキルへの変換をおすすめします。",
+        "badge": "コマンド",
+        "empty": ".claude/commands にコマンドはありません。",
+        "convert": "スキルに変換",
+        "editTitle": "コマンドを編集",
+        "convertTitle": "コマンドをスキルに変換",
+        "nameDesc": ".claude/commands 内のパス(.md なし)。入れ子のコマンドは / を使います",
+        "descriptionDesc": "コマンドメニューに表示される任意の説明",
+        "updated": "コマンド「{name}」を更新しました。",
+        "converted": "コマンドをスキル「{name}」に変換しました。",
+        "deleted": "コマンド「{name}」をゴミ箱に移動しました。",
+        "deleteTitle": "コマンドを削除",
+        "deleteDescription": "コマンドファイルはゴミ箱に移動されます。",
+        "collisionFailed": "「{name}」という名前のコマンドはすでに存在します。"
+      },
+      "droppedFrontmatterWarning": "保存すると名前と説明だけが残ります。次のキーは削除され、プロバイダーの動作が変わる可能性があります: {keys}",
+      "hidden": {
+        "name": "非表示のコマンドとスキル",
+        "desc": "すべてのプロバイダーのコマンドメニューからコマンドとスキルを非表示にします。先頭のスラッシュを付けずに正確な名前を 1 行に 1 つずつ入力してください(Pi のスキルは skill:名前)。",
+        "placeholder": "commit\ncompact\nskill:review"
+      },
+      "sync": {
+        "title": "スキルを同期",
+        "repairTitle": "スキルのリンクを修復",
+        "loading": "スキルフォルダーを確認しています...",
+        "intro": "同期すると、Claude Code のスキルとコマンドを .agents/skills にまとめ、.claude/skills をそこへのリンクにします。",
+        "pros": {
+          "oneList": "すべてのプロバイダーで 1 つのリスト。",
+          "newSkills": "新しいスキルはどこでも使えます。"
+        },
+        "cons": {
+          "dropped": "名前と説明だけが残ります。プロバイダー固有の設定は削除され、動作が変わる可能性があります。",
+          "claudeSyntax": "Claude Code 専用の構文は他のプロバイダーでは動作しません: {names}"
+        },
+        "attentionTitle": "確認が必要",
+        "nothingNeedsAttention": "確認が必要な項目はありません。",
+        "nameField": "名前",
+        "descriptionField": "説明",
+        "ready": "準備完了",
+        "problems": {
+          "name": "無効な名前です。小文字、数字、ハイフンを使ってください。",
+          "description": "説明がありません。",
+          "instructions": "指示がありません。ファイルに追加してから再度同期してください。",
+          "unreadable": "フロントマターを読み取れません。ファイルを修正してから再度同期してください。",
+          "sharedConflict": "「{name}」という共有スキルはすでに存在します。",
+          "itemConflict": "別の項目も「{name}」という名前です。"
+        },
+        "options": {
+          "fix": "修正",
+          "replace": "共有スキルを置き換える",
+          "discard": "破棄(ゴミ箱へ移動)",
+          "keep": "コマンドのまま残す"
+        },
+        "continue": "続行",
+        "confirmTitle": ".claude/skills をリンクに置き換えますか?",
+        "confirmBody": ".claude/skills は .agents/skills へのリンクに置き換えられます。この操作は元に戻せません。",
+        "repairBody": ".claude/skills は .agents/skills へのリンクに置き換えられます。現在のリンク先のフォルダーは変更されません。",
+        "linkBody": ".claude/skills を .agents/skills へのリンクとして作成し、Claude Code が共有スキルを使えるようにします。ファイルは移動しません。",
+        "linkWithItemsBody": "コマンドがスキルになり、その後 .claude/skills が .agents/skills へのリンクとして作成されます。この操作は元に戻せません。",
+        "devicesWarning": "この保管庫を複数のデバイスで同期していますか? リンクは同期されない可能性があるため、各デバイスで同期してください。",
+        "confirm": "同期してリンク",
+        "partial": "リンクの作成前に同期が停止しました。以下の項目を修正して、もう一度同期してください。",
+        "failed": "同期に失敗しました: {message}",
+        "summary": "移動 {moved}、変換 {converted}、ゴミ箱 {trashed}、リンク削除 {unlinked}。"
+      }
+    },
+    "pluginRenderedFenceLanguages": {
+      "name": "プラグインで描画するコードブロック言語",
+      "desc": "1 行に 1 つずつ指定したコードブロック言語を、ノートで描画するプラグインに渡します（例: vega-lite）。応答の完了後に描画されます。その他のコードブロックは常にコードとして表示されます。"
     }
   }
 }

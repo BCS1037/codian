@@ -13,5 +13,6 @@ export const PI_PROVIDER_CAPABILITIES: Readonly<ProviderCapabilities> = Object.f
   supportsMcpTools: false,
   supportsSharedAgentSkills: true,
   supportsTurnSteer: true,
+  supportsConversationBranches: true,
   reasoningControl: 'effort',
 });

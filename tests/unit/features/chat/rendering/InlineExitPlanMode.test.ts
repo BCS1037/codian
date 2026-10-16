@@ -25,16 +25,16 @@ function fireKeyDown(root: any, key: string, isComposing = false, shiftKey = fal
 }
 
 function findRoot(container: any): any {
-  return container.querySelector('.claudian-plan-approval-inline');
+  return container.querySelector('.codian-plan-approval-inline');
 }
 
 function findItems(root: any): any[] {
-  return root.querySelectorAll('claudian-ask-item');
+  return root.querySelectorAll('codian-ask-item');
 }
 
 describe('InlineExitPlanMode', () => {
   it('resolves with approve-new-session and includes plan content when readable', () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudian-'));
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codian-'));
     const plansDir = path.join(tmpDir, '.claude', 'plans');
     fs.mkdirSync(plansDir, { recursive: true });
     const planFilePath = path.join(plansDir, 'plan.md');
@@ -61,7 +61,7 @@ describe('InlineExitPlanMode', () => {
     const root = findRoot(container);
     expect(root).toBeTruthy();
     expect(root.getEventListenerCount('keydown')).toBe(1);
-    expect(container.querySelector('.claudian-plan-permissions-list')).toBeTruthy();
+    expect(container.querySelector('.codian-plan-permissions-list')).toBeTruthy();
     expect(renderContent).toHaveBeenCalled();
 
     fireKeyDown(root, 'Enter');
@@ -91,7 +91,7 @@ describe('InlineExitPlanMode', () => {
 
     const root = findRoot(container);
     expect(root).toBeTruthy();
-    expect(container.querySelector('.claudian-plan-read-error')).toBeTruthy();
+    expect(container.querySelector('.codian-plan-read-error')).toBeTruthy();
 
     fireKeyDown(root, 'Enter');
     expect(resolve).toHaveBeenCalledWith({
@@ -117,7 +117,7 @@ describe('InlineExitPlanMode', () => {
 
     const root = findRoot(container);
     expect(root).toBeTruthy();
-    expect(container.querySelector('.claudian-plan-read-error')).toBeTruthy();
+    expect(container.querySelector('.codian-plan-read-error')).toBeTruthy();
 
     fireKeyDown(root, 'Enter');
     expect(resolve).toHaveBeenCalledWith({
@@ -158,7 +158,7 @@ describe('InlineExitPlanMode', () => {
 
     const items = findItems(root);
     const feedbackRow = items[2];
-    const feedbackInput = feedbackRow.querySelector('claudian-ask-custom-text');
+    const feedbackInput = feedbackRow.querySelector('codian-ask-custom-text');
 
     expect(resolve).not.toHaveBeenCalled();
 
@@ -199,7 +199,7 @@ describe('InlineExitPlanMode', () => {
 
     const root = findRoot(container);
     const items = findItems(root);
-    const labels = root.querySelectorAll('claudian-ask-item-label')
+    const labels = root.querySelectorAll('codian-ask-item-label')
       .map((label: any) => label.textContent);
     expect(renderContent).toHaveBeenCalledWith(expect.anything(), '# Native plan');
     expect(items).toHaveLength(3);
@@ -218,7 +218,7 @@ describe('InlineExitPlanMode', () => {
     widget.render();
 
     const root = findRoot(container);
-    const feedbackInput = findItems(root)[2].querySelector('claudian-ask-custom-text');
+    const feedbackInput = findItems(root)[2].querySelector('codian-ask-custom-text');
     feedbackInput.value = 'composing text';
     feedbackInput.dispatchEvent('focus');
 

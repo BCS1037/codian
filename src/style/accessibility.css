@@ -1,49 +1,49 @@
 /* Accessibility - Focus Visible Styles */
 
 /* outline + offset + border-radius */
-.claudian-tool-header:focus-visible,
-.claudian-thinking-header:focus-visible,
-.claudian-subagent-header:focus-visible,
-.claudian-input-nav-btn:focus-visible,
-.claudian-model-btn:focus-visible,
-.claudian-thinking-current:focus-visible {
+.codian-tool-header:focus-visible,
+.codian-thinking-header:focus-visible,
+.codian-subagent-header:focus-visible,
+.codian-input-nav-btn:focus-visible,
+.codian-model-btn:focus-visible,
+.codian-thinking-current:focus-visible {
   outline: 2px solid var(--interactive-accent);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
 /* outline + offset only */
-.claudian-action-btn:focus-visible,
-.claudian-toggle-switch:focus-visible,
-.claudian-context-chip-main:focus-visible,
-.claudian-context-chip-remove:focus-visible,
-.claudian-context-more:focus-visible,
-.claudian-image-modal-close:focus-visible,
-.claudian-approved-remove-btn:focus-visible,
-.claudian-save-env-btn:focus-visible,
-.claudian-restore-snippet-btn:focus-visible,
-.claudian-edit-snippet-btn:focus-visible,
-.claudian-delete-snippet-btn:focus-visible,
-.claudian-cancel-btn:focus-visible,
-.claudian-save-btn:focus-visible,
-.claudian-code-lang-label:focus-visible {
+.codian-action-btn:focus-visible,
+.codian-toggle-switch:focus-visible,
+.codian-context-chip-main:focus-visible,
+.codian-context-chip-remove:focus-visible,
+.codian-context-more:focus-visible,
+.codian-image-modal-close:focus-visible,
+.codian-approved-remove-btn:focus-visible,
+.codian-save-env-btn:focus-visible,
+.codian-restore-snippet-btn:focus-visible,
+.codian-edit-snippet-btn:focus-visible,
+.codian-delete-snippet-btn:focus-visible,
+.codian-cancel-btn:focus-visible,
+.codian-save-btn:focus-visible,
+.codian-code-lang-label:focus-visible {
   outline: 2px solid var(--interactive-accent);
   outline-offset: 2px;
 }
 
-.claudian-inline-preview-action:focus-visible {
+.codian-inline-preview-action:focus-visible {
   outline: 2px solid var(--interactive-accent);
   outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .claudian-inline-spinner {
+  .codian-inline-spinner {
     animation: none;
   }
 }
 
 /* outline + negative offset + border-radius */
-.claudian-history-item-content:focus-visible {
+.codian-history-item-content:focus-visible {
   outline: 2px solid var(--interactive-accent);
   outline-offset: -2px;
   border-radius: 4px;

@@ -197,27 +197,27 @@ describe('ModelSelector', () => {
   });
 
   it('should create a container with model-selector class', () => {
-    const container = parentEl.querySelector('.claudian-model-selector');
+    const container = parentEl.querySelector('.codian-model-selector');
     expect(container).not.toBeNull();
   });
 
   it('should display current model label', () => {
     // Default model is 'sonnet' which maps to 'Sonnet'
-    const btn = parentEl.querySelector('.claudian-model-btn');
+    const btn = parentEl.querySelector('.codian-model-btn');
     expect(btn).not.toBeNull();
-    const label = btn?.querySelector('.claudian-model-label');
+    const label = btn?.querySelector('.codian-model-label');
     expect(label).not.toBeNull();
     expect(label?.textContent).toBe('Sonnet (high)');
   });
 
   it('should render effort as a model submenu', () => {
-    const dropdown = parentEl.querySelector('.claudian-model-dropdown');
+    const dropdown = parentEl.querySelector('.codian-model-dropdown');
     const sonnetOption = dropdown?.children.find((option: any) =>
       option.children[0]?.textContent === 'Sonnet'
     );
 
-    expect(sonnetOption?.querySelector('.claudian-model-effort-options')).not.toBeNull();
-    expect(sonnetOption?.querySelectorAll('.claudian-model-effort-option')
+    expect(sonnetOption?.querySelector('.codian-model-effort-options')).not.toBeNull();
+    expect(sonnetOption?.querySelectorAll('.codian-model-effort-option')
       .map((option: any) => option.textContent)).toEqual(['Low', 'Med', 'High', 'Max']);
   });
 
@@ -234,19 +234,19 @@ describe('ModelSelector', () => {
 
     selector.renderOptions();
 
-    const dropdown = parentEl.querySelector('.claudian-model-dropdown');
+    const dropdown = parentEl.querySelector('.codian-model-dropdown');
     expect(dropdown.children.map((option: any) => option.children[0]?.textContent)).toEqual([
       'gpt-oss-120b',
     ]);
-    expect(dropdown.querySelector('.claudian-model-group')).toBeNull();
+    expect(dropdown.querySelector('.codian-model-group')).toBeNull();
   });
 
   it('should select model and effort from an effort submenu', async () => {
-    const dropdown = parentEl.querySelector('.claudian-model-dropdown');
+    const dropdown = parentEl.querySelector('.codian-model-dropdown');
     const opusOption = dropdown?.children.find((option: any) =>
       option.children[0]?.textContent === 'Opus'
     );
-    const lowEffort = opusOption?.querySelectorAll('.claudian-model-effort-option')
+    const lowEffort = opusOption?.querySelectorAll('.codian-model-effort-option')
       .find((option: any) => option.textContent === 'Low');
 
     await lowEffort?.dispatchEvent('click', { stopPropagation: () => {} });
@@ -265,12 +265,12 @@ describe('ModelSelector', () => {
       enableSonnet1M: false,
     });
     selector.updateDisplay();
-    const label = parentEl.querySelector('.claudian-model-label');
+    const label = parentEl.querySelector('.codian-model-label');
     expect(label?.textContent).toBe('Haiku');
   });
 
   it('should render model options in reverse order', () => {
-    const dropdown = parentEl.querySelector('.claudian-model-dropdown');
+    const dropdown = parentEl.querySelector('.codian-model-dropdown');
     expect(dropdown).not.toBeNull();
     // DEFAULT_CLAUDE_MODELS is [haiku, sonnet, opus] -> reversed is [opus, sonnet, haiku]
     const options = dropdown?.children || [];
@@ -294,9 +294,9 @@ describe('ModelSelector', () => {
 
     selector.renderOptions();
 
-    const dropdown = parentEl.querySelector('.claudian-model-dropdown');
+    const dropdown = parentEl.querySelector('.codian-model-dropdown');
     expect(dropdown.children.map((child: any) => (
-      child.hasClass('claudian-model-group')
+      child.hasClass('codian-model-group')
         ? child.textContent
         : child.children[0]?.textContent
     ))).toEqual([
@@ -310,7 +310,7 @@ describe('ModelSelector', () => {
   });
 
   it('should mark current model as selected', () => {
-    const dropdown = parentEl.querySelector('.claudian-model-dropdown');
+    const dropdown = parentEl.querySelector('.codian-model-dropdown');
     const options = dropdown?.children || [];
     // Sonnet is current (index 1 in reversed order)
     const sonnetOption = options.find((o: any) => o.children[0]?.textContent === 'Sonnet');
@@ -318,7 +318,7 @@ describe('ModelSelector', () => {
   });
 
   it('should call onModelChange when option clicked', async () => {
-    const dropdown = parentEl.querySelector('.claudian-model-dropdown');
+    const dropdown = parentEl.querySelector('.codian-model-dropdown');
     const options = dropdown?.children || [];
     const opusOption = options.find((o: any) => o.children[0]?.textContent === 'Opus');
 
@@ -327,7 +327,7 @@ describe('ModelSelector', () => {
   });
 
   it('should always show brand color on model button', () => {
-    const btn = parentEl.querySelector('.claudian-model-btn');
+    const btn = parentEl.querySelector('.codian-model-btn');
     expect(btn).toBeTruthy();
     expect(btn?.hasClass('ready')).toBe(false);
   });
@@ -346,7 +346,7 @@ describe('ModelSelector', () => {
     selector.renderOptions();
     selector.updateDisplay();
     // Custom models should be available in dropdown
-    const label = parentEl.querySelector('.claudian-model-label');
+    const label = parentEl.querySelector('.codian-model-label');
     expect(label?.textContent).toBeDefined();
   });
 
@@ -365,7 +365,7 @@ describe('ModelSelector', () => {
     selector.renderOptions();
     selector.updateDisplay();
 
-    const label = parentEl.querySelector('.claudian-model-label');
+    const label = parentEl.querySelector('.codian-model-label');
     expect(label?.textContent).toBe('Opus');
   });
 
@@ -388,10 +388,10 @@ describe('ModelSelector', () => {
 
     selector.renderOptions();
 
-    const dropdown = parentEl.querySelector('.claudian-model-dropdown');
+    const dropdown = parentEl.querySelector('.codian-model-dropdown');
     const children = dropdown?.children || [];
     // Provider groups keep source order; models reverse within each group.
-    const groups = children.filter((c: any) => c.hasClass('claudian-model-group'));
+    const groups = children.filter((c: any) => c.hasClass('codian-model-group'));
     expect(groups.length).toBe(2);
     expect(groups[0]?.textContent).toBe('Claude');
     expect(groups[1]?.textContent).toBe('Codex');
@@ -400,9 +400,9 @@ describe('ModelSelector', () => {
   it('should not render group separators when models have no group field', () => {
     selector.renderOptions();
 
-    const dropdown = parentEl.querySelector('.claudian-model-dropdown');
+    const dropdown = parentEl.querySelector('.codian-model-dropdown');
     const children = dropdown?.children || [];
-    const groups = children.filter((c: any) => c.hasClass('claudian-model-group'));
+    const groups = children.filter((c: any) => c.hasClass('codian-model-group'));
     expect(groups.length).toBe(0);
   });
 
@@ -419,13 +419,13 @@ describe('ModelSelector', () => {
     selector.renderOptions();
     selector.updateDisplay();
 
-    const dropdown = parentEl.querySelector('.claudian-model-dropdown');
+    const dropdown = parentEl.querySelector('.codian-model-dropdown');
     const options = dropdown?.children || [];
     expect(options.find((o: any) => o.children[0]?.textContent === 'Opus 1M')).toBeDefined();
     expect(options.find((o: any) => o.children[0]?.textContent === 'Sonnet 1M')).toBeDefined();
     expect(options.find((o: any) => o.children[0]?.textContent === 'Opus')).toBeUndefined();
     expect(options.find((o: any) => o.children[0]?.textContent === 'Sonnet')).toBeUndefined();
-    expect(parentEl.querySelector('.claudian-model-label')?.textContent).toBe('Opus 1M');
+    expect(parentEl.querySelector('.codian-model-label')?.textContent).toBe('Opus 1M');
   });
 });
 
@@ -442,17 +442,17 @@ describe('ModeSelector', () => {
   });
 
   it('should create a container with mode-selector class', () => {
-    const container = parentEl.querySelector('.claudian-mode-selector');
+    const container = parentEl.querySelector('.codian-mode-selector');
     expect(container).not.toBeNull();
   });
 
   it('should display the current mode label', () => {
-    const label = parentEl.querySelector('.claudian-mode-label');
+    const label = parentEl.querySelector('.codian-mode-label');
     expect(label?.textContent).toBe('Build');
   });
 
   it('should call onModeChange when the toggle is clicked', async () => {
-    const toggle = parentEl.querySelector('.claudian-toggle-switch');
+    const toggle = parentEl.querySelector('.codian-toggle-switch');
     await toggle?.dispatchEvent('click');
 
     expect(callbacks.onModeChange).toHaveBeenCalledWith('plan');
@@ -473,8 +473,8 @@ describe('ModeSelector', () => {
     const parentEl2 = createMockEl();
     new ModeSelector(parentEl2, callbacks);
 
-    const label = parentEl2.querySelector('.claudian-mode-label');
-    const toggle = parentEl2.querySelector('.claudian-toggle-switch');
+    const label = parentEl2.querySelector('.codian-mode-label');
+    const toggle = parentEl2.querySelector('.codian-toggle-switch');
     expect(label?.textContent).toBe('Build');
     expect(label?.hasClass('active')).toBe(true);
     expect(toggle?.hasClass('active')).toBe(true);
@@ -495,8 +495,8 @@ describe('ModeSelector', () => {
     const parentEl2 = createMockEl();
     new ModeSelector(parentEl2, callbacks);
 
-    const label = parentEl2.querySelector('.claudian-mode-label');
-    const toggle = parentEl2.querySelector('.claudian-toggle-switch');
+    const label = parentEl2.querySelector('.codian-mode-label');
+    const toggle = parentEl2.querySelector('.codian-toggle-switch');
     expect(label?.textContent).toBe('Plan');
     expect(label?.hasClass('active')).toBe(false);
     expect(toggle?.hasClass('active')).toBe(false);
@@ -509,7 +509,7 @@ describe('ModeSelector', () => {
 
     selector.updateDisplay();
 
-    const container = parentEl.querySelector('.claudian-mode-selector');
+    const container = parentEl.querySelector('.codian-mode-selector');
     expect(container?.style?.display).toBe('none');
   });
 });
@@ -528,18 +528,18 @@ describe('ThinkingBudgetSelector', () => {
     });
 
     it('should create a container with thinking-selector class', () => {
-      const container = parentEl.querySelector('.claudian-thinking-selector');
+      const container = parentEl.querySelector('.codian-thinking-selector');
       expect(container).not.toBeNull();
     });
 
     it('should hide standalone effort selector for Claude models', () => {
-      const effort = parentEl.querySelector('.claudian-thinking-effort');
+      const effort = parentEl.querySelector('.codian-thinking-effort');
       expect(effort).not.toBeNull();
       expect(effort?.style?.display).toBe('none');
     });
 
     it('should hide budget selector for Claude models', () => {
-      const budget = parentEl.querySelector('.claudian-thinking-budget');
+      const budget = parentEl.querySelector('.codian-thinking-budget');
       expect(budget?.style?.display).toBe('none');
     });
 
@@ -564,17 +564,17 @@ describe('ThinkingBudgetSelector', () => {
     });
 
     it('should hide effort selector for custom models', () => {
-      const effort = parentEl.querySelector('.claudian-thinking-effort');
+      const effort = parentEl.querySelector('.codian-thinking-effort');
       expect(effort?.style?.display).toBe('none');
     });
 
     it('should show budget selector for custom models', () => {
-      const budget = parentEl.querySelector('.claudian-thinking-budget');
+      const budget = parentEl.querySelector('.codian-thinking-budget');
       expect(budget?.style?.display).not.toBe('none');
     });
 
     it('should display current budget label', () => {
-      const current = parentEl.querySelector('.claudian-thinking-current');
+      const current = parentEl.querySelector('.codian-thinking-current');
       expect(current?.textContent).toBe('Low');
     });
 
@@ -588,12 +588,12 @@ describe('ThinkingBudgetSelector', () => {
         enableSonnet1M: false,
       });
       selector.updateDisplay();
-      const current = parentEl.querySelector('.claudian-thinking-current');
+      const current = parentEl.querySelector('.codian-thinking-current');
       expect(current?.textContent).toBe('Off');
     });
 
     it('should render budget options in reverse order', () => {
-      const options = parentEl.querySelector('.claudian-thinking-options');
+      const options = parentEl.querySelector('.codian-thinking-options');
       expect(options).not.toBeNull();
       // THINKING_BUDGETS reversed: [xhigh, high, medium, low, off]
       const gears = options?.children || [];
@@ -603,14 +603,14 @@ describe('ThinkingBudgetSelector', () => {
     });
 
     it('should mark current budget as selected', () => {
-      const options = parentEl.querySelector('.claudian-thinking-options');
+      const options = parentEl.querySelector('.codian-thinking-options');
       const gears = options?.children || [];
       const lowGear = gears.find((g: any) => g.textContent === 'Low');
       expect(lowGear?.hasClass('selected')).toBe(true);
     });
 
     it('should call onThinkingBudgetChange when gear clicked', async () => {
-      const options = parentEl.querySelector('.claudian-thinking-options');
+      const options = parentEl.querySelector('.codian-thinking-options');
       const gears = options?.children || [];
       const highGear = gears.find((g: any) => g.textContent === 'High');
 
@@ -619,14 +619,14 @@ describe('ThinkingBudgetSelector', () => {
     });
 
     it('should set title with token count for non-off budgets', () => {
-      const options = parentEl.querySelector('.claudian-thinking-options');
+      const options = parentEl.querySelector('.codian-thinking-options');
       const gears = options?.children || [];
       const highGear = gears.find((g: any) => g.textContent === 'High');
       expect(highGear?.getAttribute('title')).toContain('16,000 tokens');
     });
 
     it('should set title as Disabled for off budget', () => {
-      const options = parentEl.querySelector('.claudian-thinking-options');
+      const options = parentEl.querySelector('.codian-thinking-options');
       const gears = options?.children || [];
       const offGear = gears.find((g: any) => g.textContent === 'Off');
       expect(offGear?.getAttribute('title')).toBe('Disabled');
@@ -646,12 +646,12 @@ describe('PermissionToggle', () => {
   });
 
   it('should create a container with permission-toggle class', () => {
-    const container = parentEl.querySelector('.claudian-permission-toggle');
+    const container = parentEl.querySelector('.codian-permission-toggle');
     expect(container).not.toBeNull();
   });
 
   it('should display Safe label when in normal mode', () => {
-    const label = parentEl.querySelector('.claudian-permission-label');
+    const label = parentEl.querySelector('.codian-permission-label');
     expect(label?.textContent).toBe('Safe');
   });
 
@@ -667,7 +667,7 @@ describe('PermissionToggle', () => {
     const parentEl2 = createMockEl();
     new PermissionToggle(parentEl2, callbacks);
 
-    const label = parentEl2.querySelector('.claudian-permission-label');
+    const label = parentEl2.querySelector('.codian-permission-label');
     expect(label?.textContent).toBe('YOLO');
   });
 
@@ -683,11 +683,11 @@ describe('PermissionToggle', () => {
     const parentEl2 = createMockEl();
     new PermissionToggle(parentEl2, callbacks);
 
-    const label = parentEl2.querySelector('.claudian-permission-label');
+    const label = parentEl2.querySelector('.codian-permission-label');
     expect(label?.textContent).toBe('PLAN');
     expect(label?.hasClass('plan-active')).toBe(true);
 
-    const toggle = parentEl2.querySelector('.claudian-toggle-switch');
+    const toggle = parentEl2.querySelector('.codian-toggle-switch');
     expect(toggle?.style.display).toBe('none');
   });
 
@@ -701,17 +701,17 @@ describe('PermissionToggle', () => {
     const parentEl2 = createMockEl();
     new PermissionToggle(parentEl2, callbacks);
 
-    const toggle = parentEl2.querySelector('.claudian-toggle-switch');
+    const toggle = parentEl2.querySelector('.codian-toggle-switch');
     expect(toggle?.hasClass('active')).toBe(true);
   });
 
   it('should not have active class in normal mode', () => {
-    const toggle = parentEl.querySelector('.claudian-toggle-switch');
+    const toggle = parentEl.querySelector('.codian-toggle-switch');
     expect(toggle?.hasClass('active')).toBe(false);
   });
 
   it('should toggle from normal to yolo on click', async () => {
-    const toggle = parentEl.querySelector('.claudian-toggle-switch');
+    const toggle = parentEl.querySelector('.codian-toggle-switch');
     await toggle?.dispatchEvent('click');
     expect(callbacks.onPermissionModeChange).toHaveBeenCalledWith('yolo');
   });
@@ -725,7 +725,7 @@ describe('PermissionToggle', () => {
     const parentEl2 = createMockEl();
     new PermissionToggle(parentEl2, callbacks);
 
-    const toggle = parentEl2.querySelector('.claudian-toggle-switch');
+    const toggle = parentEl2.querySelector('.codian-toggle-switch');
     await toggle?.dispatchEvent('click');
     expect(callbacks.onPermissionModeChange).toHaveBeenCalledWith('normal');
   });
@@ -738,7 +738,7 @@ describe('PermissionToggle', () => {
     const parentEl2 = createMockEl();
     new PermissionToggle(parentEl2, callbacks);
 
-    const container = parentEl2.querySelector('.claudian-permission-toggle');
+    const container = parentEl2.querySelector('.codian-permission-toggle');
     expect(container?.style.display).toBe('none');
   });
 
@@ -748,7 +748,7 @@ describe('PermissionToggle', () => {
 
     toggle.setVisible(false);
 
-    const container = parentEl2.querySelector('.claudian-permission-toggle');
+    const container = parentEl2.querySelector('.codian-permission-toggle');
     expect(container?.style.display).toBe('none');
   });
 });
@@ -783,15 +783,15 @@ describe('ServiceTierToggle', () => {
   });
 
   it('shows the control when the provider exposes service tier options', () => {
-    const container = parentEl.querySelector('.claudian-service-tier-toggle');
+    const container = parentEl.querySelector('.codian-service-tier-toggle');
     expect(container).not.toBeNull();
-    expect(container?.hasClass('claudian-hidden')).toBe(false);
+    expect(container?.hasClass('codian-hidden')).toBe(false);
   });
 
   it('renders the icon button in the inactive state when fast mode is off', () => {
-    const button = parentEl.querySelector('.claudian-service-tier-button');
-    const icon = parentEl.querySelector('.claudian-service-tier-icon');
-    const container = parentEl.querySelector('.claudian-service-tier-toggle');
+    const button = parentEl.querySelector('.codian-service-tier-button');
+    const icon = parentEl.querySelector('.codian-service-tier-icon');
+    const container = parentEl.querySelector('.codian-service-tier-toggle');
     expect(button?.hasClass('active')).toBe(false);
     expect(icon).not.toBeNull();
     expect(container?.getAttribute('title')).toBe('Fast mode: Standard');
@@ -808,14 +808,14 @@ describe('ServiceTierToggle', () => {
     const parentEl2 = createMockEl();
     new ServiceTierToggle(parentEl2, callbacks);
 
-    const button = parentEl2.querySelector('.claudian-service-tier-button');
-    const container = parentEl2.querySelector('.claudian-service-tier-toggle');
+    const button = parentEl2.querySelector('.codian-service-tier-button');
+    const container = parentEl2.querySelector('.codian-service-tier-toggle');
     expect(button?.hasClass('active')).toBe(true);
     expect(container?.getAttribute('title')).toBe('Fast mode: Fast');
   });
 
   it('toggles from Standard to Fast on click', async () => {
-    const button = parentEl.querySelector('.claudian-service-tier-button');
+    const button = parentEl.querySelector('.codian-service-tier-button');
     await button?.dispatchEvent('click');
     expect(callbacks.onServiceTierChange).toHaveBeenCalledWith('fast');
   });
@@ -831,7 +831,7 @@ describe('ServiceTierToggle', () => {
     const parentEl2 = createMockEl();
     new ServiceTierToggle(parentEl2, callbacks);
 
-    const button = parentEl2.querySelector('.claudian-service-tier-button');
+    const button = parentEl2.querySelector('.codian-service-tier-button');
     await button?.dispatchEvent('click');
     expect(callbacks.onServiceTierChange).toHaveBeenCalledWith('default');
   });
@@ -844,7 +844,7 @@ describe('ServiceTierToggle', () => {
     const parentEl2 = createMockEl();
     new ServiceTierToggle(parentEl2, callbacks);
 
-    const container = parentEl2.querySelector('.claudian-service-tier-toggle');
+    const container = parentEl2.querySelector('.codian-service-tier-toggle');
     expect(container?.style.display).toBe('none');
   });
 });
@@ -872,7 +872,7 @@ describe('McpServerSelector', () => {
   });
 
   it('should create container with mcp-selector class', () => {
-    const container = parentEl.querySelector('.claudian-mcp-selector');
+    const container = parentEl.querySelector('.codian-mcp-selector');
     expect(container).not.toBeNull();
   });
 
@@ -882,14 +882,14 @@ describe('McpServerSelector', () => {
 
   it('should hide container when no servers configured', () => {
     selector.setMcpManager(createMockMcpManager([]));
-    const container = parentEl.querySelector('.claudian-mcp-selector');
+    const container = parentEl.querySelector('.codian-mcp-selector');
     expect(container?.style.display).toBe('none');
   });
 
   it('should show container when servers are configured', () => {
     selector.setMcpManager(createMockMcpManager([{ name: 'test', enabled: true }]));
-    const container = parentEl.querySelector('.claudian-mcp-selector');
-    expect(container?.hasClass('claudian-hidden')).toBe(false);
+    const container = parentEl.querySelector('.codian-mcp-selector');
+    expect(container?.hasClass('codian-hidden')).toBe(false);
   });
 
   it('keeps a lazy selector reachable and loads servers on first hover', async () => {
@@ -905,25 +905,25 @@ describe('McpServerSelector', () => {
     } as any;
 
     selector.setMcpManager(manager);
-    const container = parentEl.querySelector('.claudian-mcp-selector');
+    const container = parentEl.querySelector('.codian-mcp-selector');
 
-    expect(container?.hasClass('claudian-hidden')).toBe(false);
+    expect(container?.hasClass('codian-hidden')).toBe(false);
     await container?.dispatchEvent('mouseenter');
     await Promise.resolve();
 
     expect(manager.ensureLoaded).toHaveBeenCalledTimes(1);
-    expect(parentEl.querySelector('.claudian-mcp-selector-item')).not.toBeNull();
+    expect(parentEl.querySelector('.codian-mcp-selector-item')).not.toBeNull();
   });
 
   it('should show empty message when all servers are disabled', () => {
     selector.setMcpManager(createMockMcpManager([{ name: 'test', enabled: false }]));
-    const empty = parentEl.querySelector('.claudian-mcp-selector-empty');
+    const empty = parentEl.querySelector('.codian-mcp-selector-empty');
     expect(empty?.textContent).toBe('All MCP servers disabled');
   });
 
   it('should show no servers message when no servers configured', () => {
     selector.setMcpManager(createMockMcpManager([]));
-    const empty = parentEl.querySelector('.claudian-mcp-selector-empty');
+    const empty = parentEl.querySelector('.codian-mcp-selector-empty');
     expect(empty?.textContent).toBe('No MCP servers configured');
   });
 
@@ -1012,7 +1012,7 @@ describe('McpServerSelector', () => {
     selector.setEnabledServers(['server1', 'server2']);
     selector.updateDisplay();
 
-    const badge = parentEl.querySelector('.claudian-mcp-selector-badge');
+    const badge = parentEl.querySelector('.codian-mcp-selector-badge');
     expect(badge?.hasClass('visible')).toBe(true);
     expect(badge?.textContent).toBe('2');
   });
@@ -1022,7 +1022,7 @@ describe('McpServerSelector', () => {
     selector.setEnabledServers(['server1']);
     selector.updateDisplay();
 
-    const badge = parentEl.querySelector('.claudian-mcp-selector-badge');
+    const badge = parentEl.querySelector('.codian-mcp-selector-badge');
     expect(badge?.hasClass('visible')).toBe(false);
   });
 
@@ -1031,7 +1031,7 @@ describe('McpServerSelector', () => {
     selector.setEnabledServers(['server1']);
     selector.updateDisplay();
 
-    const icon = parentEl.querySelector('.claudian-mcp-selector-icon');
+    const icon = parentEl.querySelector('.codian-mcp-selector-icon');
     expect(icon?.hasClass('active')).toBe(true);
   });
 
@@ -1040,7 +1040,7 @@ describe('McpServerSelector', () => {
     selector.clearEnabled();
     selector.updateDisplay();
 
-    const icon = parentEl.querySelector('.claudian-mcp-selector-icon');
+    const icon = parentEl.querySelector('.codian-mcp-selector-icon');
     expect(icon?.hasClass('active')).toBe(false);
   });
 
@@ -1061,73 +1061,73 @@ describe('ContextUsageMeter', () => {
   });
 
   it('should create a container with context-meter class', () => {
-    const container = parentEl.querySelector('.claudian-context-meter');
+    const container = parentEl.querySelector('.codian-context-meter');
     expect(container).not.toBeNull();
   });
 
   it('should be hidden initially', () => {
-    const container = parentEl.querySelector('.claudian-context-meter');
+    const container = parentEl.querySelector('.codian-context-meter');
     expect(container?.style.display).toBe('none');
   });
 
   it('should remain hidden when update called with null', () => {
     meter.update(null);
-    const container = parentEl.querySelector('.claudian-context-meter');
+    const container = parentEl.querySelector('.codian-context-meter');
     expect(container?.style.display).toBe('none');
   });
 
   it('should remain hidden when contextTokens is 0', () => {
     meter.update(makeUsage({ contextTokens: 0, contextWindow: 200000, percentage: 0 }));
-    const container = parentEl.querySelector('.claudian-context-meter');
+    const container = parentEl.querySelector('.codian-context-meter');
     expect(container?.style.display).toBe('none');
   });
 
   it('should become visible when contextTokens > 0', () => {
     meter.update(makeUsage({ contextTokens: 50000, contextWindow: 200000, percentage: 25 }));
-    const container = parentEl.querySelector('.claudian-context-meter');
+    const container = parentEl.querySelector('.codian-context-meter');
     expect(container?.style.display).toBe('flex');
   });
 
   it('should display percentage', () => {
     meter.update(makeUsage({ contextTokens: 50000, contextWindow: 200000, percentage: 25 }));
-    const percent = parentEl.querySelector('.claudian-context-meter-percent');
+    const percent = parentEl.querySelector('.codian-context-meter-percent');
     expect(percent?.textContent).toBe('25%');
   });
 
   it('should add warning class when usage > 80%', () => {
     meter.update(makeUsage({ contextTokens: 170000, contextWindow: 200000, percentage: 85 }));
-    const container = parentEl.querySelector('.claudian-context-meter');
+    const container = parentEl.querySelector('.codian-context-meter');
     expect(container?.hasClass('warning')).toBe(true);
   });
 
   it('should remove warning class when usage drops below 80%', () => {
     meter.update(makeUsage({ contextTokens: 170000, contextWindow: 200000, percentage: 85 }));
     meter.update(makeUsage({ contextTokens: 50000, contextWindow: 200000, percentage: 25 }));
-    const container = parentEl.querySelector('.claudian-context-meter');
+    const container = parentEl.querySelector('.codian-context-meter');
     expect(container?.hasClass('warning')).toBe(false);
   });
 
   it('should set tooltip with formatted token counts', () => {
     meter.update(makeUsage({ contextTokens: 50000, contextWindow: 200000, percentage: 25 }));
-    const container = parentEl.querySelector('.claudian-context-meter');
+    const container = parentEl.querySelector('.codian-context-meter');
     expect(container?.getAttribute('data-tooltip')).toBe('50k / 200k');
   });
 
   it('should format small token counts without k suffix', () => {
     meter.update(makeUsage({ contextTokens: 500, contextWindow: 200000, percentage: 0 }));
-    const container = parentEl.querySelector('.claudian-context-meter');
+    const container = parentEl.querySelector('.codian-context-meter');
     expect(container?.getAttribute('data-tooltip')).toBe('500 / 200k');
   });
 
   it('should add compact reminder to tooltip when usage > 80%', () => {
     meter.update(makeUsage({ contextTokens: 170000, contextWindow: 200000, percentage: 85 }));
-    const container = parentEl.querySelector('.claudian-context-meter');
+    const container = parentEl.querySelector('.codian-context-meter');
     expect(container?.getAttribute('data-tooltip')).toBe('170k / 200k (Approaching limit, run `/compact` to continue)');
   });
 
   it('should not add compact reminder to tooltip when usage ≤ 80%', () => {
     meter.update(makeUsage({ contextTokens: 160000, contextWindow: 200000, percentage: 80 }));
-    const container = parentEl.querySelector('.claudian-context-meter');
+    const container = parentEl.querySelector('.codian-context-meter');
     expect(container?.getAttribute('data-tooltip')).toBe('160k / 200k');
   });
 });
@@ -1159,7 +1159,7 @@ describe('McpServerSelector - toggle and badges', () => {
       { name: 'server1', enabled: true, contextSaving: true },
     ]));
 
-    const csBadge = parentEl.querySelector('.claudian-mcp-selector-cs-badge');
+    const csBadge = parentEl.querySelector('.codian-mcp-selector-cs-badge');
     expect(csBadge).not.toBeNull();
     expect(csBadge?.textContent).toBe('@');
   });
@@ -1169,7 +1169,7 @@ describe('McpServerSelector - toggle and badges', () => {
       { name: 'server1', enabled: true, contextSaving: false },
     ]));
 
-    const csBadge = parentEl.querySelector('.claudian-mcp-selector-cs-badge');
+    const csBadge = parentEl.querySelector('.codian-mcp-selector-cs-badge');
     expect(csBadge).toBeNull();
   });
 
@@ -1182,7 +1182,7 @@ describe('McpServerSelector - toggle and badges', () => {
     ]));
 
     // Find the server item and trigger mousedown
-    const item = parentEl.querySelector('.claudian-mcp-selector-item');
+    const item = parentEl.querySelector('.codian-mcp-selector-item');
     expect(item).not.toBeNull();
 
     // Simulate mousedown to enable
@@ -1205,7 +1205,7 @@ describe('McpServerSelector - toggle and badges', () => {
     selector.setMcpManager(createMockMcpManager([{ name: 'codex-server', enabled: true }]));
     selector.setDisplayOnlyNotice('Manage this MCP server in Codex.');
 
-    const item = parentEl.querySelector('.claudian-mcp-selector-item');
+    const item = parentEl.querySelector('.codian-mcp-selector-item');
     expect(item?.hasClass('enabled')).toBe(true);
 
     const mousedownHandlers = item?._eventListeners?.get('mousedown');
@@ -1221,7 +1221,7 @@ describe('McpServerSelector - toggle and badges', () => {
     ]));
 
     // Get container and trigger mouseenter
-    const container = parentEl.querySelector('.claudian-mcp-selector');
+    const container = parentEl.querySelector('.codian-mcp-selector');
     const mouseenterHandlers = container?._eventListeners?.get('mouseenter');
     expect(mouseenterHandlers).toBeDefined();
 
@@ -1251,8 +1251,8 @@ describe('createInputToolbar', () => {
 
     createInputToolbar(parentEl, callbacks);
 
-    const permissionIndex = parentEl.children.findIndex((child: any) => child.hasClass('claudian-permission-toggle'));
-    const modeIndex = parentEl.children.findIndex((child: any) => child.hasClass('claudian-mode-selector'));
+    const permissionIndex = parentEl.children.findIndex((child: any) => child.hasClass('codian-permission-toggle'));
+    const modeIndex = parentEl.children.findIndex((child: any) => child.hasClass('codian-mode-selector'));
     expect(permissionIndex).toBeGreaterThanOrEqual(0);
     expect(modeIndex).toBeGreaterThan(permissionIndex);
     expect(modeIndex).toBe(parentEl.children.length - 1);

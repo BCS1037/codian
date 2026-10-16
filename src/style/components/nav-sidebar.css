@@ -1,5 +1,5 @@
 /* Navigation Sidebar */
-.claudian-nav-sidebar {
+.codian-nav-sidebar {
     position: absolute;
     right: 2px;
     top: 50%;
@@ -13,33 +13,33 @@
     transition: opacity 0.2s ease;
 }
 
-.claudian-nav-sidebar.visible {
+.codian-nav-sidebar.visible {
     opacity: 0.15;
     pointer-events: auto;
 }
 
-.claudian-nav-sidebar.visible:hover {
+.codian-nav-sidebar.visible:hover {
     opacity: 1;
 }
 
-.claudian-nav-sidebar.claudian-conversation-rail {
+.codian-nav-sidebar.codian-conversation-rail {
     left: 0;
     right: auto;
     gap: 0;
 }
 
-.claudian-nav-sidebar.claudian-conversation-rail.visible {
+.codian-nav-sidebar.codian-conversation-rail.visible {
     opacity: 1;
 }
 
-.claudian-conversation-rail-markers {
+.codian-conversation-rail-markers {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 14px;
 }
 
-.claudian-conversation-rail-marker {
+.codian-conversation-rail-marker {
     width: 6px;
     height: 6px;
     border-radius: 50%;
@@ -49,7 +49,7 @@
     transition: width 140ms ease, height 140ms ease, opacity 140ms ease, background-color 140ms ease;
 }
 
-.claudian-conversation-rail-marker-accessible-label {
+.codian-conversation-rail-marker-accessible-label {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -58,18 +58,18 @@
     white-space: nowrap;
 }
 
-.claudian-conversation-rail-marker:hover,
-.claudian-conversation-rail-marker:focus {
+.codian-conversation-rail-marker:hover,
+.codian-conversation-rail-marker:focus {
     opacity: 0.9;
     outline: none;
 }
 
-.claudian-conversation-rail-marker.is-latest {
+.codian-conversation-rail-marker.is-latest {
     background: var(--interactive-accent);
     opacity: 1;
 }
 
-.claudian-conversation-rail-card {
+.codian-conversation-rail-card {
     position: absolute;
     left: 20px;
     top: 0;
@@ -93,7 +93,7 @@
     z-index: 101;
 }
 
-.claudian-conversation-rail-card-prompt {
+.codian-conversation-rail-card-prompt {
     display: -webkit-box;
     overflow: hidden;
     font-weight: 600;
@@ -101,7 +101,7 @@
     -webkit-line-clamp: 2;
 }
 
-.claudian-conversation-rail-card-reply {
+.codian-conversation-rail-card-reply {
     display: -webkit-box;
     overflow: hidden;
     min-height: 0;
@@ -110,7 +110,7 @@
     -webkit-line-clamp: 2;
 }
 
-.claudian-nav-btn {
+.codian-nav-btn {
     width: 32px;
     height: 32px;
     border-radius: 16px;
@@ -125,18 +125,18 @@
     transition: all 0.2s ease;
 }
 
-.claudian-nav-btn:hover {
+.codian-nav-btn:hover {
     background: var(--background-secondary);
     color: var(--text-normal);
     transform: scale(1.05);
 }
 
-.claudian-nav-btn svg {
+.codian-nav-btn svg {
     width: 18px;
     height: 18px;
 }
 
-.claudian-nav-toc-popover {
+.codian-nav-toc-popover {
     position: absolute;
     right: 42px;
     top: 50%;
@@ -155,18 +155,18 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
-body.theme-dark .claudian-nav-toc-popover {
+body.theme-dark .codian-nav-toc-popover {
     background-color: #1e1e1e;
 }
 
-.claudian-nav-toc-title {
+.codian-nav-toc-title {
     padding: 4px 6px 8px;
     color: var(--text-muted);
     font-size: var(--font-ui-smaller);
     font-weight: 600;
 }
 
-.claudian-nav-toc-list {
+.codian-nav-toc-list {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -174,7 +174,7 @@ body.theme-dark .claudian-nav-toc-popover {
     min-height: 0;
 }
 
-.claudian-nav-toc-item {
+.codian-nav-toc-item {
     box-sizing: border-box;
     min-height: calc(1.35em + 12px);
     max-width: 100%;
@@ -189,13 +189,13 @@ body.theme-dark .claudian-nav-toc-popover {
     white-space: nowrap;
 }
 
-.claudian-nav-toc-item:hover,
-.claudian-nav-toc-item:focus {
+.codian-nav-toc-item:hover,
+.codian-nav-toc-item:focus {
     background: var(--background-secondary);
     outline: none;
 }
 
-.claudian-nav-toc-empty {
+.codian-nav-toc-empty {
     padding: 8px;
     color: var(--text-muted);
     font-size: var(--font-ui-small);
@@ -203,10 +203,10 @@ body.theme-dark .claudian-nav-toc-popover {
 }
 
 /* Specific button spacing/grouping if needed */
-.claudian-nav-btn-top {
+.codian-nav-btn-top {
     margin-bottom: 4px;
 }
 
-.claudian-nav-btn-bottom {
+.codian-nav-btn-bottom {
     margin-top: 4px;
 }

@@ -256,7 +256,7 @@ interface TestWorkspaceRuntime {
 }
 
 function createTestWorkspaceRuntime(): TestWorkspaceRuntime {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'claudian-chat-runtime-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'codian-chat-runtime-'));
   const runtimeRoot = path.join(
     home,
     '.cache',
@@ -541,7 +541,7 @@ describe('CodexChatRuntime', () => {
       expect(mockTransportRequest).toHaveBeenCalledWith(
         'initialize',
         expect.objectContaining({
-          clientInfo: { name: 'claudian', version: '1.0.0' },
+          clientInfo: { name: 'codian', version: '1.0.0' },
         }),
       );
       expect(mockTransportNotify).toHaveBeenCalledWith('initialized');
@@ -1543,12 +1543,28 @@ describe('CodexChatRuntime', () => {
   });
 
   describe('session management', () => {
-    it('clears provider state when session is invalidated', () => {
+    it('invalidates runtime sessionId but preserves thread identifiers in provider state', () => {
       runtime.syncConversationState({
         sessionId: 'thread_inv',
         providerState: { threadId: 'thread_inv', sessionFilePath: '/tmp/inv.jsonl' },
       });
 
+      const result = runtime.buildSessionUpdates({
+        conversation: {
+          providerState: { threadId: 'thread_inv', sessionFilePath: '/tmp/inv.jsonl' },
+        } as any,
+        sessionInvalidated: true,
+      });
+
+      expect(result.updates.sessionId).toBeNull();
+      expect(result.updates.providerState).toEqual(expect.objectContaining({
+        threadId: 'thread_inv',
+        sessionFilePath: '/tmp/inv.jsonl',
+      }));
+    });
+
+    it('clears provider state when session is invalidated and no thread was established', () => {
+      runtime.resetSession();
       const result = runtime.buildSessionUpdates({
         conversation: {} as any,
         sessionInvalidated: true,
@@ -1557,6 +1573,8 @@ describe('CodexChatRuntime', () => {
       expect(result.updates.sessionId).toBeNull();
       expect(result.updates.providerState).toBeUndefined();
     });
+
+
 
     it('round-trips an existing session file path', () => {
       runtime.syncConversationState({

@@ -5,6 +5,21 @@ import {
 } from '@/providers/pi/types';
 
 describe('Pi provider state continuity', () => {
+  it('preserves an explicit native tree cursor, including a null leaf', () => {
+    const state = getPiState({
+      treeCursor: { appendId: 'append-1', leafId: null, targetId: 'root-prompt' },
+    });
+
+    expect(state.treeCursor).toEqual({
+      appendId: 'append-1',
+      leafId: null,
+      targetId: 'root-prompt',
+    });
+    expect(buildPersistedPiState(state)).toEqual({
+      treeCursor: { appendId: 'append-1', leafId: null, targetId: 'root-prompt' },
+    });
+  });
+
   it('parses and persists previous session segments', () => {
     const state = getPiState({
       previousSessions: [

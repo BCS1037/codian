@@ -5,6 +5,8 @@ import type { App, Component, Editor, MarkdownView } from 'obsidian';
 import { Notice } from 'obsidian';
 
 import { getHiddenProviderCommandSet } from '../../../core/providers/commands/hiddenCommands';
+import { normalizeProviderCommandDiscoveryItems } from '../../../core/providers/commands/ProviderCommandDiscoveryResult';
+import { ProviderCommandDiscoveryStore } from '../../../core/providers/commands/ProviderCommandDiscoveryStore';
 import { resolveConversationModel } from '../../../core/providers/conversationModel';
 import { ProviderRegistry } from '../../../core/providers/ProviderRegistry';
 import { ProviderWorkspaceRegistry } from '../../../core/providers/ProviderWorkspaceRegistry';
@@ -28,6 +30,13 @@ import { normalizeInsertionText } from '../../../utils/inlineEdit';
 import { getVaultPath, normalizePathForVault as normalizePathForVaultUtil } from '../../../utils/path';
 import type { FeatureHost } from '../../FeatureHost';
 import { renderInlineEditMarkdownPreview } from './inlineEditMarkdownPreview';
+import {
+  buildMarkdownDiffDocuments,
+  computeMarkdownDiff,
+  countDiffLines,
+  type DiffOp,
+  diffOpsEqual,
+} from './markdownLineDiff';
 
 type InlineEditHost = FeatureHost & Component;
 
@@ -107,7 +116,7 @@ export function buildInlineEditInputDecorations(options: {
   const lineStart = options.doc.lineAt(options.inputPos).from;
   return Decoration.set([
     Decoration.line({
-      class: 'claudian-inline-input-line',
+      class: 'codian-inline-input-line',
     }).range(lineStart),
     Decoration.widget({
       widget: options.widget,
@@ -158,104 +167,15 @@ const inlineEditField = StateField.define<DecorationSet>({
 
 const installedEditors = new WeakSet<EditorView>();
 
-interface DiffOp { type: 'equal' | 'insert' | 'delete'; text: string; }
-
-function splitLinesPreservingEndings(text: string): string[] {
-  if (!text) return [];
-  return text.match(/[^\n]*(?:\n|$)/g)?.filter(line => line.length > 0) ?? [];
-}
-
-function computeMarkdownDiff(oldText: string, newText: string): DiffOp[] {
-  const oldLines = splitLinesPreservingEndings(oldText);
-  const newLines = splitLinesPreservingEndings(newText);
-  const m = oldLines.length, n = newLines.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, () => Array<number>(n + 1).fill(0));
-
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      dp[i][j] = oldLines[i-1] === newLines[j-1]
-        ? dp[i-1][j-1] + 1
-        : Math.max(dp[i-1][j], dp[i][j-1]);
-    }
-  }
-
-  const temp: DiffOp[] = [];
-  let i = m, j = n;
-
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && oldLines[i-1] === newLines[j-1]) {
-      temp.push({ type: 'equal', text: oldLines[i-1] });
-      i--; j--;
-    } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
-      temp.push({ type: 'insert', text: newLines[j-1] });
-      j--;
-    } else {
-      temp.push({ type: 'delete', text: oldLines[i-1] });
-      i--;
-    }
-  }
-
-  return mergeAdjacentDiffOps(temp.reverse());
-}
-
-function mergeAdjacentDiffOps(ops: DiffOp[]): DiffOp[] {
-  const merged: DiffOp[] = [];
-  for (const op of ops) {
-    if (merged.length > 0 && merged[merged.length-1].type === op.type) {
-      merged[merged.length-1].text += op.text;
-    } else {
-      merged.push({ ...op });
-    }
-  }
-  return merged;
-}
-
 function getDiffBlockClass(type: DiffOp['type']): string {
   switch (type) {
     case 'delete':
-      return 'claudian-diff-del';
+      return 'codian-diff-del';
     case 'insert':
-      return 'claudian-diff-ins';
+      return 'codian-diff-ins';
     default:
-      return 'claudian-diff-equal';
+      return 'codian-diff-equal';
   }
-}
-
-function buildMarkdownDiffDocuments(diffOps: DiffOp[]): Array<{ type: DiffOp['type']; markdown: string }> {
-  const oldMarkdown = diffOps
-    .filter(op => op.type !== 'insert')
-    .map(op => op.text)
-    .join('');
-  const newMarkdown = diffOps
-    .filter(op => op.type !== 'delete')
-    .map(op => op.text)
-    .join('');
-  const hasDeletion = diffOps.some(op => op.type === 'delete');
-  const hasInsertion = diffOps.some(op => op.type === 'insert');
-
-  const documents: Array<{ type: DiffOp['type']; markdown: string }> = [];
-
-  if (hasDeletion && oldMarkdown) {
-    documents.push({ type: 'delete', markdown: oldMarkdown });
-  }
-
-  if (hasInsertion && newMarkdown) {
-    documents.push({ type: 'insert', markdown: newMarkdown });
-  }
-
-  if (documents.length === 0 && newMarkdown) {
-    documents.push({ type: 'equal', markdown: newMarkdown });
-  }
-
-  return documents;
-}
-
-function diffOpsEqual(left: DiffOp[], right: DiffOp[]): boolean {
-  if (left.length !== right.length) return false;
-  return left.every((op, index) => {
-    const other = right[index];
-    return op.type === other.type && op.text === other.text;
-  });
 }
 
 export type InlineEditDecision = 'accept' | 'edit' | 'reject';
@@ -378,7 +298,8 @@ export class InlineEditSession {
   private mode: InlineEditMode;
   private cursorContext: CursorContext | null = null;
   private inlineEditService: InlineEditService;
-  private escHandler: ((e: KeyboardEvent) => void) | null = null;
+  /** Removes the current phase's Escape/Enter listener. */
+  private releaseKeyHandler: (() => void) | null = null;
   private selectionListener: ((e: Event) => void) | null = null;
   private isConversing = false;
   private resolvedProviderId: ProviderId;
@@ -451,7 +372,10 @@ export class InlineEditSession {
   }
 
   show() {
-    if (!installedEditors.has(this.editorView)) {
+    const needsField = typeof this.editorView.state?.field === 'function'
+      ? this.editorView.state.field(inlineEditField, false) === undefined
+      : !installedEditors.has(this.editorView);
+    if (needsField) {
       this.editorView.dispatch({
         effects: StateEffect.appendConfig.of(inlineEditField),
       });
@@ -465,12 +389,15 @@ export class InlineEditSession {
     }
 
     // !e.isComposing: skip during IME composition (Chinese, Japanese, Korean, etc.)
-    this.escHandler = (e: KeyboardEvent) => {
+    // Bubble phase, so the instruction's suggestion dropdown and mention dropdown close on Escape first.
+    const ownerDocument = this.getOwnerDocument();
+    const onKeydown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !e.isComposing && this.isKeyboardEventInContext(e)) {
         this.reject();
       }
     };
-    this.getOwnerDocument().addEventListener('keydown', this.escHandler);
+    ownerDocument.addEventListener('keydown', onKeydown);
+    this.releaseKeyHandler = () => ownerDocument.removeEventListener('keydown', onKeydown);
   }
 
   private updateHighlight() {
@@ -521,20 +448,28 @@ export class InlineEditSession {
 
   createInputDOM(): HTMLElement {
     const ownerDocument = this.getOwnerDocument();
-    const container = createDiv({ cls: 'claudian-inline-input-container' });
+    const container = createDiv({
+      cls: 'codian-inline-input-container',
+      attr: { 'data-provider': this.resolvedProviderId },
+    });
     this.containerEl = container;
 
-    this.agentReplyEl = container.createDiv({ cls: 'claudian-inline-agent-reply claudian-hidden' });
+    // The widget root only spaces the card: Obsidian zeroes editor widget margins.
+    const cardEl = container.createDiv({ cls: 'codian-inline-composer' });
+    this.agentReplyEl = cardEl.createDiv({ cls: 'codian-inline-agent-reply codian-hidden' });
 
-    const inputWrap = container.createDiv({ cls: 'claudian-inline-input-wrap' });
+    const inputWrap = cardEl.createDiv({ cls: 'codian-inline-input-wrap' });
 
-    this.inputEl = inputWrap.createEl('input');
-    this.inputEl.type = 'text';
-    this.inputEl.className = 'claudian-inline-input';
-    this.inputEl.placeholder = this.mode === 'cursor' ? 'Insert instructions...' : 'Edit instructions...';
-    this.inputEl.spellcheck = false;
+    this.inputEl = inputWrap.createEl('input', {
+      cls: 'codian-inline-input',
+      type: 'text',
+      attr: {
+        placeholder: this.mode === 'cursor' ? 'Insert instructions...' : 'Edit instructions...',
+        spellcheck: 'false',
+      },
+    });
 
-    this.spinnerEl = inputWrap.createDiv({ cls: 'claudian-inline-spinner claudian-hidden' });
+    this.spinnerEl = inputWrap.createDiv({ cls: 'codian-inline-spinner codian-hidden' });
 
     const inlineCatalog = ProviderWorkspaceRegistry.getCommandCatalog(this.resolvedProviderId);
     this.slashCommandDropdown = new SlashCommandDropdown(
@@ -549,7 +484,11 @@ export class InlineEditSession {
         hiddenCommands: getHiddenProviderCommandSet(this.plugin.settings, this.resolvedProviderId),
         ...(inlineCatalog ? {
           providerConfig: inlineCatalog.getDropdownConfig(),
-          getProviderEntries: () => inlineCatalog.listDropdownEntries({ includeBuiltIns: false }),
+          providerDiscovery: new ProviderCommandDiscoveryStore(async () =>
+            normalizeProviderCommandDiscoveryItems(
+              await inlineCatalog.listDropdownEntries({ includeBuiltIns: false }),
+            ),
+          ),
         } : {}),
       }
     );
@@ -580,15 +519,22 @@ export class InlineEditSession {
   }
 
   createDiffPreviewDOM(diffOps: DiffOp[]): HTMLElement {
-    const previewEl = createDiv({ cls: 'claudian-inline-diff-preview' });
+    const previewEl = createDiv({ cls: 'codian-inline-diff-preview' });
+    this.containerEl = previewEl;
 
-    const bodyEl = previewEl.createDiv({ cls: 'claudian-inline-diff-preview-body markdown-rendered' });
+    const bodyEl = previewEl.createDiv({ cls: 'codian-inline-diff-preview-body markdown-rendered' });
 
-    const actionsEl = previewEl.createDiv({ cls: 'claudian-inline-preview-actions' });
+    const actionsEl = previewEl.createDiv({ cls: 'codian-inline-preview-actions' });
     actionsEl.setAttribute('role', 'toolbar');
     actionsEl.setAttribute('aria-label', 'Inline edit actions');
-    actionsEl.appendChild(this.createPreviewActionButton('Reject', 'reject', () => this.reject()));
-    actionsEl.appendChild(this.createPreviewActionButton('Accept', 'accept', () => this.accept()));
+    const statsEl = actionsEl.createDiv({ cls: 'codian-inline-diff-stats' });
+    const removed = countDiffLines(diffOps, 'delete');
+    const added = countDiffLines(diffOps, 'insert');
+    if (removed > 0) statsEl.createSpan({ cls: 'codian-inline-diff-stat-del', text: `−${removed}` });
+    if (added > 0) statsEl.createSpan({ cls: 'codian-inline-diff-stat-ins', text: `+${added}` });
+    statsEl.createSpan({ text: removed + added === 1 ? 'line' : 'lines' });
+    actionsEl.appendChild(this.createPreviewActionButton('Reject', 'reject', 'Esc', () => this.reject()));
+    actionsEl.appendChild(this.createPreviewActionButton('Accept', 'accept', '↵', () => this.accept()));
 
     void this.renderMarkdownDiffPreview(bodyEl, diffOps);
     return previewEl;
@@ -597,15 +543,21 @@ export class InlineEditSession {
   private createPreviewActionButton(
     label: string,
     variant: 'accept' | 'reject',
+    keyHint: string,
     onClick: () => void
   ): HTMLButtonElement {
-    const button = createEl('button');
-    button.type = 'button';
-    button.className = `claudian-inline-preview-action ${variant}`;
-    button.textContent = label;
-    button.setAttribute('aria-label', `${label} inline edit`);
-    button.title = variant === 'accept' ? 'Accept (enter)' : 'Reject (esc)';
-    button.addEventListener('click', (event) => {
+    const button = createEl('button', {
+      cls: `codian-inline-preview-action ${variant}`,
+      type: 'button',
+      text: label,
+      attr: {
+        'aria-label': `${label} inline edit`,
+        title: variant === 'accept' ? 'Accept (enter)' : 'Reject (esc)',
+        'aria-keyshortcuts': variant === 'accept' ? 'Enter' : 'Escape',
+      },
+    });
+    button.createEl('kbd', { cls: 'codian-inline-preview-key', text: keyHint, attr: { 'aria-hidden': 'true' } });
+    button.addEventListener('click', (event: MouseEvent) => {
       event.preventDefault?.();
       event.stopPropagation?.();
       onClick();
@@ -629,7 +581,7 @@ export class InlineEditSession {
     for (const document of buildMarkdownDiffDocuments(diffOps)) {
       if (!document.markdown) continue;
 
-      const opEl = container.createDiv({ cls: `claudian-diff-block ${getDiffBlockClass(document.type)}` });
+      const opEl = container.createDiv({ cls: `codian-diff-block ${getDiffBlockClass(document.type)}` });
       await this.renderMarkdownPreview(opEl, document.markdown);
     }
   }
@@ -668,7 +620,7 @@ export class InlineEditSession {
     this.removeSelectionListeners();
 
     this.inputEl.disabled = true;
-    this.spinnerEl.removeClass('claudian-hidden');
+    this.spinnerEl.removeClass('codian-hidden');
 
     const contextFiles = this.resolveContextFilesFromMessage(userMessage);
 
@@ -705,7 +657,7 @@ export class InlineEditSession {
       return;
     } finally {
       if (this.isGenerationActive(generation)) {
-        this.spinnerEl?.addClass('claudian-hidden');
+        this.spinnerEl?.addClass('codian-hidden');
       }
     }
 
@@ -745,7 +697,7 @@ export class InlineEditSession {
     const renderVersion = ++this.agentReplyRenderVersion;
     const renderedEl = this.agentReplyEl.createDiv();
 
-    replyEl.removeClass('claudian-hidden');
+    replyEl.removeClass('codian-hidden');
     replyEl.empty();
     void this.renderMarkdownPreview(renderedEl, message).then(() => {
       if (renderVersion !== this.agentReplyRenderVersion || replyEl !== this.agentReplyEl) {
@@ -809,21 +761,39 @@ export class InlineEditSession {
     this.installAcceptRejectHandler();
   }
 
+  /**
+   * Window capture runs ahead of CodeMirror, which would insert a newline on Enter and so turn the
+   * accept into a stale-source rejection, and ahead of Obsidian's keymap, which handles Escape.
+   */
   private installAcceptRejectHandler() {
-    if (this.escHandler) {
-      this.getOwnerDocument().removeEventListener('keydown', this.escHandler);
-    }
-    this.escHandler = (e: KeyboardEvent) => {
-      if (!this.isKeyboardEventInContext(e)) {
-        return;
-      }
-      if (e.key === 'Escape' && !e.isComposing) {
+    this.releaseKeyHandler?.();
+    const ownerDocument = this.getOwnerDocument();
+    const keyTarget: EventTarget | null =
+      (ownerDocument.defaultView && typeof ownerDocument.defaultView.addEventListener === 'function')
+        ? ownerDocument.defaultView
+        : (typeof window !== 'undefined' && typeof window.addEventListener === 'function')
+        ? window
+        : (typeof ownerDocument.addEventListener === 'function')
+        ? ownerDocument
+        : null;
+    const onKeydown: EventListener = (event) => {
+      const e = event as KeyboardEvent;
+      if (e.isComposing || !this.isKeyboardEventInContext(e)) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
         this.reject();
-      } else if (e.key === 'Enter' && !e.isComposing) {
+      } else if (e.key === 'Enter' && !this.containerEl?.contains(e.target as Node)) {
+        // Preview controls keep their native Enter activation.
+        e.preventDefault();
+        e.stopPropagation();
         this.accept();
       }
     };
-    this.getOwnerDocument().addEventListener('keydown', this.escHandler);
+    if (keyTarget) {
+      keyTarget.addEventListener('keydown', onKeydown, true);
+      this.releaseKeyHandler = () => keyTarget.removeEventListener('keydown', onKeydown, true);
+    }
   }
 
   accept() {
@@ -880,9 +850,8 @@ export class InlineEditSession {
     this.inlineEditService.resetConversation();
     this.isConversing = false;
     this.removeSelectionListeners();
-    if (this.escHandler) {
-      this.getOwnerDocument().removeEventListener('keydown', this.escHandler);
-    }
+    this.releaseKeyHandler?.();
+    this.releaseKeyHandler = null;
     this.slashCommandDropdown?.destroy();
     this.slashCommandDropdown = null;
 
@@ -947,12 +916,14 @@ export class InlineEditSession {
     return from === this.selFrom && to === this.selTo ? this.selectedText : '';
   }
 
+  /** Keys aimed at the editor, this widget, or nowhere: a disabled or replaced input leaves focus on the body. */
   private isKeyboardEventInContext(event: KeyboardEvent): boolean {
     const target = event.target as Node | null;
     if (!target) {
       return false;
     }
-    return target === this.containerEl
+    return target === this.getOwnerDocument().body
+      || target === this.containerEl
       || this.containerEl?.contains(target) === true
       || target === this.editorView.dom
       || this.editorView.dom.contains(target);

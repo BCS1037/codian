@@ -63,14 +63,14 @@ describe('todoUtils', () => {
       expect(setIcon).toHaveBeenCalledTimes(3);
 
       // First item: completed
-      expect(container._children[0].hasClass('claudian-todo-completed')).toBe(true);
+      expect(container._children[0].hasClass('codian-todo-completed')).toBe(true);
       expect(setIcon).toHaveBeenCalledWith(expect.anything(), 'check');
 
       // Second item: in_progress shows activeForm
-      expect(container._children[1].hasClass('claudian-todo-in_progress')).toBe(true);
+      expect(container._children[1].hasClass('codian-todo-in_progress')).toBe(true);
 
       // Third item: pending
-      expect(container._children[2].hasClass('claudian-todo-pending')).toBe(true);
+      expect(container._children[2].hasClass('codian-todo-pending')).toBe(true);
     });
 
     it('should clear container before rendering', () => {

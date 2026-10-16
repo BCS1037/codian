@@ -242,7 +242,7 @@ export class GrokAuxQueryRunner implements AuxQueryRunner {
       const connectionGeneration = ++this.connectionGeneration;
       const connection = new AcpClientConnection({
         clientInfo: {
-          name: 'claudian-aux',
+          name: 'codian-aux',
           version: this.plugin.manifest?.version ?? '0.0.0',
         },
         delegate: {

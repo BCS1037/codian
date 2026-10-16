@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import { MarkdownView } from 'obsidian';
+import { FileView, MarkdownView, TextFileView } from 'obsidian';
 
 import { hideSelectionHighlight, showSelectionHighlight } from '../../../shared/components/SelectionHighlight';
 import { type EditorSelectionContext, getEditorView } from '../../../utils/editor';
@@ -8,7 +8,7 @@ import type { ComposerContextTray } from '../ui/ComposerContextTray';
 
 const SELECTION_POLL_INTERVAL = 250;
 const INPUT_HANDOFF_GRACE_MS = 1500;
-const HIGHLIGHT_KEY = 'claudian-selection';
+const HIGHLIGHT_KEY = 'codian-selection';
 
 type CustomHighlightRegistry = {
   delete: (name: string) => boolean;
@@ -52,14 +52,15 @@ export class SelectionController {
 
   start(): void {
     if (this.pollInterval) return;
-    this.inputEl.addEventListener('pointerdown', this.focusScopePointerDownHandler);
-    for (const focusScopeEl of this.focusScopeEls) {
-      if (focusScopeEl !== this.inputEl) {
-        focusScopeEl.addEventListener('pointerdown', this.focusScopePointerDownHandler);
-      }
-      focusScopeEl.addEventListener('focusin', this.focusScopeFocusInHandler);
-    }
+    this.attachFocusScopeListeners();
     this.pollInterval = window.setInterval(() => this.poll(), SELECTION_POLL_INTERVAL);
+  }
+
+  setFocusScopeEls(focusScopeEl?: FocusScopeInput): void {
+    const wasRunning = this.pollInterval !== null;
+    if (wasRunning) this.detachFocusScopeListeners();
+    this.focusScopeEls = this.normalizeFocusScopes(focusScopeEl);
+    if (wasRunning) this.attachFocusScopeListeners();
   }
 
   stop(): void {
@@ -67,13 +68,7 @@ export class SelectionController {
       window.clearInterval(this.pollInterval);
       this.pollInterval = null;
     }
-    this.inputEl.removeEventListener('pointerdown', this.focusScopePointerDownHandler);
-    for (const focusScopeEl of this.focusScopeEls) {
-      if (focusScopeEl !== this.inputEl) {
-        focusScopeEl.removeEventListener('pointerdown', this.focusScopePointerDownHandler);
-      }
-      focusScopeEl.removeEventListener('focusin', this.focusScopeFocusInHandler);
-    }
+    this.detachFocusScopeListeners();
     this.clear();
   }
 
@@ -88,22 +83,28 @@ export class SelectionController {
   private poll(): void {
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!view) {
+      // Other file views (source viewers, PDFs, plugin views) expose their text through the DOM.
+      const fileView = this.app.workspace.getActiveViewOfType(FileView);
+      if (fileView) {
+        this.pollDOMSelection(fileView);
+        return;
+      }
       // Keep the captured selection only while focus is transitioning into
       // the chat UI; any other leaf switch should drop stale prompt context.
-      this.clearWhenMarkdownContextIsUnavailable();
+      this.clearWhenFileContextIsUnavailable();
       return;
     }
 
     // Reading/preview mode has no usable CM6 selection — use DOM selection instead
     if (view.getMode() === 'preview') {
-      this.pollReadingMode(view);
+      this.pollDOMSelection(view);
       return;
     }
 
     const editor = view.editor;
     const editorView = getEditorView(editor);
     if (!editorView) {
-      this.clearWhenMarkdownContextIsUnavailable();
+      this.clearWhenFileContextIsUnavailable();
       return;
     }
 
@@ -143,10 +144,10 @@ export class SelectionController {
     }
   }
 
-  private pollReadingMode(view: MarkdownView): void {
+  private pollDOMSelection(view: FileView): void {
     const containerEl = view.containerEl;
     if (!containerEl) {
-      this.clearWhenMarkdownContextIsUnavailable();
+      this.clearWhenFileContextIsUnavailable();
       return;
     }
 
@@ -178,12 +179,41 @@ export class SelectionController {
 
       if (!unchanged) {
         this.clearHighlight();
-        this.storedSelection = { notePath, selectedText, lineCount, domRanges };
+        const startLine = this.findSourceLine(view, selection);
+        this.storedSelection = {
+          notePath,
+          selectedText,
+          lineCount,
+          domRanges,
+          ...(startLine !== undefined && { startLine }),
+        };
         this.updateIndicator();
       }
     } else {
       this.handleDeselection();
     }
+  }
+
+  /** Maps a selection to its 1-indexed source line only where the view renders its source verbatim. */
+  private findSourceLine(view: FileView, selection: Selection | null): number | undefined {
+    if (!(view instanceof TextFileView) || selection?.rangeCount !== 1) return undefined;
+
+    const source = view.getViewData();
+    const range = selection.getRangeAt(0);
+    let node: Node | null = range.commonAncestorContainer;
+    while (node && view.containerEl.contains(node)) {
+      const text = node.textContent ?? '';
+      // Ancestors only gain text, so none further up can match.
+      if (text.length > source.length) return undefined;
+      if (text === source) {
+        const prefix = view.containerEl.ownerDocument.createRange();
+        prefix.selectNodeContents(node);
+        prefix.setEnd(range.startContainer, range.startOffset);
+        return source.slice(0, prefix.toString().length).split(/\r?\n/).length;
+      }
+      node = node.parentNode;
+    }
+    return undefined;
   }
 
   private get cssHighlights(): CustomHighlightRegistry | null {
@@ -259,6 +289,26 @@ export class SelectionController {
     return Array.from(new Set(focusScopes.filter(Boolean)));
   }
 
+  private attachFocusScopeListeners(): void {
+    this.inputEl.addEventListener('pointerdown', this.focusScopePointerDownHandler);
+    for (const focusScopeEl of this.focusScopeEls) {
+      if (focusScopeEl !== this.inputEl) {
+        focusScopeEl.addEventListener('pointerdown', this.focusScopePointerDownHandler);
+      }
+      focusScopeEl.addEventListener('focusin', this.focusScopeFocusInHandler);
+    }
+  }
+
+  private detachFocusScopeListeners(): void {
+    this.inputEl.removeEventListener('pointerdown', this.focusScopePointerDownHandler);
+    for (const focusScopeEl of this.focusScopeEls) {
+      if (focusScopeEl !== this.inputEl) {
+        focusScopeEl.removeEventListener('pointerdown', this.focusScopePointerDownHandler);
+      }
+      focusScopeEl.removeEventListener('focusin', this.focusScopeFocusInHandler);
+    }
+  }
+
   private getFocusScopeOwnerDocument(): Document | null {
     return this.focusScopeEls[0]?.ownerDocument ?? this.inputEl.ownerDocument ?? null;
   }
@@ -296,7 +346,7 @@ export class SelectionController {
     return this.selectionMatchesRanges(this.getDocumentSelection(this.getFocusScopeOwnerDocument()), ranges);
   }
 
-  private clearWhenMarkdownContextIsUnavailable(): void {
+  private clearWhenFileContextIsUnavailable(): void {
     if (!this.storedSelection) return;
     if (this.isFocusWithinChatSidebar()) {
       this.inputHandoffGraceUntil = null;

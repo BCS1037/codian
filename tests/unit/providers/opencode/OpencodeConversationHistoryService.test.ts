@@ -11,12 +11,25 @@ describe('OpencodeConversationHistoryService', () => {
   let tmpRoot: string;
 
   beforeEach(() => {
-    tmpRoot = mkdtempSync(path.join(os.tmpdir(), 'claudian-opencode-conversation-history-'));
+    tmpRoot = mkdtempSync(path.join(os.tmpdir(), 'codian-opencode-conversation-history-'));
   });
 
   afterEach(() => {
     Object.defineProperty(process, 'platform', { value: originalPlatform });
     rmSync(tmpRoot, { force: true, recursive: true });
+  });
+
+  it('preserves native runtime version in persisted OpenCode provider state', () => {
+    const service = new OpencodeConversationHistoryService();
+    const conversation = {
+      ...createConversation('session-v2', '/tmp/opencode.db'),
+      providerState: { databasePath: '/tmp/opencode.db', nativeVersion: 2 },
+    };
+
+    expect(service.buildPersistedProviderState(conversation)).toEqual({
+      databasePath: '/tmp/opencode.db',
+      nativeVersion: 2,
+    });
   });
 
   it('retries after a session-level hydration diagnostic', async () => {
@@ -122,6 +135,28 @@ describe('OpencodeConversationHistoryService', () => {
     );
 
     expect(conversation.messages.map(message => message.content)).toEqual(['Configured prompt']);
+  });
+
+  it('forwards the host environment to the SQLite history reader', async () => {
+    const sessionId = 'session-forwarded-environment';
+    const environment = { HOME: tmpRoot, PATH: '/host/node/bin' } as NodeJS.ProcessEnv;
+    const loadSessionMessages = jest.fn().mockResolvedValue([]);
+    const conversation = createConversation(
+      sessionId,
+      path.join(tmpRoot, 'not-present.db'),
+    );
+
+    await new OpencodeConversationHistoryService(loadSessionMessages).hydrateConversationHistory(
+      conversation,
+      null,
+      { environment },
+    );
+
+    expect(loadSessionMessages).toHaveBeenCalledWith(
+      sessionId,
+      expect.any(Object),
+      environment,
+    );
   });
 
   it('sanitizes an untrusted database path before a session is assigned', async () => {

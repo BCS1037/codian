@@ -4,11 +4,13 @@ import * as path from 'node:path';
 
 import {
   createPiForkSessionFile,
+  getPiBranchLeafId,
   parsePiSessionContent,
   parsePiSessionEntries,
   type PiSessionEntry,
   resolvePiActivePath,
   resolvePiEntryPath,
+  resolvePiTreeCursor,
 } from '@/providers/pi/history/PiHistoryStore';
 
 describe('PiHistoryStore', () => {
@@ -174,6 +176,7 @@ describe('PiHistoryStore', () => {
       input: { file_path: 'a.md', path: 'a.md' },
       name: 'Read',
       result: 'file contents',
+      resultFormat: 'plain',
       status: 'completed',
     }]);
   });
@@ -211,6 +214,7 @@ describe('PiHistoryStore', () => {
       input: { file_path: 'a.md', path: 'a.md' },
       name: 'Read',
       result: 'file contents',
+      resultFormat: 'plain',
       status: 'completed',
     }]);
     expect(messages[0].contentBlocks).toEqual([{ toolId: 'tool-1', type: 'tool_use' }]);
@@ -411,6 +415,109 @@ describe('PiHistoryStore', () => {
     expect(resolvePiActivePath(entries).map(entry => entry.id)).toEqual(['root', 'right']);
   });
 
+  it('projects adjacent user-prompt siblings onto the active Pi history messages', () => {
+    const content = [
+      JSON.stringify({
+        id: 'u-root',
+        parentId: null,
+        type: 'message',
+        message: { role: 'user', content: 'Root prompt' },
+      }),
+      JSON.stringify({
+        id: 'a-parent',
+        parentId: 'u-root',
+        type: 'message',
+        message: { role: 'assistant', content: 'Choose a direction' },
+      }),
+      JSON.stringify({
+        id: 'u-left',
+        parentId: 'a-parent',
+        type: 'message',
+        message: { role: 'user', content: 'Left branch' },
+      }),
+      JSON.stringify({
+        id: 'a-left',
+        parentId: 'u-left',
+        type: 'message',
+        message: { role: 'assistant', content: 'Left answer' },
+      }),
+      JSON.stringify({
+        id: 'u-right',
+        parentId: 'a-parent',
+        type: 'message',
+        message: { role: 'user', content: 'Right branch' },
+      }),
+      JSON.stringify({
+        id: 'a-right',
+        parentId: 'u-right',
+        type: 'message',
+        message: { role: 'assistant', content: 'Right answer' },
+      }),
+    ].join('\n');
+
+    const messages = parsePiSessionContent(content, { leafEntryId: 'a-left' });
+
+    expect(messages.map(message => message.id)).toEqual(['u-root', 'a-parent', 'u-left', 'a-left']);
+    expect(messages.find(message => message.id === 'u-root')?.branchNavigation).toBeUndefined();
+    expect(messages.find(message => message.id === 'u-left')?.branchNavigation).toEqual({
+      count: 2,
+      nextMessageId: 'u-right',
+      position: 1,
+    });
+  });
+
+  it('groups sibling prompts across non-message configuration entries', () => {
+    const content = [
+      JSON.stringify({ id: 'u-root', parentId: null, type: 'message', message: { role: 'user', content: 'Start' } }),
+      JSON.stringify({ id: 'a-parent', parentId: 'u-root', type: 'message', message: { role: 'assistant', content: 'Choose' } }),
+      JSON.stringify({ id: 'model-change', parentId: 'a-parent', type: 'model_change' }),
+      JSON.stringify({ id: 'u-left', parentId: 'model-change', type: 'message', message: { role: 'user', content: 'Left' } }),
+      JSON.stringify({ id: 'a-left', parentId: 'u-left', type: 'message', message: { role: 'assistant', content: 'Left answer' } }),
+      JSON.stringify({ id: 'u-right', parentId: 'a-parent', type: 'message', message: { role: 'user', content: 'Right' } }),
+      JSON.stringify({ id: 'a-right', parentId: 'u-right', type: 'message', message: { role: 'assistant', content: 'Right answer' } }),
+    ].join('\n');
+
+    const messages = parsePiSessionContent(content, { leafEntryId: 'a-left' });
+
+    expect(messages.find(message => message.id === 'u-left')?.branchNavigation).toEqual({
+      count: 2,
+      nextMessageId: 'u-right',
+      position: 1,
+    });
+  });
+
+  it('resolves a selected branch cursor only when appended history remains on that branch', () => {
+    const base: PiSessionEntry[] = [
+      { id: 'u1', raw: { parentId: null }, type: 'message', message: { role: 'user' } },
+      { id: 'a1', parentId: 'u1', raw: { parentId: 'u1' }, type: 'message', message: { role: 'assistant' } },
+      { id: 'u2', parentId: 'a1', raw: { parentId: 'a1' }, type: 'message', message: { role: 'user' } },
+      { id: 'a2', parentId: 'u2', raw: { parentId: 'u2' }, type: 'message', message: { role: 'assistant' } },
+      { id: 'u3', parentId: 'a1', raw: { parentId: 'a1' }, type: 'message', message: { role: 'user' } },
+    ];
+    const cursor = { appendId: 'a2', leafId: 'a2', targetId: 'a2' };
+
+    expect(getPiBranchLeafId(base, 'u2')).toBe('a2');
+    expect(resolvePiTreeCursor([
+      ...base,
+      { id: 'tool-state', parentId: 'a2', raw: { parentId: 'a2' }, type: 'custom' },
+    ], cursor)).toEqual({ appendId: 'tool-state', leafId: 'tool-state', targetId: 'tool-state' });
+    expect(resolvePiTreeCursor([
+      ...base,
+      { id: 'a3', parentId: 'u3', raw: { parentId: 'u3' }, type: 'message', message: { role: 'assistant' } },
+    ], cursor)).toEqual(cursor);
+    expect(() => resolvePiTreeCursor(base.filter(entry => entry.id !== 'a2'), cursor))
+      .toThrow('Pi branch history changed since navigation.');
+  });
+
+  it('does not infer branches for legacy linear entries without explicit parent metadata', () => {
+    const content = [
+      JSON.stringify({ id: 'u1', type: 'message', message: { role: 'user', content: 'First' } }),
+      JSON.stringify({ id: 'u2', type: 'message', message: { role: 'user', content: 'Second' } }),
+    ].join('\n');
+
+    expect(parsePiSessionContent(content).every(message => !message.branchNavigation)).toBe(true);
+  });
+
   it('keeps id-less tool results attached to the active branch', () => {
     const content = [
       JSON.stringify({
@@ -459,6 +566,7 @@ describe('PiHistoryStore', () => {
       input: { file_path: 'left.md', path: 'left.md' },
       name: 'Read',
       result: 'left contents',
+      resultFormat: 'plain',
       status: 'completed',
     }]);
   });
@@ -587,6 +695,7 @@ describe('PiHistoryStore', () => {
       input: { file_path: 'a.md', path: 'a.md' },
       name: 'Read',
       result: 'file contents',
+      resultFormat: 'plain',
       status: 'completed',
     }]);
   });

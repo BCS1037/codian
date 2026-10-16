@@ -10,6 +10,8 @@ export interface SDKSessionReadResult {
 export interface SDKNativeMessage {
   type: 'user' | 'assistant' | 'system' | 'result' | 'file-history-snapshot' | 'queue-operation';
   parentUuid?: string | null;
+  /** Set on `compact_boundary`, whose `parentUuid` restarts the chain, to the pre-compaction parent. */
+  logicalParentUuid?: string | null;
   sessionId?: string;
   uuid?: string;
   timestamp?: string;

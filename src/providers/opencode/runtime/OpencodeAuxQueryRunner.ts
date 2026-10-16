@@ -1,21 +1,17 @@
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
-
 import type { AuxQueryConfig, AuxQueryRunner } from '../../../core/auxiliary/AuxQueryRunner';
 import { getRuntimeEnvironmentText } from '../../../core/providers/providerEnvironment';
 import type { ProviderHost } from '../../../core/providers/ProviderHost';
 import { ProviderSettingsCoordinator } from '../../../core/providers/ProviderSettingsCoordinator';
 import { getVaultPath } from '../../../utils/path';
 import {
-  AcpClientConnection,
-  AcpJsonRpcTransport,
-  type AcpReadTextFileRequest,
   type AcpRequestPermissionRequest,
   type AcpRequestPermissionResponse,
+  type AcpSessionNotification,
   AcpSessionUpdateNormalizer,
-  AcpSubprocess,
   extractAcpSessionModelState,
 } from '../../acp';
+import { OpencodeHttpClient, type OpencodeHttpClientConnection } from '../http/OpencodeHttpClient';
+import { OpencodeHttpSessionConnection } from '../http/OpencodeHttpSessionConnection';
 import { decodeOpencodeModelId } from '../models';
 import { opencodeChatUIConfig } from '../ui/OpencodeChatUIConfig';
 import {
@@ -30,12 +26,11 @@ type OpencodeAuxArtifactPurpose = 'inline' | 'instructions' | 'title-gen';
 interface OpencodeAuxQueryRunnerOptions {
   agentProfile: OpencodeAuxAgentProfile;
   artifactPurpose: OpencodeAuxArtifactPurpose;
-  allowReadTextFile?: boolean;
 }
 
 const OPENCODE_AUX_AGENT_IDS: Record<OpencodeAuxAgentProfile, string> = {
-  passive: 'claudian-aux-passive',
-  readonly: 'claudian-aux-readonly',
+  passive: 'codian-aux-passive',
+  readonly: 'codian-aux-readonly',
 };
 
 const OPENCODE_AUX_READ_PERMISSION = Object.freeze({
@@ -47,14 +42,15 @@ const OPENCODE_AUX_READ_PERMISSION = Object.freeze({
 
 export class OpencodeAuxQueryRunner implements AuxQueryRunner {
   private availableModelIds = new Set<string>();
-  private connection: AcpClientConnection | null = null;
+  private connection: OpencodeHttpSessionConnection | null = null;
+  private client: OpencodeHttpClientConnection | null = null;
   private currentModelId: string | null = null;
   private currentLaunchKey: string | null = null;
-  private process: AcpSubprocess | null = null;
-  private readonly sessionCwds = new Map<string, string>();
+  private readonly notificationListeners = new Set<
+    (notification: AcpSessionNotification) => void | Promise<void>
+  >();
   private sessionId: string | null = null;
   private readonly sessionUpdateNormalizer = new AcpSessionUpdateNormalizer();
-  private transport: AcpJsonRpcTransport | null = null;
 
   constructor(
     private readonly plugin: ProviderHost,
@@ -93,7 +89,7 @@ export class OpencodeAuxQueryRunner implements AuxQueryRunner {
 
     this.sessionUpdateNormalizer.reset();
     let accumulatedText = '';
-    const removeListener = this.connection.onSessionNotification((notification) => {
+    const onNotification = (notification: AcpSessionNotification): void => {
       if (notification.sessionId !== sessionId) {
         return;
       }
@@ -111,7 +107,8 @@ export class OpencodeAuxQueryRunner implements AuxQueryRunner {
         accumulatedText += chunk.content;
         config.onTextChunk?.(accumulatedText);
       }
-    });
+    };
+    this.notificationListeners.add(onNotification);
 
     const abortHandler = () => {
       if (this.connection && this.sessionId) {
@@ -137,31 +134,25 @@ export class OpencodeAuxQueryRunner implements AuxQueryRunner {
       return accumulatedText;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'OpenCode request failed';
-      const stderr = this.process?.getStderrSnapshot();
       throw new Error(
-        stderr ? `${message}\n\n${stderr}` : message,
+        message,
         error instanceof Error ? { cause: error } : undefined,
       );
     } finally {
       config.abortController?.signal.removeEventListener('abort', abortHandler);
-      removeListener();
+      this.notificationListeners.delete(onNotification);
     }
   }
 
   reset(): void {
     this.availableModelIds.clear();
     this.sessionId = null;
-    this.sessionCwds.clear();
     this.currentModelId = null;
     this.currentLaunchKey = null;
-    this.connection?.dispose();
+    void this.connection?.dispose().catch(() => undefined);
     this.connection = null;
-    this.transport?.dispose();
-    this.transport = null;
-    if (this.process) {
-      void this.process.shutdown().catch(() => {});
-    }
-    this.process = null;
+    this.client = null;
+    this.notificationListeners.clear();
     this.sessionUpdateNormalizer.reset();
   }
 
@@ -188,11 +179,10 @@ export class OpencodeAuxQueryRunner implements AuxQueryRunner {
       envText: getRuntimeEnvironmentText(settings, 'opencode'),
     });
 
-    const shouldRestart = !this.process
-      || !this.transport
+    const shouldRestart = !this.client
+      || !this.client.isAlive
+      || this.client.isClosed
       || !this.connection
-      || !this.process.isAlive()
-      || this.transport.isClosed
       || this.currentLaunchKey !== nextLaunchKey;
 
     if (!shouldRestart) {
@@ -200,7 +190,7 @@ export class OpencodeAuxQueryRunner implements AuxQueryRunner {
     }
 
     this.reset();
-    await this.startProcess({
+    await this.startClient({
       command: resolvedCliPath,
       configPath: artifacts.configPath,
       configContent: artifacts.configContent,
@@ -231,14 +221,13 @@ export class OpencodeAuxQueryRunner implements AuxQueryRunner {
         value: OPENCODE_AUX_AGENT_IDS[this.options.agentProfile],
       });
       this.sessionId = response.sessionId;
-      this.sessionCwds.set(response.sessionId, cwd);
       return response.sessionId;
     } catch {
       return null;
     }
   }
 
-  private async startProcess(params: {
+  private async startClient(params: {
     command: string;
     configPath: string;
     configContent: string;
@@ -253,59 +242,14 @@ export class OpencodeAuxQueryRunner implements AuxQueryRunner {
       PATH: params.runtimeEnv.PATH,
     };
 
-    this.process = new AcpSubprocess({
-      args: ['acp', `--cwd=${params.cwd}`],
-      command: params.command,
-      cwd: params.cwd,
-      env: processEnv,
-    });
-    this.process.start();
-
-    this.transport = new AcpJsonRpcTransport({
-      input: this.process.stdout,
-      onClose: (listener) => this.process!.onClose(listener),
-      output: this.process.stdin,
-    });
-
-    this.connection = new AcpClientConnection({
-      clientInfo: {
-        name: 'claudian-aux',
-        version: this.plugin.manifest?.version ?? '0.0.0',
+    this.client = new OpencodeHttpClient(params.command, params.cwd, processEnv);
+    this.connection = new OpencodeHttpSessionConnection(this.client, params.cwd, {
+      onSessionNotification: (notification) => {
+        for (const listener of this.notificationListeners) void listener(notification);
       },
-      delegate: {
-        fileSystem: this.options.allowReadTextFile
-          ? {
-            readTextFile: (request) => this.readTextFile(request),
-          }
-          : undefined,
         requestPermission: (request) => this.handlePermissionRequest(request),
-      },
-      transport: this.transport,
     });
-
-    this.transport.start();
     await this.connection.initialize();
-  }
-
-  private async readTextFile(
-    request: AcpReadTextFileRequest,
-  ): Promise<{ content: string }> {
-    const resolvedPath = this.resolveSessionPath(request.sessionId, request.path);
-    const content = await fs.readFile(resolvedPath, 'utf-8');
-
-    if (request.line === undefined && request.limit === undefined) {
-      return { content };
-    }
-
-    const lines = content.split(/\r?\n/);
-    const startIndex = Math.max(0, (request.line ?? 1) - 1);
-    const endIndex = request.limit
-      ? startIndex + Math.max(0, request.limit)
-      : lines.length;
-
-    return {
-      content: lines.slice(startIndex, endIndex).join('\n'),
-    };
   }
 
   private async handlePermissionRequest(
@@ -361,20 +305,6 @@ export class OpencodeAuxQueryRunner implements AuxQueryRunner {
     this.availableModelIds = new Set(state.availableModels.map((model) => model.id));
   }
 
-  private resolveSessionPath(sessionId: string, rawPath: string): string {
-    const cwd = this.sessionCwds.get(sessionId)
-      ?? getVaultPath(this.plugin.app)
-      ?? process.cwd();
-    const resolvedPath = path.isAbsolute(rawPath)
-      ? path.resolve(rawPath)
-      : path.resolve(cwd, rawPath);
-    const relative = path.relative(cwd, resolvedPath);
-    if (relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))) {
-      return resolvedPath;
-    }
-
-    throw new Error('OpenCode aux read access is limited to the current workspace.');
-  }
 }
 
 function buildOpencodeAuxAgentConfig(profile: OpencodeAuxAgentProfile): OpencodeManagedAgentConfig {
@@ -382,7 +312,7 @@ function buildOpencodeAuxAgentConfig(profile: OpencodeAuxAgentProfile): Opencode
   if (profile === 'readonly') {
     return {
       definition: {
-        description: 'Internal Claudian read-only agent for OpenCode auxiliary tasks.',
+        description: 'Internal Codian read-only agent for OpenCode auxiliary tasks.',
         mode: 'primary',
         permission: {
           '*': 'deny',
@@ -402,7 +332,7 @@ function buildOpencodeAuxAgentConfig(profile: OpencodeAuxAgentProfile): Opencode
 
   return {
     definition: {
-      description: 'Internal Claudian no-tool agent for OpenCode auxiliary tasks.',
+      description: 'Internal Codian no-tool agent for OpenCode auxiliary tasks.',
       mode: 'primary',
       permission: {
         '*': 'deny',

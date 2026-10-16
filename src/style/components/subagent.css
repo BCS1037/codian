@@ -1,24 +1,24 @@
-.claudian-subagent-list {
+.codian-subagent-list {
   margin: 8px 0;
 }
 
-.claudian-text-block+.claudian-subagent-list {
+.codian-text-block+.codian-subagent-list {
   margin-top: 8px;
 }
 
-.claudian-subagent-list+.claudian-text-block {
+.codian-subagent-list+.codian-text-block {
   margin-top: 8px;
 }
 
-.claudian-tool-call+.claudian-subagent-list {
+.codian-tool-call+.codian-subagent-list {
   margin-top: 8px;
 }
 
-.claudian-subagent-list+.claudian-tool-call {
+.codian-subagent-list+.codian-tool-call {
   margin-top: 8px;
 }
 
-.claudian-subagent-header {
+.codian-subagent-header {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -27,19 +27,19 @@
   overflow: hidden;
 }
 
-.claudian-subagent-icon {
+.codian-subagent-icon {
   display: flex;
   align-items: center;
   color: var(--interactive-accent);
   flex-shrink: 0;
 }
 
-.claudian-subagent-icon svg {
+.codian-subagent-icon svg {
   width: 16px;
   height: 16px;
 }
 
-.claudian-subagent-label {
+.codian-subagent-label {
   flex: 1;
   font-family: var(--font-monospace);
   font-size: 13px;
@@ -47,41 +47,41 @@
   color: var(--text-normal);
 }
 
-.claudian-subagent-status {
+.codian-subagent-status {
   display: flex;
   align-items: center;
   flex-shrink: 0;
 }
 
-.claudian-subagent-status svg {
+.codian-subagent-status svg {
   width: 14px;
   height: 14px;
 }
 
-.claudian-subagent-status.status-running {
+.codian-subagent-status.status-running {
   color: var(--text-accent);
 }
 
-.claudian-subagent-status.status-completed {
+.codian-subagent-status.status-completed {
   color: var(--color-green);
 }
 
-.claudian-subagent-status.status-error {
+.codian-subagent-status.status-error {
   color: var(--color-red);
 }
 
-.claudian-subagent-content {
+.codian-subagent-content {
   padding: 4px 0;
   padding-inline-start: 16px;
   margin-inline-start: 7px;
   border-inline-start: 2px solid var(--background-modifier-border);
 }
 
-.claudian-subagent-section {
+.codian-subagent-section {
   margin: 2px 0 6px;
 }
 
-.claudian-subagent-section-header {
+.codian-subagent-section-header {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -93,21 +93,21 @@
   padding: 2px 0;
 }
 
-.claudian-subagent-section-header:hover {
+.codian-subagent-section-header:hover {
   color: var(--text-normal);
 }
 
-.claudian-subagent-section-title {
+.codian-subagent-section-title {
   flex: 1;
   min-width: 0;
 }
 
-.claudian-subagent-section-body {
+.codian-subagent-section-body {
   padding-inline-start: 6px;
 }
 
-.claudian-subagent-prompt-text,
-.claudian-subagent-result-output {
+.codian-subagent-prompt-text,
+.codian-subagent-result-output {
   font-family: var(--font-monospace);
   font-size: 12px;
   line-height: 1.4;
@@ -116,22 +116,22 @@
   word-break: break-word;
 }
 
-.claudian-subagent-result-output {
+.codian-subagent-result-output {
   max-height: 220px;
   overflow-y: auto;
 }
 
-.claudian-subagent-tools {
+.codian-subagent-tools {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.claudian-subagent-tool-item {
+.codian-subagent-tool-item {
   display: block;
 }
 
-.claudian-subagent-tool-header {
+.codian-subagent-tool-header {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -140,23 +140,23 @@
   padding: 2px 0;
 }
 
-.claudian-subagent-tool-header:hover {
+.codian-subagent-tool-header:hover {
   opacity: 0.85;
 }
 
-.claudian-subagent-tool-icon {
+.codian-subagent-tool-icon {
   display: flex;
   align-items: center;
   color: var(--text-accent);
   flex-shrink: 0;
 }
 
-.claudian-subagent-tool-icon svg {
+.codian-subagent-tool-icon svg {
   width: 13px;
   height: 13px;
 }
 
-.claudian-subagent-tool-name {
+.codian-subagent-tool-name {
   font-family: var(--font-monospace);
   font-size: 12px;
   color: var(--text-normal);
@@ -164,7 +164,7 @@
   flex-shrink: 0;
 }
 
-.claudian-subagent-tool-summary {
+.codian-subagent-tool-summary {
   font-family: var(--font-monospace);
   font-size: 12px;
   color: var(--text-muted);
@@ -175,35 +175,35 @@
   min-width: 0;
 }
 
-.claudian-subagent-tool-status {
+.codian-subagent-tool-status {
   display: flex;
   align-items: center;
   flex-shrink: 0;
 }
 
-.claudian-subagent-tool-status svg {
+.codian-subagent-tool-status svg {
   width: 12px;
   height: 12px;
 }
 
-.claudian-subagent-tool-status.status-running {
+.codian-subagent-tool-status.status-running {
   color: var(--text-accent);
 }
 
-.claudian-subagent-tool-status.status-completed {
+.codian-subagent-tool-status.status-completed {
   color: var(--color-green);
 }
 
-.claudian-subagent-tool-status.status-error,
-.claudian-subagent-tool-status.status-blocked {
+.codian-subagent-tool-status.status-error,
+.codian-subagent-tool-status.status-blocked {
   color: var(--color-red);
 }
 
-.claudian-subagent-tool-content {
+.codian-subagent-tool-content {
   padding: 2px 0 2px 16px;
 }
 
-.claudian-subagent-tool-empty {
+.codian-subagent-tool-empty {
   color: var(--text-faint);
   font-style: italic;
   font-family: var(--font-monospace);
@@ -211,7 +211,7 @@
   padding: 2px 0;
 }
 
-.claudian-subagent-status-text {
+.codian-subagent-status-text {
   font-size: 11px;
   font-family: var(--font-monospace);
   color: var(--text-muted);
@@ -219,30 +219,30 @@
   padding-inline-start: 8px;
 }
 
-.claudian-subagent-list.async .claudian-subagent-icon {
+.codian-subagent-list.async .codian-subagent-icon {
   color: var(--interactive-accent);
 }
 
-.claudian-subagent-list.async.pending .claudian-subagent-status-text {
+.codian-subagent-list.async.pending .codian-subagent-status-text {
   color: var(--text-muted);
 }
 
-.claudian-subagent-list.async.running .claudian-subagent-status-text {
+.codian-subagent-list.async.running .codian-subagent-status-text {
   color: var(--text-accent);
 }
 
-.claudian-subagent-list.async.awaiting .claudian-subagent-status-text {
+.codian-subagent-list.async.awaiting .codian-subagent-status-text {
   color: var(--color-yellow);
 }
 
-.claudian-subagent-list.async.completed .claudian-subagent-status-text {
+.codian-subagent-list.async.completed .codian-subagent-status-text {
   color: var(--color-green);
 }
 
-.claudian-subagent-list.async.error .claudian-subagent-status-text {
+.codian-subagent-list.async.error .codian-subagent-status-text {
   color: var(--color-red);
 }
 
-.claudian-subagent-list.async.orphaned .claudian-subagent-status-text {
+.codian-subagent-list.async.orphaned .codian-subagent-status-text {
   color: var(--color-orange);
 }

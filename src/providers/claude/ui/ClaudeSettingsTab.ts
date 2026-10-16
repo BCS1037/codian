@@ -4,6 +4,7 @@ import { Setting } from 'obsidian';
 import { getRuntimeEnvironmentVariables } from '../../../core/providers/providerEnvironment';
 import { ProviderSettingsCoordinator } from '../../../core/providers/ProviderSettingsCoordinator';
 import type { ProviderSettingsTabRenderer } from '../../../core/providers/types';
+import { VaultFileAdapter } from '../../../core/storage/VaultFileAdapter';
 import { t } from '../../../i18n/i18n';
 import { McpSettingsManager } from '../../../shared/settings/McpSettingsManager';
 import {
@@ -30,9 +31,11 @@ import {
   getClaudeProviderSettings,
   updateClaudeProviderSettings,
 } from '../settings';
+import { ClaudeSkillMigration } from '../skills/ClaudeSkillMigration';
 import { AgentSettings } from './AgentSettings';
 import { claudeChatUIConfig } from './ClaudeChatUIConfig';
 import { renderClaudeServiceSettings } from './ClaudeServiceSettings';
+import { ClaudeSkillMigrationPreviewModal } from './ClaudeSkillMigrationPreviewModal';
 import { PluginSettingsManager } from './PluginSettingsManager';
 import { SlashCommandSettings } from './SlashCommandSettings';
 
@@ -78,7 +81,7 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
       .setDesc(cliPathDescription);
 
     const validationEl = container.createDiv({
-      cls: 'claudian-cli-path-validation claudian-setting-validation claudian-setting-validation-error claudian-hidden',
+      cls: 'codian-cli-path-validation codian-setting-validation codian-setting-validation-error codian-hidden',
     });
 
     const validatePath = (value: string): string | null => {
@@ -101,16 +104,16 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
       const error = validatePath(value);
       if (error) {
         validationEl.setText(error);
-        validationEl.toggleClass('claudian-hidden', false);
+        validationEl.toggleClass('codian-hidden', false);
         if (inputEl) {
-          inputEl.toggleClass('claudian-input-error', true);
+          inputEl.toggleClass('codian-input-error', true);
         }
         return false;
       }
 
-      validationEl.toggleClass('claudian-hidden', true);
+      validationEl.toggleClass('codian-hidden', true);
       if (inputEl) {
-        inputEl.toggleClass('claudian-input-error', false);
+        inputEl.toggleClass('codian-input-error', false);
       }
       return true;
     };
@@ -151,7 +154,7 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
         .onChange(async (value) => {
           await persistCliPath(value);
         });
-      text.inputEl.addClass('claudian-settings-cli-path-input');
+      text.inputEl.addClass('codian-settings-cli-path-input');
       cliPathInputEl = text.inputEl;
 
       updateCliPathValidation(currentValue, text.inputEl);
@@ -213,7 +216,21 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
 
     new Setting(container).setName(t('settings.slashCommands.name')).setHeading();
 
-    const slashCommandsDesc = container.createDiv({ cls: 'claudian-sp-settings-desc' });
+    new Setting(container)
+      .setName(t('settings.skillMigration.name'))
+      .setDesc(t('settings.skillMigration.desc'))
+      .addButton((button) => {
+        button
+          .setButtonText(t('settings.skillMigration.previewButton'))
+          .onClick(() => {
+            const migration = new ClaudeSkillMigration(
+              new VaultFileAdapter(context.plugin.app),
+            );
+            new ClaudeSkillMigrationPreviewModal(context.plugin.app, migration).open();
+          });
+      });
+
+    const slashCommandsDesc = container.createDiv({ cls: 'codian-sp-settings-desc' });
     const descP = slashCommandsDesc.createEl('p', { cls: 'setting-item-description' });
     descP.appendText(t('settings.slashCommands.desc') + ' ');
     descP.createEl('a', {
@@ -221,7 +238,7 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
       href: 'https://code.claude.com/docs/en/skills',
     });
 
-    const slashCommandsContainer = container.createDiv({ cls: 'claudian-slash-commands-container' });
+    const slashCommandsContainer = container.createDiv({ cls: 'codian-slash-commands-container' });
     new SlashCommandSettings(
       slashCommandsContainer,
       context.plugin.app,
@@ -233,7 +250,7 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
     if (showSection('commands')) {
     new Setting(container).setName(t('settings.slashCommands.name')).setHeading();
 
-    const commandsContainer = container.createDiv({ cls: 'claudian-slash-commands-container' });
+    const commandsContainer = container.createDiv({ cls: 'codian-slash-commands-container' });
     new SlashCommandSettings(
       commandsContainer,
       context.plugin.app,
@@ -253,13 +270,13 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
 
     new Setting(container).setName(t('settings.subagents.name')).setHeading();
 
-    const agentsDesc = container.createDiv({ cls: 'claudian-sp-settings-desc' });
+    const agentsDesc = container.createDiv({ cls: 'codian-sp-settings-desc' });
     agentsDesc.createEl('p', {
       text: t('settings.subagents.desc'),
       cls: 'setting-item-description',
     });
 
-    const agentsContainer = container.createDiv({ cls: 'claudian-agents-container' });
+    const agentsContainer = container.createDiv({ cls: 'codian-agents-container' });
     new AgentSettings(agentsContainer, {
       app: context.plugin.app,
       agentManager: claudeWorkspace.agentManager,
@@ -272,13 +289,13 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
 
     new Setting(container).setName(t('settings.mcpServers.name')).setHeading();
 
-    const mcpDesc = container.createDiv({ cls: 'claudian-mcp-settings-desc' });
+    const mcpDesc = container.createDiv({ cls: 'codian-mcp-settings-desc' });
     mcpDesc.createEl('p', {
       text: t('settings.mcpServers.desc'),
       cls: 'setting-item-description',
     });
 
-    const mcpContainer = container.createDiv({ cls: 'claudian-mcp-container' });
+    const mcpContainer = container.createDiv({ cls: 'codian-mcp-container' });
     new McpSettingsManager(mcpContainer, {
       app: context.plugin.app,
       mcpStorage: claudeWorkspace.mcpStorage,
@@ -295,13 +312,13 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
 
     new Setting(container).setName(t('settings.plugins.name')).setHeading();
 
-    const pluginsDesc = container.createDiv({ cls: 'claudian-plugin-settings-desc' });
+    const pluginsDesc = container.createDiv({ cls: 'codian-plugin-settings-desc' });
     pluginsDesc.createEl('p', {
       text: t('settings.plugins.desc'),
       cls: 'setting-item-description',
     });
 
-    const pluginsContainer = container.createDiv({ cls: 'claudian-plugins-container' });
+    const pluginsContainer = container.createDiv({ cls: 'codian-plugins-container' });
     new PluginSettingsManager(pluginsContainer, {
       pluginManager: claudeWorkspace.pluginManager,
       agentManager: claudeWorkspace.agentManager,
@@ -338,13 +355,13 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
         toggle
           .setValue(claudeSettings.enableBangBash)
           .onChange(async (value) => {
-            bangBashValidationEl.toggleClass('claudian-hidden', true);
+            bangBashValidationEl.toggleClass('codian-hidden', true);
             if (value) {
               const { findNodeExecutable, getEnhancedPath } = await import('../../../utils/env');
               const nodePath = findNodeExecutable(getEnhancedPath());
               if (!nodePath) {
                 bangBashValidationEl.setText(t('settings.enableBangBash.validation.noNode'));
-                bangBashValidationEl.toggleClass('claudian-hidden', false);
+                bangBashValidationEl.toggleClass('codian-hidden', false);
                 toggle.setValue(false);
                 return;
               }
@@ -356,7 +373,7 @@ export const claudeSettingsTabRenderer: ProviderSettingsTabRenderer = {
       );
 
     const bangBashValidationEl = container.createDiv({
-      cls: 'claudian-bang-bash-validation claudian-setting-validation claudian-setting-validation-error claudian-hidden',
+      cls: 'codian-bang-bash-validation codian-setting-validation codian-setting-validation-error codian-hidden',
     });
     }
   },

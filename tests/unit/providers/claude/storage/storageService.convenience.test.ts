@@ -69,7 +69,7 @@ describe('StorageService convenience methods', () => {
     },
   });
 
-  const claudianSettingsJson = JSON.stringify({
+  const codianSettingsJson = JSON.stringify({
     userName: 'Test',
     model: 'haiku',
     permissionMode: 'yolo',
@@ -171,61 +171,61 @@ describe('StorageService convenience methods', () => {
     });
   });
 
-  describe('updateClaudianSettings', () => {
-    it('updates partial claudian settings', async () => {
+  describe('updateCodianSettings', () => {
+    it('updates partial codian settings', async () => {
       const { plugin, files } = createMockPlugin({
         initialFiles: {
-          '.codian/codian-settings.json': claudianSettingsJson,
+          '.codian/codian-settings.json': codianSettingsJson,
         },
       });
       const storage = new StorageService(plugin);
       await storage.initialize();
 
-      await storage.updateClaudianSettings({ userName: 'NewUser' });
+      await storage.updateCodianSettings({ userName: 'NewUser' });
 
       const saved = JSON.parse(files.get('.codian/codian-settings.json')!) as Record<string, unknown>;
       expect(saved.userName).toBe('NewUser');
     });
   });
 
-  describe('saveClaudianSettings', () => {
-    it('saves full claudian settings', async () => {
+  describe('saveCodianSettings', () => {
+    it('saves full codian settings', async () => {
       const { plugin, files } = createMockPlugin({
         initialFiles: {
-          '.codian/codian-settings.json': claudianSettingsJson,
+          '.codian/codian-settings.json': codianSettingsJson,
         },
       });
       const storage = new StorageService(plugin);
       await storage.initialize();
 
-      const existing = await storage.loadClaudianSettings();
+      const existing = await storage.loadCodianSettings();
       existing.userName = 'FullSave';
-      await storage.saveClaudianSettings(existing);
+      await storage.saveCodianSettings(existing);
 
       const saved = JSON.parse(files.get('.codian/codian-settings.json')!) as Record<string, unknown>;
       expect(saved.userName).toBe('FullSave');
     });
   });
 
-  describe('loadClaudianSettings', () => {
-    it('loads claudian settings', async () => {
+  describe('loadCodianSettings', () => {
+    it('loads codian settings', async () => {
       const { plugin } = createMockPlugin({
         initialFiles: {
-          '.codian/codian-settings.json': claudianSettingsJson,
+          '.codian/codian-settings.json': codianSettingsJson,
         },
       });
       const storage = new StorageService(plugin);
       await storage.initialize();
 
-      const settings = await storage.loadClaudianSettings();
+      const settings = await storage.loadCodianSettings();
       expect(settings.userName).toBe('Test');
       expect(settings.model).toBe('haiku');
     });
 
-    it('migrates legacy settings into .claudian during initialization', async () => {
+    it('migrates legacy settings into .codian during initialization', async () => {
       const { plugin, files } = createMockPlugin({
         initialFiles: {
-          '.claude/claudian-settings.json': claudianSettingsJson,
+          '.claude/codian-settings.json': codianSettingsJson,
         },
       });
       const storage = new StorageService(plugin);
@@ -233,7 +233,7 @@ describe('StorageService convenience methods', () => {
       await storage.initialize();
 
       expect(files.get('.codian/codian-settings.json')).toBeDefined();
-      expect(files.has('.claude/claudian-settings.json')).toBe(false);
+      expect(files.has('.claude/codian-settings.json')).toBe(false);
     });
   });
 

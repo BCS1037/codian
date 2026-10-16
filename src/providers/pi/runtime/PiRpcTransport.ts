@@ -1,4 +1,4 @@
-import type { Readable, Writable } from 'node:stream';
+import type { Readable } from 'node:stream';
 
 import { subscribePiJsonlLines, writePiJsonl } from './PiJsonl';
 
@@ -10,7 +10,7 @@ export type PiRpcEventHandler = (event: PiRpcRecord) => void;
 export interface PiRpcStreams {
   input: Readable | NodeJS.ReadableStream;
   onClose?: (listener: (error?: Error) => void) => () => void;
-  output: Writable | NodeJS.WritableStream;
+  output: NodeJS.WritableStream;
 }
 
 interface PendingRequest {
@@ -45,6 +45,14 @@ export class PiRpcTransport {
   private readonly pending = new Map<string, PendingRequest>();
   private unregisterClose?: () => void;
   private unsubscribeLines?: () => void;
+  private readonly handleOutputError = (error: unknown): void => {
+    this.dispose(error instanceof Error ? error : new Error(String(error)));
+  };
+  private readonly handleOutputClose = (): void => {
+    this.dispose(new PiRpcTransportClosedError('Pi RPC output closed'));
+    this.streams.output.off('error', this.handleOutputError);
+    this.streams.output.off('close', this.handleOutputClose);
+  };
 
   constructor(
     private readonly streams: PiRpcStreams,
@@ -60,6 +68,8 @@ export class PiRpcTransport {
       return;
     }
 
+    this.streams.output.on('error', this.handleOutputError);
+    this.streams.output.on('close', this.handleOutputClose);
     this.unsubscribeLines = subscribePiJsonlLines(
       this.streams.input,
       (line) => this.handleLine(line),
@@ -100,19 +110,29 @@ export class PiRpcTransport {
     commandType: string,
     payload: Record<string, unknown> = {},
     timeoutMs = this.defaultTimeoutMs,
+    signal?: AbortSignal,
   ): Promise<T> {
     this.start();
     if (this.disposed) {
       return Promise.reject(new PiRpcTransportClosedError());
     }
+    if (signal?.aborted) {
+      return Promise.reject(new Error(`Request aborted: ${commandType}`));
+    }
 
     const id = `req_${this.nextId++}`;
     return new Promise<T>((resolve, reject) => {
       let timer: number | undefined;
+      const abort = (): void => {
+        this.pending.delete(id);
+        cleanup();
+        reject(new Error(`Request aborted: ${commandType}`));
+      };
       const cleanup = (): void => {
         if (timer !== undefined) {
           window.clearTimeout(timer);
         }
+        signal?.removeEventListener('abort', abort);
       };
 
       if (timeoutMs > 0) {
@@ -129,6 +149,7 @@ export class PiRpcTransport {
         resolve: (response: unknown) => resolve(response as T),
         type: commandType,
       });
+      signal?.addEventListener('abort', abort, { once: true });
 
       try {
         this.sendRaw({ id, type: commandType, ...payload });

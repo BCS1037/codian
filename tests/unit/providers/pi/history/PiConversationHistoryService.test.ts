@@ -386,4 +386,72 @@ describe('PiConversationHistoryService', () => {
       sessionId: 's1',
     });
   });
+
+  // Permission bits do not deny reads on Windows or to root.
+  const describeWithFilePermissions = process.platform === 'win32' || process.getuid?.() === 0
+    ? describe.skip : describe;
+
+  describeWithFilePermissions('unreadable segments', () => {
+    it('skips an unreadable previous segment while hydrating the current one', async () => {
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'pi-history-unreadable-previous-'));
+      const previousFile = path.join(dir, 'previous.jsonl');
+      const activeFile = path.join(dir, 'active.jsonl');
+      await fs.writeFile(previousFile, JSON.stringify({
+        id: 'previous-user',
+        message: { content: 'Previous', role: 'user', timestamp: 1 },
+        type: 'message',
+      }));
+      await fs.writeFile(activeFile, JSON.stringify({
+        id: 'active-user',
+        message: { content: 'Active', role: 'user', timestamp: 2 },
+        type: 'message',
+      }));
+      await fs.chmod(previousFile, 0o000);
+      const conversation = createConversation(activeFile);
+      conversation.providerState = {
+        previousSessions: [{ sessionFile: previousFile, sessionId: 'previous-session' }],
+        sessionFile: activeFile,
+        sessionId: 's1',
+      };
+
+      try {
+        await new PiConversationHistoryService().hydrateConversationHistory(conversation, null);
+        expect(conversation.messages.map(message => message.content)).toEqual(['Active']);
+      } finally {
+        await fs.chmod(previousFile, 0o600);
+        await fs.rm(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('rejects hydration when the current segment exists but cannot be read', async () => {
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'pi-history-unreadable-current-'));
+      const previousFile = path.join(dir, 'previous.jsonl');
+      const activeFile = path.join(dir, 'active.jsonl');
+      await fs.writeFile(previousFile, JSON.stringify({
+        id: 'previous-user',
+        message: { content: 'Previous', role: 'user', timestamp: 1 },
+        type: 'message',
+      }));
+      await fs.writeFile(activeFile, JSON.stringify({
+        id: 'active-user',
+        message: { content: 'Active', role: 'user', timestamp: 2 },
+        type: 'message',
+      }));
+      await fs.chmod(activeFile, 0o000);
+      const conversation = createConversation(activeFile);
+      conversation.providerState = {
+        previousSessions: [{ sessionFile: previousFile, sessionId: 'previous-session' }],
+        sessionFile: activeFile,
+        sessionId: 's1',
+      };
+
+      try {
+        await expect(new PiConversationHistoryService().hydrateConversationHistory(conversation, null))
+          .rejects.toMatchObject({ code: 'EACCES' });
+      } finally {
+        await fs.chmod(activeFile, 0o600);
+        await fs.rm(dir, { recursive: true, force: true });
+      }
+    });
+  });
 });

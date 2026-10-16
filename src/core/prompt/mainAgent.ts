@@ -7,7 +7,7 @@ export interface SystemPromptSettings {
 
 export interface SystemPromptBuildOptions {
   appendices?: string[];
-  toolGuidanceProfile?: 'claudian' | 'provider-native';
+  toolGuidanceProfile?: 'codian' | 'provider-native';
 }
 
 function getPathRules(vaultPath?: string): string {
@@ -34,9 +34,9 @@ function getUserContext(userName?: string): string {
 }
 
 function getTimeContext(
-  toolGuidanceProfile: 'claudian' | 'provider-native',
+  toolGuidanceProfile: 'codian' | 'provider-native',
 ): string {
-  const currentDateGuidance = toolGuidanceProfile === 'claudian'
+  const currentDateGuidance = toolGuidanceProfile === 'codian'
     ? '- **Current Date**: Use `bash: date` to get the current date and time. Never guess or assume.\n'
     : '';
 
@@ -152,7 +152,7 @@ selected webpage content
 function getBaseSystemPrompt(
   vaultPath: string | undefined,
   userName: string | undefined,
-  toolGuidanceProfile: 'claudian' | 'provider-native',
+  toolGuidanceProfile: 'codian' | 'provider-native',
 ): string {
   return [
     getUserContext(userName),
@@ -213,14 +213,14 @@ export function buildSystemPrompt(
   settings: SystemPromptSettings = {},
   options: SystemPromptBuildOptions = {},
 ): string {
-  const toolGuidanceProfile = options.toolGuidanceProfile ?? 'claudian';
+  const toolGuidanceProfile = options.toolGuidanceProfile ?? 'codian';
   let prompt = getBaseSystemPrompt(
     settings.vaultPath,
     settings.userName,
     toolGuidanceProfile,
   );
 
-  if (toolGuidanceProfile === 'claudian') {
+  if (toolGuidanceProfile === 'codian') {
     prompt += getImageInstructions(settings.mediaFolder || '');
   }
   prompt += getAppendixSections(options.appendices);

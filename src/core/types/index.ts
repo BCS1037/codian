@@ -10,15 +10,15 @@ export {
   type SessionMetadata,
   type StreamChunk,
   type UsageInfo,
-  VIEW_TYPE_CLAUDIAN,
+  VIEW_TYPE_CODIAN,
 } from './chat';
-export { compareConversationIndexOrder } from './chat';
+export { compareConversationIndexOrder, isCanonicalUserMessage } from './chat';
 export { type ProviderId } from './provider';
 
 // Settings and command types
 export {
   type ApprovalDecision,
-  type ClaudianSettings,
+  type CodianSettings,
   type EnvironmentScope,
   type EnvSnippet,
   type HostnameCliPaths,
@@ -50,6 +50,7 @@ export {
   type ToolCallInfo,
   type ToolDiffData,
   type ToolProviderPayload,
+  type ToolResultFormat,
 } from './tools';
 
 // Agent types

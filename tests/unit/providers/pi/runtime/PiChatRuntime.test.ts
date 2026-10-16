@@ -1048,6 +1048,77 @@ describe('PiChatRuntime', () => {
     });
   });
 
+  it('switches to a confirmed sibling native branch and persists its cursor', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'pi-runtime-tree-'));
+    const sessionFile = path.join(dir, 'session.jsonl');
+    await fs.writeFile(sessionFile, [
+      JSON.stringify({ type: 'session', id: 'pi-session' }),
+      JSON.stringify({ id: 'u-root', parentId: null, type: 'message', message: { role: 'user', content: 'Start' } }),
+      JSON.stringify({ id: 'a-parent', parentId: 'u-root', type: 'message', message: { role: 'assistant', content: 'Choose' } }),
+      JSON.stringify({ id: 'model-change', parentId: 'a-parent', type: 'model_change' }),
+      JSON.stringify({ id: 'u-left', parentId: 'model-change', type: 'message', message: { role: 'user', content: 'Left' } }),
+      JSON.stringify({ id: 'a-left', parentId: 'u-left', type: 'message', message: { role: 'assistant', content: 'Left answer' } }),
+      JSON.stringify({ id: 'u-right', parentId: 'a-parent', type: 'message', message: { role: 'user', content: 'Right' } }),
+      JSON.stringify({ id: 'a-right', parentId: 'u-right', type: 'message', message: { role: 'assistant', content: 'Right answer' } }),
+    ].join('\n'));
+    mockRequestImplementation = async (type: string, payload?: unknown) => {
+      if (type === 'get_state') return { sessionFile, sessionId: 'pi-session' };
+      if (type === 'get_commands') return { commands: [{ name: 'codian-tree' }] };
+      const message = String((payload as { message?: unknown } | undefined)?.message ?? '');
+      if (type === 'prompt' && message.startsWith('/codian-tree ')) {
+        const request = JSON.parse(message.slice('/codian-tree '.length)) as { id: string; leafId?: string };
+        queueMicrotask(() => {
+          for (const handler of mockTransportInstances.at(-1)?.eventHandlers ?? []) {
+            handler({
+              method: 'setStatus',
+              statusKey: `codian-tree:${request.id}`,
+              statusText: JSON.stringify({
+                cancelled: false,
+                leafId: request.leafId ?? 'a-right',
+                sessionFile,
+                sessionId: 'pi-session',
+              }),
+              type: 'extension_ui_request',
+            });
+          }
+        });
+        return { accepted: true };
+      }
+      return {};
+    };
+    const runtime = new PiChatRuntime(createPlugin());
+    runtime.syncConversationState({
+      providerState: { leafEntryId: 'a-left', sessionFile, sessionId: 'pi-session' },
+      sessionId: 'pi-session',
+    });
+
+    try {
+      await expect(runtime.navigateConversationBranch({
+        userMessageId: 'u-left',
+        branchMessageId: 'u-right',
+      })).resolves.toMatchObject({
+        messages: [
+          { id: 'u-root' },
+          { id: 'a-parent' },
+          { id: 'u-right' },
+          { id: 'a-right' },
+        ],
+        status: 'committed',
+      });
+      expect(mockSubprocessInstances[0].launchSpec).toMatchObject({
+        args: expect.arrayContaining(['--extension']),
+      });
+      expect(runtime.buildSessionUpdates({ conversation: null, sessionInvalidated: false }).updates.providerState)
+        .toMatchObject({
+          leafEntryId: 'a-right',
+          treeCursor: { leafId: 'a-right', targetId: 'a-right' },
+        });
+    } finally {
+      runtime.cleanup();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('does not persist stale session file state after a reset starts a new Pi session', () => {
     const runtime = new PiChatRuntime(createPlugin());
     const conversation = {

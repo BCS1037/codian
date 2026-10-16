@@ -57,7 +57,7 @@ import {
 } from '../history/GrokHistoryPathResolver';
 import {
   loadGrokPromptIndexAfterAssistant,
-  resolveGrokUpdateMessageId,
+  resolveGrokLiveMessageId,
 } from '../history/GrokHistoryStore';
 import {
   decodeGrokModelId,
@@ -1340,7 +1340,7 @@ export class GrokChatRuntime implements ChatRuntime {
 
     this.connection = new AcpClientConnection({
       clientInfo: {
-        name: 'claudian',
+        name: 'codian',
         version: this.plugin.manifest?.version ?? '0.0.0',
       },
       delegate: {
@@ -1729,7 +1729,7 @@ export class GrokChatRuntime implements ChatRuntime {
       case 'message_chunk': {
         const messageId = normalized.messageId
           ?? (normalized.role === 'assistant' || normalized.role === 'user'
-            ? resolveGrokUpdateMessageId(
+            ? resolveGrokLiveMessageId(
               notification.update,
               normalized.role,
               notification._meta,

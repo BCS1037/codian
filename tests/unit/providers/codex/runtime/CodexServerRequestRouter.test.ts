@@ -1,4 +1,5 @@
 import type { ApprovalCallback, AskUserQuestionCallback } from '@/core/runtime/types';
+import { setLocale } from '@/i18n/i18n';
 import { CodexDynamicToolRegistry } from '@/providers/codex/runtime/CodexDynamicToolRegistry';
 import { CodexServerRequestRouter } from '@/providers/codex/runtime/CodexServerRequestRouter';
 
@@ -13,6 +14,10 @@ describe('CodexServerRequestRouter', () => {
     mockAskUserCallback = jest.fn();
     router.setApprovalCallback(mockApprovalCallback);
     router.setAskUserCallback(mockAskUserCallback);
+  });
+
+  afterEach(() => {
+    setLocale('en');
   });
 
   // -----------------------------------------------------------------------
@@ -601,6 +606,130 @@ describe('CodexServerRequestRouter', () => {
       await expect(
         router.handleServerRequest('unknown/method', {}),
       ).rejects.toThrow();
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Localized approvals
+  // -----------------------------------------------------------------------
+
+  describe('localized approvals', () => {
+    it('localizes command approval description and decision options in zh-CN', async () => {
+      setLocale('zh-CN');
+      mockApprovalCallback.mockResolvedValue('allow');
+
+      await router.handleServerRequest('item/commandExecution/requestApproval', {
+        threadId: 't1',
+        turnId: 'turn1',
+        itemId: 'call_cmd',
+        command: 'npm test',
+        availableDecisions: [
+          'accept',
+          'acceptForSession',
+          'decline',
+          'cancel',
+          { acceptWithExecpolicyAmendment: { execpolicy_amendment: ['npm', 'test'] } },
+          { applyNetworkPolicyAmendment: { network_policy_amendment: { host: 'api.openai.com', action: 'allow' } } },
+        ],
+      });
+
+      expect(mockApprovalCallback).toHaveBeenCalledWith(
+        'Bash',
+        expect.anything(),
+        '执行：npm test',
+        expect.objectContaining({
+          decisionOptions: [
+            expect.objectContaining({ label: '允许一次', value: 'allow-once', decision: 'allow' }),
+            expect.objectContaining({ label: '始终允许', value: 'allow-always', decision: 'allow-always' }),
+            expect.objectContaining({ label: '拒绝', value: 'deny', decision: 'deny' }),
+            expect.objectContaining({ label: '取消', value: 'cancel', decision: 'cancel' }),
+            expect.objectContaining({ label: '允许类似命令', description: '批准并保存执行策略变更。' }),
+            expect.objectContaining({ label: '在此会话中允许 api.openai.com', description: '对 api.openai.com 应用允许规则。' }),
+          ],
+        }),
+      );
+    });
+
+    it('localizes network command approval description in zh-CN', async () => {
+      setLocale('zh-CN');
+      mockApprovalCallback.mockResolvedValue('allow');
+
+      await router.handleServerRequest('item/commandExecution/requestApproval', {
+        threadId: 't1',
+        turnId: 'turn1',
+        itemId: 'call_cmd',
+        command: 'curl https://api.openai.com',
+        networkApprovalContext: { protocol: 'https', host: 'api.openai.com' },
+      });
+
+      expect(mockApprovalCallback).toHaveBeenCalledWith(
+        'Bash',
+        expect.anything(),
+        '允许通过 https 访问 api.openai.com',
+        expect.anything(),
+      );
+    });
+
+    it('localizes file change approval descriptions in zh-CN', async () => {
+      setLocale('zh-CN');
+      mockApprovalCallback.mockResolvedValue('allow');
+
+      await router.handleServerRequest('item/fileChange/requestApproval', {
+        threadId: 't1',
+        turnId: 'turn1',
+        itemId: 'call_fc',
+        reason: 'update readme',
+      });
+      expect(mockApprovalCallback).toHaveBeenCalledWith(
+        'apply_patch',
+        expect.anything(),
+        '文件修改：update readme',
+        expect.anything(),
+      );
+
+      mockApprovalCallback.mockClear();
+      await router.handleServerRequest('item/fileChange/requestApproval', {
+        threadId: 't1',
+        turnId: 'turn1',
+        itemId: 'call_fc2',
+      });
+      expect(mockApprovalCallback).toHaveBeenCalledWith(
+        'apply_patch',
+        expect.anything(),
+        '文件修改',
+        expect.anything(),
+      );
+    });
+
+    it('localizes permissions approval descriptions in zh-CN', async () => {
+      setLocale('zh-CN');
+      mockApprovalCallback.mockResolvedValue('allow');
+
+      await router.handleServerRequest('item/permissions/requestApproval', {
+        threadId: 't1',
+        turnId: 'turn1',
+        itemId: 'call_perm',
+        reason: 'network call',
+      });
+      expect(mockApprovalCallback).toHaveBeenCalledWith(
+        'permissions',
+        expect.anything(),
+        '权限请求：network call',
+        expect.anything(),
+      );
+
+      mockApprovalCallback.mockClear();
+      await router.handleServerRequest('item/permissions/requestApproval', {
+        threadId: 't1',
+        turnId: 'turn1',
+        itemId: 'call_perm2',
+      });
+      expect(mockApprovalCallback).toHaveBeenCalledWith(
+        'permissions',
+        expect.anything(),
+        '权限请求',
+        expect.anything(),
+      );
     });
   });
 });

@@ -1,3 +1,5 @@
+import { t } from '@/i18n/i18n';
+
 import { getBuiltInCommandsForDropdown } from '../../core/commands/builtInCommands';
 import type { ProviderCommandDropdownConfig } from '../../core/providers/commands/ProviderCommandCatalog';
 import type { ProviderCommandDiscoveryResult } from '../../core/providers/commands/ProviderCommandDiscoveryResult';
@@ -10,6 +12,9 @@ import type { ProviderCommandEntry } from '../../core/providers/commands/Provide
 import type { ProviderId } from '../../core/providers/types';
 import type { SlashCommand } from '../../core/types';
 import { normalizeArgumentHint } from '../../utils/slashCommand';
+import { InputPopupRelationships } from './AccessibleTextbox';
+
+let nextSlashListboxId = 0;
 
 interface DropdownItem {
   name: string;
@@ -31,7 +36,7 @@ export interface SlashCommandDropdownCallbacks {
 export interface SlashCommandDropdownOptions {
   fixed?: boolean;
   hiddenCommands?: Set<string>;
-  /** Whether to include Claudian chat-action built-ins such as /clear and /fast. */
+  /** Whether to include Codian chat-action built-ins such as /clear and /fast. */
   includeBuiltIns?: boolean;
   /** Active provider identity, independent of optional catalog availability. */
   providerId?: ProviderId;
@@ -49,6 +54,8 @@ export class SlashCommandDropdown {
   private containerEl: HTMLElement;
   private dropdownEl: HTMLElement | null = null;
   private inputEl: HTMLTextAreaElement | HTMLInputElement;
+  private readonly listboxId = `codian-slash-listbox-${++nextSlashListboxId}`;
+  private readonly inputRelationships: InputPopupRelationships;
   private callbacks: SlashCommandDropdownCallbacks;
   private enabled = true;
   private onInput: () => void;
@@ -75,6 +82,7 @@ export class SlashCommandDropdown {
   ) {
     this.containerEl = containerEl;
     this.inputEl = inputEl;
+    this.inputRelationships = new InputPopupRelationships(inputEl);
     this.callbacks = callbacks;
     this.isFixed = options.fixed ?? false;
     this.includeBuiltIns = options.includeBuiltIns ?? true;
@@ -204,11 +212,13 @@ export class SlashCommandDropdown {
     if (this.dropdownEl) {
       this.dropdownEl.removeClass('visible');
     }
+    this.inputRelationships.release();
     this.triggerStartIndex = -1;
     this.callbacks.onHide();
   }
 
   destroy(): void {
+    this.inputRelationships.release();
     this.providerDiscoveryUnsubscribe?.();
     this.providerDiscoveryUnsubscribe = null;
     this.providerDiscovery = null;
@@ -379,30 +389,44 @@ export class SlashCommandDropdown {
       this.dropdownEl = this.createDropdownElement();
     }
 
+    const hasOptions = this.filteredItems.length > 0;
+    if (hasOptions) {
+      this.dropdownEl.setAttribute('id', this.listboxId);
+      this.dropdownEl.setAttribute('role', 'listbox');
+      this.dropdownEl.setAttribute('aria-label', t('common.inputSuggestions'));
+    } else {
+      this.dropdownEl.removeAttribute('id');
+      this.dropdownEl.removeAttribute('role');
+      this.dropdownEl.removeAttribute('aria-label');
+    }
+
     this.dropdownEl.empty();
 
     if (this.filteredItems.length === 0 && !this.providerDiscoveryState) {
-      const emptyEl = this.dropdownEl.createDiv({ cls: 'claudian-slash-empty' });
+      const emptyEl = this.dropdownEl.createDiv({ cls: 'codian-slash-empty' });
       emptyEl.setText('No matching commands');
     } else {
       for (let i = 0; i < this.filteredItems.length; i++) {
         const item = this.filteredItems[i];
-        const itemEl = this.dropdownEl.createDiv({ cls: 'claudian-slash-item' });
+        const itemEl = this.dropdownEl.createDiv({ cls: 'codian-slash-item' });
+        itemEl.setAttribute('id', `${this.listboxId}-option-${i}`);
+        itemEl.setAttribute('role', 'option');
+        itemEl.setAttribute('aria-selected', String(i === this.selectedIndex));
 
         if (i === this.selectedIndex) {
           itemEl.addClass('selected');
         }
 
-        const nameEl = itemEl.createSpan({ cls: 'claudian-slash-name' });
+        const nameEl = itemEl.createSpan({ cls: 'codian-slash-name' });
         nameEl.setText(`${item.displayPrefix}${item.name}`);
 
         if (item.argumentHint) {
-          const hintEl = itemEl.createSpan({ cls: 'claudian-slash-hint' });
+          const hintEl = itemEl.createSpan({ cls: 'codian-slash-hint' });
           hintEl.setText(normalizeArgumentHint(item.argumentHint));
         }
 
         if (item.description) {
-          const descEl = itemEl.createDiv({ cls: 'claudian-slash-desc' });
+          const descEl = itemEl.createDiv({ cls: 'codian-slash-desc' });
           descEl.setText(item.description);
         }
 
@@ -421,6 +445,7 @@ export class SlashCommandDropdown {
     this.renderProviderDiscoveryState();
 
     this.dropdownEl.addClass('visible');
+    this.syncInputRelationships();
 
     if (this.isFixed) {
       this.positionFixed();
@@ -434,13 +459,13 @@ export class SlashCommandDropdown {
     if (state.status === 'ready') return;
 
     const stateEl = this.dropdownEl.createDiv({
-      cls: `claudian-slash-provider-state is-${state.status}`,
+      cls: `codian-slash-provider-state is-${state.status}`,
     });
-    const messageEl = stateEl.createSpan({ cls: 'claudian-slash-provider-state-message' });
+    const messageEl = stateEl.createSpan({ cls: 'codian-slash-provider-state-message' });
 
     switch (state.status) {
       case 'loading':
-        messageEl.setText('Loading provider commands…');
+        messageEl.setText(t('chat.suggestions.providerLoading'));
         break;
       case 'empty':
         messageEl.setText('No provider commands advertised');
@@ -451,8 +476,8 @@ export class SlashCommandDropdown {
       case 'error': {
         messageEl.setText(state.message);
         const retryEl = stateEl.createEl('button', {
-          cls: 'claudian-slash-provider-retry',
-          text: 'Retry',
+          cls: 'codian-slash-provider-retry',
+          text: t('common.retry'),
           attr: { type: 'button' },
         });
         retryEl.addEventListener('click', () => {
@@ -466,10 +491,10 @@ export class SlashCommandDropdown {
   private createDropdownElement(): HTMLElement {
     if (this.isFixed) {
       return this.containerEl.createDiv({
-        cls: 'claudian-slash-dropdown claudian-slash-dropdown-fixed',
+        cls: 'codian-slash-dropdown codian-slash-dropdown-fixed',
       });
     } else {
-      return this.containerEl.createDiv({ cls: 'claudian-slash-dropdown' });
+      return this.containerEl.createDiv({ cls: 'codian-slash-dropdown' });
     }
   }
 
@@ -478,9 +503,9 @@ export class SlashCommandDropdown {
 
     const inputRect = this.inputEl.getBoundingClientRect();
     this.dropdownEl.setCssProps({
-      '--claudian-fixed-dropdown-bottom': `${window.innerHeight - inputRect.top + 4}px`,
-      '--claudian-fixed-dropdown-left': `${inputRect.left}px`,
-      '--claudian-fixed-dropdown-width': `${Math.max(inputRect.width, 280)}px`,
+      '--codian-fixed-dropdown-bottom': `${window.innerHeight - inputRect.top + 4}px`,
+      '--codian-fixed-dropdown-left': `${inputRect.left}px`,
+      '--codian-fixed-dropdown-width': `${Math.max(inputRect.width, 280)}px`,
     });
   }
 
@@ -491,7 +516,7 @@ export class SlashCommandDropdown {
   }
 
   private updateSelection(): void {
-    const items = this.dropdownEl?.querySelectorAll('.claudian-slash-item');
+    const items = this.dropdownEl?.querySelectorAll('.codian-slash-item');
     items?.forEach((item, index) => {
       if (index === this.selectedIndex) {
         item.addClass('selected');
@@ -499,6 +524,24 @@ export class SlashCommandDropdown {
       } else {
         item.removeClass('selected');
       }
+      item.setAttribute('aria-selected', String(index === this.selectedIndex));
+    });
+    this.syncInputRelationships();
+  }
+
+  private syncInputRelationships(): void {
+    if (!this.isVisible() || this.filteredItems.length === 0) {
+      this.inputRelationships.release();
+      return;
+    }
+
+    const activeOptionId = this.filteredItems[this.selectedIndex]
+      ? `${this.listboxId}-option-${this.selectedIndex}`
+      : undefined;
+    this.inputRelationships.set({
+      'aria-autocomplete': 'list',
+      'aria-controls': this.listboxId,
+      ...(activeOptionId ? { 'aria-activedescendant': activeOptionId } : {}),
     });
   }
 

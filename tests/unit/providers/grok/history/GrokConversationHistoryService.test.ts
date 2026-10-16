@@ -186,6 +186,69 @@ describe('GrokConversationHistoryService', () => {
     expect(service.buildPersistedProviderState(conversation)).toEqual(providerState);
   });
 
+  it('rehydrates token-stream forks by stable prompt checkpoint when event IDs vary per chunk', async () => {
+    const updates: Array<{ metadata?: Record<string, unknown>; update: Record<string, unknown> }> = [
+      {
+        update: {
+          _meta: { promptIndex: 0 },
+          content: { text: 'First prompt', type: 'text' },
+          sessionUpdate: 'user_message_chunk',
+        },
+      },
+      ...['Part one', ' part two'].map((text, index) => ({
+        metadata: { eventId: `assistant-event-${index}`, promptId: 'prompt-first' },
+        update: {
+          content: { text, type: 'text' },
+          sessionUpdate: 'agent_message_chunk',
+        },
+      })),
+      { update: { prompt_id: 'prompt-first', sessionUpdate: 'turn_completed' } },
+      {
+        update: {
+          _meta: { promptIndex: 1 },
+          content: { text: 'Second prompt', type: 'text' },
+          sessionUpdate: 'user_message_chunk',
+        },
+      },
+      {
+        metadata: { eventId: 'assistant-event-second', promptId: 'prompt-second' },
+        update: {
+          content: { text: 'Second answer', type: 'text' },
+          sessionUpdate: 'agent_message_chunk',
+        },
+      },
+      { update: { prompt_id: 'prompt-second', sessionUpdate: 'turn_completed' } },
+    ];
+    const records = updates.map((record, index) => JSON.stringify({
+      method: 'session/update',
+      params: {
+        ...(record.metadata ? { _meta: record.metadata } : {}),
+        sessionId: 'session-fixture',
+        update: record.update,
+      },
+      timestamp: 1_700_000_000 + index,
+    })).join('\n');
+    await fs.writeFile(updatesPath, records, 'utf8');
+
+    const service = new GrokConversationHistoryService();
+    const conversation = createConversation();
+    conversation.sessionId = null;
+    conversation.providerState = service.buildForkProviderState(
+      'session-fixture',
+      'prompt-first',
+      { sessionDirectory },
+    );
+
+    await service.hydrateConversationHistory(conversation, vaultPath, {
+      environment: { HOME: tempRoot },
+    });
+
+    expect(conversation.messages.map(message => message.content)).toEqual([
+      'First prompt',
+      'Part one part two',
+    ]);
+  });
+
   it('rehydrates native Grok image blocks into persisted message attachments', async () => {
     const imageHistory = [
       {
@@ -225,5 +288,35 @@ describe('GrokConversationHistoryService', () => {
         size: 5,
       }],
     });
+  });
+
+  it('treats a session without native updates as having no history', async () => {
+    const service = new GrokConversationHistoryService();
+    await fs.rm(updatesPath);
+
+    const conversation = createConversation();
+    await service.hydrateConversationHistory(conversation, vaultPath, {
+      environment: { HOME: tempRoot },
+    });
+
+    expect(conversation.messages).toEqual([]);
+    expect(conversation.providerState).toEqual({ sessionDirectory });
+  });
+
+  it.each([
+    ['session', () => createConversation()],
+    ['pending fork', () => ({
+      ...createConversation(),
+      providerState: { forkSource: { resumeAt: 'prompt-1', sessionId: 'session-fixture' }, forkSourceSessionDirectory: sessionDirectory },
+      sessionId: null,
+    })],
+  ])('rejects %s hydration when native updates exist but cannot be read', async (_kind, build) => {
+    const service = new GrokConversationHistoryService();
+    await fs.rm(updatesPath);
+    await fs.mkdir(updatesPath);
+
+    await expect(service.hydrateConversationHistory(build(), vaultPath, {
+      environment: { HOME: tempRoot },
+    })).rejects.toMatchObject({ code: 'EISDIR' });
   });
 });

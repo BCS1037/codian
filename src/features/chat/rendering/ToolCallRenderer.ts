@@ -8,6 +8,9 @@ import {
   TOOL_APPLY_PATCH,
   TOOL_ASK_USER_QUESTION,
   TOOL_BASH,
+  TOOL_CODIAN_LIST_DESTINATIONS,
+  TOOL_CODIAN_READ_SESSION,
+  TOOL_CODIAN_SEND_MESSAGE,
   TOOL_EDIT,
   TOOL_ENTER_PLAN_MODE,
   TOOL_EXIT_PLAN_MODE,
@@ -23,12 +26,23 @@ import {
   TOOL_WRITE,
   TOOL_WRITE_STDIN,
 } from '../../../core/tools/toolNames';
-import type { AskUserQuestionItem, AskUserQuestionOption, ToolCallInfo } from '../../../core/types';
+import type {
+  AskUserQuestionItem,
+  AskUserQuestionOption,
+  ToolCallInfo,
+  ToolResultFormat,
+} from '../../../core/types';
 import type { DiffStats } from '../../../core/types/diff';
+import { t } from '../../../i18n/i18n';
 import { appendMcpIcon } from '../../../shared/icons';
 import { parseApplyPatchDiffs, parseFileUpdateChangeDiffs } from '../../../utils/diff';
 import { setupCollapsible } from './collapsible';
 import { renderDiffContent, renderDiffStats } from './DiffRenderer';
+import {
+  renderListDestinationsContent,
+  renderReadSessionContent,
+  renderSendMessageContent,
+} from './sessionToolContent';
 import { renderTodoItems } from './todoUtils';
 
 export function setToolIcon(el: HTMLElement, name: string): void {
@@ -62,14 +76,22 @@ export function getToolName(name: string, input: Record<string, unknown>): strin
       const todos = input.todos as Array<{ status: string }> | undefined;
       if (todos && Array.isArray(todos) && todos.length > 0) {
         const completed = todos.filter(t => t.status === 'completed').length;
-        return `Tasks ${completed}/${todos.length}`;
+        return t('chat.tools.taskProgress', { completed, total: todos.length });
       }
-      return 'Tasks';
+      return t('chat.tools.tasks');
     }
     case TOOL_ENTER_PLAN_MODE:
-      return 'Entering plan mode';
+      return t('chat.tools.enteringPlan');
     case TOOL_EXIT_PLAN_MODE:
-      return 'Plan complete';
+      return t('chat.tools.planComplete');
+    case TOOL_CODIAN_LIST_DESTINATIONS:
+      return t('chat.tools.listDestinations');
+    case TOOL_CODIAN_SEND_MESSAGE:
+      return input.mode === 'interrupt' && !input.text
+        ? t('chat.tools.stopSession')
+        : t('chat.tools.messageSession');
+    case TOOL_CODIAN_READ_SESSION:
+      return t('chat.tools.readSession');
     default:
       return name;
   }
@@ -118,19 +140,19 @@ export function getToolSummary(name: string, input: Record<string, unknown>): st
 export function getToolLabel(name: string, input: Record<string, unknown>): string {
   switch (name) {
     case TOOL_READ:
-      return `Read: ${shortenPath(getInputText(input, 'file_path')) || 'file'}`;
+      return `Read: ${shortenPath(getInputText(input, 'file_path')) || t('chat.tools.file')}`;
     case TOOL_WRITE:
-      return `Write: ${shortenPath(getInputText(input, 'file_path')) || 'file'}`;
+      return `Write: ${shortenPath(getInputText(input, 'file_path')) || t('chat.tools.file')}`;
     case TOOL_EDIT:
-      return `Edit: ${shortenPath(getInputText(input, 'file_path')) || 'file'}`;
+      return `Edit: ${shortenPath(getInputText(input, 'file_path')) || t('chat.tools.file')}`;
     case TOOL_BASH: {
-      const cmd = getInputText(input, 'command', 'command');
+      const cmd = getInputText(input, 'command', t('chat.tools.commandPlaceholder'));
       return `Bash: ${cmd.length > 40 ? cmd.substring(0, 40) + '...' : cmd}`;
     }
     case TOOL_GLOB:
-      return `Glob: ${getInputText(input, 'pattern', 'files')}`;
+      return `Glob: ${getInputText(input, 'pattern', t('chat.tools.filesPlaceholder'))}`;
     case TOOL_GREP:
-      return `Grep: ${getInputText(input, 'pattern', 'pattern')}`;
+      return `Grep: ${getInputText(input, 'pattern', t('chat.tools.patternPlaceholder'))}`;
     case TOOL_WEB_SEARCH: {
       return getWebSearchLabel(input, 40);
     }
@@ -144,22 +166,22 @@ export function getToolLabel(name: string, input: Record<string, unknown>): stri
       const todos = input.todos as Array<{ status: string }> | undefined;
       if (todos && Array.isArray(todos)) {
         const completed = todos.filter(t => t.status === 'completed').length;
-        return `Tasks (${completed}/${todos.length})`;
+        return t('chat.tools.taskProgressLabel', { completed, total: todos.length });
       }
-      return 'Tasks';
+      return t('chat.tools.tasks');
     }
     case TOOL_SKILL: {
-      const skillName = getInputText(input, 'skill', 'skill');
+      const skillName = getInputText(input, 'skill', t('settings.agentSkills.skillBadge'));
       return `Skill: ${skillName}`;
     }
     case TOOL_TOOL_SEARCH: {
       const tools = parseToolSearchQuery(getInputText(input, 'query'));
-      return `ToolSearch: ${tools || 'tools'}`;
+      return `ToolSearch: ${tools || t('chat.tools.toolsPlaceholder')}`;
     }
     case TOOL_ENTER_PLAN_MODE:
-      return 'Entering plan mode';
+      return t('chat.tools.enteringPlan');
     case TOOL_EXIT_PLAN_MODE:
-      return 'Plan complete';
+      return t('chat.tools.planComplete');
     case TOOL_APPLY_PATCH: {
       const summary = getApplyPatchSummary(input);
       return summary ? `apply_patch: ${summary}` : 'apply_patch';
@@ -198,9 +220,9 @@ function getApplyPatchSummary(input: Record<string, unknown>): string {
     : [];
 
   const files = [...new Set([...patchFiles, ...changeFiles])];
-  if (files.length === 0) return patchText ? 'patch' : '';
+  if (files.length === 0) return patchText ? t('chat.tools.patch') : '';
   if (files.length === 1) return fileNameOnly(files[0]);
-  return `${files.length} files`;
+  return t('chat.tools.files', { count: files.length });
 }
 
 function getWriteStdinSummary(input: Record<string, unknown>): string {
@@ -227,7 +249,7 @@ function getAgentLifecycleSummary(name: string, input: Record<string, unknown>):
       const ids = Array.isArray(input.ids) ? input.ids.length : 0;
       const timeoutMs = typeof input.timeout_ms === 'number' ? input.timeout_ms : undefined;
       const parts: string[] = [];
-      if (ids > 0) parts.push(`${ids} agent${ids === 1 ? '' : 's'}`);
+      if (ids > 0) parts.push(t(ids === 1 ? 'chat.tools.agentCount' : 'chat.tools.agentCountPlural', { count: ids }));
       if (timeoutMs !== undefined) parts.push(`${Math.round(timeoutMs / 1000)}s`);
       return parts.join(', ');
     }
@@ -270,6 +292,7 @@ interface WebSearchDisplayData {
   queries: string[];
   url: string;
   pattern: string;
+  linkId: string;
 }
 
 function normalizeWebSearchDisplayData(input: Record<string, unknown>): WebSearchDisplayData {
@@ -284,26 +307,48 @@ function normalizeWebSearchDisplayData(input: Record<string, unknown>): WebSearc
     : queries[0] ?? '';
   const url = typeof input.url === 'string' && input.url.trim() ? input.url.trim() : '';
   const pattern = typeof input.pattern === 'string' && input.pattern.trim() ? input.pattern.trim() : '';
+  const linkId = typeof input.linkId === 'string' && input.linkId.trim()
+    ? input.linkId.trim()
+    : typeof input.link_id === 'string' && input.link_id.trim()
+      ? input.link_id.trim()
+      : typeof input.targetId === 'string' && input.targetId.trim()
+        ? input.targetId.trim()
+        : '';
 
   const explicitActionType = typeof input.actionType === 'string' && input.actionType.trim()
     ? input.actionType.trim()
     : '';
   const actionType = explicitActionType
-    || (url && pattern ? 'find_in_page' : url ? 'open_page' : (query || queries.length > 0) ? 'search' : '');
+    || (url && pattern ? 'find_in_page' : url && linkId ? 'click' : url ? 'open_page' : (query || queries.length > 0) ? 'search' : '');
 
-  return { actionType, query, queries, url, pattern };
+  return { actionType, query, queries, url, pattern, linkId };
+}
+
+function getWebOperationLabel(actionType: string): string {
+  switch (actionType) {
+    case 'search': return t('chat.web.search');
+    case 'open_page': return t('chat.web.openPage');
+    case 'find_in_page': return t('chat.web.findInPage');
+  }
+  const label = actionType.replace(/_/g, ' ');
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 function getWebSearchSummary(input: Record<string, unknown>, maxLength: number): string {
+  if (Array.isArray(input.actions) && input.actions.length > 1) {
+    return t('chat.web.operations', { count: input.actions.length });
+  }
+  if (Array.isArray(input.requests)) return getWebOperationLabel(getInputText(input, 'actionType'));
   const data = normalizeWebSearchDisplayData(input);
 
   switch (data.actionType) {
+    case 'click':
+      return truncateText(t('chat.web.clickInPage', { id: data.linkId, url: data.url }), maxLength);
     case 'open_page':
-      return truncateText(`Open ${data.url || 'page'}`, maxLength);
+      return truncateText(data.url ? t('chat.web.open', { url: data.url }) : t('chat.web.openPage'), maxLength);
     case 'find_in_page': {
-      const target = data.pattern ? `Find "${data.pattern}"` : 'Find in page';
-      const suffix = data.url ? ` in ${data.url}` : '';
-      return truncateText(target + suffix, maxLength);
+      const target = data.pattern ? t('chat.web.find', { pattern: data.pattern }) : t('chat.web.findInPage');
+      return truncateText(data.url ? t('chat.web.inPage', { action: target, url: data.url }) : target, maxLength);
     }
     case 'search':
       return truncateText(data.query || data.queries[0] || '', maxLength);
@@ -314,19 +359,19 @@ function getWebSearchSummary(input: Record<string, unknown>, maxLength: number):
 
 function getWebSearchLabel(input: Record<string, unknown>, maxLength: number): string {
   const summary = getWebSearchSummary(input, maxLength);
-  return `WebSearch: ${summary || 'search'}`;
+  return `WebSearch: ${summary || t('chat.web.searchTerm')}`;
 }
 
 function appendToolLink(parent: HTMLElement, title: string, url: string): void {
-  const linkEl = parent.createEl('a', { cls: 'claudian-tool-link' });
+  const linkEl = parent.createEl('a', { cls: 'codian-tool-link' });
   linkEl.setAttribute('href', url);
   linkEl.setAttribute('target', '_blank');
   linkEl.setAttribute('rel', 'noopener noreferrer');
 
-  const iconEl = linkEl.createSpan({ cls: 'claudian-tool-link-icon' });
+  const iconEl = linkEl.createSpan({ cls: 'codian-tool-link-icon' });
   setIcon(iconEl, 'external-link');
 
-  linkEl.createSpan({ cls: 'claudian-tool-link-title', text: title });
+  linkEl.createSpan({ cls: 'codian-tool-link-title', text: title });
 }
 
 function isPlaceholderWebSearchResult(result: string | undefined): boolean {
@@ -358,27 +403,32 @@ function renderWebSearchActionExpanded(container: HTMLElement, input: Record<str
     return false;
   }
 
-  const linesEl = container.createDiv({ cls: 'claudian-tool-lines' });
+  const linesEl = container.createDiv({ cls: 'codian-tool-lines' });
 
   switch (data.actionType) {
+    case 'click':
+      linesEl.createDiv({ cls: 'codian-tool-line', text: t('chat.web.clickLink', { id: data.linkId }) });
+      if (data.url) appendToolLink(linesEl, data.url, data.url);
+      return true;
+
     case 'open_page':
-      linesEl.createDiv({ cls: 'claudian-tool-line', text: 'Open page' });
+      linesEl.createDiv({ cls: 'codian-tool-line', text: t('chat.web.openPage') });
       if (data.url) {
         appendToolLink(linesEl, data.url, data.url);
       } else {
-        linesEl.createDiv({ cls: 'claudian-tool-line', text: 'URL unavailable' });
+        linesEl.createDiv({ cls: 'codian-tool-line', text: t('chat.web.urlUnavailable') });
       }
       return true;
 
     case 'find_in_page':
-      linesEl.createDiv({ cls: 'claudian-tool-line', text: 'Find in page' });
+      linesEl.createDiv({ cls: 'codian-tool-line', text: t('chat.web.findInPage') });
       if (data.url) {
         appendToolLink(linesEl, data.url, data.url);
       } else {
-        linesEl.createDiv({ cls: 'claudian-tool-line', text: 'URL unavailable' });
+        linesEl.createDiv({ cls: 'codian-tool-line', text: t('chat.web.urlUnavailable') });
       }
       if (data.pattern) {
-        linesEl.createDiv({ cls: 'claudian-tool-line', text: `Pattern: ${data.pattern}` });
+        linesEl.createDiv({ cls: 'codian-tool-line', text: t('chat.web.pattern', { pattern: data.pattern }) });
       }
       return true;
 
@@ -386,18 +436,18 @@ function renderWebSearchActionExpanded(container: HTMLElement, input: Record<str
     default: {
       const primaryQuery = data.query || data.queries[0];
       linesEl.createDiv({
-        cls: 'claudian-tool-line',
-        text: primaryQuery ? `Query: ${primaryQuery}` : 'Search web',
+        cls: 'codian-tool-line',
+        text: primaryQuery ? t('chat.web.query', { query: primaryQuery }) : t('chat.web.search'),
       });
 
       const alternateQueries = data.queries.filter(query => query !== primaryQuery);
       for (const query of alternateQueries.slice(0, 4)) {
-        linesEl.createDiv({ cls: 'claudian-tool-line', text: `Alt query: ${query}` });
+        linesEl.createDiv({ cls: 'codian-tool-line', text: t('chat.web.altQuery', { query }) });
       }
       if (alternateQueries.length > 4) {
         linesEl.createDiv({
-          cls: 'claudian-tool-truncated',
-          text: `... ${alternateQueries.length - 4} more queries`,
+          cls: 'codian-tool-truncated',
+          text: t('chat.web.moreQueries', { count: alternateQueries.length - 4 }),
         });
       }
       return true;
@@ -412,13 +462,13 @@ function renderWebSearchExpanded(
 ): void {
   const parsed = result ? parseWebSearchResult(result) : null;
   if (parsed && parsed.links.length > 0) {
-    const linksEl = container.createDiv({ cls: 'claudian-tool-lines' });
+    const linksEl = container.createDiv({ cls: 'codian-tool-lines' });
     for (const link of parsed.links) {
       appendToolLink(linksEl, link.title, link.url);
     }
 
     if (parsed.summary) {
-      const summaryEl = container.createDiv({ cls: 'claudian-tool-web-summary' });
+      const summaryEl = container.createDiv({ cls: 'codian-tool-web-summary' });
       summaryEl.setText(parsed.summary.length > 800 ? parsed.summary.slice(0, 800) + '...' : parsed.summary);
     }
     return;
@@ -447,13 +497,13 @@ function renderWebSearchExpanded(
     return;
   }
 
-  container.createDiv({ cls: 'claudian-tool-empty', text: 'No result' });
+  container.createDiv({ cls: 'codian-tool-empty', text: t('chat.tools.noResult') });
 }
 
 function renderFileSearchExpanded(container: HTMLElement, result: string): void {
   const lines = result.split(/\r?\n/).filter(line => line.trim());
   if (lines.length === 0) {
-    container.createDiv({ cls: 'claudian-tool-empty', text: 'No matches found' });
+    container.createDiv({ cls: 'codian-tool-empty', text: t('chat.tools.noMatches') });
     return;
   }
   renderLinesExpanded(container, result, 15, true);
@@ -463,24 +513,25 @@ function renderLinesExpanded(
   container: HTMLElement,
   result: string,
   maxLines: number,
-  hoverable = false
+  hoverable = false,
+  resultFormat?: ToolResultFormat,
 ): void {
   const lines = result.split(/\r?\n/);
   const truncated = lines.length > maxLines;
   const displayLines = truncated ? lines.slice(0, maxLines) : lines;
 
-  const linesEl = container.createDiv({ cls: 'claudian-tool-lines' });
+  const linesEl = container.createDiv({ cls: 'codian-tool-lines' });
   for (const line of displayLines) {
-    const stripped = line.replace(/^\s*\d+→/, '');
-    const lineEl = linesEl.createDiv({ cls: 'claudian-tool-line' });
+    const stripped = resultFormat === 'plain' ? line : line.replace(/^\s*\d+→/, '');
+    const lineEl = linesEl.createDiv({ cls: 'codian-tool-line' });
     if (hoverable) lineEl.addClass('hoverable');
     lineEl.setText(stripped || ' ');
   }
 
   if (truncated) {
     linesEl.createDiv({
-      cls: 'claudian-tool-truncated',
-      text: `... ${lines.length - maxLines} more lines`,
+      cls: 'codian-tool-truncated',
+      text: t('chat.tools.moreLines', { count: lines.length - maxLines }),
     });
   }
 }
@@ -504,8 +555,8 @@ function renderToolSearchExpanded(container: HTMLElement, result: string): void 
   }
 
   for (const name of toolNames) {
-    const lineEl = container.createDiv({ cls: 'claudian-tool-search-item' });
-    const iconEl = lineEl.createSpan({ cls: 'claudian-tool-search-icon' });
+    const lineEl = container.createDiv({ cls: 'codian-tool-search-item' });
+    const iconEl = lineEl.createSpan({ cls: 'codian-tool-search-icon' });
     setToolIcon(iconEl, name);
     lineEl.createSpan({ text: name });
   }
@@ -513,14 +564,14 @@ function renderToolSearchExpanded(container: HTMLElement, result: string): void 
 
 function renderWebFetchExpanded(container: HTMLElement, result: string): void {
   const maxChars = 500;
-  const linesEl = container.createDiv({ cls: 'claudian-tool-lines' });
-  const lineEl = linesEl.createDiv({ cls: 'claudian-tool-line claudian-tool-line-wrap' });
+  const linesEl = container.createDiv({ cls: 'codian-tool-lines' });
+  const lineEl = linesEl.createDiv({ cls: 'codian-tool-line codian-tool-line-wrap' });
 
   if (result.length > maxChars) {
     lineEl.setText(result.slice(0, maxChars));
     linesEl.createDiv({
-      cls: 'claudian-tool-truncated',
-      text: `... ${result.length - maxChars} more characters`,
+      cls: 'codian-tool-truncated',
+      text: t('chat.tools.moreCharacters', { count: result.length - maxChars }),
     });
   } else {
     lineEl.setText(result);
@@ -546,7 +597,7 @@ function renderApplyPatchExpanded(
 
   const changes = Array.isArray(input.changes) ? input.changes : [];
   if (changes.length > 0) {
-    const linesEl = container.createDiv({ cls: 'claudian-tool-lines' });
+    const linesEl = container.createDiv({ cls: 'codian-tool-lines' });
     for (const change of changes as unknown[]) {
       if (!change || typeof change !== 'object' || Array.isArray(change)) continue;
       const changeRecord = change as Record<string, unknown>;
@@ -554,7 +605,7 @@ function renderApplyPatchExpanded(
       if (!path) continue;
       const movedTo = readMoveTarget(changeRecord.kind);
       const pathText = movedTo ? `${path} -> ${movedTo}` : path;
-      linesEl.createDiv({ cls: 'claudian-tool-line', text: pathText });
+      linesEl.createDiv({ cls: 'codian-tool-line', text: pathText });
     }
     return;
   }
@@ -567,11 +618,11 @@ function renderApplyPatchExpanded(
   if (result) {
     const fileMatches = [...result.matchAll(/(?:update|add|delete|create|modify|Applied:\s*)(?:\w+:\s*)?([^\n,]+)/gi)];
     if (fileMatches.length > 0) {
-      const linesEl = container.createDiv({ cls: 'claudian-tool-lines' });
+      const linesEl = container.createDiv({ cls: 'codian-tool-lines' });
       for (const match of fileMatches) {
         const filePath = match[1]?.trim();
         if (filePath) {
-          const lineEl = linesEl.createDiv({ cls: 'claudian-tool-line' });
+          const lineEl = linesEl.createDiv({ cls: 'codian-tool-line' });
           lineEl.setText(filePath);
         }
       }
@@ -581,7 +632,7 @@ function renderApplyPatchExpanded(
     return;
   }
 
-  container.createDiv({ cls: 'claudian-tool-empty', text: 'No result' });
+  container.createDiv({ cls: 'codian-tool-empty', text: t('chat.tools.noResult') });
 }
 
 function renderApplyPatchDiffSections(
@@ -589,20 +640,20 @@ function renderApplyPatchDiffSections(
   fileDiffs: ReturnType<typeof parseApplyPatchDiffs>,
 ): void {
   for (const fileDiff of fileDiffs) {
-    const sectionEl = container.createDiv({ cls: 'claudian-tool-patch-section' });
+    const sectionEl = container.createDiv({ cls: 'codian-tool-patch-section' });
 
     if (fileDiff.operation === 'delete' && fileDiff.diffLines.length === 0) {
-      sectionEl.createDiv({ cls: 'claudian-tool-empty', text: 'File deleted' });
+      sectionEl.createDiv({ cls: 'codian-tool-empty', text: t('chat.tools.fileDeleted') });
       continue;
     }
 
     if (fileDiff.diffLines.length === 0) {
-      sectionEl.createDiv({ cls: 'claudian-tool-empty', text: 'No textual diff available' });
+      sectionEl.createDiv({ cls: 'codian-tool-empty', text: t('chat.tools.noTextDiff') });
       continue;
     }
 
-    const diffRow = sectionEl.createDiv({ cls: 'claudian-write-edit-diff-row' });
-    const diffEl = diffRow.createDiv({ cls: 'claudian-write-edit-diff' });
+    const diffRow = sectionEl.createDiv({ cls: 'codian-write-edit-diff-row' });
+    const diffEl = diffRow.createDiv({ cls: 'codian-write-edit-diff' });
     renderDiffContent(diffEl, fileDiff.diffLines);
   }
 }
@@ -637,7 +688,7 @@ function getApplyPatchDiffStats(input: Record<string, unknown>): DiffStats | und
 }
 
 function getDiffStatsAriaLabel(stats: DiffStats): string {
-  return `Changes: +${stats.added} -${stats.removed}`;
+  return t('chat.tools.changes', { added: stats.added, removed: stats.removed });
 }
 
 function renderAgentLifecycleExpanded(container: HTMLElement, result: string): void {
@@ -646,9 +697,9 @@ function renderAgentLifecycleExpanded(container: HTMLElement, result: string): v
   if (trimmed.startsWith('{')) {
     try {
       const parsed = JSON.parse(trimmed) as Record<string, unknown>;
-      const linesEl = container.createDiv({ cls: 'claudian-tool-lines' });
+      const linesEl = container.createDiv({ cls: 'codian-tool-lines' });
       for (const [key, value] of Object.entries(parsed)) {
-        const lineEl = linesEl.createDiv({ cls: 'claudian-tool-line' });
+        const lineEl = linesEl.createDiv({ cls: 'codian-tool-line' });
         const displayValue = formatToolDisplayValue(value);
         lineEl.setText(`${key}: ${displayValue}`);
       }
@@ -674,9 +725,10 @@ export function renderExpandedContent(
   toolName: string,
   result: string | undefined,
   input: Record<string, unknown> = {},
+  resultFormat?: ToolResultFormat,
 ): void {
-  if (!result && toolName !== TOOL_WEB_SEARCH && toolName !== TOOL_BASH && toolName !== TOOL_APPLY_PATCH) {
-    container.createDiv({ cls: 'claudian-tool-empty', text: 'No result' });
+  if (!result && toolName !== TOOL_WEB_SEARCH && toolName !== TOOL_BASH && toolName !== TOOL_APPLY_PATCH && toolName !== TOOL_CODIAN_READ_SESSION) {
+    container.createDiv({ cls: 'codian-tool-empty', text: t('chat.tools.noResult') });
     return;
   }
 
@@ -695,7 +747,7 @@ export function renderExpandedContent(
       renderLinesExpanded(container, resolvedResult, 20);
       break;
     case TOOL_READ:
-      renderLinesExpanded(container, resolvedResult, 15);
+      renderLinesExpanded(container, resolvedResult, 15, false, resultFormat);
       break;
     case TOOL_GLOB:
     case TOOL_GREP:
@@ -713,6 +765,15 @@ export function renderExpandedContent(
       break;
     case TOOL_APPLY_PATCH:
       renderApplyPatchExpanded(container, input, result);
+      break;
+    case TOOL_CODIAN_LIST_DESTINATIONS:
+      renderListDestinationsContent(container, { input, result });
+      break;
+    case TOOL_CODIAN_SEND_MESSAGE:
+      renderSendMessageContent(container, { input, result });
+      break;
+    case TOOL_CODIAN_READ_SESSION:
+      renderReadSessionContent(container, { input, result });
       break;
     default:
       renderLinesExpanded(container, resolvedResult, 20);
@@ -739,7 +800,7 @@ function areAllTodosCompleted(input: Record<string, unknown>): boolean {
 }
 
 function resetStatusElement(statusEl: HTMLElement, statusClass: string, ariaLabel: string): void {
-  statusEl.className = 'claudian-tool-status';
+  statusEl.className = 'codian-tool-status';
   statusEl.empty();
   statusEl.addClass(statusClass);
   statusEl.setAttribute('aria-label', ariaLabel);
@@ -754,13 +815,13 @@ const STATUS_ICONS: Record<string, string> = {
 function setTodoWriteStatus(statusEl: HTMLElement, input: Record<string, unknown>): void {
   const isComplete = areAllTodosCompleted(input);
   const status = isComplete ? 'completed' : 'running';
-  const ariaLabel = isComplete ? 'Status: completed' : 'Status: in progress';
+  const ariaLabel = isComplete ? t('chat.tools.status.completed') : t('chat.tools.inProgress');
   resetStatusElement(statusEl, `status-${status}`, ariaLabel);
   if (isComplete) setIcon(statusEl, 'check');
 }
 
 function setToolStatus(statusEl: HTMLElement, status: ToolCallInfo['status']): void {
-  resetStatusElement(statusEl, `status-${status}`, `Status: ${status}`);
+  resetStatusElement(statusEl, `status-${status}`, t(`chat.tools.status.${status}`));
   const icon = STATUS_ICONS[status];
   if (icon) setIcon(statusEl, icon);
 }
@@ -773,7 +834,7 @@ function setApplyPatchHeaderRight(statusEl: HTMLElement, toolCall: ToolCallInfo)
     return;
   }
 
-  statusEl.className = 'claudian-tool-status claudian-write-edit-stats';
+  statusEl.className = 'codian-tool-status codian-write-edit-stats';
   statusEl.empty();
   statusEl.setAttribute('aria-label', getDiffStatsAriaLabel(stats));
   renderDiffStats(statusEl, stats);
@@ -793,13 +854,13 @@ export function renderTodoWriteResult(
   input: Record<string, unknown>
 ): void {
   container.empty();
-  container.addClass('claudian-todo-panel-content');
-  container.addClass('claudian-todo-list-container');
+  container.addClass('codian-todo-panel-content');
+  container.addClass('codian-todo-list-container');
 
   const todos = input.todos as TodoItem[] | undefined;
   if (!todos || !Array.isArray(todos)) {
-    const item = container.createSpan({ cls: 'claudian-tool-result-item' });
-    item.setText('Tasks updated');
+    const item = container.createSpan({ cls: 'codian-tool-result-item' });
+    item.setText(t('chat.tools.tasksUpdated'));
     return;
   }
 
@@ -825,32 +886,32 @@ function createToolElementStructure(
   parentEl: HTMLElement,
   toolCall: ToolCallInfo
 ): ToolElementStructure {
-  const toolEl = parentEl.createDiv({ cls: 'claudian-tool-call' });
+  const toolEl = parentEl.createDiv({ cls: 'codian-tool-call' });
   if (toolCall.name === TOOL_BASH) {
-    toolEl.addClass('claudian-tool-call-bash');
+    toolEl.addClass('codian-tool-call-bash');
   }
 
-  const header = toolEl.createDiv({ cls: 'claudian-tool-header' });
+  const header = toolEl.createDiv({ cls: 'codian-tool-header' });
   header.setAttribute('tabindex', '0');
   header.setAttribute('role', 'button');
 
-  const iconEl = header.createSpan({ cls: 'claudian-tool-icon' });
+  const iconEl = header.createSpan({ cls: 'codian-tool-icon' });
   iconEl.setAttribute('aria-hidden', 'true');
   setToolIcon(iconEl, toolCall.name);
 
-  const nameEl = header.createSpan({ cls: 'claudian-tool-name' });
+  const nameEl = header.createSpan({ cls: 'codian-tool-name' });
   nameEl.setText(getToolName(toolCall.name, toolCall.input));
 
-  const summaryEl = header.createSpan({ cls: 'claudian-tool-summary' });
+  const summaryEl = header.createSpan({ cls: 'codian-tool-summary' });
   summaryEl.setText(getToolSummary(toolCall.name, toolCall.input));
 
   const currentTaskEl = toolCall.name === TOOL_TODO_WRITE
     ? createCurrentTaskPreview(header, toolCall.input)
     : null;
 
-  const statusEl = header.createSpan({ cls: 'claudian-tool-status' });
+  const statusEl = header.createSpan({ cls: 'codian-tool-status' });
 
-  const content = toolEl.createDiv({ cls: 'claudian-tool-content' });
+  const content = toolEl.createDiv({ cls: 'codian-tool-content' });
 
   return { toolEl, header, iconEl, nameEl, summaryEl, statusEl, content, currentTaskEl };
 }
@@ -879,19 +940,19 @@ function renderAskUserQuestionResult(container: HTMLElement, toolCall: ToolCallI
   const answers = resolveAskUserAnswers(toolCall);
   if (!questions || !Array.isArray(questions) || !answers) return false;
 
-  const reviewEl = container.createDiv({ cls: 'claudian-ask-review' });
+  const reviewEl = container.createDiv({ cls: 'codian-ask-review' });
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
     const answer = formatAnswer(
       (q.id ? answers[q.id] : undefined) ?? answers[q.question]
     );
-    const pairEl = reviewEl.createDiv({ cls: 'claudian-ask-review-pair' });
-    pairEl.createDiv({ text: `${i + 1}.`, cls: 'claudian-ask-review-num' });
-    const bodyEl = pairEl.createDiv({ cls: 'claudian-ask-review-body' });
-    bodyEl.createDiv({ text: q.question, cls: 'claudian-ask-review-q-text' });
+    const pairEl = reviewEl.createDiv({ cls: 'codian-ask-review-pair' });
+    pairEl.createDiv({ text: `${i + 1}.`, cls: 'codian-ask-review-num' });
+    const bodyEl = pairEl.createDiv({ cls: 'codian-ask-review-body' });
+    bodyEl.createDiv({ text: q.question, cls: 'codian-ask-review-q-text' });
     bodyEl.createDiv({
-      text: answer || 'Not answered',
-      cls: answer ? 'claudian-ask-review-a-text' : 'claudian-ask-review-empty',
+      text: answer || t('chat.questions.notAnswered'),
+      cls: answer ? 'codian-ask-review-a-text' : 'codian-ask-review-empty',
     });
   }
 
@@ -906,31 +967,31 @@ function renderAskUserQuestionFallback(container: HTMLElement, toolCall: ToolCal
     : [];
 
   if (questions.length === 0) {
-    contentFallback(container, initialText || toolCall.result || 'Waiting for answer...');
+    contentFallback(container, initialText || toolCall.result || t('chat.questions.waiting'));
     return;
   }
 
   if (initialText || toolCall.result) {
     container.createDiv({
-      cls: 'claudian-ask-review-prompt',
-      text: initialText || toolCall.result || 'Waiting for answer...',
+      cls: 'codian-ask-review-prompt',
+      text: initialText || toolCall.result || t('chat.questions.waiting'),
     });
   }
 
   for (let questionIndex = 0; questionIndex < questions.length; questionIndex++) {
     const question = questions[questionIndex];
-    const reviewEl = container.createDiv({ cls: 'claudian-ask-review' });
-    const pairEl = reviewEl.createDiv({ cls: 'claudian-ask-review-pair' });
-    pairEl.createDiv({ text: `${questionIndex + 1}.`, cls: 'claudian-ask-review-num' });
-    const bodyEl = pairEl.createDiv({ cls: 'claudian-ask-review-body' });
-    bodyEl.createDiv({ text: question.question, cls: 'claudian-ask-review-q-text' });
+    const reviewEl = container.createDiv({ cls: 'codian-ask-review' });
+    const pairEl = reviewEl.createDiv({ cls: 'codian-ask-review-pair' });
+    pairEl.createDiv({ text: `${questionIndex + 1}.`, cls: 'codian-ask-review-num' });
+    const bodyEl = pairEl.createDiv({ cls: 'codian-ask-review-body' });
+    bodyEl.createDiv({ text: question.question, cls: 'codian-ask-review-q-text' });
 
     if (!Array.isArray(question.options) || question.options.length === 0) {
-      bodyEl.createDiv({ cls: 'claudian-ask-review-empty', text: 'No options recorded' });
+      bodyEl.createDiv({ cls: 'codian-ask-review-empty', text: t('chat.questions.noOptions') });
       continue;
     }
 
-    const listEl = bodyEl.createDiv({ cls: 'claudian-ask-list' });
+    const listEl = bodyEl.createDiv({ cls: 'codian-ask-list' });
     question.options.forEach((option, optionIndex) => {
       renderAskUserQuestionOption(listEl, option, optionIndex, question.multiSelect === true);
     });
@@ -943,26 +1004,26 @@ function renderAskUserQuestionOption(
   optionIndex: number,
   isMultiSelect: boolean,
 ): void {
-  const itemEl = parentEl.createDiv({ cls: 'claudian-ask-item is-disabled' });
+  const itemEl = parentEl.createDiv({ cls: 'codian-ask-item is-disabled' });
 
   if (isMultiSelect) {
-    itemEl.createDiv({ cls: 'claudian-ask-check', text: '[ ] ' });
+    itemEl.createDiv({ cls: 'codian-ask-check', text: '[ ] ' });
   } else {
-    itemEl.createDiv({ cls: 'claudian-ask-item-num', text: `${optionIndex + 1}. ` });
+    itemEl.createDiv({ cls: 'codian-ask-item-num', text: `${optionIndex + 1}. ` });
   }
 
-  const contentEl = itemEl.createDiv({ cls: 'claudian-ask-item-content' });
-  const labelRowEl = contentEl.createDiv({ cls: 'claudian-ask-label-row' });
-  labelRowEl.createDiv({ cls: 'claudian-ask-item-label', text: option.label });
+  const contentEl = itemEl.createDiv({ cls: 'codian-ask-item-content' });
+  const labelRowEl = contentEl.createDiv({ cls: 'codian-ask-label-row' });
+  labelRowEl.createDiv({ cls: 'codian-ask-item-label', text: option.label });
 
   if (option.description) {
-    contentEl.createDiv({ cls: 'claudian-ask-item-desc', text: option.description });
+    contentEl.createDiv({ cls: 'codian-ask-item-desc', text: option.description });
   }
 }
 
 function contentFallback(container: HTMLElement, text: string): void {
-  const resultRow = container.createDiv({ cls: 'claudian-tool-result-row' });
-  const resultText = resultRow.createSpan({ cls: 'claudian-tool-result-text' });
+  const resultRow = container.createDiv({ cls: 'codian-tool-result-row' });
+  const resultText = resultRow.createSpan({ cls: 'codian-tool-result-text' });
   resultText.setText(text);
 }
 
@@ -974,7 +1035,7 @@ function renderBashContent(
 ): void {
   const command = (input.command as string) || '';
   if (command) {
-    const cmdEl = container.createDiv({ cls: 'claudian-tool-bash-command' });
+    const cmdEl = container.createDiv({ cls: 'codian-tool-bash-command' });
     cmdEl.setText(`$ ${command}`);
   }
   if (initialText) {
@@ -982,7 +1043,7 @@ function renderBashContent(
   } else if (result) {
     renderLinesExpanded(container, result, 20);
   } else {
-    container.createDiv({ cls: 'claudian-tool-empty', text: 'No result' });
+    container.createDiv({ cls: 'codian-tool-empty', text: t('chat.tools.noResult') });
   }
 }
 
@@ -990,7 +1051,7 @@ function createCurrentTaskPreview(
   header: HTMLElement,
   input: Record<string, unknown>
 ): HTMLElement {
-  const currentTaskEl = header.createSpan({ cls: 'claudian-tool-current' });
+  const currentTaskEl = header.createSpan({ cls: 'codian-tool-current' });
   const currentTask = getCurrentTask(input);
   if (currentTask) {
     currentTaskEl.setText(currentTask.activeForm);
@@ -1006,10 +1067,10 @@ function createTodoToggleHandler(
   return (expanded: boolean) => {
     if (onExpandChange) onExpandChange(expanded);
     if (currentTaskEl) {
-      currentTaskEl.toggleClass('claudian-hidden', expanded);
+      currentTaskEl.toggleClass('codian-hidden', expanded);
     }
     if (statusEl) {
-      statusEl.toggleClass('claudian-hidden', expanded);
+      statusEl.toggleClass('codian-hidden', expanded);
     }
   };
 }
@@ -1020,21 +1081,37 @@ function renderToolContent(
   initialText?: string
 ): void {
   if (toolCall.name === TOOL_TODO_WRITE) {
-    content.addClass('claudian-tool-content-todo');
+    content.addClass('codian-tool-content-todo');
     renderTodoWriteResult(content, toolCall.input);
   } else if (toolCall.name === TOOL_ASK_USER_QUESTION) {
-    content.addClass('claudian-tool-content-ask');
-    if (initialText) {
-      renderAskUserQuestionFallback(content, toolCall, 'Waiting for answer...');
+    content.addClass('codian-tool-content-ask');
+    const pending = Boolean(initialText);
+    const prompt = toolCall.input.replyMode === 'user-message'
+      ? toolCall.questionStatus === 'pending' ? t('chat.questions.answerBelow') : t('chat.questions.expired')
+      : pending ? t('chat.questions.waiting') : undefined;
+    if (pending) {
+      renderAskUserQuestionFallback(content, toolCall, prompt);
     } else if (!renderAskUserQuestionResult(content, toolCall)) {
-      renderAskUserQuestionFallback(content, toolCall);
+      renderAskUserQuestionFallback(content, toolCall, prompt);
     }
   } else if (toolCall.name === TOOL_BASH) {
     renderBashContent(content, toolCall.input, toolCall.result ?? '', initialText);
+  } else if (toolCall.name === TOOL_CODIAN_LIST_DESTINATIONS) {
+    renderListDestinationsContent(content, toolCall);
+  } else if (toolCall.name === TOOL_CODIAN_SEND_MESSAGE) {
+    renderSendMessageContent(content, toolCall);
+  } else if (toolCall.name === TOOL_CODIAN_READ_SESSION) {
+    renderReadSessionContent(content, toolCall);
   } else if (initialText) {
     contentFallback(content, initialText);
   } else {
-    renderExpandedContent(content, toolCall.name, toolCall.result, toolCall.input);
+    renderExpandedContent(
+      content,
+      toolCall.name,
+      toolCall.result,
+      toolCall.input,
+      toolCall.resultFormat,
+    );
   }
 }
 
@@ -1052,7 +1129,7 @@ export function renderToolCall(
 
   setGenericToolHeaderRight(statusEl, toolCall);
 
-  renderToolContent(content, toolCall, 'Running...');
+  renderToolContent(content, toolCall, t('chat.tools.running'));
 
   const initiallyExpanded = options.initiallyExpanded ?? false;
   const state = { isExpanded: initiallyExpanded };
@@ -1078,19 +1155,19 @@ export function updateToolCallResult(
   if (!toolEl) return;
 
   if (toolCall.name === TOOL_TODO_WRITE) {
-    const statusEl = toolEl.querySelector('.claudian-tool-status') as HTMLElement;
+    const statusEl = toolEl.querySelector('.codian-tool-status') as HTMLElement;
     if (statusEl) {
       setTodoWriteStatus(statusEl, toolCall.input);
     }
-    const content = toolEl.querySelector('.claudian-tool-content') as HTMLElement;
+    const content = toolEl.querySelector('.codian-tool-content') as HTMLElement;
     if (content) {
       renderTodoWriteResult(content, toolCall.input);
     }
-    const nameEl = toolEl.querySelector('.claudian-tool-name') as HTMLElement;
+    const nameEl = toolEl.querySelector('.codian-tool-name') as HTMLElement;
     if (nameEl) {
       nameEl.setText(getToolName(toolCall.name, toolCall.input));
     }
-    const currentTaskEl = toolEl.querySelector('.claudian-tool-current') as HTMLElement;
+    const currentTaskEl = toolEl.querySelector('.codian-tool-current') as HTMLElement;
     if (currentTaskEl) {
       const currentTask = getCurrentTask(toolCall.input);
       currentTaskEl.setText(currentTask ? currentTask.activeForm : '');
@@ -1098,15 +1175,15 @@ export function updateToolCallResult(
     return;
   }
 
-  const statusEl = toolEl.querySelector('.claudian-tool-status') as HTMLElement;
+  const statusEl = toolEl.querySelector('.codian-tool-status') as HTMLElement;
   if (statusEl) {
     setGenericToolHeaderRight(statusEl, toolCall);
   }
 
   if (toolCall.name === TOOL_ASK_USER_QUESTION) {
-    const content = toolEl.querySelector('.claudian-tool-content') as HTMLElement;
+    const content = toolEl.querySelector('.codian-tool-content') as HTMLElement;
     if (content) {
-      content.addClass('claudian-tool-content-ask');
+      content.addClass('codian-tool-content-ask');
       if (!renderAskUserQuestionResult(content, toolCall)) {
         renderAskUserQuestionFallback(content, toolCall);
       }
@@ -1114,10 +1191,16 @@ export function updateToolCallResult(
     return;
   }
 
-  const content = toolEl.querySelector('.claudian-tool-content') as HTMLElement;
+  const content = toolEl.querySelector('.codian-tool-content') as HTMLElement;
   if (content) {
     content.empty();
-    renderExpandedContent(content, toolCall.name, toolCall.result, toolCall.input);
+    renderExpandedContent(
+      content,
+      toolCall.name,
+      toolCall.result,
+      toolCall.input,
+      toolCall.resultFormat,
+    );
   }
 }
 
@@ -1136,13 +1219,24 @@ export function renderStoredToolCall(
     setGenericToolHeaderRight(statusEl, toolCall);
   }
 
-  renderToolContent(content, toolCall);
+  let contentRendered = false;
+  const renderContentOnce = () => {
+    if (contentRendered) return;
+    renderToolContent(content, toolCall);
+    contentRendered = true;
+  };
+  const deferContent = toolCall.status !== 'running'
+    && toolCall.name !== TOOL_ASK_USER_QUESTION
+    && toolCall.name !== TOOL_TODO_WRITE;
+  if (!deferContent || options.initiallyExpanded) renderContentOnce();
 
   const state = { isExpanded: false };
   const todoStatusEl = toolCall.name === TOOL_TODO_WRITE ? statusEl : null;
   setupCollapsible(toolEl, header, content, state, {
     initiallyExpanded: options.initiallyExpanded ?? false,
-    onToggle: createTodoToggleHandler(currentTaskEl, todoStatusEl),
+    onToggle: createTodoToggleHandler(currentTaskEl, todoStatusEl, (expanded) => {
+      if (expanded) renderContentOnce();
+    }),
     baseAriaLabel: getToolLabel(toolCall.name, toolCall.input)
   });
 

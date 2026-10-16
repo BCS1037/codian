@@ -1,4 +1,4 @@
-.claudian-container {
+.codian-container {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -9,14 +9,80 @@
   font-family: var(--font-text);
 }
 
-.claudian-provider-icon-variant--dark {
+.codian-provider-icon-variant--dark {
   display: none;
 }
 
-body.theme-dark .claudian-provider-icon-variant--light {
+.codian-chat-layout {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.codian-chat-main-pane {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.codian-wide-session-sidebar,
+.codian-session-resizer {
   display: none;
 }
 
-body.theme-dark .claudian-provider-icon-variant--dark {
+.codian-chat-layout.codian-wide-session-layout {
+  display: grid;
+  grid-template-columns: var(--codian-session-sidebar-width, 220px) 5px minmax(0, 1fr);
+}
+
+.codian-chat-layout.codian-wide-session-layout .codian-wide-session-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-inline-end: 1px solid var(--background-modifier-border);
+}
+
+.codian-chat-layout.codian-wide-session-layout .codian-session-resizer {
+  display: block;
+  z-index: 1;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+
+.codian-chat-layout.codian-wide-session-layout .codian-session-resizer:hover,
+.codian-chat-layout.codian-wide-session-layout .codian-session-resizer:focus-visible {
+  background: var(--interactive-accent);
+  outline: none;
+}
+
+.codian-chat-layout.codian-wide-session-layout .codian-history-header {
+  flex: 0 0 auto;
+}
+
+.codian-chat-layout.codian-wide-session-layout .codian-history-list {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.codian-resizing-session-sidebar {
+  user-select: none;
+  cursor: col-resize;
+}
+
+body.theme-dark .codian-provider-icon-variant--light {
+  display: none;
+}
+
+body.theme-dark .codian-provider-icon-variant--dark {
   display: inline;
 }

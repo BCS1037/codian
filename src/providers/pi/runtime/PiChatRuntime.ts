@@ -1,4 +1,3 @@
-import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 
 import {
@@ -22,6 +21,8 @@ import type {
   ChatRuntimeQueryOptions,
   ChatTurnMetadata,
   ChatTurnRequest,
+  ConversationBranchNavigationRequest,
+  ConversationBranchNavigationResult,
   ExitPlanModeCallback,
   PreparedChatTurn,
   SessionUpdateResult,
@@ -40,8 +41,13 @@ import { PI_PROVIDER_CAPABILITIES } from '../capabilities';
 import {
   createPiForkSessionFile,
   findPiSessionFile,
-  parsePiSessionEntries,
+  getPiBranchLeafId,
+  getPiPromptBranchPositions,
+  parsePiSessionContent,
+  type parsePiSessionEntries,
+  readPiSessionEntries,
   resolvePiActivePath,
+  resolvePiTreeCursor,
 } from '../history/PiHistoryStore';
 import {
   clampPiThinkingLevel,
@@ -62,6 +68,7 @@ import {
   type PiForkSource,
   type PiPreviousSession,
   type PiProviderState,
+  type PiTreeCursor,
 } from '../types';
 import { buildPiPromptImages, buildPiPromptText } from './buildPiPrompt';
 import { buildPiUsageInfo } from './buildPiUsageInfo';
@@ -70,6 +77,13 @@ import { buildPiLaunchSpec, type PiLaunchSpec } from './PiLaunchSpec';
 import { buildPiSetModelPayload } from './PiRpcPayloads';
 import { type PiRpcRecord, PiRpcTransport } from './PiRpcTransport';
 import { PiSubprocess } from './PiSubprocess';
+import {
+  createPiTreeExtension,
+  PI_TREE_COMMAND,
+  type PiTreeExtensionHandle,
+  removePiTreeExtension,
+  requestPiTree,
+} from './PiTreeBridge';
 
 interface ActiveTurn {
   cancel: (error: Error) => void;
@@ -150,6 +164,11 @@ export class PiChatRuntime implements ChatRuntime {
   private ready = false;
   private readinessFlight: { key: string; promise: Promise<boolean> } | null = null;
   private disposed = false;
+  private treeBridgeEnabled = false;
+  private treeCursor: PiTreeCursor | null = null;
+  private treeCursorRestoreKey: string | null = null;
+  private treeExtension: PiTreeExtensionHandle | null = null;
+  private treeExtensionFlight: Promise<PiTreeExtensionHandle> | null = null;
   private lifecycleGeneration = 0;
   private readonly readyListeners = new Set<(ready: boolean) => void>();
   private sessionFile: string | null = null;
@@ -230,6 +249,12 @@ export class PiChatRuntime implements ChatRuntime {
     this.sessionId = nextSessionId;
     this.sessionFile = nextSessionFile;
     this.leafEntryId = isPendingFork ? null : state.leafEntryId ?? null;
+    const nextTreeCursor = isPendingFork ? null : state.treeCursor ?? null;
+    if (JSON.stringify(this.treeCursor) !== JSON.stringify(nextTreeCursor)) {
+      this.treeCursorRestoreKey = null;
+    }
+    this.treeCursor = nextTreeCursor;
+    this.treeBridgeEnabled ||= nextTreeCursor !== null;
     this.parentSession = isPendingFork ? null : state.parentSession ?? null;
     this.pendingFork = nextPendingFork;
     this.pendingForkSourceSessionFile = nextPendingForkSourceSessionFile;
@@ -308,6 +333,9 @@ export class PiChatRuntime implements ChatRuntime {
     }
 
     const hasSessionTarget = Boolean(this.sessionId || this.sessionFile);
+    const treeExtensionPath = this.treeBridgeEnabled
+      ? await this.getPiTreeExtensionPath()
+      : undefined;
     const promptSettings = this.getSystemPromptSettings(cwd);
     const systemPrompt = buildSystemPrompt(promptSettings);
     const noSession = !allowSessionCreation && !hasSessionTarget;
@@ -320,6 +348,7 @@ export class PiChatRuntime implements ChatRuntime {
       providerState: this.getCurrentProviderState(),
       settings,
       systemPrompt,
+      treeExtensionPath,
     });
     const sessionTarget = this.sessionFile ?? this.sessionId ?? null;
     const nextLaunchKey = JSON.stringify({
@@ -329,6 +358,7 @@ export class PiChatRuntime implements ChatRuntime {
       noSession,
       promptKey: computeSystemPromptKey(promptSettings),
       systemPrompt,
+      treeBridgeEnabled: this.treeBridgeEnabled,
       toolMode: settings.toolMode,
     });
     const sessionTargetChanged = sessionTarget !== this.currentSessionTarget;
@@ -379,8 +409,140 @@ export class PiChatRuntime implements ChatRuntime {
         return false;
       }
     }
+    if (this.treeBridgeEnabled && this.treeCursor) {
+      try {
+        await this.restoreSavedTreeCursor();
+      } catch {
+        await this.shutdownProcess();
+        return false;
+      }
+      if (!this.isReadinessCurrent(lifecycleGeneration, conversationGeneration)) {
+        await this.shutdownProcess();
+        return false;
+      }
+    }
     this.setReady(true);
     return true;
+  }
+
+  async navigateConversationBranch(
+    request: ConversationBranchNavigationRequest,
+  ): Promise<ConversationBranchNavigationResult> {
+    if (this.disposed || this.activeTurn) return { status: 'failed', error: 'Pi is busy.' };
+    if (request.signal?.aborted) return { status: 'cancelled' };
+    if (!this.sessionFile || !this.sessionId) {
+      return { status: 'failed', error: 'Pi session is unavailable for branch navigation.' };
+    }
+
+    let entries: ReturnType<typeof parsePiSessionEntries>['entries'];
+    try {
+      entries = (await readPiSessionEntries(this.sessionFile)).entries;
+    } catch (error) {
+      return { status: 'failed', error: `Could not read Pi session history: ${String(error)}` };
+    }
+
+    const currentLeafId = this.treeCursor
+      ? this.treeCursor.leafId
+      : this.leafEntryId ?? resolvePiActivePath(entries).at(-1)?.id ?? null;
+    const activePath = currentLeafId ? resolvePiActivePath(entries, currentLeafId) : [];
+    if (!activePath.some(entry => entry.id === request.userMessageId)) {
+      return { status: 'failed', error: 'Pi prompt is no longer on the active branch.' };
+    }
+
+    const branchPositions = getPiPromptBranchPositions(entries);
+    const position = branchPositions.get(request.userMessageId);
+    if (position?.previousMessageId !== request.branchMessageId
+      && position?.nextMessageId !== request.branchMessageId) {
+      return { status: 'failed', error: 'Pi prompt is not an adjacent branch.' };
+    }
+    let branchLeafId = getPiBranchLeafId(entries, request.branchMessageId);
+    if (!branchLeafId) return { status: 'failed', error: 'Pi branch is missing.' };
+
+    const previousCursor = this.treeCursor;
+    const oldCursor: PiTreeCursor = this.treeCursor ?? {
+      appendId: entries.at(-1)?.id,
+      leafId: currentLeafId,
+      targetId: currentLeafId ?? request.userMessageId,
+    };
+    this.treeCursor = oldCursor;
+    this.treeBridgeEnabled = true;
+
+    try {
+      const ready = await this.ensureReady({ allowSessionCreation: false });
+      if (!ready || !this.transport || !this.sessionFile || !this.sessionId) {
+        this.treeCursor = previousCursor ?? oldCursor;
+        return {
+          status: 'recovery-required',
+          error: 'Pi could not restore the current branch before navigation.',
+        };
+      }
+      if (request.signal?.aborted) return { status: 'cancelled' };
+
+      const refreshedEntries = (await readPiSessionEntries(this.sessionFile)).entries;
+      const restoredLeafId = this.treeCursor?.leafId ?? null;
+      const restoredPath = restoredLeafId ? resolvePiActivePath(refreshedEntries, restoredLeafId) : [];
+      const refreshedPosition = getPiPromptBranchPositions(refreshedEntries).get(request.userMessageId);
+      if (!restoredPath.some(entry => entry.id === request.userMessageId)
+        || (refreshedPosition?.previousMessageId !== request.branchMessageId
+          && refreshedPosition?.nextMessageId !== request.branchMessageId)) {
+        return { status: 'failed', error: 'Pi branch changed before navigation started.' };
+      }
+      branchLeafId = getPiBranchLeafId(refreshedEntries, request.branchMessageId);
+      if (!branchLeafId) return { status: 'failed', error: 'Pi branch disappeared before navigation.' };
+
+      const response = await requestPiTree(this.transport, {
+        leafId: branchLeafId,
+        operation: 'restore',
+        sessionFile: this.sessionFile,
+        sessionId: this.sessionId,
+        targetId: branchLeafId,
+      }, request.signal);
+      if (!isRecord(response)) throw new Error('Invalid Pi tree response.');
+      if (response.cancelled === true) {
+        if (response.reloadRequired === true) {
+          await this.shutdownProcess();
+          this.treeCursor = previousCursor ?? oldCursor;
+          return { status: 'recovery-required', error: 'Pi branch switch needs session recovery.' };
+        }
+        return { status: 'cancelled' };
+      }
+      if (
+        response.cancelled !== false
+        || response.sessionId !== this.sessionId
+        || response.sessionFile !== this.sessionFile
+        || typeof response.leafId !== 'string'
+      ) {
+        throw new Error('Pi confirmed a different branch or session.');
+      }
+
+      const updatedEntries = (await readPiSessionEntries(this.sessionFile)).entries;
+      const selectedPath = resolvePiActivePath(updatedEntries, response.leafId);
+      if (!selectedPath.some(entry => entry.id === request.branchMessageId)) {
+        throw new Error('Pi navigation did not reach the selected branch.');
+      }
+      const latestEntryId = updatedEntries.at(-1)?.id;
+      this.leafEntryId = response.leafId;
+      this.treeCursor = {
+        ...(latestEntryId ? { appendId: latestEntryId } : {}),
+        leafId: response.leafId,
+        targetId: response.leafId,
+      };
+      this.treeCursorRestoreKey = this.getTreeCursorRestoreKey();
+      return {
+        messages: parsePiSessionContent(await readPiSessionEntries(this.sessionFile), {
+          leafEntryId: response.leafId,
+          requireLeafEntryId: true,
+        }),
+        status: 'committed',
+      };
+    } catch (error) {
+      this.treeCursor = previousCursor ?? oldCursor;
+      await this.shutdownProcess();
+      if (isPiTreeCommandFailure(error)) {
+        return { status: 'failed', error: error instanceof Error ? error.message : String(error) };
+      }
+      return { status: 'recovery-required', error: String(error) };
+    }
   }
 
   async *query(
@@ -518,6 +680,8 @@ export class PiChatRuntime implements ChatRuntime {
     this.sessionId = null;
     this.sessionFile = null;
     this.leafEntryId = null;
+    this.treeCursor = null;
+    this.treeCursorRestoreKey = null;
     this.parentSession = null;
     this.pendingFork = null;
     this.pendingForkSourceSessionFile = null;
@@ -573,7 +737,8 @@ export class PiChatRuntime implements ChatRuntime {
     }
 
     const response = await this.transport.request('get_commands', {}, 10_000);
-    this.supportedCommands = normalizePiRuntimeCommands(response);
+    this.supportedCommands = normalizePiRuntimeCommands(response)
+      .filter(command => command.name !== PI_TREE_COMMAND);
     this.supportedCommandsLoaded = true;
     return [...this.supportedCommands];
   }
@@ -590,7 +755,9 @@ export class PiChatRuntime implements ChatRuntime {
     this.lifecycleGeneration += 1;
     this.activeTurn?.queue.close();
     this.extensionBridge?.cleanup();
-    void this.shutdownProcess();
+    void this.shutdownProcess()
+      .then(() => this.removePiTreeExtensionFiles())
+      .catch(() => undefined);
   }
 
   async rewind(
@@ -801,6 +968,7 @@ export class PiChatRuntime implements ChatRuntime {
     this.currentModel = null;
     this.currentSessionTarget = null;
     this.currentThinkingLevel = null;
+    this.treeCursorRestoreKey = null;
     if (process) {
       await process.shutdown().catch(() => {});
     }
@@ -1014,8 +1182,7 @@ export class PiChatRuntime implements ChatRuntime {
     }
 
     try {
-      const content = await fsp.readFile(this.sessionFile, 'utf-8');
-      const entries = parsePiSessionEntries(content).entries;
+      const entries = (await readPiSessionEntries(this.sessionFile)).entries;
       const activePath = resolvePiActivePath(entries);
       const leafEntryId = getLastPiEntryId(activePath);
       if (!this.isConversationCurrent(conversationGeneration)) {
@@ -1037,8 +1204,7 @@ export class PiChatRuntime implements ChatRuntime {
     }
 
     try {
-      const content = await fsp.readFile(this.sessionFile, 'utf-8');
-      const entries = parsePiSessionEntries(content).entries;
+      const entries = (await readPiSessionEntries(this.sessionFile)).entries;
       const activePath = resolvePiActivePath(entries);
       if (
         activePath.length === 0
@@ -1048,6 +1214,14 @@ export class PiChatRuntime implements ChatRuntime {
       }
 
       this.leafEntryId = getLastPiEntryId(activePath) ?? this.leafEntryId;
+      if (this.treeBridgeEnabled && this.leafEntryId) {
+        this.treeCursor = {
+          ...(entries.at(-1)?.id ? { appendId: entries.at(-1)!.id } : {}),
+          leafId: this.leafEntryId,
+          targetId: this.leafEntryId,
+        };
+        this.treeCursorRestoreKey = this.getTreeCursorRestoreKey();
+      }
       const previousLeafIndex = previousLeafEntryId
         ? activePath.findIndex(entry => entry.id === previousLeafEntryId)
         : -1;
@@ -1158,7 +1332,68 @@ export class PiChatRuntime implements ChatRuntime {
         : {}),
       ...(this.sessionFile ? { sessionFile: this.sessionFile } : {}),
       ...(this.sessionId ? { sessionId: this.sessionId } : {}),
+      ...(this.treeCursor ? { treeCursor: { ...this.treeCursor } } : {}),
     };
+  }
+
+  private async getPiTreeExtensionPath(): Promise<string> {
+    if (this.treeExtension) return this.treeExtension.path;
+    const flight = this.treeExtensionFlight ?? createPiTreeExtension();
+    this.treeExtensionFlight = flight;
+    try {
+      const extension = await flight;
+      this.treeExtension = extension;
+      return extension.path;
+    } finally {
+      if (this.treeExtensionFlight === flight) this.treeExtensionFlight = null;
+    }
+  }
+
+  private async removePiTreeExtensionFiles(): Promise<void> {
+    const extension = this.treeExtension
+      ?? await this.treeExtensionFlight?.catch(() => null)
+      ?? null;
+    if (!extension) return;
+    await removePiTreeExtension(extension.directory);
+    if (this.treeExtension === extension) this.treeExtension = null;
+  }
+
+  private getTreeCursorRestoreKey(): string | null {
+    if (!this.treeCursor || !this.sessionFile || !this.sessionId) return null;
+    return JSON.stringify({
+      cursor: this.treeCursor,
+      sessionFile: this.sessionFile,
+      sessionId: this.sessionId,
+    });
+  }
+
+  private async restoreSavedTreeCursor(): Promise<void> {
+    if (!this.treeCursor || !this.sessionFile || !this.sessionId || !this.transport) {
+      throw new Error('Pi branch cursor cannot be restored without a session.');
+    }
+    if (this.getTreeCursorRestoreKey() === this.treeCursorRestoreKey) return;
+
+    const entries = (await readPiSessionEntries(this.sessionFile)).entries;
+    const cursor = resolvePiTreeCursor(entries, this.treeCursor);
+    const response = await requestPiTree(this.transport, {
+      ...cursor,
+      operation: 'restore',
+      sessionFile: this.sessionFile,
+      sessionId: this.sessionId,
+    });
+    if (!isRecord(response) || response.cancelled !== false
+      || response.sessionFile !== this.sessionFile || response.sessionId !== this.sessionId
+      || (response.leafId !== null && typeof response.leafId !== 'string')) {
+      throw new Error('Pi did not confirm the saved branch cursor.');
+    }
+    const leafId = response.leafId;
+    this.treeCursor = {
+      ...(entries.at(-1)?.id ? { appendId: entries.at(-1)!.id } : {}),
+      leafId,
+      targetId: leafId ?? cursor.targetId,
+    };
+    this.leafEntryId = leafId;
+    this.treeCursorRestoreKey = this.getTreeCursorRestoreKey();
   }
 
   private setReady(ready: boolean): void {
@@ -1325,6 +1560,16 @@ function getRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
     : {};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isPiTreeCommandFailure(error: unknown): boolean {
+  return isRecord(error)
+    && error.name === 'PiRpcResponseError'
+    && error.commandType === 'codian_tree';
 }
 
 function getString(value: unknown): string | null {

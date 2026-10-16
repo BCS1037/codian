@@ -1,0 +1,96 @@
+import type { BrowserSelectionContext } from '../../utils/browser';
+import type { CanvasSelectionContext } from '../../utils/canvas';
+import type { EditorSelectionContext } from '../../utils/editor';
+import type { ChatMessage, ImageAttachment } from '../types';
+
+export type ProviderExecutionInputBlock =
+  | {
+      readonly type: 'text';
+      readonly text: string;
+    }
+  | {
+      readonly type: 'image';
+      readonly image: ImageAttachment;
+    };
+
+export interface ProviderLinkedContentContext {
+  readonly path: string;
+  readonly content?: string;
+}
+
+export interface ProviderSessionReference {
+  readonly id: string;
+  readonly title: string;
+  readonly providerId: string;
+  readonly updatedAt: string;
+}
+
+export type ProviderSelectionSnapshot =
+  | { readonly kind: 'editor'; readonly selection: EditorSelectionContext }
+  | { readonly kind: 'browser'; readonly selection: BrowserSelectionContext }
+  | { readonly kind: 'canvas'; readonly selection: CanvasSelectionContext };
+
+export interface ProviderExecutionContext {
+  /** Ordered captures; when present, supersedes the legacy singular selection fields. */
+  readonly selections?: readonly ProviderSelectionSnapshot[];
+  readonly sessionReferences?: readonly ProviderSessionReference[];
+  readonly linkedContent?: ProviderLinkedContentContext;
+  readonly editorSelection?: EditorSelectionContext | null;
+  readonly browserSelection?: BrowserSelectionContext | null;
+  readonly canvasSelection?: CanvasSelectionContext | null;
+}
+
+export type ProviderSystemInstructions =
+  | { readonly kind: 'provider-default' }
+  | {
+      readonly kind: 'explicit';
+      readonly instructions: string;
+    };
+
+export interface ProviderExecutionConfiguration {
+  readonly systemInstructions: ProviderSystemInstructions;
+  readonly model?: string;
+  /** Explicit choices cannot be replaced by saved defaults. Null omits the native override; undefined permits auxiliary defaults. */
+  readonly reasoning?: string | null;
+  readonly permissionMode?: string;
+  readonly serviceTier?: string;
+  /** Request a transient next-prompt prediction, subject to provider settings and support. Omitted for auxiliary work. */
+  readonly promptSuggestions?: boolean;
+}
+
+export type ProviderToolPolicy =
+  | {
+      readonly kind: 'passive';
+    }
+  | {
+      readonly kind: 'read-only';
+    }
+  | {
+      readonly kind: 'provider-default';
+    }
+  | {
+      readonly kind: 'unrestricted';
+    }
+  | {
+      readonly kind: 'allow-list';
+      readonly names: readonly string[];
+    };
+
+/**
+ * Canonical provider-neutral input for one requested execution.
+ *
+ * Provider backends resolve their own settings at execution time and map this
+ * desired configuration into their native protocol. This contract deliberately
+ * carries no feature-purpose discriminator, provider credentials, environment,
+ * or opaque provider settings bag.
+ */
+export interface ProviderExecutionRequest {
+  /** Opaque caller identity a provider can return with a user-message echo, including a delayed steer. */
+  readonly inputId?: string;
+  readonly input: readonly ProviderExecutionInputBlock[];
+  readonly context?: ProviderExecutionContext;
+  readonly conversationHistory?: readonly ChatMessage[];
+  readonly configuration: ProviderExecutionConfiguration;
+  readonly toolPolicy: ProviderToolPolicy;
+  readonly signal: AbortSignal;
+}

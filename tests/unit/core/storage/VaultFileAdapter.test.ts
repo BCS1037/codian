@@ -522,13 +522,13 @@ describe('VaultFileAdapter', () => {
       });
 
       await expect(Promise.all([
-        vaultAdapter.ensureFolder('.claudian/sessions'),
-        vaultAdapter.ensureFolder('.claudian/sessions'),
+        vaultAdapter.ensureFolder('.codian/sessions'),
+        vaultAdapter.ensureFolder('.codian/sessions'),
       ])).resolves.toEqual([undefined, undefined]);
 
       expect(mockAdapter.mkdir).toHaveBeenCalledTimes(2);
-      expect(mockAdapter.mkdir).toHaveBeenNthCalledWith(1, '.claudian');
-      expect(mockAdapter.mkdir).toHaveBeenNthCalledWith(2, '.claudian/sessions');
+      expect(mockAdapter.mkdir).toHaveBeenNthCalledWith(1, '.codian');
+      expect(mockAdapter.mkdir).toHaveBeenNthCalledWith(2, '.codian/sessions');
     });
   });
 
@@ -602,14 +602,59 @@ describe('VaultFileAdapter', () => {
   });
 
   describe('managed resources', () => {
+    it('lists direct desktop entries without following symbolic links', async () => {
+      const vaultPath = await fs.mkdtemp(path.join(os.tmpdir(), 'codian-vault-'));
+      const externalPath = await fs.mkdtemp(path.join(os.tmpdir(), 'codian-external-'));
+      try {
+        await fs.mkdir(path.join(vaultPath, '.claude/skills'), { recursive: true });
+        await fs.mkdir(path.join(externalPath, 'outside-skill'));
+        await fs.writeFile(path.join(externalPath, 'outside.md'), 'external content');
+        await fs.symlink(
+          path.join(externalPath, 'outside-skill'),
+          path.join(vaultPath, '.claude/skills/linked-skill'),
+          'dir',
+        );
+        await fs.symlink(
+          path.join(externalPath, 'missing'),
+          path.join(vaultPath, '.claude/skills/dangling-skill'),
+          'dir',
+        );
+        await fs.mkdir(path.join(vaultPath, '.claude/skills/local-skill'));
+        await fs.writeFile(path.join(vaultPath, '.claude/skills/local.md'), 'local');
+
+        const desktopApp = {
+          vault: { adapter: { getBasePath: () => vaultPath } },
+        } as unknown as App;
+        const entries = await new VaultFileAdapter(desktopApp)
+          .listManagedFolderEntries('.claude/skills');
+
+        expect(entries).toEqual([
+          { name: 'dangling-skill', path: '.claude/skills/dangling-skill', kind: 'symlink' },
+          { name: 'linked-skill', path: '.claude/skills/linked-skill', kind: 'symlink' },
+          { name: 'local-skill', path: '.claude/skills/local-skill', kind: 'folder' },
+          { name: 'local.md', path: '.claude/skills/local.md', kind: 'file' },
+        ]);
+      } finally {
+        await fs.rm(vaultPath, { recursive: true, force: true });
+        await fs.rm(externalPath, { recursive: true, force: true });
+      }
+    });
+
+    it('requires a filesystem-backed adapter for no-follow entry inspection', async () => {
+      mockAdapter.stat.mockResolvedValue({ type: 'folder', ctime: 0, mtime: 0, size: 0 });
+
+      await expect(vaultAdapter.listManagedFolderEntries('.claude/skills'))
+        .rejects.toThrow('filesystem-backed');
+    });
+
     it.each([
       ['managed root', '.agents', 'folder'],
       ['skills root', '.agents/skills', 'folder'],
       ['package', '.agents/skills/portable-skill', 'folder'],
       ['SKILL.md', '.agents/skills/portable-skill/SKILL.md', 'file'],
     ] as const)('rejects a symlinked %s on desktop adapters', async (_label, relative, type) => {
-      const vaultPath = await fs.mkdtemp(path.join(os.tmpdir(), 'claudian-vault-'));
-      const externalPath = await fs.mkdtemp(path.join(os.tmpdir(), 'claudian-external-'));
+      const vaultPath = await fs.mkdtemp(path.join(os.tmpdir(), 'codian-vault-'));
+      const externalPath = await fs.mkdtemp(path.join(os.tmpdir(), 'codian-external-'));
       try {
         if (relative !== '.agents') {
           await fs.mkdir(path.join(vaultPath, '.agents/skills/portable-skill'), { recursive: true });
@@ -834,7 +879,7 @@ describe('VaultFileAdapter', () => {
     });
 
     it('never overwrites a destination child created during relocation', async () => {
-      const vaultPath = await fs.mkdtemp(path.join(os.tmpdir(), 'claudian-vault-'));
+      const vaultPath = await fs.mkdtemp(path.join(os.tmpdir(), 'codian-vault-'));
       try {
         await fs.mkdir(path.join(vaultPath, '.agents/skills/old'), { recursive: true });
         await fs.writeFile(path.join(vaultPath, '.agents/skills/old/a.txt'), 'source');
@@ -872,7 +917,7 @@ describe('VaultFileAdapter', () => {
     });
 
     it('never overwrites a source child created before rollback', async () => {
-      const vaultPath = await fs.mkdtemp(path.join(os.tmpdir(), 'claudian-vault-'));
+      const vaultPath = await fs.mkdtemp(path.join(os.tmpdir(), 'codian-vault-'));
       try {
         await fs.mkdir(path.join(vaultPath, '.agents/skills/old'), { recursive: true });
         await fs.writeFile(path.join(vaultPath, '.agents/skills/old/a.txt'), 'source');

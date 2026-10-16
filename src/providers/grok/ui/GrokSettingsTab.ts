@@ -9,7 +9,7 @@ import type {
   ProviderSettingsTabRendererContext,
   ProviderWorkspaceServices,
 } from '../../../core/providers/types';
-import type { ClaudianSettings } from '../../../core/types';
+import type { CodianSettings } from '../../../core/types';
 import { t } from '../../../i18n/i18n';
 import { renderNativeMcpSettingsSection } from '../../../shared/settings/NativeMcpSettingsSection';
 import {
@@ -63,7 +63,7 @@ export const grokSettingsTabRenderer: ProviderSettingsTabRenderer = {
         .setName('CLI path')
         .setDesc('Optional absolute path to the Grok CLI for this computer. Leave empty to prefer known installs, then `grok` from PATH.');
       const validationEl = container.createDiv({
-        cls: 'claudian-cli-path-validation claudian-setting-validation claudian-setting-validation-error claudian-hidden',
+        cls: 'codian-cli-path-validation codian-setting-validation codian-setting-validation-error codian-hidden',
       });
       const cliPathsByHost = { ...initialSettings.cliPathsByHost };
       const initialCliPath = initialSettings.cliPathsByHost[hostnameKey]
@@ -76,12 +76,12 @@ export const grokSettingsTabRenderer: ProviderSettingsTabRenderer = {
       const error = validateCliPath(value);
       if (error) {
         validationEl.setText(error);
-        validationEl.toggleClass('claudian-hidden', false);
-        input?.toggleClass('claudian-input-error', true);
+        validationEl.toggleClass('codian-hidden', false);
+        input?.toggleClass('codian-input-error', true);
         return false;
       }
-      validationEl.toggleClass('claudian-hidden', true);
-      input?.toggleClass('claudian-input-error', false);
+      validationEl.toggleClass('codian-hidden', true);
+      input?.toggleClass('codian-input-error', false);
       return true;
     };
 
@@ -114,7 +114,7 @@ export const grokSettingsTabRenderer: ProviderSettingsTabRenderer = {
         delete cliPathsByHost[hostnameKey];
       }
 
-      const mutation = (settings: ClaudianSettings): void => {
+      const mutation = (settings: CodianSettings): void => {
         updateGrokProviderSettings(settings, {
           cliPath: '',
           cliPathsByHost: { ...cliPathsByHost },
@@ -147,7 +147,7 @@ export const grokSettingsTabRenderer: ProviderSettingsTabRenderer = {
             : '/usr/local/bin/grok')
           .setValue(initialCliPath)
           .onChange(persistCliPath);
-        text.inputEl.addClass('claudian-settings-cli-path-input');
+        text.inputEl.addClass('codian-settings-cli-path-input');
         cliPathInputEl = text.inputEl;
         updateCliPathValidation(initialCliPath, text.inputEl);
       });

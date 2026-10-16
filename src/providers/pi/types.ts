@@ -9,6 +9,12 @@ export interface PiPreviousSession {
   sessionId?: string;
 }
 
+export interface PiTreeCursor {
+  appendId?: string;
+  leafId: string | null;
+  targetId: string;
+}
+
 export interface PiProviderState {
   forkSource?: PiForkSource;
   forkSourceSessionFile?: string;
@@ -17,6 +23,7 @@ export interface PiProviderState {
   previousSessions?: PiPreviousSession[];
   sessionFile?: string;
   sessionId?: string;
+  treeCursor?: PiTreeCursor;
 }
 
 export function getPiState(value: unknown): PiProviderState {
@@ -27,6 +34,7 @@ export function getPiState(value: unknown): PiProviderState {
   const record = value as Record<string, unknown>;
   const forkSource = getPiForkSource(record.forkSource);
   const previousSessions = getPiPreviousSessions(record.previousSessions);
+  const treeCursor = getPiTreeCursor(record.treeCursor);
   return {
     ...(forkSource ? { forkSource } : {}),
     ...(typeof record.forkSourceSessionFile === 'string' && record.forkSourceSessionFile.trim()
@@ -45,6 +53,7 @@ export function getPiState(value: unknown): PiProviderState {
     ...(typeof record.sessionId === 'string' && record.sessionId.trim()
       ? { sessionId: record.sessionId.trim() }
       : {}),
+    ...(treeCursor ? { treeCursor } : {}),
   };
 }
 
@@ -59,9 +68,25 @@ export function buildPersistedPiState(state: PiProviderState): PiProviderState |
       : {}),
     ...(state.sessionFile ? { sessionFile: state.sessionFile } : {}),
     ...(state.sessionId ? { sessionId: state.sessionId } : {}),
+    ...(state.treeCursor ? { treeCursor: { ...state.treeCursor } } : {}),
   };
 
   return Object.keys(persisted).length > 0 ? persisted : undefined;
+}
+
+function getPiTreeCursor(value: unknown): PiTreeCursor | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const targetId = getNonEmptyString(record.targetId);
+  if (!targetId) return undefined;
+  const leafId = record.leafId === null ? null : getNonEmptyString(record.leafId);
+  if (leafId === undefined) return undefined;
+  const appendId = getNonEmptyString(record.appendId);
+  return {
+    ...(appendId ? { appendId } : {}),
+    leafId,
+    targetId,
+  };
 }
 
 function getPiForkSource(value: unknown): PiForkSource | undefined {

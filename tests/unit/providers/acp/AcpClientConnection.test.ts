@@ -63,7 +63,7 @@ describe('AcpClientConnection', () => {
   it('advertises derived client capabilities and dispatches session notifications', async () => {
     const notifications: AcpSessionNotification[] = [];
     const harness = createConnectionHarness((transport) => new AcpClientConnection({
-      clientInfo: { name: 'claudian', version: '0.0.0-test' },
+      clientInfo: { name: 'codian', version: '0.0.0-test' },
       delegate: {
         fileSystem: {
           readTextFile: async () => ({ content: 'hello' }),
@@ -86,7 +86,7 @@ describe('AcpClientConnection', () => {
             readTextFile: true,
           },
         },
-        clientInfo: { name: 'claudian', version: '0.0.0-test' },
+        clientInfo: { name: 'codian', version: '0.0.0-test' },
         protocolVersion: 1,
       });
 

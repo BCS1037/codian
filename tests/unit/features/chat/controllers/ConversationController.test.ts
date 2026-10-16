@@ -1,9 +1,11 @@
-import { createMockEl } from '@test/helpers/mockElement';
+import { createMockEl, type MockElement } from '@test/helpers/mockElement';
 import { Menu, Notice } from 'obsidian';
 
+import type { ChatMessage } from '@/core/types';
 import { ConversationController, type ConversationControllerDeps } from '@/features/chat/controllers/ConversationController';
 import { SearchConversationBrowserEnhancement } from '@/features/chat/conversation-browser/SearchConversationBrowserEnhancement';
 import { ChatState } from '@/features/chat/state/ChatState';
+import type { TabAttention } from '@/features/chat/state/types';
 import { confirm } from '@/shared/modals/ConfirmModal';
 
 jest.mock('@/shared/modals/ConfirmModal', () => ({
@@ -50,6 +52,10 @@ function createMockDeps(overrides: Partial<ConversationControllerDeps> = {}): Co
       getConversationList: jest.fn().mockReturnValue([]),
       findEmptyConversation: jest.fn().mockResolvedValue(null),
       updateConversation: jest.fn().mockResolvedValue(undefined),
+      setConversationAttention: jest.fn(),
+      sessionRuntimePool: {
+        getConversationAttention: jest.fn().mockReturnValue(undefined),
+      },
       renameConversation: jest.fn().mockResolvedValue(undefined),
       deleteConversation: jest.fn().mockResolvedValue(undefined),
       agentService: {
@@ -108,6 +114,134 @@ describe('ConversationController', () => {
     (Menu as typeof Menu & { instances: unknown[] }).instances.length = 0;
     deps = createMockDeps();
     controller = new ConversationController(deps);
+  });
+
+  describe('Native branch navigation', () => {
+    it('commits and persists messages only after runtime confirms adjacent branch switch', async () => {
+      const originalMessages: ChatMessage[] = [
+        {
+          id: 'u-current',
+          role: 'user',
+          content: 'current prompt',
+          timestamp: 1,
+          userMessageId: 'native-current',
+          branchNavigation: { count: 2, position: 1, nextMessageId: 'native-sibling' },
+        },
+      ];
+      const selectedBranchMessages: ChatMessage[] = [
+        {
+          id: 'u-sibling',
+          role: 'user',
+          content: 'sibling prompt',
+          timestamp: 2,
+          userMessageId: 'native-sibling',
+        },
+      ];
+      const conversation = {
+        id: 'conv-1',
+        providerId: 'pi',
+        title: 'Pi conversation',
+        messages: originalMessages,
+        sessionId: 'session-1',
+        createdAt: 1,
+        updatedAt: 1,
+      };
+      const navigateConversationBranch = jest.fn().mockResolvedValue({
+        status: 'committed',
+        messages: selectedBranchMessages,
+      });
+      const runtime = {
+        providerId: 'pi',
+        getCapabilities: () => ({ supportsConversationBranches: true }),
+        navigateConversationBranch,
+        buildSessionUpdates: () => ({
+          updates: { providerState: { treeCursor: { targetId: 'native-sibling' } } },
+        }),
+      };
+      deps.state.currentConversationId = 'conv-1';
+      deps.state.messages = originalMessages;
+      deps.plugin.getConversationSync = jest.fn().mockReturnValue(conversation) as any;
+      deps.getAgentService = () => runtime as any;
+      controller = new ConversationController(deps);
+
+      await controller.navigateBranch('native-current', 'native-sibling');
+
+      expect(navigateConversationBranch).toHaveBeenCalledWith({
+        userMessageId: 'native-current',
+        branchMessageId: 'native-sibling',
+      });
+      expect(deps.state.messages).toEqual(selectedBranchMessages);
+      expect(deps.renderer.renderMessages).toHaveBeenCalledWith(
+        selectedBranchMessages,
+        expect.any(Function),
+      );
+      expect(deps.plugin.updateConversation).toHaveBeenLastCalledWith('conv-1', expect.objectContaining({
+        messages: selectedBranchMessages,
+        providerState: { treeCursor: { targetId: 'native-sibling' } },
+      }));
+      expect(deps.state.isRewinding).toBe(false);
+    });
+
+    it('does not navigate while streaming or when target message is no longer active', async () => {
+      const navigateConversationBranch = jest.fn();
+      const runtime = {
+        getCapabilities: () => ({ supportsConversationBranches: true }),
+        navigateConversationBranch,
+      };
+      deps.getAgentService = () => runtime as any;
+      controller = new ConversationController(deps);
+      deps.state.isStreaming = true;
+
+      await controller.navigateBranch('missing-prompt', 'branch');
+
+      expect(navigateConversationBranch).not.toHaveBeenCalled();
+      expect(deps.state.isRewinding).toBe(false);
+    });
+
+    it('keeps current messages when Pi does not confirm branch navigation', async () => {
+      const originalMessages: ChatMessage[] = [
+        {
+          id: 'u-current',
+          role: 'user',
+          content: 'current prompt',
+          timestamp: 1,
+          userMessageId: 'native-current',
+          branchNavigation: { count: 2, position: 1, nextMessageId: 'native-sibling' },
+        },
+      ];
+      const conversation = {
+        id: 'conv-1',
+        providerId: 'pi',
+        title: 'Pi conversation',
+        messages: originalMessages,
+        sessionId: 'session-1',
+        createdAt: 1,
+        updatedAt: 1,
+      };
+      const navigateConversationBranch = jest.fn().mockResolvedValue({
+        status: 'recovery-required',
+        error: 'Synthetic recovery required',
+      });
+      const runtime = {
+        providerId: 'pi',
+        getCapabilities: () => ({ supportsConversationBranches: true }),
+        navigateConversationBranch,
+        buildSessionUpdates: () => ({ updates: { providerState: { treeCursor: { targetId: 'native-current' } } } }),
+      };
+      deps.state.currentConversationId = 'conv-1';
+      deps.state.messages = originalMessages;
+      deps.plugin.getConversationSync = jest.fn().mockReturnValue(conversation) as any;
+      deps.getAgentService = () => runtime as any;
+      controller = new ConversationController(deps);
+
+      await controller.navigateBranch('native-current', 'native-sibling');
+
+      expect(deps.state.messages).toEqual(originalMessages);
+      expect(deps.renderer.renderMessages).not.toHaveBeenCalled();
+      expect(deps.plugin.updateConversation).toHaveBeenCalledTimes(1);
+      expect(mockNotice).toHaveBeenCalledWith(expect.stringContaining('Synthetic recovery required'));
+      expect(deps.state.isRewinding).toBe(false);
+    });
   });
 
   describe('Queue Management', () => {
@@ -210,6 +344,41 @@ describe('ConversationController', () => {
     });
 
     describe('Switching conversations', () => {
+      it('restores runtime-only unread attention for a hidden conversation', async () => {
+        const attention = { kind: 'review', outcome: 'completed', since: 123 } as const;
+        deps.state.currentConversationId = 'old-conv';
+        (deps.plugin.switchConversation as jest.Mock).mockResolvedValue({
+          id: 'new-conv',
+          messages: [],
+          sessionId: null,
+        });
+        (deps.plugin.sessionRuntimePool!.getConversationAttention as jest.Mock).mockReturnValue(attention);
+        controller = new ConversationController(deps);
+
+        await controller.switchTo('new-conv');
+
+        expect(deps.state.attention).toEqual(attention);
+        expect(deps.plugin.setConversationAttention).not.toHaveBeenCalledWith('new-conv', null);
+      });
+
+      it('marks restored unread attention read once conversation becomes visible', async () => {
+        const attention = { kind: 'review', outcome: 'completed', since: 123 } as const;
+        deps.state.currentConversationId = 'old-conv';
+        (deps.plugin.switchConversation as jest.Mock).mockResolvedValue({
+          id: 'new-conv',
+          messages: [],
+          sessionId: null,
+        });
+        (deps.plugin.sessionRuntimePool!.getConversationAttention as jest.Mock).mockReturnValue(attention);
+        deps.isVisible = () => true;
+        controller = new ConversationController(deps);
+
+        await controller.switchTo('new-conv');
+
+        expect(deps.state.attention).toBeNull();
+        expect(deps.plugin.setConversationAttention).toHaveBeenCalledWith('new-conv', null);
+      });
+
       it('should clear queued message on conversation switch', async () => {
         deps.state.currentConversationId = 'old-conv';
         deps.state.queuedMessage = { content: 'test', images: undefined, editorContext: null, canvasContext: null };
@@ -332,7 +501,7 @@ describe('ConversationController', () => {
       controller.initializeWelcome();
       expect(createDivSpy).toHaveBeenCalledTimes(1);
       expect(createElSpy).toHaveBeenCalledWith('canvas', expect.objectContaining({
-        cls: 'claudian-welcome-orb',
+        cls: 'codian-welcome-orb',
       }));
 
       // Mock querySelector to return an element (greeting already exists)
@@ -647,13 +816,13 @@ describe('ConversationController', () => {
 
       freeController.toggleHistoryDropdown();
 
-      expect(dropdown.querySelector('.claudian-history-search-input')).toBeNull();
+      expect(dropdown.querySelector('.codian-history-search-input')).toBeNull();
     });
 
     it('focuses search when opening the history dropdown', () => {
       controller.toggleHistoryDropdown();
 
-      const searchInput = dropdown.querySelector('.claudian-history-search-input');
+      const searchInput = dropdown.querySelector('.codian-history-search-input');
       expect(searchInput?.focusCount).toBe(1);
     });
 
@@ -668,7 +837,7 @@ describe('ConversationController', () => {
 
         expect(dropdown.children.length).toBe(2);
         const list = dropdown.children[1];
-        expect(list.hasClass('claudian-history-list')).toBe(true);
+        expect(list.hasClass('codian-history-list')).toBe(true);
         expect(list.children.length).toBe(2);
       });
 
@@ -678,7 +847,7 @@ describe('ConversationController', () => {
         controller.updateHistoryDropdown();
 
         const list = dropdown.children[1];
-        expect(list.children[0].hasClass('claudian-history-empty')).toBe(true);
+        expect(list.children[0].hasClass('codian-history-empty')).toBe(true);
       });
 
       it('should sort conversations by lastResponseAt descending', () => {
@@ -691,7 +860,7 @@ describe('ConversationController', () => {
         controller.updateHistoryDropdown();
 
         const list = dropdown.children[1];
-        const firstTitle = list.children[0].querySelector('.claudian-history-item-title');
+        const firstTitle = list.children[0].querySelector('.codian-history-item-title');
         expect(firstTitle?.textContent).toBe('New');
       });
 
@@ -713,7 +882,7 @@ describe('ConversationController', () => {
           'regular',
         ]);
 
-        container.querySelector('.claudian-history-filter-archived')?.click();
+        container.querySelector('.codian-history-filter-archived')?.click();
 
         list = container.children[1];
         expect(list.children.map((item: any) => item.getAttribute('data-conversation-id'))).toEqual([
@@ -746,7 +915,7 @@ describe('ConversationController', () => {
 
         const list = dropdown.children[1];
         const item = list.children[0];
-        const loadingEl = item.querySelector('.claudian-action-loading');
+        const loadingEl = item.querySelector('.codian-action-loading');
         expect(loadingEl).toBeTruthy();
       });
 
@@ -759,10 +928,10 @@ describe('ConversationController', () => {
 
         const list = dropdown.children[1];
         const item = list.children[0];
-        const actions = item.querySelector('.claudian-history-item-actions');
+        const actions = item.querySelector('.codian-history-item-actions');
         expect(actions).toBeTruthy();
-        // regenerate button + rename button + delete button = 3 children
-        expect(actions!.children.length).toBe(3);
+        // regenerate, rename, delete, pin, and archive buttons
+        expect(actions!.children.length).toBe(5);
       });
 
       it('should not show select click handler on current conversation', () => {
@@ -776,7 +945,7 @@ describe('ConversationController', () => {
 
         const list = dropdown.children[1];
         const item = list.children[0];
-        const content = item.querySelector('.claudian-history-item-content');
+        const content = item.querySelector('.codian-history-item-content');
         const listeners = content?._eventListeners?.get('click');
         expect(listeners).toBeUndefined();
       });
@@ -794,7 +963,7 @@ describe('ConversationController', () => {
         const list = dropdown.children[1];
         // conv-2 is the non-current one (sorted second by lastResponseAt)
         const otherItem = list.children[1];
-        const content = otherItem.querySelector('.claudian-history-item-content');
+        const content = otherItem.querySelector('.codian-history-item-content');
         const listeners = content?._eventListeners?.get('click');
         expect(listeners).toBeDefined();
         expect(listeners!.length).toBe(1);
@@ -811,7 +980,7 @@ describe('ConversationController', () => {
 
         const list = dropdown.children[1];
         const item = list.children[0];
-        const deleteBtn = item.querySelector('.claudian-delete-btn');
+        const deleteBtn = item.querySelector('.codian-delete-btn');
         expect(deleteBtn).toBeTruthy();
 
         const clickHandlers = deleteBtn!._eventListeners?.get('click');
@@ -847,17 +1016,17 @@ describe('ConversationController', () => {
           onSelectConversation: jest.fn(),
         });
 
-        const searchInput = container.querySelector('.claudian-history-search-input');
+        const searchInput = container.querySelector('.codian-history-search-input');
         expect(searchInput).toBeTruthy();
 
         searchInput!.value = 'PLUGIN';
         searchInput!.dispatchEvent({ type: 'input', target: searchInput });
 
-        const items = container.querySelectorAll('.claudian-history-item');
+        const items = container.querySelectorAll('.codian-history-item');
         expect(items).toHaveLength(1);
-        const title = items[0].querySelector('.claudian-history-item-title');
+        const title = items[0].querySelector('.codian-history-item-title');
         expect(title?.getAttribute('title')).toBe('Obsidian plugin search');
-        expect(title?.querySelector('.claudian-history-match')?.textContent).toBe('plugin');
+        expect(title?.querySelector('.codian-history-match')?.textContent).toBe('plugin');
       });
 
       it('keeps Chinese IME composition active until the text is committed', () => {
@@ -871,7 +1040,7 @@ describe('ConversationController', () => {
         const onSelectConversation = jest.fn();
         controller.renderHistoryDropdown(container, { onSelectConversation });
 
-        const composingInput = container.querySelector('.claudian-history-search-input');
+        const composingInput = container.querySelector('.codian-history-search-input');
         composingInput!.dispatchEvent({ type: 'compositionstart', target: composingInput });
         composingInput!.value = 'zhongwen';
         composingInput!.dispatchEvent({
@@ -886,8 +1055,8 @@ describe('ConversationController', () => {
           preventDefault: jest.fn(),
         });
 
-        expect(container.querySelector('.claudian-history-search-input')).toBe(composingInput);
-        expect(container.querySelectorAll('.claudian-history-item')).toHaveLength(2);
+        expect(container.querySelector('.codian-history-search-input')).toBe(composingInput);
+        expect(container.querySelectorAll('.codian-history-item')).toHaveLength(2);
         expect(onSelectConversation).not.toHaveBeenCalled();
 
         composingInput!.value = '中文';
@@ -897,11 +1066,11 @@ describe('ConversationController', () => {
           data: '中文',
         });
 
-        const committedInput = container.querySelector('.claudian-history-search-input');
+        const committedInput = container.querySelector('.codian-history-search-input');
         expect(committedInput).not.toBe(composingInput);
         expect(committedInput?.value).toBe('中文');
-        expect(container.querySelectorAll('.claudian-history-item')).toHaveLength(1);
-        expect(container.querySelector('.claudian-history-item-title')?.getAttribute('title'))
+        expect(container.querySelectorAll('.codian-history-item')).toHaveLength(1);
+        expect(container.querySelector('.codian-history-item-title')?.getAttribute('title'))
           .toBe('中文会话检索');
       });
 
@@ -922,14 +1091,14 @@ describe('ConversationController', () => {
           onSelectConversation: jest.fn(),
         });
 
-        const searchInput = container.querySelector('.claudian-history-search-input');
+        const searchInput = container.querySelector('.codian-history-search-input');
         searchInput!.value = 'CONVERSATION';
         searchInput!.dispatchEvent({ type: 'input', target: searchInput });
 
-        expect(container.querySelectorAll('.claudian-history-item')).toHaveLength(1);
-        const preview = container.querySelector('.claudian-history-item-preview');
+        expect(container.querySelectorAll('.codian-history-item')).toHaveLength(1);
+        const preview = container.querySelector('.codian-history-item-preview');
         expect(preview).toBeTruthy();
-        expect(preview?.querySelector('.claudian-history-match')?.textContent)
+        expect(preview?.querySelector('.codian-history-match')?.textContent)
           .toBe('conversation');
       });
 
@@ -945,16 +1114,16 @@ describe('ConversationController', () => {
           onSelectConversation: jest.fn(),
         });
 
-        const searchInput = container.querySelector('.claudian-history-search-input');
+        const searchInput = container.querySelector('.codian-history-search-input');
         searchInput!.value = 'missing';
         searchInput!.dispatchEvent({ type: 'input', target: searchInput });
 
-        expect(container.querySelector('.claudian-history-empty')?.textContent)
+        expect(container.querySelector('.codian-history-empty')?.textContent)
           .toBe('No matching conversations');
 
-        container.querySelector('.claudian-history-search-clear')?.click();
+        container.querySelector('.codian-history-search-clear')?.click();
 
-        expect(container.querySelectorAll('.claudian-history-item')).toHaveLength(2);
+        expect(container.querySelectorAll('.codian-history-item')).toHaveLength(2);
       });
 
       it('navigates actionable results with the keyboard and skips the current conversation', async () => {
@@ -973,7 +1142,7 @@ describe('ConversationController', () => {
         let highlighted = container.querySelector('.keyboard-selected');
         expect(highlighted?.getAttribute('data-conversation-id')).toBe('conv-first');
 
-        const searchInput = container.querySelector('.claudian-history-search-input');
+        const searchInput = container.querySelector('.codian-history-search-input');
         searchInput!.dispatchEvent({
           type: 'keydown',
           key: 'ArrowDown',
@@ -983,7 +1152,7 @@ describe('ConversationController', () => {
         highlighted = container.querySelector('.keyboard-selected');
         expect(highlighted?.getAttribute('data-conversation-id')).toBe('conv-second');
 
-        container.querySelector('.claudian-history-search-input')!.dispatchEvent({
+        container.querySelector('.codian-history-search-input')!.dispatchEvent({
           type: 'keydown',
           key: 'Enter',
           preventDefault: jest.fn(),
@@ -1005,21 +1174,21 @@ describe('ConversationController', () => {
           onSelectConversation: jest.fn(),
         });
 
-        let searchInput = container.querySelector('.claudian-history-search-input');
+        let searchInput = container.querySelector('.codian-history-search-input');
         searchInput!.value = 'first';
         searchInput!.dispatchEvent({ type: 'input', target: searchInput });
 
-        searchInput = container.querySelector('.claudian-history-search-input');
+        searchInput = container.querySelector('.codian-history-search-input');
         searchInput!.dispatchEvent({
           type: 'keydown',
           key: 'Escape',
           preventDefault: jest.fn(),
         });
 
-        expect(container.querySelector('.claudian-history-search-input')?.value).toBe('');
+        expect(container.querySelector('.codian-history-search-input')?.value).toBe('');
         expect(container.hasClass('visible')).toBe(true);
 
-        container.querySelector('.claudian-history-search-input')!.dispatchEvent({
+        container.querySelector('.codian-history-search-input')!.dispatchEvent({
           type: 'keydown',
           key: 'Escape',
           preventDefault: jest.fn(),
@@ -1057,14 +1226,14 @@ describe('ConversationController', () => {
         });
 
         let list = container.children[1];
-        expect(list.querySelectorAll('.claudian-history-item')).toHaveLength(25);
-        const loadMore = list.querySelector('.claudian-history-load-more');
+        expect(list.querySelectorAll('.codian-history-item')).toHaveLength(25);
+        const loadMore = list.querySelector('.codian-history-load-more');
         expect(loadMore).not.toBeNull();
 
         loadMore!.click();
         list = container.children[1];
-        expect(list.querySelectorAll('.claudian-history-item')).toHaveLength(50);
-        expect(list.querySelector('.claudian-history-load-more')).not.toBeNull();
+        expect(list.querySelectorAll('.codian-history-item')).toHaveLength(50);
+        expect(list.querySelector('.codian-history-load-more')).not.toBeNull();
       });
 
       it('does not render when the history render signal is already aborted', () => {
@@ -1097,7 +1266,7 @@ describe('ConversationController', () => {
 
         const list = container.children[1];
         const openItem = list.children[1];
-        const openItemDate = openItem.querySelector('.claudian-history-item-date');
+        const openItemDate = openItem.querySelector('.codian-history-item-date');
 
         expect(openItem.hasClass('open')).toBe(true);
         expect(openItem.hasClass('active')).toBe(false);
@@ -1125,7 +1294,7 @@ describe('ConversationController', () => {
 
         const list = container.children[1];
         const currentItem = list.children[0];
-        const currentItemDate = currentItem.querySelector('.claudian-history-item-date');
+        const currentItemDate = currentItem.querySelector('.codian-history-item-date');
 
         expect(currentItem.getAttribute('data-tab-index')).toBe('1');
         expect(currentItem.getAttribute('data-tab-location')).toBe('current-view');
@@ -1150,7 +1319,7 @@ describe('ConversationController', () => {
 
         const list = container.children[1];
         const openItem = list.children[1];
-        const openItemDate = openItem.querySelector('.claudian-history-item-date');
+        const openItemDate = openItem.querySelector('.codian-history-item-date');
 
         expect(openItem.getAttribute('data-tab-index')).toBe('2');
         expect(openItem.getAttribute('data-tab-location')).toBe('current-view');
@@ -1175,7 +1344,7 @@ describe('ConversationController', () => {
 
         const list = container.children[1];
         const currentItem = list.children[0];
-        const currentItemDate = currentItem.querySelector('.claudian-history-item-date');
+        const currentItemDate = currentItem.querySelector('.codian-history-item-date');
 
         expect(currentItem.hasClass('active')).toBe(true);
         expect(currentItem.hasClass('running')).toBe(true);
@@ -1201,7 +1370,7 @@ describe('ConversationController', () => {
 
         const list = container.children[1];
         const runningItem = list.children[1];
-        const runningItemDate = runningItem.querySelector('.claudian-history-item-date');
+        const runningItemDate = runningItem.querySelector('.codian-history-item-date');
 
         expect(runningItem.hasClass('open')).toBe(true);
         expect(runningItem.hasClass('running')).toBe(true);
@@ -1236,8 +1405,8 @@ describe('ConversationController', () => {
         const list = container.children[1];
         const openOtherPaneItem = list.children[1];
         const runningOtherPaneItem = list.children[2];
-        const runningOtherPaneDate = runningOtherPaneItem.querySelector('.claudian-history-item-date');
-        const openOtherPaneDate = openOtherPaneItem.querySelector('.claudian-history-item-date');
+        const runningOtherPaneDate = runningOtherPaneItem.querySelector('.codian-history-item-date');
+        const openOtherPaneDate = openOtherPaneItem.querySelector('.codian-history-item-date');
 
         expect(runningOtherPaneItem.getAttribute('data-tab-location')).toBe('other-view');
         expect(runningOtherPaneItem.getAttribute('data-tab-index')).toBeNull();
@@ -1264,7 +1433,7 @@ describe('ConversationController', () => {
 
         const list = container.children[1];
         const closedItem = list.children[1];
-        const openInNewTabBtn = closedItem.querySelector('.claudian-open-new-tab-btn');
+        const openInNewTabBtn = closedItem.querySelector('.codian-open-new-tab-btn');
         const clickHandlers = openInNewTabBtn?._eventListeners?.get('click');
 
         expect(openInNewTabBtn).toBeTruthy();
@@ -1294,7 +1463,7 @@ describe('ConversationController', () => {
         const list = container.children[1];
         const openItem = list.children[1];
 
-        expect(openItem.querySelector('.claudian-open-new-tab-btn')).toBeNull();
+        expect(openItem.querySelector('.codian-open-new-tab-btn')).toBeNull();
       });
 
       it('should open a conversation in a new tab on modifier click when supported', async () => {
@@ -1316,7 +1485,7 @@ describe('ConversationController', () => {
 
         const list = container.children[1];
         const otherItem = list.children[1];
-        const content = otherItem.querySelector('.claudian-history-item-content');
+        const content = otherItem.querySelector('.codian-history-item-content');
         const clickHandlers = content?._eventListeners?.get('click');
         expect(clickHandlers).toBeDefined();
 
@@ -1352,7 +1521,7 @@ describe('ConversationController', () => {
 
         const list = container.children[1];
         const otherItem = list.children[1];
-        const content = otherItem.querySelector('.claudian-history-item-content');
+        const content = otherItem.querySelector('.codian-history-item-content');
         const auxClickHandlers = content?._eventListeners?.get('auxclick');
         expect(auxClickHandlers).toBeDefined();
 
@@ -1394,6 +1563,7 @@ describe('ConversationController', () => {
           'Open in new tab',
           'Open in background tab',
           'Pin',
+          'Mark as unread',
           'Archive',
           'Rename',
           'Delete',
@@ -1427,6 +1597,7 @@ describe('ConversationController', () => {
         expect(menu.items.map(item => item.title)).toEqual([
           'Switch to open session',
           'Pin',
+          'Mark as unread',
           'Archive',
           'Rename',
           'Delete',
@@ -1454,10 +1625,80 @@ describe('ConversationController', () => {
         const menu = (Menu as typeof Menu & { instances: Array<{ items: Array<{ title: string }> }> }).instances[0];
         expect(menu.items.map(item => item.title)).toEqual([
           'Pin',
+          'Mark as unread',
           'Archive',
           'Rename',
           'Delete',
         ]);
+      });
+
+      it('shows inline pin and archive only when a history row has no pending action or completed review', () => {
+        const container = createMockEl();
+        const attentionById: Record<string, TabAttention> = {
+          completed: { kind: 'review', outcome: 'completed', since: 1 },
+          error: { kind: 'review', outcome: 'error', since: 1 },
+          approval: { kind: 'action-required', since: 1 },
+          normal: null,
+          running: null,
+        };
+        (deps.plugin.getConversationList as jest.Mock).mockReturnValue(
+          ['completed', 'error', 'approval', 'normal', 'running'].map(id => ({
+            id,
+            title: id,
+            createdAt: 1000,
+            lastResponseAt: 2000,
+          })),
+        );
+
+        controller.renderHistoryDropdown(container, {
+          onSelectConversation: jest.fn(),
+          getConversationStatus: (id) => ({
+            openState: 'closed',
+            isRunning: id === 'running',
+            attention: attentionById[id],
+          }),
+        });
+
+        const rows: MockElement[] = container.querySelectorAll('.codian-history-item');
+        expect(rows).toHaveLength(5);
+        for (const id of ['completed', 'normal']) {
+          const row = rows.find(candidate => candidate.getAttribute('data-conversation-id') === id)!;
+          expect(row.querySelector('.codian-pin-btn')).not.toBeNull();
+          expect(row.querySelector('.codian-archive-btn')).not.toBeNull();
+        }
+        for (const id of ['error', 'approval']) {
+          const row = rows.find(candidate => candidate.getAttribute('data-conversation-id') === id)!;
+          expect(row.querySelector('.codian-pin-btn')).toBeNull();
+          expect(row.querySelector('.codian-archive-btn')).toBeNull();
+        }
+        const runningRow = rows.find(candidate => candidate.getAttribute('data-conversation-id') === 'running')!;
+        expect(runningRow.querySelector('.codian-pin-btn')).not.toBeNull();
+        expect((runningRow.querySelector('.codian-archive-btn') as any).disabled).toBe(true);
+      });
+
+      it('persists inline pin and archive actions through conversation metadata only', async () => {
+        const container = createMockEl();
+        (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
+          { id: 'conv-1', title: 'Completed', createdAt: 1000, lastResponseAt: 2000 },
+        ]);
+        const renderSpy = jest.spyOn(controller, 'renderHistoryDropdown');
+
+        controller.renderHistoryDropdown(container, {
+          onSelectConversation: jest.fn(),
+        });
+
+        const row = container.querySelector('.codian-history-item')!;
+        row.querySelector('.codian-pin-btn')!.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(deps.plugin.updateConversation).toHaveBeenCalledWith('conv-1', { pinned: true });
+        expect(renderSpy).toHaveBeenCalledTimes(2);
+
+        row.querySelector('.codian-archive-btn')!.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(deps.plugin.updateConversation).toHaveBeenCalledWith('conv-1', { archived: true });
+        expect(renderSpy).toHaveBeenCalledTimes(3);
       });
 
       it('should persist pin and archive changes from the context menu', async () => {
@@ -1478,13 +1719,15 @@ describe('ConversationController', () => {
           preventDefault: jest.fn(),
         });
 
-        const menu = (Menu as typeof Menu & { instances: Array<{ items: Array<{ clickHandler?: () => void }> }> }).instances[0];
-        menu.items[0].clickHandler?.();
+        const menu = (Menu as typeof Menu & {
+          instances: Array<{ items: Array<{ title: string; clickHandler?: () => void }> }>;
+        }).instances[0];
+        menu.items.find(item => item.title === 'Pin')?.clickHandler?.();
         await Promise.resolve();
         await Promise.resolve();
         expect(deps.plugin.updateConversation).toHaveBeenCalledWith('conv-1', { pinned: true });
 
-        menu.items[1].clickHandler?.();
+        menu.items.find(item => item.title === 'Archive')?.clickHandler?.();
         await Promise.resolve();
         await Promise.resolve();
         expect(deps.plugin.updateConversation).toHaveBeenCalledWith('conv-1', { archived: true });
@@ -1519,10 +1762,160 @@ describe('ConversationController', () => {
         expect(menu.items.map(item => item.title)).toEqual([
           'Switch to open session',
           'Pin',
+          'Mark as unread',
           'Archive',
           'Rename',
           'Delete',
         ]);
+      });
+
+      it('shows completed review as unread and marks it read from active history', () => {
+        const container = createMockEl();
+        const setConversationAttention = jest.fn();
+        (deps.plugin as any).setConversationAttention = setConversationAttention;
+        (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
+          { id: 'conv-unread', title: 'Unread', createdAt: 1000, lastResponseAt: 2000 },
+        ]);
+
+        controller.renderHistoryDropdown(container, {
+          onSelectConversation: jest.fn(),
+          getConversationStatus: () => ({
+            openState: 'closed',
+            isRunning: false,
+            attention: { kind: 'review', outcome: 'completed', since: 123 },
+          }),
+        });
+
+        const row = container.querySelector('.codian-history-item')!;
+        expect(row.getAttribute('data-status-indicator')).toBe('unread');
+        expect(row.querySelector('.codian-history-item-unread-dot')?.getAttribute('aria-label'))
+          .toBe('Unread');
+        row.dispatchEvent({
+          type: 'contextmenu',
+          stopPropagation: jest.fn(),
+          preventDefault: jest.fn(),
+        });
+
+        const menu = (Menu as typeof Menu & {
+          instances: Array<{ items: Array<{ title: string; clickHandler?: () => void }> }>;
+        }).instances[0];
+        const markRead = menu.items.find(item => item.title === 'Mark as read');
+        expect(markRead).toBeDefined();
+        markRead?.clickHandler?.();
+        expect(setConversationAttention).toHaveBeenCalledWith('conv-unread', null);
+      });
+
+      it('marks ordinary active history unread but gives action, running, and error status priority', () => {
+        const container = createMockEl();
+        const setConversationAttention = jest.fn();
+        (deps.plugin as any).setConversationAttention = setConversationAttention;
+        (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
+          { id: 'normal', title: 'Normal', createdAt: 1000, lastResponseAt: 4000 },
+          { id: 'running', title: 'Running', createdAt: 1000, lastResponseAt: 3000 },
+          { id: 'error', title: 'Error', createdAt: 1000, lastResponseAt: 2000 },
+          { id: 'approval', title: 'Approval', createdAt: 1000, lastResponseAt: 1000 },
+        ]);
+
+        controller.renderHistoryDropdown(container, {
+          onSelectConversation: jest.fn(),
+          getConversationStatus: id => {
+            if (id === 'running') {
+              return {
+                openState: 'closed',
+                isRunning: true,
+                attention: { kind: 'review', outcome: 'completed', since: 1 },
+              };
+            }
+            if (id === 'error') {
+              return {
+                openState: 'closed',
+                isRunning: false,
+                attention: { kind: 'review', outcome: 'error', since: 1 },
+              };
+            }
+            if (id === 'approval') {
+              return {
+                openState: 'closed',
+                isRunning: false,
+                attention: { kind: 'action-required', since: 1 },
+              };
+            }
+            return { openState: 'closed', isRunning: false, attention: null };
+          },
+        });
+
+        const rows = container.querySelectorAll('.codian-history-item') as MockElement[];
+        const rowFor = (id: string) => rows.find(row => row.getAttribute('data-conversation-id') === id)!;
+        expect(rowFor('normal').getAttribute('data-status-indicator')).toBeNull();
+        expect(rowFor('running').getAttribute('data-status-indicator')).toBe('running');
+        expect(rowFor('running').querySelector('.codian-history-item-unread-dot')).toBeNull();
+        expect(rowFor('error').getAttribute('data-status-indicator')).toBe('error');
+        expect(rowFor('approval').getAttribute('data-status-indicator')).toBe('action-required');
+
+        rowFor('normal').dispatchEvent({
+          type: 'contextmenu',
+          stopPropagation: jest.fn(),
+          preventDefault: jest.fn(),
+        });
+        let menu = (Menu as typeof Menu & {
+          instances: Array<{ items: Array<{ title: string; clickHandler?: () => void }> }>;
+        }).instances.at(-1)!;
+        const markUnread = menu.items.find(item => item.title === 'Mark as unread');
+        expect(markUnread).toBeDefined();
+        markUnread?.clickHandler?.();
+        expect(setConversationAttention).toHaveBeenCalledWith('normal', {
+          kind: 'review',
+          outcome: 'completed',
+          since: expect.any(Number),
+        });
+
+        rowFor('running').dispatchEvent({
+          type: 'contextmenu',
+          stopPropagation: jest.fn(),
+          preventDefault: jest.fn(),
+        });
+        menu = (Menu as typeof Menu & {
+          instances: Array<{ items: Array<{ title: string; clickHandler?: () => void }> }>;
+        }).instances.at(-1)!;
+        expect(menu.items.some(item => item.title === 'Mark as read')).toBe(true);
+        expect(menu.items.some(item => item.title === 'Mark as unread')).toBe(false);
+
+        for (const id of ['error', 'approval']) {
+          rowFor(id).dispatchEvent({
+            type: 'contextmenu',
+            stopPropagation: jest.fn(),
+            preventDefault: jest.fn(),
+          });
+          menu = (Menu as typeof Menu & {
+            instances: Array<{ items: Array<{ title: string; clickHandler?: () => void }> }>;
+          }).instances.at(-1)!;
+          expect(menu.items.some(item => item.title === 'Mark as unread' || item.title === 'Mark as read'))
+            .toBe(false);
+        }
+      });
+
+      it('does not offer unread toggles for archived conversations', () => {
+        const container = createMockEl();
+        (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
+          { id: 'archived', title: 'Archived', createdAt: 1000, lastResponseAt: 1000, archived: true },
+        ]);
+
+        controller.renderHistoryDropdown(container, {
+          onSelectConversation: jest.fn(),
+          getConversationStatus: () => ({ openState: 'closed', isRunning: false, attention: null }),
+        });
+        container.querySelector('.codian-history-filter-archived')?.click();
+        container.querySelector('.codian-history-item')?.dispatchEvent({
+          type: 'contextmenu',
+          stopPropagation: jest.fn(),
+          preventDefault: jest.fn(),
+        });
+
+        const menu = (Menu as typeof Menu & {
+          instances: Array<{ items: Array<{ title: string }> }>;
+        }).instances.at(-1)!;
+        expect(menu.items.some(item => item.title === 'Mark as unread' || item.title === 'Mark as read'))
+          .toBe(false);
       });
     });
   });
@@ -1547,7 +1940,7 @@ describe('ConversationController', () => {
 
       const list = dropdown.children[1];
       const otherItem = list.children[1];
-      const content = otherItem.querySelector('.claudian-history-item-content');
+      const content = otherItem.querySelector('.codian-history-item-content');
       const clickHandlers = content?._eventListeners?.get('click');
       expect(clickHandlers).toBeDefined();
 
@@ -1572,7 +1965,7 @@ describe('ConversationController', () => {
 
       const list = dropdown.children[1];
       const item = list.children[0];
-      const actions = item.querySelector('.claudian-history-item-actions');
+      const actions = item.querySelector('.codian-history-item-actions');
       // First child is the regenerate button
       const regenerateBtn = actions!.children[0];
       const clickHandlers = regenerateBtn._eventListeners?.get('click');
@@ -1600,7 +1993,7 @@ describe('ConversationController', () => {
 
       const list = dropdown.children[1];
       const item = list.children[0];
-      const actions = item.querySelector('.claudian-history-item-actions');
+      const actions = item.querySelector('.codian-history-item-actions');
       expect(actions).toBeTruthy();
       // For non-failed items: rename is children[0], delete is children[1]
       const rBtn = actions!.children[0];
@@ -1617,7 +2010,7 @@ describe('ConversationController', () => {
 
       const createInput = jest.spyOn(item, 'createEl').mockReturnValue(mockInput);
 
-      const titleEl = item.querySelector('.claudian-history-item-title');
+      const titleEl = item.querySelector('.codian-history-item-title');
       if (titleEl) {
         (titleEl as any).replaceWith = jest.fn();
       }
@@ -1644,11 +2037,11 @@ describe('ConversationController', () => {
       controller.renderHistoryDropdown(container, { onSelectConversation: jest.fn() });
       const initialRenderCount = renderHistoryDropdown.mock.calls.length;
       const item = container.children[1].children[0];
-      const renameButton = item.querySelector('.claudian-history-item-actions')!.children[0];
-      item.querySelector('.claudian-history-item-title')!.replaceWith = jest.fn();
+      const renameButton = item.querySelector('.codian-history-item-actions')!.children[0];
+      item.querySelector('.codian-history-item-title')!.replaceWith = jest.fn();
       renameButton._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
 
-      const input = item.querySelector('.claudian-rename-input')!;
+      const input = item.querySelector('.codian-rename-input')!;
       (input as any).value = 'Renamed';
       input.dispatchEvent({ type: 'blur' });
       await Promise.resolve();
@@ -1669,11 +2062,11 @@ describe('ConversationController', () => {
       controller.renderHistoryDropdown(container, { onSelectConversation: jest.fn() });
       const initialRenderCount = renderHistoryDropdown.mock.calls.length;
       const item = container.children[1].children[0];
-      const renameButton = item.querySelector('.claudian-history-item-actions')!.children[0];
-      item.querySelector('.claudian-history-item-title')!.replaceWith = jest.fn();
+      const renameButton = item.querySelector('.codian-history-item-actions')!.children[0];
+      item.querySelector('.codian-history-item-title')!.replaceWith = jest.fn();
       renameButton._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
 
-      const input = item.querySelector('.claudian-rename-input')!;
+      const input = item.querySelector('.codian-rename-input')!;
       (input as any).value = '   ';
       input.dispatchEvent({ type: 'blur' });
       await Promise.resolve();
@@ -1690,11 +2083,11 @@ describe('ConversationController', () => {
 
       controller.updateHistoryDropdown();
       const item = dropdown.children[1].children[0];
-      const renameButton = item.querySelector('.claudian-history-item-actions')!.children[0];
-      item.querySelector('.claudian-history-item-title')!.replaceWith = jest.fn();
+      const renameButton = item.querySelector('.codian-history-item-actions')!.children[0];
+      item.querySelector('.codian-history-item-title')!.replaceWith = jest.fn();
       renameButton._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
 
-      const input = item.querySelector('.claudian-rename-input')!;
+      const input = item.querySelector('.codian-rename-input')!;
       (input as any).value = 'Discarded';
 
       expect(controller.cancelInlineRename()).toBe(true);
@@ -1716,7 +2109,7 @@ describe('ConversationController', () => {
 
       const list = dropdown.children[1];
       const item = list.children[0];
-      const deleteBtn = item.querySelector('.claudian-delete-btn');
+      const deleteBtn = item.querySelector('.codian-delete-btn');
       expect(deleteBtn).toBeTruthy();
 
       const clickHandlers = deleteBtn!._eventListeners?.get('click');
@@ -1739,7 +2132,7 @@ describe('ConversationController', () => {
 
       const list = dropdown.children[1];
       const otherItem = list.children[1]; // conv-2
-      const deleteBtn = otherItem.querySelector('.claudian-delete-btn');
+      const deleteBtn = otherItem.querySelector('.codian-delete-btn');
       const clickHandlers = deleteBtn!._eventListeners?.get('click');
 
       await clickHandlers![0]({ stopPropagation: jest.fn() });

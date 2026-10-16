@@ -9,6 +9,7 @@ const mockRenderProviderModelPicker = jest.fn((_options: unknown) => ({ refresh:
 const mockSaveSettings = jest.fn().mockResolvedValue(undefined);
 const mockGetClaudeSettingsModelEnvironment = jest.fn(() => ({}));
 const mockIsClaudeAuthenticated = jest.fn().mockResolvedValue(true);
+const mockOpenSkillMigrationPreview = jest.fn();
 
 jest.mock('fs');
 jest.mock('@/core/providers/ProviderSettingsCoordinator', () => ({
@@ -36,6 +37,7 @@ jest.mock('obsidian', () => {
     public textAreaComponents: MockTextAreaComponent[] = [];
     public dropdownComponents: MockDropdownComponent[] = [];
     public toggleComponents: MockToggleComponent[] = [];
+    public buttonComponents: MockButtonComponent[] = [];
 
     constructor(_container: unknown) {
       createdSettings.push(this);
@@ -80,6 +82,13 @@ jest.mock('obsidian', () => {
     addToggle(callback: (toggle: MockToggleComponent) => void) {
       const component = createToggleComponent();
       this.toggleComponents.push(component);
+      callback(component);
+      return this;
+    }
+
+    addButton(callback: (button: MockButtonComponent) => void) {
+      const component = createButtonComponent();
+      this.buttonComponents.push(component);
       callback(component);
       return this;
     }
@@ -139,6 +148,12 @@ jest.mock('@/providers/claude/ui/SlashCommandSettings', () => ({
   SlashCommandSettings: jest.fn(),
 }));
 
+jest.mock('@/providers/claude/ui/ClaudeSkillMigrationPreviewModal', () => ({
+  ClaudeSkillMigrationPreviewModal: jest.fn().mockImplementation(() => ({
+    open: mockOpenSkillMigrationPreview,
+  })),
+}));
+
 jest.mock('@/i18n/i18n', () => ({
   t: (key: string) => key,
 }));
@@ -192,6 +207,13 @@ interface MockToggleComponent {
   onChange: jest.MockedFunction<(callback: (value: boolean) => Promise<void> | void) => MockToggleComponent>;
 }
 
+interface MockButtonComponent {
+  text: string;
+  onClickCallback: (() => void) | null;
+  setButtonText: jest.MockedFunction<(value: string) => MockButtonComponent>;
+  onClick: jest.MockedFunction<(callback: () => void) => MockButtonComponent>;
+}
+
 const createdSettings: Array<{
   name: string;
   desc: string;
@@ -200,6 +222,7 @@ const createdSettings: Array<{
   textAreaComponents: MockTextAreaComponent[];
   dropdownComponents: MockDropdownComponent[];
   toggleComponents: MockToggleComponent[];
+  buttonComponents: MockButtonComponent[];
 }> = [];
 
 function createInputEl(): MockInputEl & { _listeners: Map<string, Array<() => void>> } {
@@ -290,6 +313,21 @@ function createToggleComponent(): MockToggleComponent {
     return component;
   });
 
+  return component;
+}
+
+function createButtonComponent(): MockButtonComponent {
+  const component = {} as MockButtonComponent;
+  component.text = '';
+  component.onClickCallback = null;
+  component.setButtonText = jest.fn((value: string) => {
+    component.text = value;
+    return component;
+  });
+  component.onClick = jest.fn((callback: () => void) => {
+    component.onClickCallback = callback;
+    return component;
+  });
   return component;
 }
 
@@ -420,6 +458,7 @@ describe('ClaudeSettingsTab', () => {
     mockedStatSync.mockReturnValue({ isFile: () => true } as fs.Stats);
     mockGetClaudeSettingsModelEnvironment.mockReturnValue({});
     mockIsClaudeAuthenticated.mockResolvedValue(true);
+    mockOpenSkillMigrationPreview.mockClear();
   });
 
   it('does not duplicate provider enablement inside the detail panel', () => {
@@ -431,6 +470,18 @@ describe('ClaudeSettingsTab', () => {
     expect(createdSettings.some(setting => (
       setting.name === 'settings.claude.enableProvider.name'
     ))).toBe(false);
+  });
+
+  it('offers a read-only skill migration preview in Claude Skills settings', () => {
+    const context = createContext(createPlugin());
+
+    claudeSettingsTabRenderer.render(createContainer(), context, 'skills');
+
+    const setting = findSetting('settings.skillMigration.name');
+    expect(setting.desc).toBe('settings.skillMigration.desc');
+    expect(setting.buttonComponents[0].text).toBe('settings.skillMigration.previewButton');
+    setting.buttonComponents[0].onClickCallback?.();
+    expect(mockOpenSkillMigrationPreview).toHaveBeenCalledTimes(1);
   });
 
   it('renders models before access and isolation in the provider panel', () => {

@@ -5,7 +5,9 @@ import type { ProviderCommandDiscoveryController } from '../../../core/providers
 import type { ProviderCommandEntry } from '../../../core/providers/commands/ProviderCommandEntry';
 import type { InstructionRefineService, ProviderId, TitleGenerationService } from '../../../core/providers/types';
 import type { ChatRuntime } from '../../../core/runtime/ChatRuntime';
+import type { ChatMessage } from '../../../core/types';
 import type { SlashCommandDropdown } from '../../../shared/components/SlashCommandDropdown';
+import type { PromptHistoryNavigation } from '../composer/PromptHistoryNavigation';
 import type { ComposerSession, VaultContextReference } from '../composer/types';
 import type { BrowserSelectionController } from '../controllers/BrowserSelectionController';
 import type { CanvasSelectionController } from '../controllers/CanvasSelectionController';
@@ -62,9 +64,9 @@ export const MIN_TABS = 3;
 export const MAX_TABS = 10;
 
 /**
- * Minimal interface for the ClaudianView methods used by TabManager and Tab.
+ * Minimal interface for the CodianView methods used by TabManager and Tab.
  * Extends Component for Obsidian integration (event handling, cleanup).
- * Avoids circular dependency by not importing ClaudianView directly.
+ * Avoids circular dependency by not importing CodianView directly.
  */
 export interface TabManagerViewHost extends Component {
   /** Reference to the workspace leaf for revealing the view. */
@@ -75,6 +77,9 @@ export interface TabManagerViewHost extends Component {
 
   /** Gets view-owned elements that should preserve active tab selection context. */
   getSharedSelectionFocusScopeEls?(): HTMLElement[];
+
+  /** True while the view presents one conversation beside its history selector. */
+  isWideLayout?(): boolean;
 }
 
 /**
@@ -99,6 +104,35 @@ export type ProviderCatalogInfo = {
 
 export type ProviderCatalogResolver = () => ProviderCatalogInfo;
 
+export interface ForkContext {
+  messages: ChatMessage[];
+  providerId?: ProviderId;
+  sourceSessionId: string;
+  sourceProviderState?: Record<string, unknown>;
+  sourceSelectedModel?: string;
+  resumeAt: string;
+  /** 1-based index used for fork title suffix (counts only non-interrupt user messages). */
+  forkAtUserMessage?: number;
+  sourceTitle?: string;
+  currentNote?: string;
+}
+
+/** Mutable callbacks owned by whichever view currently hosts a detached session. */
+export interface TabAttachmentOwner {
+  onStreamingChanged(isStreaming: boolean): void;
+  onRewindingChanged(isRewinding: boolean): void;
+  onTitleChanged(title: string): void;
+  onAttentionChanged(attention: TabAttention): void;
+  onConversationIdChanged(conversationId: string | null): void;
+  onCommandContextChanged(): void;
+  onProviderChanged(providerId: ProviderId): Promise<void>;
+  onRuntimeInstalled(runtime: ChatRuntime): void;
+  onPersistedStateChanged(): void;
+  getProviderCatalogConfig(): ProviderCatalogInfo;
+  handleForkRequest(context: ForkContext): Promise<void>;
+  openConversation(conversationId: string): Promise<void>;
+}
+
 /** Generates a unique tab ID. */
 export function generateTabId(): TabId {
   return `tab-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -117,6 +151,7 @@ export interface TabControllers {
   streamController: StreamController | null;
   inputController: InputController | null;
   navigationController: NavigationController | null;
+  promptHistoryNavigation: PromptHistoryNavigation | null;
 }
 
 /**
@@ -226,6 +261,12 @@ export interface TabData {
 
   /** Named owner of the per-tab runtime reference. */
   runtimeSupervisor: RuntimeSupervisor;
+
+  /** Markdown/event lifetime independent of any one Obsidian view. */
+  component: Component;
+
+  /** View callbacks are replaced on reattachment and cleared while detached. */
+  owner: TabAttachmentOwner | null;
 
   /** Tab-manager hook for generation-guarded provider command subscriptions. */
   onRuntimeInstalled?: (runtime: ChatRuntime) => void;

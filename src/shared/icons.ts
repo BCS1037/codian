@@ -73,7 +73,7 @@ export const OPENCODE_PROVIDER_ICON: ProviderIconSvg = {
     {
       tag: 'g',
       attributes: {
-        class: 'claudian-provider-icon-variant claudian-provider-icon-variant--light',
+        class: 'codian-provider-icon-variant codian-provider-icon-variant--light',
         transform: 'translate(30 0)',
       },
       children: [
@@ -84,7 +84,7 @@ export const OPENCODE_PROVIDER_ICON: ProviderIconSvg = {
     {
       tag: 'g',
       attributes: {
-        class: 'claudian-provider-icon-variant claudian-provider-icon-variant--dark',
+        class: 'codian-provider-icon-variant codian-provider-icon-variant--dark',
         transform: 'translate(30 0)',
       },
       children: [
@@ -140,7 +140,7 @@ export function createProviderIconSvg(
   svg.setAttribute('viewBox', icon.viewBox);
   svg.setAttribute('fill', 'none');
   svg.setAttribute('aria-hidden', 'true');
-  svg.classList.add('claudian-provider-icon');
+  svg.classList.add('codian-provider-icon');
 
   if (options.width !== undefined) {
     svg.setAttribute('width', String(options.width));

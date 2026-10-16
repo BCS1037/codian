@@ -1,4 +1,6 @@
 import { spawn as defaultSpawn } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 import { findNodeExecutable } from '../../../utils/env';
 
@@ -10,7 +12,7 @@ export interface StoredSessionRows {
 }
 
 interface SqliteModule {
-  DatabaseSync: new (location: string, options?: Record<string, unknown>) => {
+  DatabaseSync: new (location: string, options?: { readOnly?: boolean }) => {
     close(): void;
     prepare(sql: string): {
       all(...params: unknown[]): StoredRow[];
@@ -19,6 +21,8 @@ interface SqliteModule {
 }
 
 export interface OpencodeSqliteReaderDependencies {
+  environment?: NodeJS.ProcessEnv;
+  findNodeExecutables?: () => string[];
   findNodeExecutable?: () => string | null;
   requireSqliteModule?: () => SqliteModule | null;
   spawn?: typeof defaultSpawn;
@@ -33,7 +37,7 @@ const { DatabaseSync } = require('node:sqlite');
 const [databasePath, sessionId, messageSql, partSql] = process.argv.slice(1);
 let db;
 try {
-  db = new DatabaseSync(databasePath, { readonly: true });
+  db = new DatabaseSync(databasePath, { readOnly: true });
   const messageRows = db.prepare(messageSql).all(sessionId);
   const partRows = db.prepare(partSql).all(sessionId);
   process.stdout.write(JSON.stringify({ messageRows, partRows }));
@@ -42,57 +46,116 @@ try {
 }
 `.trim();
 
+interface ResolvedDependencies {
+  environment: NodeJS.ProcessEnv;
+  findNodeExecutables: () => string[];
+  requireSqliteModule: () => SqliteModule | null;
+  spawn: typeof defaultSpawn;
+}
+
 export async function loadOpencodeSessionRows(
   databasePath: string,
   sessionId: string,
   dependencies: OpencodeSqliteReaderDependencies = {},
-): Promise<StoredSessionRows | null> {
+): Promise<StoredSessionRows> {
   const resolvedDependencies = resolveDependencies(dependencies);
+  const errors: string[] = [];
 
-  const viaCurrentProcess = loadSessionRowsWithCurrentProcessSqlite(
-    databasePath,
-    sessionId,
-    resolvedDependencies.requireSqliteModule,
-  );
-  if (viaCurrentProcess) {
-    return viaCurrentProcess;
+  try {
+    return loadSessionRowsWithCurrentProcessSqlite(
+      databasePath,
+      sessionId,
+      resolvedDependencies.requireSqliteModule,
+    );
+  } catch (error) {
+    errors.push(`Obsidian SQLite: ${formatError(error)}`);
   }
 
-  const viaNodeProcess = await loadSessionRowsWithNodeProcess(
-    databasePath,
-    sessionId,
-    resolvedDependencies.findNodeExecutable,
-    resolvedDependencies.spawn,
-  );
-  if (viaNodeProcess) {
-    return viaNodeProcess;
+  const nodeExecutables = resolvedDependencies.findNodeExecutables();
+  if (nodeExecutables.length === 0) {
+    errors.push('Node.js: no executable found.');
+  }
+  for (const nodePath of nodeExecutables) {
+    try {
+      return await loadSessionRowsWithNodeProcess(
+        databasePath,
+        sessionId,
+        nodePath,
+        resolvedDependencies.spawn,
+        resolvedDependencies.environment,
+      );
+    } catch (error) {
+      errors.push(`Node.js (${nodePath}): ${formatError(error)}`);
+    }
   }
 
-  return loadSessionRowsWithSqliteCli(
-    databasePath,
-    sessionId,
-    resolvedDependencies.spawn,
-  );
+  try {
+    return await loadSessionRowsWithSqliteCli(
+      databasePath,
+      sessionId,
+      resolvedDependencies.spawn,
+      resolvedDependencies.environment,
+    );
+  } catch (error) {
+    errors.push(`sqlite3: ${formatError(error)}`);
+  }
+
+  throw new Error([
+    'Could not read OpenCode session rows from SQLite.',
+    ...errors,
+    'History requires working SQLite support in Obsidian, Node.js 22.13+ (or a newer supported release), or sqlite3.',
+  ].join('\n'));
 }
 
 function resolveDependencies(
   dependencies: OpencodeSqliteReaderDependencies,
-): Required<OpencodeSqliteReaderDependencies> {
+): ResolvedDependencies {
+  const environment = dependencies.environment ?? process.env;
   return {
-    findNodeExecutable,
-    requireSqliteModule,
-    spawn: defaultSpawn,
-    ...dependencies,
+    environment,
+    findNodeExecutables: dependencies.findNodeExecutables
+      ?? (dependencies.findNodeExecutable
+        ? () => {
+            const executable = dependencies.findNodeExecutable?.();
+            return executable ? [executable] : [];
+          }
+        : () => findNodeExecutables(environment)),
+    requireSqliteModule: dependencies.requireSqliteModule ?? requireSqliteModule,
+    spawn: dependencies.spawn ?? defaultSpawn,
   };
+}
+
+function findNodeExecutables(environment: NodeJS.ProcessEnv): string[] {
+  const candidates = new Set<string>();
+  const firstAvailable = findNodeExecutable(environment.PATH);
+  if (firstAvailable) candidates.add(firstAvailable);
+
+  const executableName = process.platform === 'win32' ? 'node.exe' : 'node';
+  const searchPath = environment.PATH ?? environment.Path ?? '';
+  for (const directory of searchPath.split(path.delimiter)) {
+    if (!directory) continue;
+    const candidate = path.join(directory, executableName);
+    try {
+      if (fs.statSync(candidate).isFile()) {
+        candidates.add(candidate);
+      }
+    } catch {
+      // Missing or inaccessible PATH entries are not executable candidates.
+    }
+  }
+
+  return [...candidates];
 }
 
 function requireSqliteModule(): SqliteModule | null {
   try {
-    if (typeof module === 'undefined' || typeof module.require !== 'function') {
+    if (typeof require !== 'function') {
       return null;
     }
 
-    const sqlite = module.require('node:sqlite') as unknown;
+    // Obsidian injects require on plugin modules; module.require is not reliably present.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- Load optional SQLite lazily through Obsidian's injected require.
+    const sqlite = require('node:sqlite') as unknown;
     return isSqliteModule(sqlite) ? sqlite : null;
   } catch {
     return null;
@@ -110,20 +173,16 @@ function loadSessionRowsWithCurrentProcessSqlite(
   databasePath: string,
   sessionId: string,
   requireSqlite: () => SqliteModule | null,
-): StoredSessionRows | null {
+): StoredSessionRows {
   const sqlite = requireSqlite();
-  if (!sqlite) {
-    return null;
-  }
+  if (!sqlite) throw new Error('node:sqlite is unavailable.');
 
   let db: InstanceType<SqliteModule['DatabaseSync']> | null = null;
   try {
-    db = new sqlite.DatabaseSync(databasePath, { readonly: true });
+    db = new sqlite.DatabaseSync(databasePath, { readOnly: true });
     const messageRows = db.prepare(OPENCODE_MESSAGE_ROW_SQL).all(sessionId);
     const partRows = db.prepare(OPENCODE_PART_ROW_SQL).all(sessionId);
     return { messageRows, partRows };
-  } catch {
-    return null;
   } finally {
     db?.close();
   }
@@ -132,14 +191,10 @@ function loadSessionRowsWithCurrentProcessSqlite(
 async function loadSessionRowsWithNodeProcess(
   databasePath: string,
   sessionId: string,
-  findNode: () => string | null,
+  nodePath: string,
   spawn: typeof defaultSpawn,
-): Promise<StoredSessionRows | null> {
-  const nodePath = findNode();
-  if (!nodePath) {
-    return null;
-  }
-
+  environment: NodeJS.ProcessEnv,
+): Promise<StoredSessionRows> {
   const stdout = await runBufferedChild(
     nodePath,
     [
@@ -151,31 +206,32 @@ async function loadSessionRowsWithNodeProcess(
       OPENCODE_PART_ROW_SQL,
     ],
     spawn,
+    environment,
   );
-  return stdout === null ? null : parseStoredSessionRows(stdout);
+  const rows = parseStoredSessionRows(stdout);
+  if (!rows) throw new Error('Invalid SQLite query output.');
+  return rows;
 }
 
 async function loadSessionRowsWithSqliteCli(
   databasePath: string,
   sessionId: string,
   spawn: typeof defaultSpawn,
-): Promise<StoredSessionRows | null> {
+  environment: NodeJS.ProcessEnv,
+): Promise<StoredSessionRows> {
   const escapedSessionId = escapeSqlLiteral(sessionId);
   const messageRows = await runSqlite3JsonQuery(
     databasePath,
     buildOpencodeMessageRowsSql(`'${escapedSessionId}'`),
     spawn,
+    environment,
   );
   const partRows = await runSqlite3JsonQuery(
     databasePath,
     buildOpencodePartRowsSql(`'${escapedSessionId}'`),
     spawn,
+    environment,
   );
-
-  if (!messageRows || !partRows) {
-    return null;
-  }
-
   return { messageRows, partRows };
 }
 
@@ -183,40 +239,51 @@ async function runSqlite3JsonQuery(
   databasePath: string,
   sql: string,
   spawn: typeof defaultSpawn,
-): Promise<StoredRow[] | null> {
+  environment: NodeJS.ProcessEnv,
+): Promise<StoredRow[]> {
   const stdout = await runBufferedChild(
     'sqlite3',
-    ['-json', databasePath, sql],
+    ['-readonly', '-json', databasePath, sql],
     spawn,
+    environment,
   );
-  return stdout === null ? null : parseStoredRows(stdout);
+  const rows = parseStoredRows(stdout);
+  if (!rows) throw new Error('Invalid SQLite query output.');
+  return rows;
 }
 
 function runBufferedChild(
   command: string,
   args: string[],
   spawn: typeof defaultSpawn,
-): Promise<string | null> {
-  return new Promise((resolve) => {
+  environment: NodeJS.ProcessEnv,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
     let settled = false;
     let size = 0;
     let timer: number | null = null;
     const chunks: Buffer[] = [];
+    let stderr = '';
     let child: ReturnType<typeof defaultSpawn>;
     try {
       child = spawn(command, args, {
-        stdio: ['ignore', 'pipe', 'ignore'],
+        env: environment,
+        stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
       });
-    } catch {
-      resolve(null);
+    } catch (error) {
+      reject(error instanceof Error ? error : new Error(String(error)));
       return;
     }
-    const finish = (value: string | null): void => {
+    const finish = (error?: Error): void => {
       if (settled) return;
       settled = true;
       if (timer !== null) window.clearTimeout(timer);
-      resolve(value);
+      if (error) {
+        reject(error);
+      } else {
+        resolve(Buffer.concat(chunks).toString('utf8'));
+      }
     };
 
     child.stdout?.on('data', (chunk: Buffer | string) => {
@@ -224,20 +291,31 @@ function runBufferedChild(
       size += buffer.length;
       if (size > OPENCODE_SQLITE_QUERY_MAX_BUFFER) {
         child.kill('SIGKILL');
-        finish(null);
+        finish(new Error('SQLite query output exceeded the size limit.'));
         return;
       }
       chunks.push(buffer);
     });
-    child.once('error', () => finish(null));
+    child.stderr?.on('data', (chunk: Buffer | string) => {
+      stderr = `${stderr}${chunk.toString()}`.slice(0, 2_000);
+    });
+    child.once('error', finish);
     child.once('close', (code) => {
-      finish(code === 0 ? Buffer.concat(chunks).toString('utf8') : null);
+      finish(code === 0
+        ? undefined
+        : buildProcessError(stderr, code));
     });
     timer = window.setTimeout(() => {
       child.kill('SIGKILL');
-      finish(null);
+      finish(new Error('SQLite query timed out after 10 seconds.'));
     }, 10_000);
   });
+}
+
+function buildProcessError(stderr: string, code: number | null): Error {
+  const lines = stderr.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const detail = lines.find(line => line.startsWith('Error:')) ?? lines[0];
+  return new Error((detail ?? `Process exited with code ${code}.`).slice(0, 500));
 }
 
 function parseStoredSessionRows(value: string): StoredSessionRows | null {
@@ -261,6 +339,10 @@ function parseStoredRows(value: string): StoredRow[] | null {
   } catch {
     return null;
   }
+}
+
+function formatError(error: unknown): string {
+  return (error instanceof Error ? error.message : String(error)).slice(0, 2_000);
 }
 
 function parseStoredRowsValue(value: unknown): StoredRow[] | null {

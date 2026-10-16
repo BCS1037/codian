@@ -20,6 +20,7 @@ export class ConversationRepository {
   private hydrationPromises = new Map<string, Promise<Conversation | null>>();
   private conversationGenerations = new Map<string, number>();
   private deletedConversationIds = new Set<string>();
+  private persistenceQueues = new Map<string, Promise<void>>();
 
   constructor(private readonly deps: ConversationRepositoryDeps) {}
 
@@ -124,6 +125,7 @@ export class ConversationRepository {
 
     const conversation = this.conversations[index];
     const pendingHydration = this.hydrationPromises.get(id) ?? null;
+    const pendingPersistence = this.persistenceQueues.get(id) ?? null;
     this.deletedConversationIds.add(id);
     this.conversations.splice(index, 1);
     this.hydratedConversationIds.delete(id);
@@ -132,6 +134,9 @@ export class ConversationRepository {
 
     if (pendingHydration) {
       await Promise.allSettled([pendingHydration]);
+    }
+    if (pendingPersistence) {
+      await pendingPersistence;
     }
 
     if (options.deleteProviderSession !== false) {
@@ -188,12 +193,9 @@ export class ConversationRepository {
   }
 
   async rename(id: string, title: string): Promise<void> {
-    const conversation = this.getSync(id);
-    if (!conversation) return;
-
-    conversation.title = title.trim() || this.generateDefaultTitle();
-    conversation.updatedAt = Date.now();
-    await this.save(conversation);
+    await this.mutateMetadata(id, () => ({
+      title: title.trim() || this.generateDefaultTitle(),
+    }));
   }
 
   async update(id: string, updates: Partial<Conversation>): Promise<void> {
@@ -214,7 +216,6 @@ export class ConversationRepository {
         delete safeUpdates.selectedModel;
       }
     }
-    Object.assign(conversation, safeUpdates, { updatedAt: Date.now() });
     if (
       'sessionId' in safeUpdates
       || 'providerState' in safeUpdates
@@ -223,7 +224,7 @@ export class ConversationRepository {
       this.hydratedConversationIds.delete(id);
       this.invalidateConversation(id);
     }
-    await this.save(conversation);
+    await this.mutateMetadata(id, () => safeUpdates);
   }
 
   async getById(id: string): Promise<Conversation | null> {
@@ -404,11 +405,70 @@ export class ConversationRepository {
   }
 
   private save(conversation: Conversation): Promise<void> {
+    return this.enqueuePersistence(conversation.id, async () => {
+      if (this.getSync(conversation.id) !== conversation) return;
+      await this.writeMetadata(conversation);
+    });
+  }
+
+  private mutateMetadata(
+    id: string,
+    createPatch: (conversation: Conversation) => Partial<Conversation>,
+  ): Promise<void> {
+    const target = this.getSync(id);
+    if (!target) return Promise.resolve();
+
+    return this.enqueuePersistence(id, async () => {
+      if (this.getSync(id) !== target) return;
+
+      const patch = createPatch(target);
+      const mutableTarget = target as unknown as Record<string, unknown>;
+      const keys = new Set([...Object.keys(patch), 'updatedAt', 'preview']);
+      const previous = new Map([...keys].map(key => [
+        key,
+        {
+          exists: Object.prototype.hasOwnProperty.call(mutableTarget, key),
+          value: mutableTarget[key],
+        },
+      ]));
+      Object.assign(target, patch, { updatedAt: Date.now() });
+
+      try {
+        await this.writeMetadata(target);
+      } catch (error) {
+        if (this.getSync(id) === target) {
+          for (const [key, oldValue] of previous) {
+            if (oldValue.exists) mutableTarget[key] = oldValue.value;
+            else delete mutableTarget[key];
+          }
+        }
+        throw error;
+      }
+    });
+  }
+
+  private enqueuePersistence(
+    id: string,
+    operation: () => Promise<void>,
+  ): Promise<void> {
+    const previous = this.persistenceQueues.get(id) ?? Promise.resolve();
+    const current = previous.catch(() => undefined).then(operation);
+    const settled = current.then(() => undefined, () => undefined);
+    this.persistenceQueues.set(id, settled);
+    void settled.then(() => {
+      if (this.persistenceQueues.get(id) === settled) {
+        this.persistenceQueues.delete(id);
+      }
+    });
+    return current;
+  }
+
+  private async writeMetadata(conversation: Conversation): Promise<void> {
     const preview = this.deps.createConversationPreview?.(conversation);
     if (preview !== undefined) {
       conversation.preview = preview;
     }
-    return this.deps.sessions.saveMetadata(this.deps.sessions.toSessionMetadata(conversation));
+    await this.deps.sessions.saveMetadata(this.deps.sessions.toSessionMetadata(conversation));
   }
 
   private getConversationGeneration(id: string): number {

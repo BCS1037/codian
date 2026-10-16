@@ -28,12 +28,12 @@ export function calculateTextareaMinHeight({
  * - Max height is capped at 55% of view height (minimum 150px)
  */
 export function autoResizeTextarea(textarea: HTMLTextAreaElement): void {
-  const viewHeight = textarea.closest('.claudian-container')?.clientHeight ?? window.innerHeight;
+  const viewHeight = textarea.closest('.codian-container')?.clientHeight ?? window.innerHeight;
   const maxHeight = calculateTextareaMaxHeight(viewHeight);
 
   textarea.setCssProps({
-    '--claudian-textarea-min-height': `${TEXTAREA_BASE_MIN_HEIGHT}px`,
-    '--claudian-textarea-max-height': `${maxHeight}px`,
+    '--codian-textarea-min-height': `${TEXTAREA_BASE_MIN_HEIGHT}px`,
+    '--codian-textarea-max-height': `${maxHeight}px`,
   });
 
   const flexAllocatedHeight = textarea.offsetHeight;
@@ -41,7 +41,7 @@ export function autoResizeTextarea(textarea: HTMLTextAreaElement): void {
   const minHeight = calculateTextareaMinHeight({ contentHeight, flexAllocatedHeight });
 
   textarea.setCssProps({
-    '--claudian-textarea-min-height': `${minHeight}px`,
-    '--claudian-textarea-max-height': `${maxHeight}px`,
+    '--codian-textarea-min-height': `${minHeight}px`,
+    '--codian-textarea-max-height': `${maxHeight}px`,
   });
 }

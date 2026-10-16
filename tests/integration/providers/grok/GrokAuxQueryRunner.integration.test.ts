@@ -38,7 +38,7 @@ describe('GrokAuxQueryRunner JSON-RPC integration', () => {
   let logPath = '';
 
   beforeEach(async () => {
-    tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'claudian-grok-aux-'));
+    tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'codian-grok-aux-'));
     logPath = path.join(tempDirectory, 'agent.jsonl');
   });
 

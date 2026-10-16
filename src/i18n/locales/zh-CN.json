@@ -1,5 +1,6 @@
 {
   "common": {
+    "inputSuggestions": "输入建议",
     "save": "保存",
     "cancel": "取消",
     "delete": "删除",
@@ -22,7 +23,9 @@
     "rewind": "回退",
     "enable": "启用",
     "disable": "禁用",
-    "legacyPluginDataMigrated": "已从旧版 Codian 插件迁移设置。使用 Codian 前，请停用旧插件“codian”。"
+    "legacyPluginDataMigrated": "已从旧版 Codian 插件迁移设置。使用 Codian 前，请停用旧插件“codian”。",
+    "retry": "重试",
+    "none": "无"
   },
   "chat": {
     "drop": {
@@ -32,6 +35,8 @@
     },
     "providerRetry": "Claude API 正在重试（第 {attempt}/{maxRetries} 次；原因：{reason}）。",
     "providerWorkspaceInitializationTimeout": "Provider {provider} 初始化在 {seconds} 秒后超时。请重试标签页切换。",
+    "deletedConversationResetFailed": "无法重置已删除的会话。未发送内容已恢复。",
+    "resizeConversations": "调整对话列表宽度",
     "historySearch": {
       "placeholder": "搜索会话",
       "noMatches": "没有匹配的会话",
@@ -44,6 +49,12 @@
       "archive": "归档",
       "unarchive": "取消归档",
       "pinned": "已置顶",
+      "markUnread": "标记为未读",
+      "markRead": "标记为已读",
+      "unread": "未读",
+      "needsInput": "需要你处理",
+      "stoppedWithError": "因错误停止",
+      "running": "运行中",
       "archived": "已归档",
       "updateFailed": "更新会话索引失败"
     },
@@ -100,9 +111,335 @@
       "notReady": "Codian 聊天尚未准备就绪。",
       "failed": "无法将文件添加到 Codian。"
     },
-    "selectionToolbar": { "add": "添加到聊天", "copy": "复制", "limit": "已达到选区限制", "selectedReply": "已选 AI 回复" },
-    "navigation": { "jumpToPrompt": "跳转到提问 {index}" },
-    "welcomeOrb": { "solving": "正在解题" }
+    "selectionToolbar": {
+      "add": "添加到聊天",
+      "copy": "复制",
+      "limit": "已达到选区限制",
+      "selectedReply": "已选 AI 回复"
+    },
+    "navigation": {
+      "jumpToPrompt": "跳转到提问 {index}",
+      "scrollToTop": "滚动到顶部",
+      "previousMessage": "上一条消息",
+      "directory": "对话目录",
+      "nextMessage": "下一条消息",
+      "scrollToBottom": "滚动到底部",
+      "emptyDirectory": "此对话中暂无用户提示词"
+    },
+    "branchNavigation": {
+      "previous": "上一个分支",
+      "next": "下一个分支",
+      "position": "{position} / {count}",
+      "failed": "无法切换对话分支：{error}",
+      "recoveryRequired": "Pi 分支切换失败，可能需要恢复会话：{error}",
+      "saveFailed": "分支已切换，但无法保存对话状态：{error}",
+      "unavailable": "该分支已不可用。",
+      "unsupported": "此 Provider 不支持分支导航。",
+      "runtimeUnavailable": "Pi 运行时不可用。"
+    },
+    "welcomeOrb": {
+      "solving": "正在解题"
+    },
+    "promptSuggestionHint": "按 Tab 接受",
+    "selectAvailableModel": "请先选择可用的模型再发送。",
+    "selectAvailableTitleModel": "请在 Codian 设置中选择可用的标题生成模型。",
+    "quote": {
+      "buttonLabel": "引用"
+    },
+    "codeBlock": {
+      "copyAriaLabel": "复制 {language} 代码",
+      "copied": "已复制！"
+    },
+    "sideChat": {
+      "title": "侧边对话",
+      "collapse": "收起",
+      "fullHeight": "全高显示",
+      "discard": "放弃",
+      "statusPreparing": "准备中",
+      "statusQueued": "{count} 条排队中",
+      "statusWorking": "处理中",
+      "statusError": "需要处理",
+      "statusActionRequired": "需要输入",
+      "placeholder": "在侧边对话中继续提问",
+      "composerLabel": "侧边对话消息",
+      "needsPrompt": "请在 /side 后输入提示词以开始侧边对话。",
+      "unsupportedProvider": "此提供方不支持侧边对话。",
+      "unavailableBusy": "侧边对话需要一条已完成的回复。请等待当前回合结束。",
+      "unavailableNoCheckpoint": "请先在此对话中完成一次回复，再开始侧边对话。",
+      "unavailableNoSession": "无法解析该对话的提供方会话。",
+      "alreadyExists": "该对话已有侧边对话。请先放弃后再新建。",
+      "nestedUnavailable": "侧边对话中无法再开启侧边对话。请先收起回到主对话。",
+      "mainOnlyCommand": "/{command} 仅可在主对话中使用。",
+      "startFailed": "侧边对话启动失败：{error}",
+      "queued": "已加入侧聊队列。",
+      "busySide": "侧边对话仍在回复，请等待其完成。"
+    },
+    "zen": {
+      "regionLabel": "Codian 聊天",
+      "showHistory": "显示对话",
+      "move": "移动聊天面板",
+      "working": "处理中…",
+      "thinking": "思考中…",
+      "interrupted": "已中断",
+      "workedFor": "工作了 {duration}",
+      "workedForResult": "工作了 {duration} · {result}",
+      "actionRequired": "需要你的输入",
+      "error": "错误：{message}",
+      "toolRunning": "{tool} · 运行中",
+      "toolCompleted": "{tool} · 已完成",
+      "toolFailed": "{tool} · 失败",
+      "toolBlocked": "{tool} · 已阻止"
+    },
+    "composer": {
+      "placeholder": "请求修改、@提及文件、运行 /命令",
+      "message": "消息",
+      "dropImage": "将图片拖到这里",
+      "moreContext": "显示另外 {count} 项上下文",
+      "showLess": "收起",
+      "moreItems": "+{count} 项"
+    },
+    "worked": "已完成工作",
+    "taskNotification": "任务通知",
+    "copyMessage": "复制消息",
+    "renderFailed": "消息内容渲染失败。",
+    "interruptedHint": "· 你希望 Codian 改做什么？",
+    "sessions": {
+      "empty": "暂无对话",
+      "noMatch": "没有匹配的会话",
+      "resume": "继续对话",
+      "loading": "正在加载对话…",
+      "current": "当前会话",
+      "loadFailed": "加载对话失败"
+    },
+    "linkedContent": {
+      "label": "关联内容：",
+      "choices": "关联内容选项",
+      "noMatch": "没有匹配的文件或文件夹",
+      "missing": "内容缺失",
+      "path": "关联内容：{path}",
+      "missingPath": "关联内容：{path}。内容缺失",
+      "noContent": "无关联内容",
+      "missingNotice": "关联内容缺失：{path}",
+      "openFailed": "打开关联内容失败：{error}"
+    },
+    "questions": {
+      "title": "问题",
+      "submit": "提交",
+      "review": "检查你的回答",
+      "ready": "准备提交回答了吗？",
+      "sending": "正在发送…",
+      "submitAnswers": "提交回答",
+      "notAnswered": "未回答",
+      "customAnswer": "输入你的回答…",
+      "secret": "输入私密内容…",
+      "editAnswer": "修改“{question}”的回答",
+      "waiting": "等待回答…",
+      "noOptions": "未记录选项",
+      "sendFailed": "无法发送回答，请重试。",
+      "answerBelow": "请在下方的问题面板中回答。",
+      "expired": "问题已过期。",
+      "notSent": "回答未发送，请重试。",
+      "unsupportedReply": "此问题无法接受该回答。",
+      "uncertainDelivery": "无法确认回答是否送达。为避免重复发送，未将其重新加入队列。",
+      "differentConversation": "此问题属于另一段对话。",
+      "sideUnavailable": "此侧边对话已不可用。"
+    },
+    "tools": {
+      "calls": "工具调用",
+      "output": "输出",
+      "noResult": "无结果",
+      "noMatches": "未找到匹配项",
+      "tasksUpdated": "任务已更新",
+      "noChanges": "无变更",
+      "moreLines": "…还有 {count} 行",
+      "moreCharacters": "…还有 {count} 个字符",
+      "running": "运行中…",
+      "noOutput": "无输出",
+      "status": {
+        "running": "状态：运行中",
+        "completed": "状态：已完成",
+        "error": "状态：错误",
+        "cancelled": "状态：已取消",
+        "blocked": "状态：已阻止"
+      },
+      "inProgress": "状态：进行中",
+      "writing": "正在写入…",
+      "done": "已完成",
+      "errorResult": "错误",
+      "tasks": "任务",
+      "taskProgress": "任务 {completed}/{total}",
+      "taskProgressLabel": "任务（{completed}/{total}）",
+      "changes": "变更：+{added} -{removed}",
+      "fileDeleted": "文件已删除",
+      "noTextDiff": "没有可用的文本差异",
+      "patch": "补丁",
+      "files": "{count} 个文件",
+      "file": "文件",
+      "enteringPlan": "正在进入规划模式",
+      "planComplete": "规划完成",
+      "messageAgent": "向代理发送消息",
+      "continueAgent": "继续代理任务",
+      "listAgents": "列出代理",
+      "interruptAgent": "中断代理",
+      "allAgents": "所有代理",
+      "commandPlaceholder": "命令",
+      "filesPlaceholder": "文件",
+      "patternPlaceholder": "匹配模式",
+      "toolsPlaceholder": "工具",
+      "agentCount": "{count} 个代理",
+      "agentCountPlural": "{count} 个代理",
+      "listDestinations": "列出目标",
+      "messageSession": "向会话发送消息",
+      "stopSession": "停止会话",
+      "readSession": "读取会话"
+    },
+    "citations": {
+      "memoryUsed": "引用的记忆",
+      "source": "{count} 个来源",
+      "sources": "{count} 个来源"
+    },
+    "web": {
+      "findInPage": "在页面中查找",
+      "openPage": "打开页面",
+      "urlUnavailable": "网址不可用",
+      "clickLink": "点击链接 {id}",
+      "pattern": "匹配模式：{pattern}",
+      "query": "搜索词：{query}",
+      "altQuery": "备选搜索词：{query}",
+      "search": "搜索网页",
+      "moreQueries": "…还有 {count} 个搜索词",
+      "clickInPage": "在 {url} 中点击链接 {id}",
+      "open": "打开 {url}",
+      "find": "查找“{pattern}”",
+      "inPage": "在 {url} 中{action}",
+      "operations": "{count} 个网页操作",
+      "searchTerm": "搜索"
+    },
+    "permissionMode": {
+      "label": "权限模式",
+      "current": "权限模式：{mode}",
+      "changeFailed": "切换权限模式失败",
+      "claude": {
+        "auto": "自动",
+        "manual": "手动",
+        "acceptEdits": "接受编辑",
+        "yolo": "YOLO",
+        "autoDesc": "由 Claude 决定是否授权",
+        "manualDesc": "修改前始终询问",
+        "acceptEditsDesc": "自动接受所有文件编辑",
+        "yoloDesc": "无需询问，允许所有操作"
+      },
+      "codex": {
+        "autoReview": "代我审批",
+        "normal": "请求审批",
+        "yolo": "完全访问",
+        "autoReviewDesc": "自动审核额外访问权限。",
+        "readOnlyDesc": "编辑或联网前询问。",
+        "normalDesc": "额外访问前询问。",
+        "yoloDesc": "不限制文件和网络访问。"
+      }
+    },
+    "thinking": {
+      "active": "思考中，已用时 {seconds} 秒…",
+      "completed": "思考了 {seconds} 秒",
+      "label": "思考过程"
+    },
+    "suggestions": {
+      "loading": "正在加载…",
+      "noMatches": "无匹配项",
+      "loadFailed": "无法加载建议",
+      "retryHint": "再次输入以重试",
+      "providerLoading": "正在加载提供商命令…",
+      "providerRetry": "重新查找提供商命令"
+    },
+    "approval": {
+      "title": "需要授权",
+      "question": "允许此操作吗？",
+      "deny": "拒绝",
+      "allowOnce": "允许一次",
+      "alwaysAllow": "始终允许",
+      "mcpRequest": "MCP 请求",
+      "mcpServer": "MCP 服务器： {server}",
+      "decline": "拒绝",
+      "allow": "允许",
+      "cancelRequest": "取消此请求。",
+      "declineRequest": "拒绝此请求。",
+      "acceptRequest": "接受此请求。",
+      "fileChange": "文件修改",
+      "fileChangeReason": "文件修改：{reason}",
+      "permissionRequest": "权限请求",
+      "permissionReason": "权限请求：{reason}",
+      "networkAccess": "允许通过 {protocol} 访问 {host}",
+      "execute": "执行：{command}",
+      "executeCommand": "执行命令",
+      "allowSimilar": "允许类似命令",
+      "execPolicy": "批准并保存执行策略变更。",
+      "host": "主机",
+      "allowHost": "在此会话中允许 {host}",
+      "denyHost": "在此会话中拒绝 {host}",
+      "allowRule": "对 {host} 应用允许规则。",
+      "denyRule": "对 {host} 应用拒绝规则。",
+      "details": "{tool} 授权详情",
+      "unexpectedSelection": "意外的授权选项：“{value}”",
+      "runCommand": "运行命令：{pattern}",
+      "readFile": "读取文件：{pattern}",
+      "writeFile": "写入文件：{pattern}",
+      "editFile": "编辑文件：{pattern}",
+      "searchFiles": "搜索匹配的文件：{pattern}",
+      "searchContent": "搜索匹配的内容：{pattern}",
+      "unknownPattern": "（未知）",
+      "deepseekRequest": "DeepSeek 请求授权。"
+    },
+    "disclosure": {
+      "expand": "{label} - 点击展开",
+      "collapse": "{label} - 点击折叠"
+    },
+    "removeItem": "移除{item}",
+    "agent": "代理：{agent}",
+    "images": {
+      "unsupportedProvider": "此提供商不支持图片附件。",
+      "tooLarge": "图片超过 {size} 的大小限制。",
+      "unsupportedType": "不支持的图片格式。",
+      "attachFailed": "添加图片附件失败。",
+      "label": "图片",
+      "numbered": "图片 {number}",
+      "attachment": "图片附件：{name} · {size}",
+      "fileNotFound": "{message}（文件不存在）",
+      "permissionDenied": "{message}（无访问权限）",
+      "preview": "图片预览：{name}",
+      "closePreview": "关闭图片预览"
+    },
+    "pi": {
+      "extension": "Pi 扩展",
+      "notification": "Pi 扩展通知。"
+    },
+    "sessionMessage": {
+      "undelivered": "无法投递来自 {senders} 的消息。",
+      "fromLabel": "来自会话："
+    },
+    "sessionTools": {
+      "noSessions": "没有会话",
+      "thisSession": "本会话",
+      "truncated": "还有更多会话未显示",
+      "recipient": "接收方",
+      "model": "模型",
+      "reasoning": "推理",
+      "message": "消息",
+      "openSession": "打开会话 {sessionId}",
+      "openProviderSession": "打开 {provider} 会话 {sessionId}",
+      "sessionMissing": "该会话已不存在。",
+      "openFailed": "无法打开会话：{message}",
+      "openUnavailable": "无法从此处打开会话。",
+      "providersIncluded": "已包含可用的提供商和模型",
+      "newSession": "新会话",
+      "session": "会话",
+      "turns": "轮次",
+      "turnRange": "{from}–{to}，共 {total}",
+      "noTurns": "暂无",
+      "mode": "投递方式",
+      "modeSteer": "插入正在进行的轮次",
+      "modeInterrupt": "中断当前工作"
+    }
   },
   "settings": {
     "title": "Codian 设置",
@@ -114,7 +451,8 @@
       "workspace": "工作区",
       "about": "关于",
       "environment": "环境变量",
-      "pro": "Pro"
+      "pro": "Pro",
+      "skills": "技能"
     },
     "display": "显示",
     "conversations": "对话",
@@ -123,7 +461,17 @@
     "setup": "连接",
     "models": "模型",
     "experimental": "实验性功能",
-    "about": { "slogan": "致力于探索解决问题的极简方式", "followWeike": "关注维客", "feedback": "有问题欢迎提 issue 或者关注微信公众号「维客笔记」反馈", "feedbackPrefix": "有问题欢迎提 ", "feedbackBetweenLinks": " 或者关注微信公众号「", "feedbackSuffix": "」反馈", "sponsor": "赞助维客", "sponsorDescription": "如果这个插件帮助了你，欢迎赞助维客持续开发和维护：", "afdian": "爱发电" },
+    "about": {
+      "slogan": "致力于探索解决问题的极简方式",
+      "followWeike": "关注维客",
+      "feedback": "有问题欢迎提 issue 或者关注微信公众号「维客笔记」反馈",
+      "feedbackPrefix": "有问题欢迎提 ",
+      "feedbackBetweenLinks": " 或者关注微信公众号「",
+      "feedbackSuffix": "」反馈",
+      "sponsor": "赞助维客",
+      "sponsorDescription": "如果这个插件帮助了你，欢迎赞助维客持续开发和维护：",
+      "afdian": "爱发电"
+    },
     "userName": {
       "name": "Codian 应该如何称呼你？",
       "desc": "用于个性化问候的用户名（留空使用通用问候）"
@@ -152,7 +500,9 @@
     "titleModel": {
       "name": "标题生成模型",
       "desc": "用于自动生成对话标题的模型。",
-      "auto": "自动 (Haiku)"
+      "auto": "自动 (Haiku)",
+      "select": "选择模型",
+      "unavailableWarning": "自动标题已暂停。请选择一个可用的标题模型。"
     },
     "navMappings": {
       "name": "Vim 风格导航映射",
@@ -207,6 +557,39 @@
     "slashCommands": {
       "name": "命令与技能",
       "desc": "管理存储在 .claude/commands/ 和 .claude/skills/ 中的 Vault 级命令与技能。由 /名称 触发。"
+    },
+    "skillMigration": {
+      "name": "Claude 技能迁移预览",
+      "desc": "查看 Claude 原生技能，并将选中的有效技能包迁移到共享技能目录。已有目标和含链接的包会跳过；来源包保持不变。",
+      "previewButton": "查看并迁移",
+      "modalTitle": "Claude 技能迁移",
+      "loading": "正在扫描技能目录…",
+      "empty": "未发现 Claude 技能或命令。",
+      "failed": "无法生成预览。",
+      "status": {
+        "reviewRequired": "技能格式有效，仍需审查迁移规则",
+        "conversionPolicyRequired": "命令转换规则尚待审查",
+        "symlinkNotInspected": "符号链接，未检查目标",
+        "missingSkillMarkdown": "缺少 SKILL.md",
+        "invalidSkill": "技能元数据无效",
+        "unreadable": "无法读取来源",
+        "unsupportedEntry": "不支持的条目，已保留"
+      },
+      "target": {
+        "absent": "无同名目标",
+        "entry": "存在同名目标",
+        "symlink": "目标是链接，未检查",
+        "ambiguous": "存在多个同名目标",
+        "unknown": "无法检查目标"
+      },
+      "diagnostics": "无法检查的条目",
+      "additionalEntries": "包内其他条目：",
+      "diagnostic": "详情：",
+      "selectInstruction": "选择目标目录为空的有效技能包。迁移会完整复制技能包，并保留 Claude 来源。",
+      "applySelected": "迁移所选技能",
+      "migrationSucceeded": "已迁移：",
+      "migrationFailed": "迁移失败：",
+      "stalePreview": "预览已过期。请刷新并重新检查技能包后重试。"
     },
     "hiddenSlashCommands": {
       "name": "隐藏命令与技能",
@@ -315,14 +698,21 @@
         "save": "保存",
         "update": "更新",
         "cancel": "取消"
-      }
+      },
+      "saveCurrent": "将当前环境保存为片段",
+      "insert": "插入",
+      "insertFailed": "插入片段失败",
+      "deleteConfirm": "删除环境变量片段“{name}”？",
+      "deleteFailed": "删除片段失败"
     },
     "customModelOverrides": {
       "name": "自定义模型覆盖",
       "desc": "为自定义模型设置模型选择器别名和上下文窗口大小。"
     },
     "customModelAliases": {
-      "placeholder": "别名"
+      "placeholder": "别名",
+      "ariaLabel": "{model} 的别名",
+      "ariaDescription": "显示在模型选择器中的自定义标签。留空则使用默认值。"
     },
     "customContextLimits": {
       "name": "自定义上下文限制",
@@ -376,8 +766,13 @@
       "descUnix": "粘贴 \"which claude\" 的输出 - 适用于原生安装和 npm/pnpm/yarn 安装。",
       "validation": {
         "notExist": "路径不存在",
-        "isDirectory": "路径是目录，不是文件"
-      }
+        "isDirectory": "路径是目录，不是文件",
+        "mustBeAbsolute": "路径必须是绝对路径",
+        "notFile": "路径必须指向文件",
+        "notAccessible": "路径无法访问",
+        "notExecutable": "路径必须可执行"
+      },
+      "genericName": "CLI 路径"
     },
     "language": {
       "name": "语言",
@@ -386,7 +781,9 @@
     "providerEnablement": {
       "name": "启用 {provider}",
       "desc": "让已启用的 {provider} 模型可用于新对话。禁用后，现有会话仍会保留。",
-      "atLeastOne": "必须至少保留一个已启用的提供商。"
+      "atLeastOne": "必须至少保留一个已启用的提供商。",
+      "lastProviderWarning": "至少需要启用一个提供商，Codian 才能正常工作。",
+      "noModelsWarning": "未启用任何 {provider} 模型。请前往下方的“模型”部分并至少启用一个模型。"
     },
     "codex": {
       "installationMethod": {
@@ -455,6 +852,21 @@
       "enableProvider": {
         "name": "启用 Codex 提供商",
         "desc": "启用后，Codex 模型会出现在新对话的模型选择器中。现有 Codex 会话会保留。"
+      },
+      "responseStyle": {
+        "name": "回复风格",
+        "desc": "选择支持此功能的模型中 Codex 的沟通风格。",
+        "pragmatic": "务实",
+        "friendly": "友好",
+        "neutral": "中性"
+      },
+      "responseVerbosity": {
+        "name": "回复详细程度",
+        "desc": "选择支持此功能的模型的回复详细程度。默认使用 Codex 配置。",
+        "default": "默认",
+        "low": "低",
+        "medium": "中",
+        "high": "高"
       }
     },
     "agentSkills": {
@@ -486,13 +898,16 @@
         "descriptionPlaceholder": "Reviews code for correctness and maintainability",
         "instructions": "Instructions",
         "instructionsDesc": "Required SKILL.md instructions",
-        "instructionsPlaceholder": "Review the supplied code and report actionable findings..."
+        "instructionsPlaceholder": "Review the supplied code and report actionable findings...",
+        "titleFix": "修复技能"
       },
       "delete": {
         "title": "Delete Shared Skill",
         "description": "The entire skill folder, including scripts, references, and assets, will be moved to trash.",
         "confirm": "Move to trash"
-      }
+      },
+      "fix": "修复",
+      "fixed": "已修复技能“{name}”。"
     },
     "codexSkills": {
       "modal": {
@@ -663,6 +1078,7 @@
     },
     "providerCatalog": {
       "empty": "尚未发现 {provider} 模型。选择“发现模型”进行加载。",
+      "opencodeEmpty": "尚未发现 OpenCode 模型。运行 `opencode auth login` 登录 OpenCode Zen 或其他提供商，再点“发现模型”。",
       "failed": "无法加载 {provider} 模型目录。请检查 CLI 路径和登录状态后重试。",
       "loading": "正在加载 {provider} 模型目录...",
       "discoveryFailed": "{provider} 模型发现失败：{message}"
@@ -688,11 +1104,23 @@
       "subagents": "子代理",
       "subagentsDesc": "管理 .opencode/agent/ 和兼容目录 .opencode/agents/ 中的库级 OpenCode 子代理。新条目保存为仅子代理文件，并显示在 @ 提及菜单中。",
       "environmentVariables": "环境变量",
-      "environmentVariablesDesc": "传递给 OpenCode 的额外环境变量。默认启用 `OPENCODE_ENABLE_EXA=1`。"
+      "environmentVariablesDesc": "传递给 OpenCode 的额外环境变量。默认启用 `OPENCODE_ENABLE_EXA=1`。",
+      "environment": {
+        "name": "OpenCode 环境变量",
+        "desc": "传递给 OpenCode 的额外环境变量。"
+      },
+      "migrationNotice": {
+        "text": "Codian 现已支持 OpenCode v2。OpenCode v1 支持将于 2026 年 10 月 30 日结束。",
+        "link": "迁移到 OpenCode v2"
+      }
     },
     "pi": {
       "environmentVariables": "Pi 环境变量",
-      "environmentVariablesDesc": "仅传递给 Pi 的环境变量。"
+      "environmentVariablesDesc": "仅传递给 Pi 的环境变量。",
+      "environment": {
+        "name": "Pi 环境变量",
+        "desc": "仅传递给 Pi 的环境变量。"
+      }
     },
     "livePreviewComposer": {
       "name": "输入框实时预览",
@@ -703,6 +1131,17 @@
       "enableProvider": {
         "name": "启用 Claude 提供商",
         "desc": "启用后，Claude 模型会出现在新对话的模型选择器中。现有 Claude 会话会保留。"
+      },
+      "promptSuggestions": {
+        "name": "提示词建议",
+        "desc": "在空白输入框中显示 Claude 预测的下一条提示词。每条建议都会在每轮对话后额外发起一次 Claude 请求，可能更快耗尽用量额度。"
+      },
+      "configuration": "配置",
+      "responseStyle": {
+        "name": "回复风格",
+        "desc": "Claude Code 回复所用的输出风格，包括自定义风格。“Claude Code 设置”沿用你的 Claude Code 配置。刷新模型或开始聊天时会更新列表。",
+        "default": "默认",
+        "inherit": "Claude Code 设置"
       }
     },
     "claudeServices": {
@@ -749,6 +1188,204 @@
         "defaultModel": "必须填写默认模型 ID。",
         "lightModel": "必须填写轻量模型 ID。"
       }
+    },
+    "providerSettings": {
+      "unavailable": "提供商设置不可用。",
+      "loadFailed": "无法加载提供商设置：{message}"
+    },
+    "responses": "回复",
+    "codexSandbox": {
+      "name": "沙盒",
+      "desc": "代我审批 和 请求审批 模式下的文件访问权限。只读模式会在每次编辑前请求确认；完全访问 会忽略此设置。"
+    },
+    "sharedEnvironment": {
+      "name": "共享环境",
+      "desc": "与提供商无关、所有提供商共享的运行时变量。用于 PATH、代理、证书和临时目录变量。"
+    },
+    "enableDualPane": {
+      "name": "启用双栏模式",
+      "desc": "当视图宽度至少为 600 像素时，自动在聊天旁显示会话管理器。"
+    },
+    "restoreTabsOnStartup": {
+      "name": "启动时恢复标签页",
+      "desc": "单栏模式下重新打开所有标签页，双栏模式下仅重新打开上次活动的标签页。"
+    },
+    "sessionAutoArchiveAfter": {
+      "name": "自动归档不活跃的会话",
+      "desc": "归档在所选时间段内没有活动的未置顶会话。已打开和正在运行的会话会被跳过。",
+      "multiSelectHint": "按住 Option 键（Windows 和 Linux 上为 Alt 键）点击会话可多选，然后右键点击即可置顶或归档。",
+      "off": "关闭",
+      "days7": "7 天后",
+      "days14": "14 天后",
+      "days30": "30 天后"
+    },
+    "dualPaneSide": {
+      "name": "双栏位置",
+      "desc": "选择会话管理器显示在聊天的哪一侧。",
+      "left": "左侧",
+      "right": "右侧"
+    },
+    "showMessageTimestamps": {
+      "name": "显示消息时间戳",
+      "desc": "在聊天线程中显示每条消息的本地发送或到达时间。"
+    },
+    "enableZenMode": {
+      "name": "启用禅模式",
+      "desc": "侧边栏隐藏时，保持显示精简的聊天界面。"
+    },
+    "cliInstallation": {
+      "disclosure": "{name} 安装",
+      "description": "此电脑的可选 CLI 路径。留空以自动检测。",
+      "checking": "正在检测 CLI…",
+      "versionUnavailable": "版本未知",
+      "notFound": "未找到",
+      "custom": "自定义路径",
+      "auto": "自动检测",
+      "checkFailed": "无法检测 CLI",
+      "saveFailed": "无法保存路径，请重试。"
+    },
+    "modelPicker": {
+      "name": "可见模型",
+      "desc": "选择在聊天选择器中可用的模型。拖动可调整顺序；提供商会将第一个当前可用的模型作为默认模型。至少选择一个模型才能使用此提供商。",
+      "browse": "浏览模型",
+      "filterLabel": "筛选 {provider} 模型",
+      "searchPlaceholder": "按模型、提供商或 ID 筛选...",
+      "providerFilterLabel": "筛选模型提供商",
+      "allProviders": "所有提供商（{count}）",
+      "discover": "发现",
+      "visible": "可见: ",
+      "ofDiscovered": " / 已发现 {count} 个",
+      "oneProvider": " | 1 个提供商",
+      "manyProviders": " | {count} 个提供商",
+      "loadingModels": "正在加载模型...",
+      "loading": "正在加载...",
+      "available": "{count} 个可用",
+      "noneDiscovered": "尚未发现模型",
+      "selected": "已选择（{count}）",
+      "clearAllLabel": "清除所有已选择的 {provider} 模型",
+      "reorderLabel": "调整 {model} 的顺序；拖动或使用上下方向键",
+      "default": "默认",
+      "unavailable": "不可用",
+      "aliasLabel": "别名（可选）",
+      "removeLabel": "移除 {model}",
+      "noMatch": "没有与筛选条件匹配的模型。",
+      "emptyCatalog": "{provider} 未报告任何模型。请检查配置并点击“发现”。",
+      "loadingCatalog": "正在加载 {provider} 模型…",
+      "stale": "{provider} 模型目录已过期。点击“发现”以刷新。"
+    },
+    "grok": {
+      "environment": {
+        "name": "Grok Build 环境变量",
+        "desc": "仅传递给 Grok Build 的环境变量。自定义模型的密钥保留在此提供商范围内，并在原生配置中通过 env_key 引用。"
+      }
+    },
+    "deepseek": {
+      "installation": {
+        "desc": "自动模式优先使用 dsh，其次检测 macOS 或 Windows 上的 Desktop。两者都已安装时，输入 Desktop 的 .app 路径或 Windows 安装文件夹即可选择它。请先打开 Desktop 完成初始设置。",
+        "desktop": "使用你的原生 Desktop 配置文件。",
+        "web": "使用你的原生 Web 配置文件。"
+      },
+      "preset": "预设",
+      "codeMode": {
+        "name": "启用代码模式",
+        "desc": "从每个对话的下一轮开始生效，包括已有对话。在直接工具之外添加原生 run_code。"
+      },
+      "presetPlugins": {
+        "name": "附加预设插件",
+        "desc": "高级。追加到 Codian 聊天预设的原生 dsh 插件行 YAML 列表（dsh 格式），每行需有自己的 \"id\" 和 \"name\"。这些行不能替换 Codian 自己的行。保存会重启 DeepSeek Harness，并停止正在进行的轮次。Codian 没有界面支持的插件（如计划模式）可能无法正常工作。"
+      },
+      "presetPreview": "预设预览",
+      "environment": {
+        "name": "DeepSeek Harness 环境变量",
+        "desc": "仅传递给 DeepSeek Harness 的环境变量。使用所选的原生 Web 或 Desktop 配置文件、凭据、模型和 MCP 服务器。"
+      }
+    },
+    "skills": {
+      "subTabs": {
+        "claude": "Claude Code",
+        "shared": "其他服务商"
+      },
+      "claudeHelp": ".claude/skills/ 中的 Claude Code 技能和 .claude/commands/ 中的命令。",
+      "sharedHelp": ".agents/skills/ 中供 Codex、OpenCode、Pi、Grok Build 和 DeepSeek Harness 使用的共享技能。",
+      "status": {
+        "error": "无法读取技能文件夹:{message}"
+      },
+      "synced": "已同步",
+      "actions": {
+        "sync": "同步",
+        "resync": "重新同步"
+      },
+      "commands": {
+        "title": "Claude Code 命令",
+        "hint": "命令仅在 Claude Code 中可用。建议将其转换为技能。",
+        "badge": "命令",
+        "empty": ".claude/commands 中没有命令。",
+        "convert": "转换为技能",
+        "editTitle": "编辑命令",
+        "convertTitle": "将命令转换为技能",
+        "nameDesc": ".claude/commands 下不含 .md 的路径;嵌套命令使用 /",
+        "descriptionDesc": "显示在命令菜单中的可选描述",
+        "updated": "已更新命令“{name}”。",
+        "converted": "已将命令转换为技能“{name}”。",
+        "deleted": "已将命令“{name}”移到回收站。",
+        "deleteTitle": "删除命令",
+        "deleteDescription": "命令文件将被移到回收站。",
+        "collisionFailed": "名为“{name}”的命令已存在。"
+      },
+      "droppedFrontmatterWarning": "保存后仅保留名称和描述。以下键将被移除,服务商的行为可能改变:{keys}",
+      "hidden": {
+        "name": "隐藏的命令和技能",
+        "desc": "在所有服务商的命令菜单中隐藏命令和技能。输入不带前导斜杠的准确名称,每行一个(Pi 技能使用 skill:名称)。",
+        "placeholder": "commit\ncompact\nskill:review"
+      },
+      "sync": {
+        "title": "同步技能",
+        "repairTitle": "修复技能链接",
+        "loading": "正在检查技能文件夹...",
+        "intro": "同步会把 Claude Code 的技能和命令合并到 .agents/skills,并将 .claude/skills 链接到那里。",
+        "pros": {
+          "oneList": "所有服务商共用一个列表。",
+          "newSkills": "新技能在所有地方可用。"
+        },
+        "cons": {
+          "dropped": "仅保留名称和描述;服务商专属的设置会被移除,行为可能改变。",
+          "claudeSyntax": "仅 Claude Code 支持的语法在其他服务商中无效:{names}"
+        },
+        "attentionTitle": "需要处理",
+        "nothingNeedsAttention": "没有需要处理的项目。",
+        "nameField": "名称",
+        "descriptionField": "描述",
+        "ready": "已就绪",
+        "problems": {
+          "name": "名称无效。请使用小写字母、数字和连字符。",
+          "description": "缺少描述。",
+          "instructions": "没有指令。请在文件中补充后重新同步。",
+          "unreadable": "无法读取其 frontmatter。请修正文件后重新同步。",
+          "sharedConflict": "名为“{name}”的共享技能已存在。",
+          "itemConflict": "另一个项目也叫“{name}”。"
+        },
+        "options": {
+          "fix": "修复",
+          "replace": "替换共享技能",
+          "discard": "丢弃(移到回收站)",
+          "keep": "保留为命令"
+        },
+        "continue": "继续",
+        "confirmTitle": "用链接替换 .claude/skills?",
+        "confirmBody": ".claude/skills 将被替换为指向 .agents/skills 的链接。此操作无法撤销。",
+        "repairBody": ".claude/skills 将被替换为指向 .agents/skills 的链接。它当前指向的文件夹不会被修改。",
+        "linkBody": "将 .claude/skills 创建为指向 .agents/skills 的链接,让 Claude Code 使用共享技能。不会移动任何文件。",
+        "linkWithItemsBody": "命令将变成技能,随后 .claude/skills 被创建为指向 .agents/skills 的链接。此操作无法撤销。",
+        "devicesWarning": "此库在多台设备间同步?链接可能不会同步,请在每台设备上执行同步。",
+        "confirm": "同步并链接",
+        "partial": "同步在创建链接前停止。请修复以下项目后重新同步。",
+        "failed": "同步失败:{message}",
+        "summary": "已移动 {moved},已转换 {converted},已移到回收站 {trashed},已移除 {unlinked} 个链接。"
+      }
+    },
+    "pluginRenderedFenceLanguages": {
+      "name": "由插件渲染的代码块语言",
+      "desc": "每行一个代码块语言，交给在笔记中渲染它的插件（例如 vega-lite）。在回复完成后渲染。其他代码块始终以代码显示。"
     }
   }
 }

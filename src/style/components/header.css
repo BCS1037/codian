@@ -1,5 +1,6 @@
 /* Header - logo and title */
-.claudian-container > .claudian-header {
+.codian-container > .codian-header,
+.codian-chat-main-pane > .codian-header {
   position: relative;
   display: flex;
   align-items: center;
@@ -7,7 +8,7 @@
   padding: 0 12px 12px 12px;
 }
 
-.claudian-container .claudian-title {
+.codian-container .codian-title {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -16,14 +17,14 @@
   min-width: 0;
 }
 
-.claudian-title-text {
+.codian-title-text {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
 }
 
-.claudian-logo {
+.codian-logo {
   display: flex;
   align-items: center;
-  color: var(--claudian-brand);
+  color: var(--codian-brand);
 }

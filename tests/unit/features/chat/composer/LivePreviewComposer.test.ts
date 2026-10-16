@@ -72,8 +72,8 @@ describe('LivePreviewComposer', () => {
 
     composer.setSelectionRange(composer.value.length, composer.value.length);
 
-    const inlineCode = parentEl.querySelector('.claudian-live-preview-inline-code');
-    const reference = parentEl.querySelector<HTMLElement>('.claudian-live-preview-reference');
+    const inlineCode = parentEl.querySelector('.codian-live-preview-inline-code');
+    const reference = parentEl.querySelector<HTMLElement>('.codian-live-preview-reference');
     expect(inlineCode?.textContent).toBe('InputController');
     expect(reference?.textContent).toContain('alpha.md');
     expect(reference?.dataset.path).toBe('notes/projects/alpha.md');
@@ -91,13 +91,13 @@ describe('LivePreviewComposer', () => {
 
     composer.setSelectionRange('Use `Input'.length, 'Use `Input'.length);
 
-    expect(parentEl.querySelector('.claudian-live-preview-inline-code')).toBeNull();
+    expect(parentEl.querySelector('.codian-live-preview-inline-code')).toBeNull();
     expect(composer.contentDOM.textContent).toContain('`InputController`');
 
     const tokenEnd = 'Use `InputController`'.length;
     composer.setSelectionRange(tokenEnd, tokenEnd);
 
-    expect(parentEl.querySelector('.claudian-live-preview-inline-code')?.textContent)
+    expect(parentEl.querySelector('.codian-live-preview-inline-code')?.textContent)
       .toBe('InputController');
     expect(composer.value).toBe(value);
 
@@ -113,12 +113,12 @@ describe('LivePreviewComposer', () => {
 
     composer.setSelectionRange('[Docs]'.length, '[Docs]'.length);
 
-    expect(parentEl.querySelector('.claudian-live-preview-link')).toBeNull();
+    expect(parentEl.querySelector('.codian-live-preview-link')).toBeNull();
     expect(composer.contentDOM.textContent).toContain(token);
 
     composer.setSelectionRange(token.length, token.length);
 
-    expect(parentEl.querySelector('.claudian-live-preview-link')?.textContent).toBe('Docs');
+    expect(parentEl.querySelector('.codian-live-preview-link')?.textContent).toBe('Docs');
     expect(composer.value).toBe(value);
 
     composer.destroy();
@@ -131,12 +131,12 @@ describe('LivePreviewComposer', () => {
 
     composer.setSelectionRange(1, 1);
 
-    expect(parentEl.querySelector('.claudian-live-preview-unordered-marker')).toBeNull();
+    expect(parentEl.querySelector('.codian-live-preview-unordered-marker')).toBeNull();
     expect(composer.contentDOM.textContent).toContain('- alpha');
 
     composer.setSelectionRange(2, 2);
 
-    expect(parentEl.querySelector('.claudian-live-preview-unordered-marker')?.textContent).toBe('•');
+    expect(parentEl.querySelector('.codian-live-preview-unordered-marker')?.textContent).toBe('•');
     expect(composer.value).toBe('- alpha');
 
     composer.destroy();
@@ -150,8 +150,8 @@ describe('LivePreviewComposer', () => {
 
     composer.setSelectionRange(value.length, value.length);
 
-    expect(parentEl.querySelector('.claudian-live-preview-inline-code')).toBeNull();
-    expect(parentEl.querySelector('.claudian-live-preview-link')).toBeNull();
+    expect(parentEl.querySelector('.codian-live-preview-inline-code')).toBeNull();
+    expect(parentEl.querySelector('.codian-live-preview-link')).toBeNull();
     expect(composer.contentDOM.textContent).toContain(value);
 
     composer.destroy();
@@ -167,7 +167,7 @@ describe('LivePreviewComposer', () => {
     composer.setSelectionRange(composer.value.length, composer.value.length);
 
     expect(composer.contentDOM.closest('.cm-editor')?.classList.contains(
-      'claudian-live-preview-composer',
+      'codian-live-preview-composer',
     )).toBe(true);
     composer.destroy();
   });
@@ -181,8 +181,8 @@ describe('LivePreviewComposer', () => {
       references: [{ path, kind: 'file' }],
     });
 
-    const reference = parentEl.querySelector<HTMLElement>('.claudian-live-preview-reference');
-    const label = reference?.querySelector('.claudian-live-preview-reference-label');
+    const reference = parentEl.querySelector<HTMLElement>('.codian-live-preview-reference');
+    const label = reference?.querySelector('.codian-live-preview-reference-label');
     expect(label?.textContent).toBe('JJ-Josephson Couplin…');
     expect(reference?.textContent).not.toContain('notes/');
     expect(reference?.title).toBe(`@${path}`);
@@ -200,7 +200,7 @@ describe('LivePreviewComposer', () => {
       ],
     });
 
-    const references = parentEl.querySelectorAll('.claudian-live-preview-reference');
+    const references = parentEl.querySelectorAll('.codian-live-preview-reference');
     expect(references).toHaveLength(2);
     expect([...references].map(element => (element as HTMLElement).dataset.path)).toEqual([
       'notes/projects/alpha.md',
@@ -217,13 +217,13 @@ describe('LivePreviewComposer', () => {
 
     composer.setSelectionRange(value.length, value.length);
 
-    expect(parentEl.querySelector('.claudian-live-preview-link')?.textContent).toBe('Docs');
-    expect(parentEl.querySelector('.claudian-live-preview-unordered-marker')?.textContent).toBe('•');
-    expect(parentEl.querySelector('.claudian-live-preview-ordered-marker')?.textContent).toBe('3.');
+    expect(parentEl.querySelector('.codian-live-preview-link')?.textContent).toBe('Docs');
+    expect(parentEl.querySelector('.codian-live-preview-unordered-marker')?.textContent).toBe('•');
+    expect(parentEl.querySelector('.codian-live-preview-ordered-marker')?.textContent).toBe('3.');
 
     composer.setSelectionRange(0, 0);
 
-    expect(parentEl.querySelector('.claudian-live-preview-link')).toBeNull();
+    expect(parentEl.querySelector('.codian-live-preview-link')).toBeNull();
     expect(composer.contentDOM.textContent).toContain('[Docs](https://example.com)');
     composer.destroy();
   });
@@ -238,7 +238,7 @@ describe('LivePreviewComposer', () => {
       references: [reference],
       onOpenReference,
     });
-    const referenceEl = parentEl.querySelector<HTMLElement>('.claudian-live-preview-reference');
+    const referenceEl = parentEl.querySelector<HTMLElement>('.codian-live-preview-reference');
 
     referenceEl?.dispatchEvent(new MouseEvent('click', {
       metaKey: true,

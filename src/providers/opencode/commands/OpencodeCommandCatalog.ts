@@ -10,7 +10,7 @@ function slashCommandToEntry(command: SlashCommand): ProviderCommandEntry {
   return {
     id: command.id,
     providerId: 'opencode',
-    kind: 'command',
+    kind: command.kind ?? 'command',
     name: command.name,
     description: command.description,
     content: command.content,

@@ -3,7 +3,7 @@ import '@/providers';
 import { ProviderRegistry } from '@/core/providers/ProviderRegistry';
 import type { ProviderId } from '@/core/providers/types';
 import type { VaultFileAdapter } from '@/core/storage/VaultFileAdapter';
-import type { Conversation, SessionMetadata, UsageInfo } from '@/core/types';
+import type { Conversation, SessionMetadata, SubagentInfo, UsageInfo } from '@/core/types';
 import {
   LEGACY_SESSIONS_PATH,
   SESSIONS_PATH,
@@ -104,6 +104,89 @@ describe('SessionStorage', () => {
       expect(parsed.enabledMcpServers).toEqual(['server1', 'server2']);
       expect(parsed.usage).toEqual(usage);
     });
+
+    it('sanitizes opaque Claude subagent state before raw metadata writes without mutating input', async () => {
+      const imageData = 'raw-metadata-image-'.repeat(128);
+      const result = JSON.stringify([
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: imageData } },
+      ]);
+      const metadata: SessionMetadata = {
+        id: 'session-raw-provider-state',
+        providerId: 'claude',
+        title: 'Raw metadata',
+        createdAt: 1700000000,
+        updatedAt: 1700001000,
+        providerState: {
+          subagentData: {
+            'task-raw': {
+              id: 'task-raw',
+              description: 'Previously saved task',
+              isExpanded: false,
+              status: 'completed',
+              result,
+              toolCalls: [{
+                id: 'read-raw',
+                name: 'Read',
+                input: { file_path: '/scan.png' },
+                status: 'completed',
+                result,
+              }],
+            } satisfies SubagentInfo,
+          },
+          nativeLocator: { path: '/vault/session.jsonl', offset: 64 },
+        },
+      };
+      const before = structuredClone(metadata);
+
+      await storage.saveMetadata(metadata);
+
+      const writtenContent = mockAdapter.write.mock.calls[0][1];
+      const persisted = JSON.parse(writtenContent) as SessionMetadata;
+      const persistedSubagent = (
+        persisted.providerState?.subagentData as Record<string, SubagentInfo>
+      )['task-raw'];
+      expect(writtenContent).not.toContain(imageData);
+      expect(persistedSubagent.result).toContain('"data":""');
+      expect(persistedSubagent.toolCalls[0].result).toContain('"data":""');
+      expect(persisted.providerState?.nativeLocator).toEqual({
+        path: '/vault/session.jsonl',
+        offset: 64,
+      });
+      expect(metadata).toEqual(before);
+    });
+
+    it('sanitizes incomplete legacy subagent records without failing metadata writes', async () => {
+      const imageData = 'incomplete-record-image-'.repeat(64);
+      const metadata = {
+        id: 'session-incomplete-subagent',
+        providerId: 'claude',
+        title: 'Incomplete record',
+        createdAt: 1700000000,
+        updatedAt: 1700001000,
+        providerState: {
+          subagentData: {
+            'task-incomplete': {
+              id: 'task-incomplete',
+              result: JSON.stringify([
+                { type: 'image', source: { type: 'base64', data: imageData } },
+              ]),
+            },
+          },
+        },
+      } as unknown as SessionMetadata;
+
+      await storage.saveMetadata(metadata);
+
+      const writtenContent = mockAdapter.write.mock.calls[0][1];
+      const persisted = JSON.parse(writtenContent) as SessionMetadata;
+      expect(writtenContent).not.toContain(imageData);
+      expect(persisted.providerState?.subagentData).toEqual({
+        'task-incomplete': {
+          id: 'task-incomplete',
+          result: '[{"type":"image","source":{"type":"base64","data":""}}]',
+        },
+      });
+    });
   });
 
   describe('loadMetadata', () => {
@@ -140,6 +223,45 @@ describe('SessionStorage', () => {
       );
     });
 
+    it('sanitizes Claude subagent state while migrating legacy metadata', async () => {
+      const imageData = 'legacy-migration-image-'.repeat(128);
+      const metadata: SessionMetadata = {
+        id: 'session-legacy-image',
+        providerId: 'claude',
+        title: 'Legacy image result',
+        createdAt: 1700000000,
+        updatedAt: 1700001000,
+        providerState: {
+          subagentData: {
+            'task-legacy': {
+              id: 'task-legacy',
+              description: 'Legacy reader',
+              isExpanded: false,
+              status: 'completed',
+              result: JSON.stringify([
+                { type: 'image', source: { type: 'base64', data: imageData } },
+              ]),
+              toolCalls: [],
+            } satisfies SubagentInfo,
+          },
+        },
+      };
+      const legacyPath = `${LEGACY_SESSIONS_PATH}/session-legacy-image.meta.json`;
+      mockAdapter.exists.mockImplementation(async (path: string) => path === legacyPath);
+      mockAdapter.read.mockResolvedValue(JSON.stringify(metadata));
+
+      const migrated = await storage.loadMetadata(metadata.id);
+      const writtenContent = mockAdapter.write.mock.calls[0][1];
+
+      expect(migrated?.providerState?.subagentData).toMatchObject({
+        'task-legacy': {
+          result: '[{"type":"image","source":{"type":"base64","data":""}}]',
+        },
+      });
+      expect(writtenContent).not.toContain(imageData);
+      expect(mockAdapter.delete).toHaveBeenCalledWith(legacyPath);
+    });
+
     it('keeps valid legacy metadata visible when migration fails', async () => {
       const metadata = {
         id: 'session-legacy',
@@ -152,7 +274,7 @@ describe('SessionStorage', () => {
         path === `${LEGACY_SESSIONS_PATH}/session-legacy.meta.json`
       ));
       mockAdapter.read.mockResolvedValue(JSON.stringify(metadata));
-      mockAdapter.write.mockRejectedValue(new Error('EEXIST: .claudian/sessions'));
+      mockAdapter.write.mockRejectedValue(new Error('EEXIST: .codian/sessions'));
 
       await expect(storage.loadMetadata('session-legacy')).resolves.toEqual(metadata);
       expect(mockAdapter.delete).not.toHaveBeenCalled();
@@ -230,8 +352,8 @@ describe('SessionStorage', () => {
   describe('listAllConversations - provider routing', () => {
     it('preserves providerId from metadata', async () => {
       mockAdapter.listFiles.mockResolvedValue([
-        '.claudian/sessions/claude-session.meta.json',
-        '.claudian/sessions/codex-session.meta.json',
+        '.codian/sessions/claude-session.meta.json',
+        '.codian/sessions/codex-session.meta.json',
       ]);
 
       mockAdapter.read.mockImplementation((path: string) => {
@@ -267,7 +389,7 @@ describe('SessionStorage', () => {
 
     it('defaults providerId to claude for legacy conversations', async () => {
       mockAdapter.listFiles.mockResolvedValue([
-        '.claudian/sessions/old.meta.json',
+        '.codian/sessions/old.meta.json',
       ]);
 
       mockAdapter.read.mockResolvedValue(JSON.stringify({
@@ -409,8 +531,8 @@ describe('SessionStorage', () => {
   describe('listMetadata', () => {
     it('returns metadata for .meta.json files', async () => {
       mockAdapter.listFiles.mockResolvedValue([
-        '.claudian/sessions/native-1.meta.json',
-        '.claudian/sessions/native-2.meta.json',
+        '.codian/sessions/native-1.meta.json',
+        '.codian/sessions/native-2.meta.json',
       ]);
 
       mockAdapter.read.mockImplementation((path: string) => {
@@ -468,8 +590,8 @@ describe('SessionStorage', () => {
 
     it('skips files that fail to load', async () => {
       mockAdapter.listFiles.mockResolvedValue([
-        '.claudian/sessions/good.meta.json',
-        '.claudian/sessions/bad.meta.json',
+        '.codian/sessions/good.meta.json',
+        '.codian/sessions/bad.meta.json',
       ]);
 
       mockAdapter.read.mockImplementation((path: string) => {
@@ -545,7 +667,7 @@ describe('SessionStorage', () => {
         createdAt: 1,
         updatedAt: 2,
       }));
-      mockAdapter.write.mockRejectedValue(new Error('EEXIST: .claudian/sessions'));
+      mockAdapter.write.mockRejectedValue(new Error('EEXIST: .codian/sessions'));
 
       await expect(storage.listMetadata()).resolves.toEqual([
         expect.objectContaining({ id: 'legacy', title: 'Legacy session' }),
@@ -561,8 +683,8 @@ describe('SessionStorage', () => {
         updatedAt: 1,
       });
       mockAdapter.listFiles.mockResolvedValue([
-        '.claudian/sessions/filename-id.meta.json',
-        '.claudian/sessions/%2Funsafe.meta.json',
+        '.codian/sessions/filename-id.meta.json',
+        '.codian/sessions/%2Funsafe.meta.json',
       ]);
       mockAdapter.read.mockResolvedValue(original);
 
@@ -636,8 +758,8 @@ describe('SessionStorage', () => {
   describe('listAllConversations', () => {
     it('returns metadata from listMetadata as ConversationMeta[]', async () => {
       mockAdapter.listFiles.mockResolvedValue([
-        '.claudian/sessions/session-1.meta.json',
-        '.claudian/sessions/session-2.meta.json',
+        '.codian/sessions/session-1.meta.json',
+        '.codian/sessions/session-2.meta.json',
       ]);
 
       mockAdapter.read.mockImplementation((path: string) => {
@@ -687,7 +809,7 @@ describe('SessionStorage', () => {
 
     it('preserves titleGenerationStatus', async () => {
       mockAdapter.listFiles.mockResolvedValue([
-        '.claudian/sessions/session-status.meta.json',
+        '.codian/sessions/session-status.meta.json',
       ]);
 
       mockAdapter.read.mockResolvedValue(JSON.stringify({
@@ -750,6 +872,135 @@ describe('SessionStorage', () => {
         description: 'Test subagent',
         status: 'completed',
       }));
+    });
+
+    it('strips legacy base64 images from persisted nested subagent results without mutating the conversation', () => {
+      const imageData = 'legacy-image-payload-'.repeat(128);
+      const result = JSON.stringify([
+        { type: 'text', text: 'Scan read' },
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: imageData } },
+      ]);
+      const nestedSubagent: SubagentInfo = {
+        id: 'task-nested',
+        description: 'Nested reader',
+        isExpanded: false,
+        status: 'completed',
+        result,
+        toolCalls: [{
+          id: 'read-nested', name: 'Read', input: { file_path: '/scan.png' },
+          status: 'completed', result,
+        }],
+      };
+      const subagent: SubagentInfo = {
+        id: 'task-parent',
+        description: 'Parent reader',
+        isExpanded: false,
+        status: 'completed',
+        result,
+        toolCalls: [
+          { id: 'read-parent', name: 'Read', input: { file_path: '/scan.png' }, status: 'completed', result },
+          { id: 'spawn-nested', name: 'Agent', input: {}, status: 'completed', result: 'Done', subagent: nestedSubagent },
+        ],
+      };
+      const conversation: Conversation = {
+        id: 'conv-image-results',
+        providerId: 'claude',
+        title: 'Image results',
+        createdAt: 1700000000,
+        updatedAt: 1700001000,
+        sessionId: 'sdk-session',
+        providerState: { subagentData: { [subagent.id]: subagent }, unrelated: { keep: true } },
+        messages: [
+          {
+            id: 'msg-user', role: 'user', content: 'Read this image', timestamp: 1700000100,
+            images: [{ id: 'user-image', name: 'scan.png', mediaType: 'image/png', data: 'user-attachment-data', size: 18, source: 'file' }],
+          },
+          {
+            id: 'msg-assistant', role: 'assistant', content: '', timestamp: 1700000200,
+            toolCalls: [{
+              id: subagent.id, name: 'Task', input: { description: subagent.description },
+              status: 'completed', result, subagent,
+            }],
+          },
+        ],
+      };
+      const before = structuredClone(conversation);
+
+      const metadata = storage.toSessionMetadata(conversation);
+      const saved = JSON.stringify(metadata);
+      const persisted = (metadata.providerState?.subagentData as Record<string, SubagentInfo>)[subagent.id];
+      const strippedResult = JSON.stringify([
+        { type: 'text', text: 'Scan read' },
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: '' } },
+      ]);
+
+      expect(saved).not.toContain(imageData);
+      expect(persisted.result).toBe(strippedResult);
+      expect(persisted.toolCalls[0].result).toBe(strippedResult);
+      expect(persisted.toolCalls[1].subagent?.result).toBe(strippedResult);
+      expect(persisted.toolCalls[1].subagent?.toolCalls[0].result).toBe(strippedResult);
+      expect(metadata.providerState?.unrelated).toEqual({ keep: true });
+      expect(conversation).toEqual(before);
+      expect(conversation.messages[0].images?.[0].data).toBe('user-attachment-data');
+    });
+
+    it('preserves and sanitizes provider subagent data when saving an unloaded conversation shell', () => {
+      const imageData = 'unloaded-image-payload-'.repeat(128);
+      const result = JSON.stringify([
+        { type: 'text', text: 'Read result' },
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: imageData } },
+      ]);
+      const subagent: SubagentInfo = {
+        id: 'task-unloaded',
+        description: 'Previously loaded task',
+        isExpanded: false,
+        status: 'completed',
+        result,
+        toolCalls: [{
+          id: 'read-unloaded',
+          name: 'Read',
+          input: { file_path: '/scan.png' },
+          status: 'completed',
+          result,
+        }],
+      };
+      const conversation: Conversation = {
+        id: 'conv-unloaded-subagent',
+        providerId: 'claude',
+        title: 'Unloaded conversation',
+        createdAt: 1700000000,
+        updatedAt: 1700001000,
+        sessionId: 'sdk-session',
+        providerState: {
+          subagentData: { [subagent.id]: subagent },
+          nativeLocator: { path: '/vault/.claude/projects/session.jsonl', offset: 128 },
+          unrelated: { keep: true },
+        },
+        messages: [],
+      };
+      const before = structuredClone(conversation);
+
+      const metadata = storage.toSessionMetadata(conversation);
+      const serialized = JSON.stringify(metadata);
+      const persisted = (metadata.providerState?.subagentData as Record<string, SubagentInfo>)[subagent.id];
+
+      expect(persisted).toEqual(expect.objectContaining({
+        id: subagent.id,
+        description: subagent.description,
+        status: 'completed',
+        result: JSON.stringify([
+          { type: 'text', text: 'Read result' },
+          { type: 'image', source: { type: 'base64', media_type: 'image/png', data: '' } },
+        ]),
+      }));
+      expect(persisted.toolCalls[0].result).not.toContain(imageData);
+      expect(serialized).not.toContain(imageData);
+      expect(metadata.providerState?.nativeLocator).toEqual({
+        path: '/vault/.claude/projects/session.jsonl',
+        offset: 128,
+      });
+      expect(metadata.providerState?.unrelated).toEqual({ keep: true });
+      expect(conversation).toEqual(before);
     });
 
     it('returns undefined subagentData when no subagents present', () => {

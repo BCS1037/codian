@@ -13,6 +13,7 @@ export interface BuildPiLaunchSpecParams {
   providerState?: PiProviderState | null;
   settings: PiProviderSettings;
   systemPrompt?: string;
+  treeExtensionPath?: string;
   thinkingLevel?: string | null;
 }
 
@@ -43,6 +44,10 @@ export function buildPiLaunchSpec(params: BuildPiLaunchSpecParams): PiLaunchSpec
     args.push('--no-tools');
   } else if (params.settings.toolMode === 'readonly') {
     args.push('--tools', READONLY_TOOLS);
+  }
+
+  if (params.treeExtensionPath) {
+    args.push('--extension', params.treeExtensionPath);
   }
 
   const decodedModel = typeof params.model === 'string' ? decodePiModelId(params.model) : null;

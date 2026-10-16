@@ -75,15 +75,26 @@ Codian includes provider-neutral configuration controls under Obsidian Settings:
 
 ## ❓ Frequently Asked Questions & Troubleshooting
 
-### 1. Why does Codian report "CLI not detected"?
+### 1. Why is a newly released model missing?
+
+Codian gets model options from each Provider's current model catalog and configuration. A model's public release or API availability does not mean the CLI connected to Codian will report it. The catalog can depend on CLI version, account, and environment.
+
+1. Update the provider CLI or app when needed. Check that the same installation and account used by Codian can see the model.
+2. Open Obsidian **Settings → Codian → Provider**, select the Provider, and confirm its CLI path, environment, login, and other connection settings point to the expected installation and account.
+3. Under **Models → Browse models**, click **Discover** or **Refresh** to request the current catalog.
+4. Select the model's checkbox to add it to Codian's chat model selector. Existing conversations keep their selected model; choose the new model in that conversation or start a new one to use it.
+
+If the model is still missing after refresh, that Provider connection has not reported it to Codian. Check the provider CLI's version, login, and configuration. Do not edit Codian's installed `main.js` or other bundle files to add a model; updates overwrite those changes, and manual bundle edits are unsupported.
+
+### 2. Why does Codian report "CLI not detected"?
 macOS GUI applications (launched via Finder or Dock) do not automatically inherit environment variables defined in Shell configuration files (e.g., `~/.zshrc` or `~/.bash_profile`).
 - **Fix**: Go to Codian **Settings** -> **Provider** -> select the target Provider -> **Connection** tab, and enter the absolute file path to the CLI executable in **CLI Path** (e.g., `/usr/local/bin/claude` or `/opt/homebrew/bin/codex`).
 
-### 2. How to set up Kimi Code CLI?
+### 3. How to set up Kimi Code CLI?
 Kimi Code CLI requires an initial login before Codian can start an ACP session.
 - **Fix**: Open your terminal, run `kimi`, and complete the interactive authentication process. Once configured, Codian will be able to discover models and connect successfully.
 
-### 3. What is the difference between plugin ID `codianz` and display name `Codian`?
+### 4. What is the difference between plugin ID `codianz` and display name `Codian`?
 `codianz` is the unique internal plugin identifier registered with the Obsidian Community Plugin registry, while **Codian** is the user-visible display name. Always ensure your vault's plugin directory is named `codianz`.
 
 ---

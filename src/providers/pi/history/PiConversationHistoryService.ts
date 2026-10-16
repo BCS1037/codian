@@ -1,5 +1,3 @@
-import * as fs from 'node:fs/promises';
-
 import type {
   ProviderConversationHistoryService,
   ProviderHistoryPathContext,
@@ -11,7 +9,11 @@ import {
   type PiPreviousSession,
 } from '../types';
 import { resolvePiSessionFileHint } from './PiHistoryPathResolver';
-import { parsePiSessionContent } from './PiHistoryStore';
+import {
+  type ParsedPiSessionEntries,
+  parsePiSessionContent,
+  readPiSessionEntries,
+} from './PiHistoryStore';
 
 export class PiConversationHistoryService implements ProviderConversationHistoryService {
   private hydratedKeys = new Map<string, string>();
@@ -44,7 +46,7 @@ export class PiConversationHistoryService implements ProviderConversationHistory
       }
 
       try {
-        const content = await fs.readFile(sourceSessionFile, 'utf-8');
+        const content = await readPiSessionEntries(sourceSessionFile);
         const messages = parsePiSessionContent(content, {
           leafEntryId: state.forkSource!.resumeAt,
           requireLeafEntryId: true,
@@ -56,14 +58,18 @@ export class PiConversationHistoryService implements ProviderConversationHistory
 
         conversation.messages = messages;
         this.hydratedKeys.set(conversation.id, `fork::${sourceSessionFile}::${state.forkSource!.resumeAt}`);
-      } catch {
+      } catch (error) {
         this.hydratedKeys.delete(conversation.id);
+        if (!isMissingFileError(error)) throw error;
       }
       return;
     }
 
+    const currentLeafEntryId = state.treeCursor
+      ? state.treeCursor.leafId ?? undefined
+      : state.leafEntryId;
     const currentSession: PiPreviousSession = {
-      ...(state.leafEntryId ? { leafEntryId: state.leafEntryId } : {}),
+      ...(currentLeafEntryId ? { leafEntryId: currentLeafEntryId } : {}),
       ...(state.sessionFile ? { sessionFile: state.sessionFile } : {}),
       ...((state.sessionId ?? conversation.sessionId)
         ? { sessionId: state.sessionId ?? conversation.sessionId! }
@@ -119,30 +125,33 @@ export class PiConversationHistoryService implements ProviderConversationHistory
       return;
     }
 
-    try {
-      const messages: ChatMessage[] = [];
-      for (const { kind, sessionFile, source } of resolvedSources) {
-        try {
-          const content = await fs.readFile(sessionFile, 'utf-8');
-          messages.push(...parsePiSessionContent(content, {
-            leafEntryId: source.leafEntryId,
-            requireLeafEntryId: kind === 'previous' && !!source.leafEntryId,
-            syntheticIdNamespace: sessionFile,
-          }));
-        } catch {
-          // Ignore unavailable historical segments; current segment may still hydrate.
-        }
+    const messages: ChatMessage[] = [];
+    for (const { kind, sessionFile, source } of resolvedSources) {
+      let content: ParsedPiSessionEntries;
+      try {
+        content = await readPiSessionEntries(sessionFile);
+      } catch (error) {
+        // Previous segments may be unavailable; an unreadable current transcript must surface.
+        if (kind === 'current' && !isMissingFileError(error)) throw error;
+        continue;
       }
-      if (messages.length === 0) {
-        this.hydratedKeys.delete(conversation.id);
-        return;
+      try {
+        messages.push(...parsePiSessionContent(content, {
+          leafEntryId: source.leafEntryId,
+          requireLeafEntryId: kind === 'previous' && !!source.leafEntryId,
+          syntheticIdNamespace: sessionFile,
+        }));
+      } catch {
+        // Ignore unavailable historical segments; current segment may still hydrate.
       }
-
-      conversation.messages = dedupeMessages(messages);
-      this.hydratedKeys.set(conversation.id, hydrationKey);
-    } catch {
-      this.hydratedKeys.delete(conversation.id);
     }
+    if (messages.length === 0) {
+      this.hydratedKeys.delete(conversation.id);
+      return;
+    }
+
+    conversation.messages = dedupeMessages(messages);
+    this.hydratedKeys.set(conversation.id, hydrationKey);
   }
 
   async deleteConversationSession(
@@ -217,4 +226,8 @@ function dedupeMessages(messages: ChatMessage[]): ChatMessage[] {
     seen.add(message.id);
     return true;
   });
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return (error as NodeJS.ErrnoException | null)?.code === 'ENOENT';
 }

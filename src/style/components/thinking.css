@@ -1,42 +1,42 @@
-.claudian-thinking {
-  color: var(--claudian-brand);
+.codian-thinking {
+  color: var(--codian-brand);
   font-style: italic;
   padding: 4px 0;
   text-align: start;
   animation: thinking-pulse 1.5s ease-in-out infinite;
 }
 
-.claudian-thinking.claudian-thinking--compact {
-  color: var(--claudian-compact);
+.codian-thinking.codian-thinking--compact {
+  color: var(--codian-compact);
 }
 
-.claudian-thinking-hint {
+.codian-thinking-hint {
   color: var(--text-muted);
   font-style: normal;
   font-variant-numeric: tabular-nums;
 }
 
-.claudian-thinking-block {
+.codian-thinking-block {
   margin: 8px 0;
 }
 
-.claudian-text-block+.claudian-thinking-block {
+.codian-text-block+.codian-thinking-block {
   margin-top: 8px;
 }
 
-.claudian-thinking-block+.claudian-text-block {
+.codian-thinking-block+.codian-text-block {
   margin-top: 8px;
 }
 
-.claudian-thinking-block+.claudian-tool-call {
+.codian-thinking-block+.codian-tool-call {
   margin-top: 8px;
 }
 
-.claudian-tool-call+.claudian-thinking-block {
+.codian-tool-call+.codian-thinking-block {
   margin-top: 8px;
 }
 
-.claudian-thinking-header {
+.codian-thinking-header {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -45,15 +45,15 @@
   overflow: hidden;
 }
 
-.claudian-thinking-label {
+.codian-thinking-label {
   flex: 1;
   font-size: 13px;
   font-weight: 500;
-  color: var(--claudian-brand);
+  color: var(--codian-brand);
 }
 
 /* Thinking block content - tree-branch style */
-.claudian-thinking-content {
+.codian-thinking-content {
   padding: 4px 0;
   padding-inline-start: 24px;
   font-size: 13px;
@@ -65,24 +65,24 @@
   margin-inline-start: 7px;
 }
 
-.claudian-thinking-content p {
+.codian-thinking-content p {
   margin: 0 0 8px 0;
 }
 
-.claudian-thinking-content p:last-child {
+.codian-thinking-content p:last-child {
   margin-bottom: 0;
 }
 
-.claudian-thinking-content .claudian-code-wrapper {
+.codian-thinking-content .codian-code-wrapper {
   margin: 8px 0;
 }
 
-.claudian-thinking-content .claudian-code-wrapper pre {
+.codian-thinking-content .codian-code-wrapper pre {
   padding: 8px 10px;
   border-radius: 4px;
 }
 
-.claudian-thinking-content code {
+.codian-thinking-content code {
   font-family: var(--font-monospace);
   font-size: 12px;
 }

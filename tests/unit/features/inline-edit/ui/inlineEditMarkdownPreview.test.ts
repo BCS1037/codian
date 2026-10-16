@@ -91,6 +91,48 @@ describe('renderInlineEditMarkdownPreview', () => {
     );
   });
 
+  it('prefers the source note image over the media folder collision', async () => {
+    const sourceImage = { path: 'section/image.png', basename: 'image' };
+    const files = new Map<string, unknown>([
+      ['media/image.png', { path: 'media/image.png', basename: 'image' }],
+      ['section/image.png', sourceImage],
+    ]);
+    const getFirstLinkpathDest = jest
+      .fn()
+      .mockImplementation((linkPath: string, sourcePath: string) =>
+        linkPath === 'image.png' && sourcePath === 'section/note.md' ? sourceImage : null
+      );
+    const app = {
+      vault: {
+        getAbstractFileByPath: jest.fn((path: string) => files.get(path) ?? null),
+        getResourcePath: jest.fn((file: { path: string }) => `app://local/${file.path}`),
+      },
+      metadataCache: {
+        getFirstLinkpathDest,
+      },
+    } as any;
+    const component = {} as any;
+    const container = createMockEl();
+
+    await renderInlineEditMarkdownPreview({
+      app,
+      component,
+      container,
+      markdown: '![[image.png]]',
+      sourcePath: 'section/note.md',
+      mediaFolder: 'media',
+    });
+
+    expect(MarkdownRenderer.renderMarkdown).toHaveBeenCalledWith(
+      expect.stringContaining('src="app://local/section/image.png"'),
+      container,
+      'section/note.md',
+      component
+    );
+    const rendered = (MarkdownRenderer.renderMarkdown as jest.Mock).mock.calls[0][0] as string;
+    expect(rendered).not.toContain('app://local/media/image.png');
+  });
+
   it('falls back to raw markdown when Obsidian rendering fails', async () => {
     (MarkdownRenderer.renderMarkdown as jest.Mock).mockRejectedValueOnce(new Error('render failed'));
 
@@ -107,7 +149,7 @@ describe('renderInlineEditMarkdownPreview', () => {
     });
 
     expect(container.children).toHaveLength(1);
-    expect(container.children[0].hasClass('claudian-inline-markdown-fallback')).toBe(true);
+    expect(container.children[0].hasClass('codian-inline-markdown-fallback')).toBe(true);
     expect(container.children[0].textContent).toBe('Use $x^2$ here.');
   });
 });

@@ -10,7 +10,7 @@ import { TitleGenerationService as ClaudeTitleGenerationService } from './auxili
 import { CLAUDE_PROVIDER_CAPABILITIES } from './capabilities';
 import { claudeSettingsReconciler } from './env/ClaudeSettingsReconciler';
 import { ClaudeConversationHistoryService } from './history/ClaudeConversationHistoryService';
-import { ClaudianService as ClaudeChatRuntime } from './runtime/ClaudeChatRuntime';
+import { ClaudeChatRuntime } from './runtime/ClaudeChatRuntime';
 import { ClaudeTaskResultInterpreter } from './runtime/ClaudeTaskResultInterpreter';
 import { getClaudeProviderSettings, updateClaudeProviderSettings } from './settings';
 import { claudeSubagentAdapter } from './subagentAdapter';

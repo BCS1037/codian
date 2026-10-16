@@ -72,7 +72,7 @@ export class McpServerModal extends Modal {
 
   onOpen() {
     this.setTitle(this.existingServer ? 'Edit MCP Server' : 'Add MCP Server');
-    this.modalEl.addClass('claudian-mcp-modal');
+    this.modalEl.addClass('codian-mcp-modal');
 
     const { contentEl } = this;
 
@@ -103,7 +103,7 @@ export class McpServerModal extends Modal {
         });
       });
 
-    this.typeFieldsEl = contentEl.createDiv({ cls: 'claudian-mcp-type-fields' });
+    this.typeFieldsEl = contentEl.createDiv({ cls: 'codian-mcp-type-fields' });
     this.renderTypeFields();
 
     new Setting(contentEl)
@@ -126,17 +126,17 @@ export class McpServerModal extends Modal {
         });
       });
 
-    const buttonContainer = contentEl.createDiv({ cls: 'claudian-mcp-buttons' });
+    const buttonContainer = contentEl.createDiv({ cls: 'codian-mcp-buttons' });
 
     const cancelBtn = buttonContainer.createEl('button', {
       text: 'Cancel',
-      cls: 'claudian-cancel-btn',
+      cls: 'codian-cancel-btn',
     });
     cancelBtn.addEventListener('click', () => this.close());
 
     const saveBtn = buttonContainer.createEl('button', {
       text: this.existingServer ? 'Update' : 'Add',
-      cls: 'claudian-save-btn mod-cta',
+      cls: 'codian-save-btn mod-cta',
     });
     saveBtn.addEventListener('click', () => this.save());
   }
@@ -158,10 +158,10 @@ export class McpServerModal extends Modal {
     const cmdSetting = new Setting(this.typeFieldsEl)
       .setName('Command')
       .setDesc('Full command with arguments');
-    cmdSetting.settingEl.addClass('claudian-mcp-cmd-setting');
+    cmdSetting.settingEl.addClass('codian-mcp-cmd-setting');
 
     const cmdTextarea = cmdSetting.controlEl.createEl('textarea', {
-      cls: 'claudian-mcp-cmd-textarea',
+      cls: 'codian-mcp-cmd-textarea',
     });
     cmdTextarea.value = this.command;
     cmdTextarea.placeholder = 'Docker exec -i mcp-server python -m src.server';
@@ -173,10 +173,10 @@ export class McpServerModal extends Modal {
     const envSetting = new Setting(this.typeFieldsEl)
       .setName('Environment variables')
       .setDesc('Key=value per line (optional)');
-    envSetting.settingEl.addClass('claudian-mcp-env-setting');
+    envSetting.settingEl.addClass('codian-mcp-env-setting');
 
     const envTextarea = envSetting.controlEl.createEl('textarea', {
-      cls: 'claudian-mcp-env-textarea',
+      cls: 'codian-mcp-env-textarea',
     });
     envTextarea.value = this.env;
     envTextarea.placeholder = 'API_key=your-key';
@@ -204,10 +204,10 @@ export class McpServerModal extends Modal {
     const headersSetting = new Setting(this.typeFieldsEl)
       .setName('Headers')
       .setDesc('HTTP headers (key=value per line)');
-    headersSetting.settingEl.addClass('claudian-mcp-env-setting');
+    headersSetting.settingEl.addClass('codian-mcp-env-setting');
 
     const headersTextarea = headersSetting.controlEl.createEl('textarea', {
-      cls: 'claudian-mcp-env-textarea',
+      cls: 'codian-mcp-env-textarea',
     });
     headersTextarea.value = this.headers;
     headersTextarea.placeholder = 'Authorization=bearer token\ncontent-type=application/JSON';

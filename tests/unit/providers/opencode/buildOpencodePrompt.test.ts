@@ -1,7 +1,7 @@
-import { buildOpencodePromptBlocks, buildOpencodePromptText } from '../../../../src/providers/opencode/runtime/buildOpencodePrompt';
+import { buildOpencodePrompt, buildOpencodePromptBlocks, buildOpencodePromptText } from '../../../../src/providers/opencode/runtime/buildOpencodePrompt';
 
 describe('buildOpencodePromptText', () => {
-  it('appends Claudian XML context to the user query', () => {
+  it('appends Codian XML context to the user query', () => {
     const prompt = buildOpencodePromptText({
       browserSelection: {
         selectedText: 'Browser quote',
@@ -83,5 +83,35 @@ describe('buildOpencodePromptBlocks', () => {
       { type: 'text', text: 'Inspect this image' },
       { type: 'image', mimeType: 'image/png', data: 'base64-image' },
     ]);
+  });
+});
+
+describe('buildOpencodePrompt', () => {
+  it('keeps the user-typed range separate from appended and recovered context', () => {
+    const typed = 'Use /research.deep for this note';
+    const prompt = buildOpencodePrompt({
+      browserSelection: {
+        selectedText: 'Context also contains /not-a-skill',
+        source: 'browser:https://example.com',
+        title: 'Example',
+        url: 'https://example.com',
+      },
+      currentNotePath: 'notes/current.md',
+      text: typed,
+    }, [
+      { content: 'Previous request', id: 'user-1', role: 'user', timestamp: 1 },
+      { content: 'Previous answer', id: 'assistant-1', role: 'assistant', timestamp: 2 },
+    ]);
+
+    const text = prompt.blocks[0].type === 'text' ? prompt.blocks[0].text : '';
+    expect(prompt.userTextRange).not.toBeNull();
+    expect(text.slice(prompt.userTextRange!.start, prompt.userTextRange!.end)).toBe(typed);
+    expect(text).toContain('/not-a-skill');
+  });
+
+  it('reports original query range when no history or context are attached', () => {
+    const prompt = buildOpencodePrompt({ text: 'Use /research.deep' });
+
+    expect(prompt.userTextRange).toEqual({ start: 0, end: 'Use /research.deep'.length });
   });
 });

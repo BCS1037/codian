@@ -1,4 +1,5 @@
 import type { DiffLine, DiffStats } from '../../../core/types/diff';
+import { t } from '../../../i18n/i18n';
 
 export interface DiffHunk {
   lines: DiffLine[];
@@ -85,17 +86,17 @@ export function renderDiffContent(
   // New file creation: all lines are inserts — cap display to avoid large DOM
   const allInserts = diffLines.length > 0 && diffLines.every(l => l.type === 'insert');
   if (allInserts && diffLines.length > NEW_FILE_DISPLAY_CAP) {
-    const hunkEl = containerEl.createDiv({ cls: 'claudian-diff-hunk' });
+    const hunkEl = containerEl.createDiv({ cls: 'codian-diff-hunk' });
     for (const line of diffLines.slice(0, NEW_FILE_DISPLAY_CAP)) {
-      const lineEl = hunkEl.createDiv({ cls: 'claudian-diff-line claudian-diff-insert' });
-      const prefixEl = lineEl.createSpan({ cls: 'claudian-diff-prefix' });
+      const lineEl = hunkEl.createDiv({ cls: 'codian-diff-line codian-diff-insert' });
+      const prefixEl = lineEl.createSpan({ cls: 'codian-diff-prefix' });
       prefixEl.setText('+');
-      const contentEl = lineEl.createSpan({ cls: 'claudian-diff-text' });
+      const contentEl = lineEl.createSpan({ cls: 'codian-diff-text' });
       contentEl.setText(line.text || ' ');
     }
     const remaining = diffLines.length - NEW_FILE_DISPLAY_CAP;
-    const separator = containerEl.createDiv({ cls: 'claudian-diff-separator' });
-    separator.setText(`... ${remaining} more lines`);
+    const separator = containerEl.createDiv({ cls: 'codian-diff-separator' });
+    separator.setText(t('chat.tools.moreLines', { count: remaining }));
     return;
   }
 
@@ -103,31 +104,31 @@ export function renderDiffContent(
 
   if (hunks.length === 0) {
     // No changes
-    const noChanges = containerEl.createDiv({ cls: 'claudian-diff-no-changes' });
-    noChanges.setText('No changes');
+    const noChanges = containerEl.createDiv({ cls: 'codian-diff-no-changes' });
+    noChanges.setText(t('chat.tools.noChanges'));
     return;
   }
 
   hunks.forEach((hunk, hunkIndex) => {
     // Add separator between hunks
     if (hunkIndex > 0) {
-      const separator = containerEl.createDiv({ cls: 'claudian-diff-separator' });
+      const separator = containerEl.createDiv({ cls: 'codian-diff-separator' });
       separator.setText('...');
     }
 
     // Render hunk lines
-    const hunkEl = containerEl.createDiv({ cls: 'claudian-diff-hunk' });
+    const hunkEl = containerEl.createDiv({ cls: 'codian-diff-hunk' });
 
     for (const line of hunk.lines) {
-      const lineEl = hunkEl.createDiv({ cls: `claudian-diff-line claudian-diff-${line.type}` });
+      const lineEl = hunkEl.createDiv({ cls: `codian-diff-line codian-diff-${line.type}` });
 
       // Line prefix
       const prefix = line.type === 'insert' ? '+' : line.type === 'delete' ? '-' : ' ';
-      const prefixEl = lineEl.createSpan({ cls: 'claudian-diff-prefix' });
+      const prefixEl = lineEl.createSpan({ cls: 'codian-diff-prefix' });
       prefixEl.setText(prefix);
 
       // Line content
-      const contentEl = lineEl.createSpan({ cls: 'claudian-diff-text' });
+      const contentEl = lineEl.createSpan({ cls: 'codian-diff-text' });
       contentEl.setText(line.text || ' '); // Show space for empty lines
     }
   });

@@ -1,8 +1,12 @@
 import * as fsp from 'node:fs/promises';
+import * as zlib from 'node:zlib';
 
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+import { forEachJSONLLine } from '@/utils/jsonlFile';
 
 import type { ChatMessage, ContentBlock, ImageAttachment, ToolCallInfo } from '../../../core/types';
 import { extractUserDisplayContent } from '../../../utils/context';
@@ -17,8 +21,11 @@ import {
 import { stripCodexMemoryCitationMarkup } from '../normalization/CodexMemoryCitation';
 import {
   appendCodexCommandOutput,
-  decodeCodexExecEnvelope,
+  codexToolRequestsMatch,
+  decodeCodexExecEnvelopeCalls,
   extractCodexExecCellId,
+  isCodexInternalToolCall,
+  isCodexSilentWriteStdinCall,
   isCodexToolOutputError,
   normalizeCodexMcpToolInput,
   normalizeCodexMcpToolName,
@@ -115,9 +122,26 @@ interface PersistedMcpToolCallPayload {
 }
 
 interface PersistedEventPayload {
+  item?: {
+    type?: string;
+    kind?: string;
+    id?: string;
+    delivery?: string;
+    questions?: unknown[];
+    query?: string;
+    action?: unknown;
+    results?: unknown;
+    command?: unknown;
+    cwd?: unknown;
+    parsed_cmd?: Array<{ cmd?: unknown }>;
+    aggregated_output?: unknown;
+    exit_code?: unknown;
+  };
   type?: string;
   text?: string;
   message?: string;
+  memory_citation?: unknown;
+  memoryCitation?: unknown;
 }
 
 interface PersistedCompactionPayload {
@@ -125,12 +149,14 @@ interface PersistedCompactionPayload {
   encrypted_content?: string;
 }
 
-interface ParsedSessionRecord {
+export interface CodexSessionRecord {
   timestamp: number;
   type?: string;
   event?: CodexEvent;
   payload?: PersistedPayload;
 }
+
+export type ParsedSessionRecord = CodexSessionRecord;
 
 // ---------------------------------------------------------------------------
 // Multi-bubble turn model
@@ -209,9 +235,14 @@ function createPersistedParseContext(): PersistedParseContext {
     toolCallToTurn: new Map(),
     suppressedToolOutputIds: new Set(),
     terminalSessionToCommandId: new Map(),
-    stdinCallToCommandId: new Map(),
+    pendingStdinCalls: new Map(),
     execCellToCommandId: new Map(),
     execEnvelopeToolCallIds: new Map(),
+    nativeCallCandidates: [],
+    withheldExecCellIds: new Set(),
+    observedNativeItemIds: new Set(),
+    withheldExecOutputCallIds: new Set(),
+    failedExecCallIds: new Set(),
     waitCallToCommand: new Map(),
     turnCounter: 0,
   };
@@ -433,7 +464,7 @@ function parseTimestamp(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function parseSessionRecord(line: string): ParsedSessionRecord | null {
+function parseSessionRecord(line: string): CodexSessionRecord | null {
   let parsed: {
     timestamp?: string;
     type?: string;
@@ -446,6 +477,7 @@ function parseSessionRecord(line: string): ParsedSessionRecord | null {
   } catch {
     return null;
   }
+  if (!parsed || typeof parsed !== 'object') return null;
 
   return {
     timestamp: parseTimestamp(parsed.timestamp),
@@ -671,6 +703,13 @@ function processLegacyItem(
 // Persisted-format (response_item) processing — with bubble model
 // ---------------------------------------------------------------------------
 
+interface PersistedNativeCall {
+  /** Omitted when the call's own output is authoritative; it still prevents ambiguous matches. */
+  toolCallId?: string;
+  /** An opaque script may issue any request, so it blocks correlation until the turn ends. */
+  request: { name: string; input: Record<string, unknown> } | null;
+}
+
 interface PersistedParseContext {
   turns: Map<string, CodexTurnState>;
   turnOrder: string[];
@@ -678,9 +717,15 @@ interface PersistedParseContext {
   toolCallToTurn: Map<string, { turnId: string; bubbleIndex: number }>;
   suppressedToolOutputIds: Set<string>;
   terminalSessionToCommandId: Map<string, string>;
-  stdinCallToCommandId: Map<string, string>;
+  pendingStdinCalls: Map<string, { parentCallId?: string }>;
   execCellToCommandId: Map<string, string>;
   execEnvelopeToolCallIds: Map<string, string[]>;
+  nativeCallCandidates: PersistedNativeCall[];
+  withheldExecCellIds: Set<string>;
+  observedNativeItemIds: Set<string>;
+  workingDirectory?: string;
+  withheldExecOutputCallIds: Set<string>;
+  failedExecCallIds: Set<string>;
   waitCallToCommand: Map<string, { commandCallId: string; cellId: string }>;
   turnCounter: number;
 }
@@ -700,23 +745,81 @@ function processPersistedToolCall(
 
   const rawArgs = payload.arguments ?? payload.input;
   const parsedArgs = parseCodexArguments(rawArgs);
+  const normalized = normalizeCodexToolCall(payload.name, parsedArgs);
   const execEnvelopeCalls = payload.name === 'exec'
-    ? decodeCodexExecEnvelope(parsedArgs)
+    ? decodeCodexExecEnvelopeCalls(parsedArgs)
     : null;
+  // Script output is not attributed per call, so internal values cannot be separated from it.
+  if (execEnvelopeCalls?.some(call => isCodexInternalToolCall(call.rawName))) ctx.withheldExecOutputCallIds.add(callId);
+  if (execEnvelopeCalls?.every(call => isCodexInternalToolCall(call.rawName))) {
+    ctx.suppressedToolOutputIds.add(callId);
+    return;
+  }
+  const failedScript = payload.name === 'exec' && ctx.failedExecCallIds.has(callId);
+  if (payload.name === 'exec' && !execEnvelopeCalls) {
+    ctx.nativeCallCandidates.push({ request: null });
+  }
+  const candidates = execEnvelopeCalls ?? [{ ...normalized, rawInput: parsedArgs }];
+  candidates.forEach(({ name, input, rawInput }, index) => {
+    if (name !== 'Bash' && name !== 'WebSearch') return;
+    // Direct/single command outputs own their result, but omitting them would
+    // make an identical request in another script appear uniquely correlated.
+    const toolCallId = execEnvelopeCalls && !failedScript && (name === 'WebSearch' || execEnvelopeCalls.length > 1)
+      ? (execEnvelopeCalls.length > 1 ? `${callId}:${index + 1}` : callId)
+      : undefined;
+    if (name === 'Bash') {
+      const requestedDirectory = rawInput.workdir ?? rawInput.cwd ?? rawInput.workingDirectory;
+      const workingDirectory = resolvePersistedWorkingDirectory(requestedDirectory, ctx.workingDirectory);
+      if (workingDirectory === null) {
+        ctx.nativeCallCandidates.push({ request: null });
+        return;
+      }
+      ctx.nativeCallCandidates.push({ toolCallId, request: { name, input: {
+        ...input,
+        workingDirectory,
+      } } });
+    } else {
+      ctx.nativeCallCandidates.push({ toolCallId, request: { name, input } });
+    }
+  });
+  // A failed script can stop before later calls or emit partial results. Its
+  // source and output do not establish which nested tools actually executed.
+  if (failedScript) {
+    pushPersistedNormalizedToolCall(callId, { name: 'exec', input: parsedArgs }, timestamp, ctx);
+    return;
+  }
   if (execEnvelopeCalls && execEnvelopeCalls.length > 1) {
     const toolCallIds = execEnvelopeCalls.map((call, index) => {
       const nestedCallId = `${callId}:${index + 1}`;
-      pushPersistedNormalizedToolCall(nestedCallId, call, timestamp, ctx);
+      // A nested poll has no individual result in the script's aggregate output.
+      if (isCodexSilentWriteStdinCall(call.name, call.input)) return nestedCallId;
+      if (isCodexInternalToolCall(call.rawName)) ctx.suppressedToolOutputIds.add(nestedCallId);
+      else processPersistedNormalizedToolCall(nestedCallId, call, timestamp, ctx);
       return nestedCallId;
     });
     ctx.execEnvelopeToolCallIds.set(callId, toolCallIds);
+    if (!ctx.withheldExecOutputCallIds.has(callId)) {
+      pushPersistedNormalizedToolCall(callId, { name: 'exec', input: parsedArgs }, timestamp, ctx);
+    }
     return;
   }
 
-  const normalized = normalizeCodexToolCall(payload.name, parsedArgs);
+  processPersistedNormalizedToolCall(callId, normalized, timestamp, ctx);
+}
 
+function processPersistedNormalizedToolCall(
+  callId: string,
+  normalized: { name: string; input: Record<string, unknown> },
+  timestamp: number,
+  ctx: PersistedParseContext,
+): void {
   if (normalized.name === 'wait') {
     const cellId = readCodexExecCellIdArgument(normalized.input);
+    if (cellId && ctx.withheldExecCellIds.delete(cellId)) {
+      ctx.withheldExecOutputCallIds.add(callId);
+      ctx.suppressedToolOutputIds.add(callId);
+      return;
+    }
     const commandCallId = cellId ? ctx.execCellToCommandId.get(cellId) : undefined;
     if (cellId && commandCallId) {
       ctx.waitCallToCommand.set(callId, { commandCallId, cellId });
@@ -724,18 +827,15 @@ function processPersistedToolCall(
     }
   }
 
-  if (normalized.name === 'write_stdin') {
-    if (isSilentWriteStdinInput(parsedArgs)) {
-      const terminalSessionId = readTerminalSessionIdArgument(parsedArgs);
-      const parentCallId = terminalSessionId
-        ? ctx.terminalSessionToCommandId.get(terminalSessionId)
-        : undefined;
-      if (parentCallId) {
-        ctx.stdinCallToCommandId.set(callId, parentCallId);
-      }
-      ctx.suppressedToolOutputIds.add(callId);
-      return;
-    }
+  if (isCodexSilentWriteStdinCall(normalized.name, normalized.input)) {
+    const terminalSessionId = readTerminalSessionIdArgument(normalized.input);
+    const parentCallId = terminalSessionId
+      ? ctx.terminalSessionToCommandId.get(terminalSessionId)
+      : undefined;
+    ctx.pendingStdinCalls.set(callId, { parentCallId });
+    if (parentCallId) return;
+    // Without a command owner, the poll's own call ID retains its output and
+    // transcript position. Only an explicit empty acknowledgement removes it.
   }
 
   pushPersistedNormalizedToolCall(callId, normalized, timestamp, ctx);
@@ -785,10 +885,12 @@ function processPersistedToolOutput(
   const execEnvelopeToolCallIds = ctx.execEnvelopeToolCallIds.get(callId);
   if (execEnvelopeToolCallIds) {
     applyPersistedExecEnvelopeOutput(
+      callId,
       execEnvelopeToolCallIds,
       payload.output,
       rawOutput,
       ctx,
+      ctx.withheldExecOutputCallIds.has(callId),
     );
     ctx.execEnvelopeToolCallIds.delete(callId);
     return;
@@ -805,17 +907,23 @@ function processPersistedToolOutput(
     return;
   }
 
-  const parentCommandId = ctx.stdinCallToCommandId.get(callId);
-  if (parentCommandId) {
-    const parentToolCall = findPersistedToolCallById(ctx, parentCommandId);
-    if (parentToolCall) {
-      applyPersistedToolOutput(parentToolCall, payload.output, rawOutput, ctx, {
-        allowImplicitCommandCompletion: false,
-      });
+  const pendingStdinCall = ctx.pendingStdinCalls.get(callId);
+  if (pendingStdinCall) {
+    ctx.pendingStdinCalls.delete(callId);
+    if (pendingStdinCall.parentCallId) {
+      const parentToolCall = findPersistedToolCallById(ctx, pendingStdinCall.parentCallId);
+      if (parentToolCall) {
+        applyPersistedToolOutput(parentToolCall, payload.output, rawOutput, ctx, {
+          allowImplicitCommandCompletion: false,
+        });
+      }
+      return;
     }
-    ctx.stdinCallToCommandId.delete(callId);
-    ctx.suppressedToolOutputIds.delete(callId);
-    return;
+    const acknowledgement = normalizeCodexToolResult('exec', rawOutput).trim();
+    if (!extractCodexExecCellId(rawOutput) && (!acknowledgement || acknowledgement === 'Input sent.')) {
+      removePersistedToolCall(ctx, callId);
+      return;
+    }
   }
 
   if (ctx.suppressedToolOutputIds.delete(callId)) {
@@ -830,7 +938,8 @@ function processPersistedToolOutput(
       const originBubble = originTurn.assistantBubbles[origin.bubbleIndex];
       const existing = originBubble.toolCalls.find(tool => tool.id === callId);
       if (existing) {
-        applyPersistedToolOutput(existing, payload.output, rawOutput, ctx);
+        if (ctx.withheldExecOutputCallIds.has(callId)) existing.status = isCodexToolOutputError(rawOutput) ? 'error' : 'completed';
+        else applyPersistedToolOutput(existing, payload.output, rawOutput, ctx);
         return;
       }
     }
@@ -854,6 +963,50 @@ function processPersistedToolOutput(
   });
 }
 
+/** Claims the open script call a native item completes, when its request identifies exactly one. */
+function claimPersistedExecCall(
+  name: string,
+  nativeInputs: Record<string, unknown>[],
+  ctx: PersistedParseContext,
+): ToolCallInfo | null {
+  const matches = ctx.nativeCallCandidates.filter(({ request }) => !request || (request.name === name
+    && nativeInputs.some(input => codexToolRequestsMatch(name, request.input, input))));
+  if (matches.length !== 1 || !matches[0].request) return null;
+  const [call] = matches;
+  const toolCall = call.toolCallId ? findPersistedToolCallById(ctx, call.toolCallId) : null;
+  // A decoded command can execute repeatedly inside a script. Retain its
+  // request so a later identical command never appears falsely unique.
+  if (name === 'Bash') call.toolCallId = undefined;
+  else ctx.nativeCallCandidates.splice(ctx.nativeCallCandidates.indexOf(call), 1);
+  return toolCall;
+}
+
+/** Undefined means absent; null means unresolvable and cannot establish native ownership. */
+function resolvePersistedWorkingDirectory(directory: unknown, baseDirectory?: string): string | null | undefined {
+  try {
+    if (typeof directory !== 'string' || !directory) return baseDirectory && path.resolve(baseDirectory);
+    const localDirectory = directory.startsWith('file:') ? fileURLToPath(directory) : directory;
+    return path.resolve(baseDirectory ?? '', localDirectory);
+  } catch {
+    return null;
+  }
+}
+
+function applyPersistedNativeExecItem(item: NonNullable<PersistedEventPayload['item']>, ctx: PersistedParseContext): void {
+  if (item.id) {
+    if (ctx.observedNativeItemIds.has(item.id)) return;
+    ctx.observedNativeItemIds.add(item.id);
+  }
+  const commands = [item.parsed_cmd?.[0]?.cmd, Array.isArray(item.command) ? item.command.at(-1) : item.command]
+    .filter((command): command is string => typeof command === 'string' && command.length > 0);
+  const workingDirectory = resolvePersistedWorkingDirectory(item.cwd);
+  if (workingDirectory === null) return;
+  const toolCall = claimPersistedExecCall('Bash', commands.map(command => ({ command, workingDirectory })), ctx);
+  if (!toolCall || typeof item.aggregated_output !== 'string') return;
+  toolCall.result = item.aggregated_output;
+  if (typeof item.exit_code === 'number') toolCall.status = item.exit_code === 0 ? 'completed' : 'error';
+}
+
 function findPersistedToolCallById(ctx: PersistedParseContext, callId: string): ToolCallInfo | null {
   const origin = ctx.toolCallToTurn.get(callId);
   if (!origin) {
@@ -868,72 +1021,41 @@ function findPersistedToolCallById(ctx: PersistedParseContext, callId: string): 
   return turn.assistantBubbles[origin.bubbleIndex].toolCalls.find(tool => tool.id === callId) ?? null;
 }
 
+function removePersistedToolCall(ctx: PersistedParseContext, callId: string): void {
+  const origin = ctx.toolCallToTurn.get(callId);
+  if (!origin) return;
+  const bubble = ctx.turns.get(origin.turnId)?.assistantBubbles[origin.bubbleIndex];
+  if (!bubble) return;
+  bubble.toolCalls = bubble.toolCalls.filter(tool => tool.id !== callId);
+  bubble.contentBlocks = bubble.contentBlocks.filter(block => block.type !== 'tool_use' || block.toolId !== callId);
+  bubble.toolIndexesById.clear();
+  bubble.toolCalls.forEach((tool, index) => bubble.toolIndexesById.set(tool.id, index));
+  ctx.toolCallToTurn.delete(callId);
+}
+
 function applyPersistedExecEnvelopeOutput(
+  envelopeCallId: string,
   toolCallIds: string[],
   rawOutputValue: string | unknown[] | undefined,
   rawOutputText: string,
   ctx: PersistedParseContext,
+  withholdsOutput: boolean,
 ): void {
   const toolCalls = toolCallIds
     .map(toolCallId => findPersistedToolCallById(ctx, toolCallId))
     .filter((toolCall): toolCall is ToolCallInfo => toolCall !== null);
-  if (toolCalls.length === 0) return;
 
-  const outputParts = splitPersistedExecEnvelopeOutput(rawOutputValue, toolCalls.length);
-  if (outputParts) {
-    for (const [index, toolCall] of toolCalls.entries()) {
-      const outputPart = outputParts[index] ?? '';
-      applyPersistedToolOutput(
-        toolCall,
-        outputPart,
-        stringifyCodexToolOutput(outputPart),
-        ctx,
-      );
-    }
-    return;
-  }
-
-  // Without one output item per nested call, preserve the aggregate result on
-  // the final card instead of inventing a per-command split.
+  // Output parts follow emission order, not call order. Keep them on the script.
   const isError = isCodexToolOutputError(rawOutputText);
   for (const toolCall of toolCalls) {
-    toolCall.status = isError ? 'error' : 'completed';
+    // Calls completed by their native item keep its status.
+    if (toolCall.status === 'running') toolCall.status = isError ? 'error' : 'completed';
   }
 
-  const lastToolCall = toolCalls[toolCalls.length - 1];
-  if (lastToolCall) {
-    lastToolCall.result = normalizeCodexToolResult(lastToolCall.name, rawOutputText);
+  const envelope = findPersistedToolCallById(ctx, envelopeCallId);
+  if (envelope && !withholdsOutput) {
+    applyPersistedToolOutput(envelope, rawOutputValue, rawOutputText, ctx);
   }
-}
-
-function splitPersistedExecEnvelopeOutput(
-  rawOutputValue: string | unknown[] | undefined,
-  toolCallCount: number,
-): Array<string | unknown[]> | null {
-  if (!Array.isArray(rawOutputValue)) return null;
-
-  const outputParts: Array<string | unknown[]> = [];
-  for (const part of rawOutputValue) {
-    if (!part || typeof part !== 'object' || Array.isArray(part)) return null;
-    const text = (part as Record<string, unknown>).text;
-    outputParts.push(typeof text === 'string' ? text : [part]);
-  }
-
-  // The outer exec transport prepends its own completion header before values
-  // emitted by each text(...) call in the envelope.
-  if (
-    outputParts.length === toolCallCount + 1
-    && typeof outputParts[0] === 'string'
-    && isPersistedExecEnvelopeHeader(outputParts[0])
-  ) {
-    return outputParts.slice(1);
-  }
-
-  return outputParts.length === toolCallCount ? outputParts : null;
-}
-
-function isPersistedExecEnvelopeHeader(value: string): boolean {
-  return value.startsWith('Script ') && value.endsWith('Output:\n');
 }
 
 function readTerminalSessionIdArgument(input: Record<string, unknown>): string | undefined {
@@ -943,10 +1065,6 @@ function readTerminalSessionIdArgument(input: Record<string, unknown>): string |
   return undefined;
 }
 
-function isSilentWriteStdinInput(input: Record<string, unknown>): boolean {
-  return typeof input.chars !== 'string' || input.chars.length === 0;
-}
-
 function readPersistedCommandToolResult(rawOutputText: string): {
   output: string;
   status: 'running' | 'completed' | 'unknown';
@@ -954,16 +1072,33 @@ function readPersistedCommandToolResult(rawOutputText: string): {
   terminalSessionId?: string;
   execCellId?: string;
 } {
-  const output = normalizeCodexToolResult('Bash', rawOutputText);
-  const exitCodeMatch = rawOutputText.match(/(?:Exit code:|Process exited with code)\s*(-?\d+)/i);
-  const runningMatch = rawOutputText.match(/Process running with session ID\s*([^\n]+)/i);
+  const outputMarker = 'Output:\n';
+  const markerIndex = rawOutputText.startsWith('Script ') ? rawOutputText.indexOf(outputMarker) : -1;
+  let commandResultText = markerIndex >= 0
+    ? rawOutputText.slice(markerIndex + outputMarker.length)
+    : rawOutputText;
+  let metadata = parseCodexArguments(commandResultText);
+  if (metadata.status === 'fulfilled'
+    && metadata.value
+    && typeof metadata.value === 'object'
+    && !Array.isArray(metadata.value)
+    && typeof (metadata.value as Record<string, unknown>).output === 'string') {
+    metadata = metadata.value as Record<string, unknown>;
+    commandResultText = JSON.stringify(metadata);
+  }
+  const exitCodeMatch = commandResultText.match(/(?:Exit code:|Process exited with code)\s*(-?\d+)/i);
+  const exitCode = typeof metadata.exit_code === 'number' && Number.isInteger(metadata.exit_code)
+    ? metadata.exit_code
+    : exitCodeMatch ? Number(exitCodeMatch[1]) : undefined;
+  const runningMatch = commandResultText.match(/Process running with session ID\s*([^\n]+)/i);
+  const terminalSessionId = readTerminalSessionIdArgument(metadata) || runningMatch?.[1]?.trim();
   const execCellId = extractCodexExecCellId(rawOutputText);
 
   return {
-    output,
-    status: exitCodeMatch ? 'completed' : runningMatch || execCellId ? 'running' : 'unknown',
-    ...(exitCodeMatch ? { exitCode: Number(exitCodeMatch[1] ?? 0) } : {}),
-    ...(runningMatch ? { terminalSessionId: (runningMatch[1] ?? '').trim() } : {}),
+    output: normalizeCodexToolResult('Bash', commandResultText),
+    status: exitCode !== undefined ? 'completed' : terminalSessionId || execCellId ? 'running' : 'unknown',
+    ...(exitCode !== undefined ? { exitCode } : {}),
+    ...(terminalSessionId ? { terminalSessionId } : {}),
     ...(execCellId ? { execCellId } : {}),
   };
 }
@@ -975,16 +1110,33 @@ function applyPersistedToolOutput(
   ctx: PersistedParseContext,
   options: { allowImplicitCommandCompletion?: boolean } = {},
 ): void {
-  if (toolCall.name === 'Bash') {
+  if (toolCall.name === 'exec') {
+    toolCall.result = appendCodexCommandOutput(toolCall.result, normalizeCodexToolResult('exec', rawOutputText));
+    if (Array.isArray(rawOutputValue)) {
+      const images = extractMessageImages(rawOutputValue as PersistedMessagePart[], toolCall.id)
+        .map(({ data, mediaType }) => ({ kind: 'data' as const, data, mediaType }));
+      if (images.length > 0) toolCall.resultImages = [...(toolCall.resultImages ?? []), ...images];
+    }
+    const cellId = extractCodexExecCellId(rawOutputText);
+    if (cellId) {
+      ctx.execCellToCommandId.set(cellId, toolCall.id);
+      toolCall.status = 'running';
+    } else {
+      toolCall.status = (ctx.failedExecCallIds.has(toolCall.id) || isCodexToolOutputError(rawOutputText)) ? 'error' : 'completed';
+    }
+    return;
+  }
+
+  if (toolCall.name === 'Bash' || toolCall.name === 'write_stdin') {
     const commandResult = readPersistedCommandToolResult(rawOutputText);
     toolCall.result = appendCodexCommandOutput(toolCall.result, commandResult.output);
-    if (commandResult.terminalSessionId) {
+    if (commandResult.terminalSessionId && toolCall.name === 'Bash') {
       ctx.terminalSessionToCommandId.set(commandResult.terminalSessionId, toolCall.id);
     }
     if (commandResult.execCellId) {
       ctx.execCellToCommandId.set(commandResult.execCellId, toolCall.id);
     }
-    if (commandResult.status === 'running') {
+    if (commandResult.execCellId || (commandResult.status === 'running' && toolCall.name === 'Bash')) {
       toolCall.status = 'running';
       return;
     }
@@ -993,12 +1145,13 @@ function applyPersistedToolOutput(
     }
     toolCall.status = commandResult.exitCode !== undefined
       ? commandResult.exitCode === 0 ? 'completed' : 'error'
-      : isCodexToolOutputError(rawOutputText) ? 'error' : 'completed';
+      : isCodexToolOutputError(rawOutputText) || isCodexToolOutputError(commandResult.output) ? 'error' : 'completed';
     return;
   }
 
   toolCall.result = normalizePersistedToolOutput(toolCall, rawOutputValue, rawOutputText);
-  toolCall.status = isCodexToolOutputError(rawOutputText) ? 'error' : 'completed';
+  toolCall.status = (toolCall.name === 'exec' && ctx.failedExecCallIds.has(toolCall.id))
+    || isCodexToolOutputError(rawOutputText) ? 'error' : 'completed';
 }
 
 function normalizePersistedToolOutput(
@@ -1187,7 +1340,18 @@ function processEventMsg(
   if (!payload?.type) return;
 
   switch (payload.type) {
+    case 'item_completed': {
+      const item = payload.item;
+      if (item?.type === 'CommandExecution') {
+        applyPersistedNativeExecItem(item, ctx);
+        break;
+      }
+      break;
+    }
+
     case 'task_started': {
+      // Native items complete their calls within the same turn.
+      ctx.nativeCallCandidates.length = 0;
       const serverTurnId = extractServerTurnId(payload);
       const id = nextTurnId(ctx);
       const turn = ensureTurn(ctx.turns, ctx.turnOrder, id, null, timestamp);
@@ -1437,6 +1601,10 @@ export function findCodexSessionFile(
   if (fs.existsSync(directPath)) {
     return directPath;
   }
+  const directZstPath = path.join(root, `${threadId}.jsonl.zst`);
+  if (fs.existsSync(directZstPath)) {
+    return directZstPath;
+  }
 
   const stack = [root];
   while (stack.length > 0) {
@@ -1459,7 +1627,10 @@ export function findCodexSessionFile(
         continue;
       }
 
-      if (entry.isFile() && entry.name.endsWith(`-${threadId}.jsonl`)) {
+      if (
+        entry.isFile()
+        && (entry.name.endsWith(`-${threadId}.jsonl`) || entry.name.endsWith(`-${threadId}.jsonl.zst`))
+      ) {
         return fullPath;
       }
     }
@@ -1490,6 +1661,10 @@ export async function findCodexSessionFileAsync(
     if (await runBeforeDeadline(() => pathExists(directPath), deadline)) {
       return directPath;
     }
+    const directZstPath = path.join(root, `${threadId}.jsonl.zst`);
+    if (await runBeforeDeadline(() => pathExists(directZstPath), deadline)) {
+      return directZstPath;
+    }
   } catch {
     return null;
   }
@@ -1512,12 +1687,27 @@ export async function findCodexSessionFileAsync(
       const fullPath = path.join(current, entry.name);
       if (entry.isDirectory()) {
         stack.push(fullPath);
-      } else if (entry.isFile() && entry.name.endsWith(`-${threadId}.jsonl`)) {
+      } else if (
+        entry.isFile()
+        && (entry.name.endsWith(`-${threadId}.jsonl`) || entry.name.endsWith(`-${threadId}.jsonl.zst`))
+      ) {
         return fullPath;
       }
     }
   }
   return null;
+}
+
+const CODEX_UUID_PATTERN = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/;
+
+export function extractCodexThreadIdFromPath(filePath: string): string | null {
+  const base = path.basename(filePath);
+  const uuidMatch = base.match(CODEX_UUID_PATTERN);
+  if (uuidMatch) {
+    return uuidMatch[0];
+  }
+  const genericMatch = base.match(/(?:^|.+?-)([A-Za-z0-9_-]+)\.jsonl(?:\.zst)?$/);
+  return genericMatch ? genericMatch[1] : null;
 }
 
 export interface CodexSessionFileLookupDependencies {
@@ -1563,7 +1753,14 @@ async function defaultPathExists(value: string): Promise<boolean> {
 export function parseCodexSessionFile(filePath: string): ChatMessage[] {
   let content: string;
   try {
-    content = fs.readFileSync(filePath, 'utf-8');
+    if (filePath.endsWith('.zst')) {
+      const buffer = fs.readFileSync(filePath);
+      content = typeof zlib.zstdDecompressSync === 'function'
+        ? zlib.zstdDecompressSync(buffer).toString('utf-8')
+        : buffer.toString('utf-8');
+    } else {
+      content = fs.readFileSync(filePath, 'utf-8');
+    }
   } catch {
     return [];
   }
@@ -1571,20 +1768,30 @@ export function parseCodexSessionFile(filePath: string): ChatMessage[] {
   return parseCodexSessionContent(content);
 }
 
-export async function parseCodexSessionFileAsync(
-  filePath: string,
-  timeoutMs = 10_000,
-): Promise<ChatMessage[]> {
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+
+/**
+ * Streams a native transcript into records without materializing the whole file as one string.
+ * Returns null when the file is missing; every other read failure rejects so callers never mistake
+ * an unreadable transcript for an empty one. Malformed lines are skipped.
+ */
+export async function readCodexSessionRecords(filePath: string): Promise<CodexSessionRecord[] | null> {
+  const records: CodexSessionRecord[] = [];
   try {
-    const content = await fsp.readFile(filePath, { encoding: 'utf-8', signal: controller.signal });
-    return parseCodexSessionContent(content);
-  } catch {
-    return [];
-  } finally {
-    window.clearTimeout(timer);
+    await forEachJSONLLine(filePath, (line) => {
+      const record = parseSessionRecord(line);
+      if (record) records.push(record);
+    });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException | null)?.code === 'ENOENT') return null;
+    throw error;
   }
+  return records;
+}
+
+/** Missing transcripts have no history; other read failures reject. */
+export async function parseCodexSessionFileAsync(filePath: string): Promise<ChatMessage[]> {
+  const records = await readCodexSessionRecords(filePath);
+  return records ? parseCodexSessionTurns(records).flatMap(turn => turn.messages) : [];
 }
 
 export interface CodexParsedTurn {
@@ -1592,17 +1799,23 @@ export interface CodexParsedTurn {
   messages: ChatMessage[];
 }
 
+export function parseCodexSessionRecordLines(lines: readonly string[]): CodexSessionRecord[] {
+  return lines
+    .map(parseSessionRecord)
+    .filter((record): record is CodexSessionRecord => record !== null);
+}
+
+export function parseCodexSessionRecords(content: string): CodexSessionRecord[] {
+  return parseCodexSessionRecordLines(content.split('\n'));
+}
+
 export function parseCodexSessionContent(content: string): ChatMessage[] {
   const turns = parseCodexSessionTurns(content);
   return turns.flatMap(t => t.messages);
 }
 
-export function parseCodexSessionTurns(content: string): CodexParsedTurn[] {
-  const records = content
-    .split('\n')
-    .filter(line => line.trim())
-    .map(parseSessionRecord)
-    .filter((record): record is ParsedSessionRecord => record !== null);
+export function parseCodexSessionTurns(content: string | CodexSessionRecord[]): CodexParsedTurn[] {
+  const records = typeof content === 'string' ? parseCodexSessionRecordLines(content.split('\n')) : content;
 
   // Detect format: legacy uses type=event, modern uses event_msg/response_item
   let hasLegacy = false;
@@ -1679,6 +1892,28 @@ function parseLegacySession(records: ParsedSessionRecord[]): ChatMessage[] {
 
 function parseModernSessionTurns(records: ParsedSessionRecord[]): CodexParsedTurn[] {
   const ctx = createPersistedParseContext();
+  const compactedRecordsWithEvent = new Set<ParsedSessionRecord>();
+  let pendingCompactionRecord: ParsedSessionRecord | undefined;
+
+  for (const record of records) {
+    const payload = record.payload;
+    if (record.type === 'response_item'
+      && (payload?.type === 'custom_tool_call_output' || payload?.type === 'function_call_output')) {
+      const output = payload as PersistedToolCallOutputPayload;
+      if (output.call_id && /^Script failed(?:\r?\n|$)/.test(stringifyCodexToolOutput(output.output))) {
+        ctx.failedExecCallIds.add(output.call_id);
+      }
+    }
+
+    if (record.type === 'compacted') {
+      pendingCompactionRecord = record;
+    } else if (record.type === 'event_msg' && payload?.type === 'context_compacted') {
+      if (pendingCompactionRecord) compactedRecordsWithEvent.add(pendingCompactionRecord);
+      pendingCompactionRecord = undefined;
+    } else if (record.type === 'response_item' || record.type === 'event_msg') {
+      pendingCompactionRecord = undefined;
+    }
+  }
 
   for (const [lineIndex, parsed] of records.entries()) {
     const timestamp = parsed.timestamp;
@@ -1695,8 +1930,9 @@ function parseModernSessionTurns(records: ParsedSessionRecord[]): CodexParsedTur
     }
 
     if (parsed.type === 'compacted') {
-      // Codex replacement_history is compacted provider context, not a role-complete
-      // UI transcript. The durable visible marker is event_msg:context_compacted.
+      if (!compactedRecordsWithEvent.has(parsed)) {
+        processEventMsg({ type: 'context_compacted' }, timestamp, ctx);
+      }
       continue;
     }
 

@@ -34,6 +34,15 @@ const NATIVE_TOOLS = new Set([
   'close_agent',
 ]);
 
+/** Codex context-management tools: model bookkeeping with opaque payloads, not user-visible work. */
+const INTERNAL_TOOL_NAMESPACES = new Set(['history', 'notes']);
+const INTERNAL_TOOL_NAMES = new Set(['new_context', 'get_context_remaining']);
+
+export function isCodexInternalToolCall(rawName: string | undefined, namespace?: unknown): boolean {
+  if (typeof namespace === 'string' && namespace) return INTERNAL_TOOL_NAMESPACES.has(namespace);
+  return INTERNAL_TOOL_NAMES.has(rawName ?? '');
+}
+
 export function normalizeCodexToolName(rawName: string | undefined): string {
   if (!rawName) return 'tool';
   if (NATIVE_TOOLS.has(rawName)) return rawName;
@@ -60,9 +69,23 @@ export function normalizeCodexToolCall(
   };
 }
 
+export interface DecodedCodexExecEnvelopeCall extends NormalizedCodexToolCall {
+  rawName: string;
+  rawInput: Record<string, unknown>;
+}
+
 export function decodeCodexExecEnvelope(
   input: Record<string, unknown>,
 ): NormalizedCodexToolCall[] | null {
+  return decodeCodexExecEnvelopeCalls(input)?.map(({ name, input: normalizedInput }) => ({
+    name,
+    input: normalizedInput,
+  })) ?? null;
+}
+
+export function decodeCodexExecEnvelopeCalls(
+  input: Record<string, unknown>,
+): DecodedCodexExecEnvelopeCall[] | null {
   const source = firstNonEmptyString(input.raw, input.value);
   if (!source) return null;
 
@@ -72,11 +95,13 @@ export function decodeCodexExecEnvelope(
   const calls = findExecEnvelopeToolCalls(tokens);
   if (!calls || calls.length === 0) return null;
 
-  const decodedCalls: NormalizedCodexToolCall[] = [];
+  const decodedCalls: DecodedCodexExecEnvelopeCall[] = [];
   for (const call of calls) {
     const rawInput = decodeExecEnvelopeToolInput(tokens, call);
     if (!rawInput) return null;
     decodedCalls.push({
+      rawName: call.name,
+      rawInput,
       name: normalizeCodexToolName(call.name),
       input: normalizeCodexToolInput(call.name, rawInput),
     });
@@ -614,6 +639,19 @@ function normalizeStringArray(value: unknown): string[] {
   return [...uniqueValues];
 }
 
+/** Polling `write_stdin` calls send no characters; their output belongs to the polled command. */
+export function isCodexSilentWriteStdinCall(name: string | undefined, input: Record<string, unknown>): boolean {
+  return name === 'write_stdin' && (typeof input.chars !== 'string' || input.chars.length === 0);
+}
+
+/** Visible acknowledgement of an async question; the answer arrives as a later user message. */
+export const CODEX_ASYNC_QUESTION_RESULT = 'Question sent. Awaiting your reply.';
+
+/** Terminal native item statuses that did not complete the requested work. */
+export function isCodexFailedToolStatus(status: unknown): boolean {
+  return status === 'failed' || status === 'error' || status === 'cancelled';
+}
+
 // ---------------------------------------------------------------------------
 // MCP tool normalization
 // ---------------------------------------------------------------------------
@@ -697,6 +735,9 @@ function extractCodexMcpResultText(resultPayload?: unknown): string {
 // Tool result normalization
 // ---------------------------------------------------------------------------
 
+/** Code-mode exec transport header preceding values emitted by its script. */
+const CODE_MODE_SCRIPT_HEADER = /^Script (?:completed|failed|running with cell ID [^\r\n]+)\r?\nWall time [^\r\n]+\r?\nOutput:\r?\n/;
+
 /**
  * Tools whose results should get terminal-style unwrapping.
  * Uses normalized names only — callers always pass through normalizeCodexToolName first.
@@ -711,8 +752,35 @@ export function normalizeCodexToolResult(
   rawResult: string,
 ): string {
   if (!rawResult) return rawResult;
+  if (normalizedName === 'AskUserQuestion') {
+    try {
+      const result = JSON.parse(rawResult) as Record<string, unknown> | null;
+      if (result?.accepted === true && Object.keys(result).length === 1) {
+        return CODEX_ASYNC_QUESTION_RESULT;
+      }
+    } catch { /* Keep non-JSON question results intact. */ }
+  }
+  if (normalizedName === 'exec') {
+    // Only remove the transport envelope; arbitrary script output may itself
+    // contain JSON objects or "Output:" labels that must remain intact.
+    return rawResult.replace(CODE_MODE_SCRIPT_HEADER, '');
+  }
   if (!TERMINAL_RESULT_TOOLS.has(normalizedName)) return rawResult;
   return unwrapTerminalResult(rawResult);
+}
+
+function isImageContentPart(part: unknown): boolean {
+  return !!part && typeof part === 'object' && !Array.isArray(part)
+    && (part as Record<string, unknown>).type === 'input_image';
+}
+
+function stringifyUnknown(value: unknown): string {
+  try {
+    const result = JSON.stringify(value);
+    return typeof result === 'string' ? result : String(value);
+  } catch {
+    return String(value);
+  }
 }
 
 export function stringifyCodexToolOutput(value: unknown): string {
@@ -728,14 +796,14 @@ export function stringifyCodexToolOutput(value: unknown): string {
       })
       .filter(Boolean);
     if (textParts.length > 0) return textParts.join('');
+    // Image payloads have no text projection; stringifying them would copy base64 into result text.
+    const nonImageParts = value.filter(part => !isImageContentPart(part));
+    if (nonImageParts.length < value.length) {
+      return nonImageParts.length > 0 ? stringifyUnknown(nonImageParts) : '';
+    }
   }
 
-  try {
-    const result = JSON.stringify(value);
-    return typeof result === 'string' ? result : String(value);
-  } catch {
-    return String(value);
-  }
+  return stringifyUnknown(value);
 }
 
 export function extractCodexExecCellId(output: string): string | undefined {
@@ -759,7 +827,29 @@ export function appendCodexCommandOutput(previous: string | undefined, next: str
   return `${previous}\n${next}`;
 }
 
+/** Literal stdout from a unified exec JSON result, optionally behind a code-mode truncation notice. */
+function readUnifiedExecOutput(text: string): string | undefined {
+  const transport = text
+    .replace(/^Warning: truncated output \(original token count: \d+\)\r?\nTotal output lines: \d+\r?\n\r?\n/, '')
+    .trim();
+  if (!transport.startsWith('{')) return undefined;
+  try {
+    const parsed = JSON.parse(transport) as Record<string, unknown>;
+    return typeof parsed.output === 'string' && ('chunk_id' in parsed || 'wall_time_seconds' in parsed)
+      ? parsed.output
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function unwrapTerminalResult(raw: string): string {
+  const body = raw.replace(CODE_MODE_SCRIPT_HEADER, '');
+  const unifiedExecOutput = readUnifiedExecOutput(body);
+  if (unifiedExecOutput !== undefined) return unifiedExecOutput;
+  // Other values a script emits are literal output.
+  if (body !== raw) return body;
+
   let result = raw;
 
   // Unwrap JSON { output: "..." } wrapper
@@ -784,10 +874,74 @@ function unwrapTerminalResult(raw: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Request matching
+// ---------------------------------------------------------------------------
+
+/**
+ * Whether a native item performs the request of a decoded raw call. Native items
+ * carry no raw call ID, so callers attribute them only on a unique match.
+ */
+export function codexToolRequestsMatch(
+  name: string,
+  requested: Record<string, unknown>,
+  native: Record<string, unknown>,
+): boolean {
+  if (name !== 'WebSearch') return stableValueKey(requested) === stableValueKey(native);
+  if (Array.isArray(requested.actions) && requested.actions.length > 1) {
+    return requested.actions.some(action => (
+      action !== null && typeof action === 'object' && !Array.isArray(action)
+      && codexToolRequestsMatch(name, action as Record<string, unknown>, native)
+    ));
+  }
+  const requestedWeb = normalizeComparedWebInput(requested);
+  const nativeWeb = normalizeComparedWebInput(native);
+  // Native reference-based opens and clicks can expose only an `other` action.
+  if (nativeWeb.actionType === 'other' && (requestedWeb.actionType === 'open_page' || requestedWeb.actionType === 'click')) {
+    return true;
+  }
+  // Native find events can retain the pattern but omit the opaque page reference.
+  if (nativeWeb.actionType === 'find_in_page' && !nativeWeb.url) {
+    delete requestedWeb.url;
+  }
+  return stableValueKey(requestedWeb) === stableValueKey(nativeWeb);
+}
+
+function normalizeComparedWebInput(input: Record<string, unknown>): Record<string, unknown> {
+  const normalized: Record<string, unknown> = { ...input };
+  if (normalized.actionType === 'open_page' || normalized.actionType === 'find_in_page') {
+    delete normalized.query;
+    delete normalized.queries;
+  } else if (Array.isArray(normalized.queries) && normalized.queries.length > 0) {
+    // The query field can be a display summary (first query + " ...").
+    // Compare the actual query list when the native event supplies it.
+    normalized.query = normalized.queries[0];
+    if (normalized.queries.length === 1) {
+      delete normalized.queries;
+    }
+  }
+  return normalized;
+}
+
+export function stableValueKey(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableValueKey).join(',')}]`;
+  }
+  if (value !== null && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record)
+      .sort()
+      .map(key => `${JSON.stringify(key)}:${stableValueKey(record[key])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value) ?? String(value);
+}
+
+// ---------------------------------------------------------------------------
 // Error detection
 // ---------------------------------------------------------------------------
 
 export function isCodexToolOutputError(output: string): boolean {
+  if (/^Script failed(?:\r?\n|$)/.test(output.trimStart())) return true;
   const exitCodeMatch = output.match(/(?:Exit code:|Process exited with code)\s*(\d+)/i);
   if (exitCodeMatch) {
     return Number(exitCodeMatch[1]) !== 0;

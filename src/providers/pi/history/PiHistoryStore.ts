@@ -4,7 +4,9 @@ import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { isWriteEditTool } from '../../../core/tools/toolNames';
+import { forEachJSONLLine } from '@/utils/jsonlFile';
+
+import { isWriteEditTool, TOOL_READ } from '../../../core/tools/toolNames';
 import type { ChatMessage, ContentBlock, ImageAttachment, ToolCallInfo } from '../../../core/types';
 import { extractUserQuery } from '../../../utils/context';
 import { extractDiffData } from '../../../utils/diff';
@@ -14,6 +16,7 @@ import {
   normalizePiToolInput,
   normalizePiToolName,
 } from '../normalizations/piToolNormalization';
+import type { PiTreeCursor } from '../types';
 
 export interface PiSessionEntry {
   id?: string;
@@ -26,6 +29,13 @@ export interface PiSessionEntry {
 export interface ParsedPiSessionEntries {
   entries: PiSessionEntry[];
   header: Record<string, unknown> | null;
+}
+
+export interface PiPromptBranchPosition {
+  count: number;
+  nextMessageId?: string;
+  position: number;
+  previousMessageId?: string;
 }
 
 export interface ParsePiSessionContentOptions {
@@ -49,10 +59,10 @@ export interface CreatedPiForkSessionFile {
 }
 
 export function parsePiSessionContent(
-  content: string,
+  content: string | ParsedPiSessionEntries,
   options: ParsePiSessionContentOptions = {},
 ): ChatMessage[] {
-  const parsed = parsePiSessionEntries(content);
+  const parsed = typeof content === 'string' ? parsePiSessionEntries(content) : content;
   const leafEntryId = options.leafEntryId?.trim();
   if (
     options.requireLeafEntryId
@@ -61,51 +71,69 @@ export function parsePiSessionContent(
     return [];
   }
 
-  return mapPiSessionEntries(
+  const messages = mapPiSessionEntries(
     resolvePiActivePath(parsed.entries, leafEntryId),
     options.syntheticIdNamespace,
   );
+  const branchPositions = getPiPromptBranchPositions(parsed.entries);
+  for (const message of messages) {
+    const position = message.userMessageId
+      ? branchPositions.get(message.userMessageId)
+      : undefined;
+    if (position) message.branchNavigation = position;
+  }
+  return messages;
 }
 
 export function parsePiSessionEntries(content: string): ParsedPiSessionEntries {
-  const entries: PiSessionEntry[] = [];
-  let header: Record<string, unknown> | null = null;
-
+  const parsed: ParsedPiSessionEntries = { entries: [], header: null };
   for (const line of content.split(/\r?\n/)) {
-    if (!line.trim()) {
-      continue;
-    }
+    addPiSessionLine(parsed, line);
+  }
+  return parsed;
+}
 
-    let record: Record<string, unknown>;
-    try {
-      const parsed = JSON.parse(line) as unknown;
-      if (!isPlainObject(parsed)) {
-        continue;
-      }
-      record = parsed;
-    } catch {
-      continue;
-    }
+/** Streams a native session file so transcripts larger than one JavaScript string stay readable. */
+export async function readPiSessionEntries(sessionFile: string): Promise<ParsedPiSessionEntries> {
+  const parsed: ParsedPiSessionEntries = { entries: [], header: null };
+  await forEachJSONLLine(sessionFile, (line) => {
+    addPiSessionLine(parsed, line);
+  });
+  return parsed;
+}
 
-    const type = getString(record.type) ?? getString(record.kind) ?? '';
-    if (type === 'session') {
-      header = record;
-      continue;
-    }
-
-    const message = getRecord(record.message) ?? getRecord(record.data) ?? inferMessageRecord(record);
-    entries.push({
-      ...(getString(record.id) ? { id: getString(record.id)! } : {}),
-      ...(message ? { message } : {}),
-      ...(getString(record.parentId) ?? getString(record.parent_id)
-        ? { parentId: (getString(record.parentId) ?? getString(record.parent_id))! }
-        : {}),
-      raw: record,
-      type,
-    });
+function addPiSessionLine(parsed: ParsedPiSessionEntries, line: string): void {
+  if (!line.trim()) {
+    return;
   }
 
-  return { entries, header };
+  let record: Record<string, unknown>;
+  try {
+    const value = JSON.parse(line) as unknown;
+    if (!isPlainObject(value)) {
+      return;
+    }
+    record = value;
+  } catch {
+    return;
+  }
+
+  const type = getString(record.type) ?? getString(record.kind) ?? '';
+  if (type === 'session') {
+    parsed.header = record;
+    return;
+  }
+
+  const message = getRecord(record.message) ?? getRecord(record.data) ?? inferMessageRecord(record);
+  parsed.entries.push({
+    ...(getString(record.id) ? { id: getString(record.id)! } : {}),
+    ...(message ? { message } : {}),
+    ...(getString(record.parentId) ?? getString(record.parent_id)
+      ? { parentId: (getString(record.parentId) ?? getString(record.parent_id))! }
+      : {}),
+    raw: record,
+    type,
+  });
 }
 
 export function resolvePiActivePath(entries: PiSessionEntry[], leafId?: string): PiSessionEntry[] {
@@ -157,6 +185,91 @@ export function resolvePiEntryPath(entries: PiSessionEntry[], leafId: string): P
   return hasBranchGraph
     ? includePiGraphPathEntries(entries, activePath)
     : includePiLinearPathEntries(entries, activePath);
+}
+
+export function getPiPromptBranchPositions(
+  entries: PiSessionEntry[],
+): Map<string, PiPromptBranchPosition> {
+  const entriesById = new Map(entries.flatMap(entry => entry.id ? [[entry.id, entry] as const] : []));
+  const siblings = new Map<string, Array<PiSessionEntry & { id: string }>>();
+  for (const entry of entries) {
+    if (!entry.id || isToolResultEntry(entry)) continue;
+    const message = entry.message ?? entry.raw;
+    const role = getString(message.role) ?? inferRole(entry.type);
+    if (role !== 'user') continue;
+    const parentKey = getPiParentGroupKey(entry, entriesById);
+    if (parentKey === null) continue;
+    siblings.set(parentKey, [...(siblings.get(parentKey) ?? []), entry as PiSessionEntry & { id: string }]);
+  }
+
+  const positions = new Map<string, PiPromptBranchPosition>();
+  for (const group of siblings.values()) {
+    if (group.length < 2) continue;
+    group.forEach((entry, index) => {
+      positions.set(entry.id, {
+        count: group.length,
+        ...(group[index - 1]?.id ? { previousMessageId: group[index - 1].id } : {}),
+        position: index + 1,
+        ...(group[index + 1]?.id ? { nextMessageId: group[index + 1].id } : {}),
+      });
+    });
+  }
+  return positions;
+}
+
+export function getPiBranchLeafId(entries: readonly PiSessionEntry[], branchMessageId: string): string | null {
+  const root = entries.find(entry => entry.id === branchMessageId);
+  if (!root) return null;
+  const descendants = new Set([branchMessageId]);
+  for (const entry of entries) {
+    if (entry.id && entry.parentId && descendants.has(entry.parentId)) descendants.add(entry.id);
+  }
+  return [...entries].reverse().find(entry => entry.id && descendants.has(entry.id))?.id ?? null;
+}
+
+/** Advance a saved cursor only when new native entries extend its active branch. */
+export function resolvePiTreeCursor(entries: PiSessionEntry[], cursor: PiTreeCursor): PiTreeCursor {
+  const latest = entries.at(-1)?.id;
+  if (!cursor.appendId || !latest || latest === cursor.appendId) return cursor;
+  if (!entries.some(entry => entry.id === cursor.appendId)) {
+    throw new Error('Pi branch history changed since navigation.');
+  }
+  const activePath = resolvePiActivePath(entries, latest);
+  if (cursor.leafId !== null && !activePath.some(entry => entry.id === cursor.leafId)) return cursor;
+  return { targetId: latest, leafId: latest, appendId: latest };
+}
+
+function getPiParentGroupKey(
+  entry: PiSessionEntry,
+  entriesById: ReadonlyMap<string, PiSessionEntry>,
+): string | null {
+  const initialParent = getExplicitPiParentId(entry);
+  if (!initialParent.known) return null;
+
+  let parentId = initialParent.id;
+  const visited = new Set<string>();
+  while (parentId && !visited.has(parentId)) {
+    visited.add(parentId);
+    const parent = entriesById.get(parentId);
+    if (!parent) break;
+    const parentMessage = parent.message ?? parent.raw;
+    const parentRole = getString(parentMessage.role) ?? inferRole(parent.type);
+    if (parentRole === 'user' || parentRole === 'assistant') break;
+    const nextParent = getExplicitPiParentId(parent);
+    if (!nextParent.known) break;
+    parentId = nextParent.id;
+  }
+
+  return `parent:${parentId ?? 'root'}`;
+}
+
+function getExplicitPiParentId(entry: PiSessionEntry): { known: boolean; id: string | null } {
+  if (entry.parentId) return { known: true, id: entry.parentId };
+  const hasCamelCaseParent = Object.prototype.hasOwnProperty.call(entry.raw, 'parentId');
+  const hasSnakeCaseParent = Object.prototype.hasOwnProperty.call(entry.raw, 'parent_id');
+  if (!hasCamelCaseParent && !hasSnakeCaseParent) return { known: false, id: null };
+  const value = hasCamelCaseParent ? entry.raw.parentId : entry.raw.parent_id;
+  return { known: true, id: getString(value) };
 }
 
 function hasPiBranchGraph(entriesWithIds: PiSessionEntry[]): boolean {
@@ -236,8 +349,7 @@ export async function createPiForkSessionFile(
   resumeAt: string,
   options: CreatePiForkSessionFileOptions = {},
 ): Promise<CreatedPiForkSessionFile> {
-  const sourceContent = await fsp.readFile(sourceSessionFile, 'utf-8');
-  const parsed = parsePiSessionEntries(sourceContent);
+  const parsed = await readPiSessionEntries(sourceSessionFile);
   const branchEntries = resolvePiEntryPath(parsed.entries, resumeAt);
   if (branchEntries.length === 0) {
     throw new Error(`Pi fork checkpoint not found: ${resumeAt}`);
@@ -262,13 +374,17 @@ export async function createPiForkSessionFile(
     cwd: options.targetCwd ?? sourceCwd,
     parentSession: sourceSessionFile,
   };
-  const lines = [
-    JSON.stringify(header),
-    ...branchEntries.map(entry => JSON.stringify(entry.raw)),
-  ];
 
   await fsp.mkdir(sessionDir, { recursive: true });
-  await fsp.writeFile(sessionFile, `${lines.join('\n')}\n`, { flag: 'wx' });
+  // Write per record: a long branch can exceed one JavaScript string.
+  const handle = await fsp.open(sessionFile, 'wx');
+  try {
+    // FileHandle.writeFile continues from the current position until every byte is written.
+    await handle.writeFile(`${JSON.stringify(header)}\n`);
+    for (const entry of branchEntries) await handle.writeFile(`${JSON.stringify(entry.raw)}\n`);
+  } finally {
+    await handle.close();
+  }
 
   return {
     leafEntryId: resumeAt,
@@ -640,6 +756,9 @@ function applyToolResult(messages: ChatMessage[], entry: PiSessionEntry): void {
     const resultMessage = entry.message ?? entry.raw;
     toolCall.status = resultMessage.error === true || resultMessage.isError === true ? 'error' : 'completed';
     toolCall.result = extractPiToolTextContent(resultMessage.result ?? resultMessage.content ?? resultMessage.output);
+    if (toolCall.name === TOOL_READ) {
+      toolCall.resultFormat = 'plain';
+    }
     if (toolCall.status === 'completed' && isWriteEditTool(toolCall.name)) {
       const diffData = extractDiffData(resultMessage, toolCall);
       if (diffData) {

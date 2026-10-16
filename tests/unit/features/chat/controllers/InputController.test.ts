@@ -542,7 +542,7 @@ describe('InputController - Message Queue', () => {
       controller.updateQueueIndicator();
 
       const queueIndicatorEl = deps.state.queueIndicatorEl as any;
-      expect(queueIndicatorEl.querySelector('.claudian-queue-indicator-text')?.textContent).toBe('⌙ Queued: test message');
+      expect(queueIndicatorEl.querySelector('.codian-queue-indicator-text')?.textContent).toBe('⌙ Queued: test message');
       expect(queueIndicatorEl.style.display).toBe('flex');
     });
 
@@ -572,7 +572,7 @@ describe('InputController - Message Queue', () => {
 
       const queueIndicatorEl = deps.state.queueIndicatorEl as any;
       const editButton = queueIndicatorEl
-        .querySelectorAll('.claudian-queue-indicator-icon-action')
+        .querySelectorAll('.codian-queue-indicator-icon-action')
         .find((button: any) => button.getAttribute('aria-label') === 'Edit queued message');
       editButton?.click();
 
@@ -597,7 +597,7 @@ describe('InputController - Message Queue', () => {
 
       const queueIndicatorEl = deps.state.queueIndicatorEl as any;
       const discardButton = queueIndicatorEl
-        .querySelectorAll('.claudian-queue-indicator-icon-action')
+        .querySelectorAll('.codian-queue-indicator-icon-action')
         .find((button: any) => button.getAttribute('aria-label') === 'Discard queued message');
       discardButton?.click();
 
@@ -613,7 +613,7 @@ describe('InputController - Message Queue', () => {
       controller.updateQueueIndicator();
 
       const queueIndicatorEl = deps.state.queueIndicatorEl as any;
-      const text = queueIndicatorEl.querySelector('.claudian-queue-indicator-text')?.textContent as string;
+      const text = queueIndicatorEl.querySelector('.codian-queue-indicator-text')?.textContent as string;
       expect(text).toContain('...');
     });
 
@@ -624,7 +624,7 @@ describe('InputController - Message Queue', () => {
       controller.updateQueueIndicator();
 
       const queueIndicatorEl = deps.state.queueIndicatorEl as any;
-      const text = queueIndicatorEl.querySelector('.claudian-queue-indicator-text')?.textContent as string;
+      const text = queueIndicatorEl.querySelector('.codian-queue-indicator-text')?.textContent as string;
       expect(text).toContain('queued content');
       expect(text).toContain('[images]');
     });
@@ -636,7 +636,7 @@ describe('InputController - Message Queue', () => {
       controller.updateQueueIndicator();
 
       const queueIndicatorEl = deps.state.queueIndicatorEl as any;
-      expect(queueIndicatorEl.querySelector('.claudian-queue-indicator-text')?.textContent).toBe('⌙ Queued: [images]');
+      expect(queueIndicatorEl.querySelector('.codian-queue-indicator-text')?.textContent).toBe('⌙ Queued: [images]');
     });
 
     it('should show Codex steer action when queued message can be steered', () => {
@@ -659,7 +659,7 @@ describe('InputController - Message Queue', () => {
       controller.updateQueueIndicator();
 
       const queueIndicatorEl = deps.state.queueIndicatorEl as any;
-      expect(queueIndicatorEl.querySelector('.claudian-queue-indicator-action')?.textContent).toBe('Steer Now');
+      expect(queueIndicatorEl.querySelector('.codian-queue-indicator-action')?.textContent).toBe('Steer Now');
     });
 
     it('should steer the queued Codex message when the action is clicked', async () => {
@@ -712,7 +712,7 @@ describe('InputController - Message Queue', () => {
       controller.updateQueueIndicator();
 
       const queueIndicatorEl = deps.state.queueIndicatorEl as any;
-      queueIndicatorEl.querySelector('.claudian-queue-indicator-action')?.click();
+      queueIndicatorEl.querySelector('.codian-queue-indicator-action')?.click();
       await Promise.resolve();
       await Promise.resolve();
 
@@ -721,9 +721,9 @@ describe('InputController - Message Queue', () => {
       }));
       expect(mockAgentService.steer).toHaveBeenCalled();
       expect(deps.state.queuedMessage).toBeNull();
-      expect(queueIndicatorEl.querySelector('.claudian-queue-indicator-text')?.textContent)
+      expect(queueIndicatorEl.querySelector('.codian-queue-indicator-text')?.textContent)
         .toBe('⌙ Steering: queued follow-up');
-      expect(queueIndicatorEl.querySelector('.claudian-queue-indicator-action')).toBeNull();
+      expect(queueIndicatorEl.querySelector('.codian-queue-indicator-action')).toBeNull();
       expect(queueIndicatorEl.style.display).toBe('flex');
       expect(deps.state.messages).toHaveLength(2);
       expect(deps.state.messages[0]).toMatchObject({
@@ -771,7 +771,7 @@ describe('InputController - Message Queue', () => {
       controller.updateQueueIndicator();
 
       const queueIndicatorEl = deps.state.queueIndicatorEl as any;
-      queueIndicatorEl.querySelector('.claudian-queue-indicator-action')?.click();
+      queueIndicatorEl.querySelector('.codian-queue-indicator-action')?.click();
       await Promise.resolve();
       await Promise.resolve();
 
@@ -829,7 +829,7 @@ describe('InputController - Message Queue', () => {
       controller.updateQueueIndicator();
 
       const queueIndicatorEl = deps.state.queueIndicatorEl as any;
-      queueIndicatorEl.querySelector('.claudian-queue-indicator-action')?.click();
+      queueIndicatorEl.querySelector('.codian-queue-indicator-action')?.click();
       await Promise.resolve();
       await Promise.resolve();
 
@@ -919,7 +919,7 @@ describe('InputController - Message Queue', () => {
       };
       controller.updateQueueIndicator();
       (deps.state.queueIndicatorEl as any)
-        .querySelector('.claudian-queue-indicator-action')
+        .querySelector('.codian-queue-indicator-action')
         ?.click();
 
       await sendPromise;
@@ -1007,7 +1007,7 @@ describe('InputController - Message Queue', () => {
       controller.updateQueueIndicator();
 
       const queueIndicatorEl = deps.state.queueIndicatorEl as any;
-      queueIndicatorEl.querySelector('.claudian-queue-indicator-action')?.click();
+      queueIndicatorEl.querySelector('.codian-queue-indicator-action')?.click();
       await Promise.resolve();
       await Promise.resolve();
 
@@ -1123,7 +1123,7 @@ describe('InputController - Message Queue', () => {
       controller.updateQueueIndicator();
 
       const queueIndicatorEl = deps.state.queueIndicatorEl as any;
-      queueIndicatorEl.querySelector('.claudian-queue-indicator-action')?.click();
+      queueIndicatorEl.querySelector('.codian-queue-indicator-action')?.click();
       await Promise.resolve();
       await Promise.resolve();
 
@@ -1310,6 +1310,56 @@ describe('InputController - Message Queue', () => {
 
       expect(calls).toEqual(['prepareForTurn', 'prepareTurn']);
     });
+
+    it.each(['service initialization', 'turn preparation'] as const)(
+      'does not hand off a turn stopped during deferred %s',
+      async phase => {
+        let releasePreparation!: () => void;
+        let markPreparationStarted!: () => void;
+        const preparationStarted = new Promise<void>((resolve) => {
+          markPreparationStarted = resolve;
+        });
+        const preparationGate = new Promise<void>((resolve) => {
+          releasePreparation = resolve;
+        });
+        deps = createSendableDeps(phase === 'service initialization'
+          ? {
+            ensureServiceInitialized: jest.fn(async () => {
+              markPreparationStarted();
+              await preparationGate;
+              return true;
+            }),
+          }
+          : {});
+        const service = (deps as any).mockAgentService as ReturnType<typeof createMockAgentService> & {
+          prepareForTurn?: jest.Mock;
+        };
+        if (phase === 'turn preparation') {
+          service.prepareForTurn = jest.fn(async () => {
+            markPreparationStarted();
+            await preparationGate;
+          });
+        }
+        service.query.mockImplementation(() => createMockStream([{ type: 'done' }]));
+        inputEl = deps.getInputEl() as ReturnType<typeof createMockInputEl>;
+        inputEl.value = 'stop before provider handoff';
+        controller = new InputController(deps);
+
+        const send = controller.sendMessage();
+        await preparationStarted;
+        const cancel = controller.cancelStreamingAndWait();
+        releasePreparation();
+        await Promise.all([send, cancel]);
+
+        expect(service.query).not.toHaveBeenCalled();
+        expect(deps.state.isStreaming).toBe(false);
+        expect(deps.state.cancelRequested).toBe(false);
+        expect(deps.streamController.hideThinkingIndicator).toHaveBeenCalled();
+
+        await controller.sendMessage({ content: 'next turn' });
+        expect(service.query).toHaveBeenCalledTimes(1);
+      },
+    );
 
     it('should persist replay-safe user content instead of transport-only prompt', async () => {
       deps = createSendableDeps();
@@ -2832,9 +2882,9 @@ describe('InputController - Message Queue', () => {
         'Run shell command',
       );
 
-      const items = parentEl.querySelectorAll('claudian-ask-item');
+      const items = parentEl.querySelectorAll('codian-ask-item');
       const target = items.find((item: any) => {
-        const label = item.querySelector('claudian-ask-item-label');
+        const label = item.querySelector('codian-ask-item-label');
         return label?.textContent === optionLabel;
       });
       expect(target).toBeDefined();
@@ -2863,13 +2913,13 @@ describe('InputController - Message Queue', () => {
         },
       );
 
-      const reasonEl = parentEl.querySelector('claudian-ask-approval-reason');
+      const reasonEl = parentEl.querySelector('codian-ask-approval-reason');
       expect(reasonEl?.textContent).toBe('Command is destructive');
 
-      const pathEl = parentEl.querySelector('claudian-ask-approval-blocked-path');
+      const pathEl = parentEl.querySelector('codian-ask-approval-blocked-path');
       expect(pathEl?.textContent).toBe('/usr/bin/rm');
 
-      const agentEl = parentEl.querySelector('claudian-ask-approval-agent');
+      const agentEl = parentEl.querySelector('codian-ask-approval-agent');
       expect(agentEl?.textContent).toBe('Agent: agent-42');
 
       controller.dismissPendingApproval();
@@ -2905,12 +2955,12 @@ describe('InputController - Message Queue', () => {
         } as any,
       );
 
-      const descEl = parentEl.querySelector('claudian-ask-approval-desc');
+      const descEl = parentEl.querySelector('codian-ask-approval-desc');
       expect(descEl?.textContent).toContain('api.openai.com');
 
-      const items = parentEl.querySelectorAll('claudian-ask-item');
+      const items = parentEl.querySelectorAll('codian-ask-item');
       const labels = items
-        .map((item: any) => item.querySelector('claudian-ask-item-label')?.textContent)
+        .map((item: any) => item.querySelector('codian-ask-item-label')?.textContent)
         .filter(Boolean);
       expect(labels).toEqual(expect.arrayContaining([
         'Allow once',
@@ -2949,9 +2999,9 @@ describe('InputController - Message Queue', () => {
           },
         );
 
-        const items = parentEl.querySelectorAll('claudian-ask-item');
+        const items = parentEl.querySelectorAll('codian-ask-item');
         const target = items.find((item: any) => {
-          const label = item.querySelector('claudian-ask-item-label');
+          const label = item.querySelector('codian-ask-item-label');
           return label?.textContent === optionLabel;
         });
         expect(target).toBeDefined();
@@ -2987,9 +3037,9 @@ describe('InputController - Message Queue', () => {
         } as any,
       );
 
-      const items = parentEl.querySelectorAll('claudian-ask-item');
+      const items = parentEl.querySelectorAll('codian-ask-item');
       const target = items.find((item: any) => {
-        const label = item.querySelector('claudian-ask-item-label');
+        const label = item.querySelector('codian-ask-item-label');
         return label?.textContent === 'Allow similar commands';
       });
       expect(target).toBeDefined();
@@ -3055,9 +3105,9 @@ describe('InputController - Message Queue', () => {
       expect(inputContainerEl.style.display).toBe('none');
       expect(deps.state.requiresAction).toBe(true);
 
-      const items = parentEl.querySelectorAll('claudian-ask-item');
+      const items = parentEl.querySelectorAll('codian-ask-item');
       const allowOnceItem = items.find((item: any) => {
-        const label = item.querySelector('claudian-ask-item-label');
+        const label = item.querySelector('codian-ask-item-label');
         return label?.textContent === 'Allow once';
       });
       expect(allowOnceItem).toBeDefined();
@@ -3729,6 +3779,97 @@ describe('InputController - Message Queue', () => {
 
       expect(restoreFn).toHaveBeenCalled();
       expect(mockAgentService.query).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('InputController - Session Messaging', () => {
+    const sessionMsg = { from: 'Researcher', sessionId: 'sender-123', text: 'Please review section 2' };
+
+    it('canStartSessionMessage returns true when idle, false when streaming or busy', () => {
+      const deps = createSendableDeps();
+      const controller = new InputController(deps);
+      expect(controller.canStartSessionMessage).toBe(true);
+
+      deps.state.isStreaming = true;
+      expect(controller.canStartSessionMessage).toBe(false);
+
+      deps.state.isStreaming = false;
+      deps.state.queuedMessage = { content: 'queued' } as any;
+      expect(controller.canStartSessionMessage).toBe(false);
+    });
+
+    it('sendSessionMessage sends session message without altering composer input value', async () => {
+      const deps = createSendableDeps();
+      const inputEl = deps.getInputEl();
+      inputEl.value = 'User composer draft in progress';
+      const controller = new InputController(deps);
+      deps.mockAgentService.query.mockReturnValue(createMockStream([{ type: 'text', content: 'Reviewed' }]));
+
+      const onUnsent = jest.fn();
+      const assertBeforeHandoff = jest.fn();
+
+      await controller.sendSessionMessage(sessionMsg, { onUnsent, assertBeforeHandoff });
+
+      expect(inputEl.value).toBe('User composer draft in progress');
+      expect(assertBeforeHandoff).toHaveBeenCalled();
+      expect(onUnsent).not.toHaveBeenCalled();
+      expect(deps.state.messages[0]).toMatchObject({
+        displayContent: 'Please review section 2',
+        sessionMessage: { from: 'Researcher', sessionId: 'sender-123' },
+      });
+      expect(deps.mockAgentService.prepareTurn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: expect.stringContaining('<session_message from="Researcher" session_id="sender-123">'),
+        }),
+      );
+    });
+
+    it('sendSessionMessage defers when canStartSessionMessage is false', async () => {
+      const deps = createSendableDeps();
+      deps.state.isStreaming = true;
+      const controller = new InputController(deps);
+      const onUnsent = jest.fn();
+      const assertBeforeHandoff = jest.fn();
+
+      await controller.sendSessionMessage(sessionMsg, { onUnsent, assertBeforeHandoff });
+
+      expect(onUnsent).toHaveBeenCalledWith('deferred');
+      expect(assertBeforeHandoff).not.toHaveBeenCalled();
+      expect(deps.mockAgentService.query).not.toHaveBeenCalled();
+    });
+
+    it('steerSessionMessage steers message into running turn', async () => {
+      const deps = createSendableDeps();
+      deps.state.isStreaming = true;
+      deps.mockAgentService.steer = jest.fn().mockResolvedValue(true);
+      (deps.plugin.providerHost as any) = {
+        getCapabilities: () => ({ supportsTurnSteer: true }),
+      };
+      deps.mockAgentService.getCapabilities = jest.fn().mockReturnValue({ supportsTurnSteer: true });
+      const controller = new InputController(deps);
+
+      const result = await controller.steerSessionMessage(sessionMsg, new AbortController().signal);
+
+      expect(result).toBe('accepted');
+      expect(deps.mockAgentService.steer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          request: expect.objectContaining({
+            text: expect.stringContaining('<session_message from="Researcher" session_id="sender-123">'),
+          }),
+        }),
+      );
+    });
+
+    it('interruptForSessionMessage cancels streaming without restoring queued messages to input', () => {
+      const deps = createSendableDeps();
+      deps.state.isStreaming = true;
+      const controller = new InputController(deps);
+
+      controller.interruptForSessionMessage();
+
+      expect(deps.state.cancelRequested).toBe(true);
+      expect(deps.mockAgentService.cancel).toHaveBeenCalled();
+      expect(deps.streamController.hideThinkingIndicator).toHaveBeenCalled();
     });
   });
 });

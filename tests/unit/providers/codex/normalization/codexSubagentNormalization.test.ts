@@ -17,6 +17,50 @@ describe('codexSubagentNormalization', () => {
     });
   });
 
+  it('reads native child status and output attached to spawn result', () => {
+    const spawn: ToolCallInfo = {
+      id: 'spawn-native',
+      name: TOOL_SPAWN_AGENT,
+      input: { task_name: 'reviewer' },
+      status: 'completed',
+      result: JSON.stringify({
+        agent_id: 'thread-native',
+        task_name: 'reviewer',
+        status: {
+          'thread-native': { status: 'completed', message: 'Child findings.' },
+        },
+      }),
+    };
+
+    expect(buildCodexSubagentInfo(spawn, [spawn])).toEqual(expect.objectContaining({
+      agentId: 'thread-native',
+      status: 'completed',
+      result: 'Child findings.',
+    }));
+  });
+
+  it('preserves completed child result after close-agent cleanup', () => {
+    const spawn: ToolCallInfo = {
+      id: 'spawn-close', name: TOOL_SPAWN_AGENT, input: {}, status: 'completed',
+      result: '{"agent_id":"agent-close"}',
+    };
+    const wait: ToolCallInfo = {
+      id: 'wait-close', name: TOOL_WAIT, input: { ids: ['agent-close'] }, status: 'completed',
+      result: '{"status":{"agent-close":{"completed":"Final child output."}}}',
+    };
+    const close: ToolCallInfo = {
+      id: 'close-agent', name: 'close_agent', input: { id: 'agent-close', agent_id: 'agent-close' }, status: 'completed',
+      result: '{"previous_status":{"completed":"Final child output."}}',
+    };
+
+    expect(codexSubagentLifecycleAdapter.resolveSpawnToolIds(close, new Map([['agent-close', 'spawn-close']]))).toEqual(['spawn-close']);
+    expect(buildCodexSubagentInfo(spawn, [spawn, wait, close])).toEqual(expect.objectContaining({
+      agentId: 'agent-close',
+      status: 'completed',
+      result: 'Final child output.',
+    }));
+  });
+
   it('extracts wait statuses and timeout flag', () => {
     expect(
       extractCodexWaitResult(

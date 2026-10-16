@@ -1,3 +1,5 @@
+import { t } from '@/i18n/i18n';
+
 import { collapseElement, setupCollapsible } from './collapsible';
 
 export type RenderContentFn = (el: HTMLElement, markdown: string) => Promise<void>;
@@ -20,28 +22,28 @@ export function createThinkingBlock(
   parentEl: HTMLElement,
   options: ThinkingBlockOptions = {},
 ): ThinkingBlockState {
-  const wrapperEl = parentEl.createDiv({ cls: 'claudian-thinking-block' });
+  const wrapperEl = parentEl.createDiv({ cls: 'codian-thinking-block' });
 
   // Header (clickable to expand/collapse)
-  const header = wrapperEl.createDiv({ cls: 'claudian-thinking-header' });
+  const header = wrapperEl.createDiv({ cls: 'codian-thinking-header' });
   header.setAttribute('tabindex', '0');
   header.setAttribute('role', 'button');
   header.setAttribute('aria-expanded', 'false');
   header.setAttribute('aria-label', 'Extended thinking - click to expand');
 
   // Label with timer
-  const labelEl = header.createSpan({ cls: 'claudian-thinking-label' });
+  const labelEl = header.createSpan({ cls: 'codian-thinking-label' });
   const startTime = Date.now();
-  labelEl.setText('Thinking 0s...');
+  labelEl.setText(t('chat.thinking.active', { seconds: 0 }));
 
   // Start timer interval to update label every second
   const timerInterval = window.setInterval(() => {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    labelEl.setText(`Thinking ${elapsed}s...`);
+    labelEl.setText(t('chat.thinking.active', { seconds: elapsed }));
   }, 1000);
 
   // Collapsible content (collapsed by default)
-  const contentEl = wrapperEl.createDiv({ cls: 'claudian-thinking-content' });
+  const contentEl = wrapperEl.createDiv({ cls: 'codian-thinking-content' });
 
   // Create state object first so toggle can reference it
   const state: ThinkingBlockState = {
@@ -81,10 +83,10 @@ export function finalizeThinkingBlock(state: ThinkingBlockState): number {
   const durationSeconds = Math.floor((Date.now() - state.startTime) / 1000);
 
   // Update label to show final duration (without "...")
-  state.labelEl.setText(`Thought for ${durationSeconds}s`);
+  state.labelEl.setText(t('chat.thinking.completed', { seconds: durationSeconds }));
 
   // Collapse when done and sync state
-  const header = state.wrapperEl.querySelector('.claudian-thinking-header');
+  const header = state.wrapperEl.querySelector('.codian-thinking-header');
   if (header) {
     collapseElement(state.wrapperEl, header as HTMLElement, state.contentEl, state);
   }
@@ -104,21 +106,21 @@ export function renderStoredThinkingBlock(
   durationSeconds: number | undefined,
   renderContent: RenderContentFn
 ): HTMLElement {
-  const wrapperEl = parentEl.createDiv({ cls: 'claudian-thinking-block' });
+  const wrapperEl = parentEl.createDiv({ cls: 'codian-thinking-block' });
 
   // Header (clickable to expand/collapse)
-  const header = wrapperEl.createDiv({ cls: 'claudian-thinking-header' });
+  const header = wrapperEl.createDiv({ cls: 'codian-thinking-header' });
   header.setAttribute('tabindex', '0');
   header.setAttribute('role', 'button');
   header.setAttribute('aria-label', 'Extended thinking - click to expand');
 
   // Label with duration
-  const labelEl = header.createSpan({ cls: 'claudian-thinking-label' });
-  const labelText = durationSeconds !== undefined ? `Thought for ${durationSeconds}s` : 'Thought';
+  const labelEl = header.createSpan({ cls: 'codian-thinking-label' });
+  const labelText = durationSeconds !== undefined ? t('chat.thinking.completed', { seconds: durationSeconds }) : t('chat.thinking.label');
   labelEl.setText(labelText);
 
   // Collapsible content
-  const contentEl = wrapperEl.createDiv({ cls: 'claudian-thinking-content' });
+  const contentEl = wrapperEl.createDiv({ cls: 'codian-thinking-content' });
   void renderContent(contentEl, content).catch(() => {
     contentEl.setText(content);
   });

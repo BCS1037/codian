@@ -1,3 +1,6 @@
+import { SESSION_TOOL_MCP_SERVER_NAME } from '@/core/session-tools/sessionToolMCP';
+import { isSessionTool, type SessionToolName } from '@/core/tools/toolNames';
+
 import { extractResolvedAnswersFromResultText } from '../../../core/tools/toolInput';
 import {
   TOOL_APPLY_PATCH,
@@ -74,13 +77,28 @@ export interface GrokRawToolNameResolution {
   rawName: string;
 }
 
-export function normalizeGrokToolName(rawName: string): string {
+export function normalizeGrokToolName(rawName: string, rawInput?: unknown, rawOutput?: unknown): string {
+  const sessionTool = resolveSessionToolName(rawName, rawInput, rawOutput);
+  if (sessionTool) return sessionTool;
   const normalized = rawName.trim();
   const lookup = normalized.toLowerCase();
   if (GROK_SUBAGENT_LIFECYCLE_TOOL_NAMES.has(lookup)) {
     return normalized || 'tool';
   }
   return GROK_TOOL_NAME_MAP[lookup] ?? (normalized || 'tool');
+}
+
+function resolveSessionToolName(rawName: string, rawInput?: unknown, rawOutput?: unknown): SessionToolName | undefined {
+  const key = isRecord(rawInput) && typeof rawInput.tool_name === 'string' ? rawInput.tool_name.trim() : rawName.trim();
+  const prefix = `${SESSION_TOOL_MCP_SERVER_NAME}__`;
+  const name = key.startsWith(prefix) ? key.slice(prefix.length) : undefined;
+  if (name && isSessionTool(name)) return name;
+  if (isRecord(rawOutput) && rawOutput.type === 'MCP'
+    && rawOutput.server_name === SESSION_TOOL_MCP_SERVER_NAME
+    && typeof rawOutput.tool_name === 'string' && isSessionTool(rawOutput.tool_name)) {
+    return rawOutput.tool_name;
+  }
+  return undefined;
 }
 
 export function resolveGrokRawToolName(
@@ -123,7 +141,7 @@ export function normalizeGrokToolCall(value: {
   const rawName = resolveGrokRawToolName(currentRawName, value).rawName;
   return {
     input: normalizeToolInput(rawName, value.rawInput),
-    name: normalizeGrokToolName(rawName),
+    name: normalizeGrokToolName(rawName, value.rawInput, value.rawOutput),
     output: formatToolOutput(value.rawOutput),
     rawInput: value.rawInput,
     rawName,

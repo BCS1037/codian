@@ -1,14 +1,14 @@
 /* Fork Target Modal */
-.claudian-fork-target-modal {
+.codian-fork-target-modal {
   max-width: 340px;
 }
 
-.claudian-fork-target-list {
+.codian-fork-target-list {
   display: flex;
   flex-direction: column;
 }
 
-.claudian-fork-target-option {
+.codian-fork-target-option {
   padding: 10px 12px;
   border-radius: 6px;
   cursor: pointer;
@@ -16,6 +16,6 @@
   font-size: 14px;
 }
 
-.claudian-fork-target-option:hover {
+.codian-fork-target-option:hover {
   background: var(--background-modifier-hover);
 }

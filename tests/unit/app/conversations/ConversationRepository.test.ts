@@ -1,6 +1,7 @@
 import '@/providers';
 
 import { ConversationRepository } from '@/app/conversations/ConversationRepository';
+import { SessionStorage } from '@/core/bootstrap/SessionStorage';
 import { ProviderRegistry } from '@/core/providers/ProviderRegistry';
 import type { Conversation } from '@/core/types';
 
@@ -47,6 +48,116 @@ describe('ConversationRepository hydration', () => {
 
     expect(repository.getCachedConversation(conversation.id)).toBe(conversation);
     expect(hydrateConversationHistory).not.toHaveBeenCalled();
+  });
+
+  it('preserves provider subagent state when renaming an unloaded conversation', async () => {
+    const conversation = createConversation();
+    conversation.providerState = {
+      subagentData: {
+        'task-1': {
+          id: 'task-1',
+          description: 'Existing child task',
+          isExpanded: false,
+          status: 'completed',
+          result: 'Child output',
+          toolCalls: [],
+        },
+      },
+      nativeLocator: { path: '/vault/.claude/projects/session.jsonl', offset: 128 },
+    };
+    const { repository, sessions } = createRepository(conversation);
+    const storage = new SessionStorage({} as any);
+    sessions.toSessionMetadata.mockImplementation((value) => storage.toSessionMetadata(value));
+
+    await repository.rename(conversation.id, 'Renamed conversation');
+
+    const saved = sessions.saveMetadata.mock.calls[0][0];
+    expect(saved.title).toBe('Renamed conversation');
+    expect(saved.providerState?.subagentData).toEqual(conversation.providerState.subagentData);
+    expect(saved.providerState?.nativeLocator).toEqual({
+      path: '/vault/.claude/projects/session.jsonl',
+      offset: 128,
+    });
+  });
+
+  it('rolls back rename and update mutations when metadata persistence fails', async () => {
+    const conversation = createConversation();
+    const { repository, sessions } = createRepository(conversation);
+    sessions.toSessionMetadata.mockImplementation(value => structuredClone(value));
+    sessions.saveMetadata.mockRejectedValueOnce(new Error('rename write failed'));
+
+    await expect(repository.rename(conversation.id, 'Unsaved title')).rejects.toThrow('rename write failed');
+    expect(conversation.title).toBe('Conversation');
+
+    sessions.saveMetadata.mockRejectedValueOnce(new Error('update write failed'));
+    await expect(repository.update(conversation.id, { sessionId: 'session-unsaved' }))
+      .rejects.toThrow('update write failed');
+    expect(conversation.sessionId).toBe('session-1');
+  });
+
+  it('serializes opposite-order metadata writes so last operation remains on disk', async () => {
+    const conversation = createConversation();
+    const { repository, sessions } = createRepository(conversation);
+    sessions.toSessionMetadata.mockImplementation(value => structuredClone(value));
+    const pending: Array<{ metadata: Conversation; resolve: () => void }> = [];
+    let persisted: Conversation | undefined;
+    sessions.saveMetadata.mockImplementation((metadata: Conversation) => new Promise<void>((resolve) => {
+      pending.push({
+        metadata,
+        resolve: () => {
+          persisted = structuredClone(metadata);
+          resolve();
+        },
+      });
+    }));
+
+    const first = repository.rename(conversation.id, 'First');
+    await Promise.resolve();
+    const second = repository.rename(conversation.id, 'Second');
+    await Promise.resolve();
+
+    if (pending.length === 2) {
+      pending[1].resolve();
+      pending[0].resolve();
+    } else {
+      pending[0].resolve();
+      await first;
+      await Promise.resolve();
+      pending[1].resolve();
+    }
+    await Promise.all([first, second]);
+
+    expect(conversation.title).toBe('Second');
+    expect(persisted?.title).toBe('Second');
+  });
+
+  it('waits for pending metadata writes before deleting the session record', async () => {
+    const conversation = createConversation();
+    const { repository, sessions } = createRepository(conversation);
+    sessions.toSessionMetadata.mockImplementation(value => structuredClone(value));
+    let releaseWrite!: () => void;
+    let markWriteStarted!: () => void;
+    const writeStarted = new Promise<void>((resolve) => { markWriteStarted = resolve; });
+    const writeGate = new Promise<void>((resolve) => { releaseWrite = resolve; });
+    const events: string[] = [];
+    sessions.saveMetadata.mockImplementation(async () => {
+      events.push('save-start');
+      markWriteStarted();
+      await writeGate;
+      events.push('save-end');
+    });
+    sessions.deleteMetadata.mockImplementation(async () => { events.push('delete'); });
+
+    const rename = repository.rename(conversation.id, 'Delete after save');
+    await writeStarted;
+    const deletion = repository.delete(conversation.id, { deleteProviderSession: false });
+
+    expect(sessions.deleteMetadata).not.toHaveBeenCalled();
+    releaseWrite();
+    await Promise.all([rename, deletion]);
+
+    expect(events).toEqual(['save-start', 'save-end', 'delete']);
+    expect(repository.getCachedConversation(conversation.id)).toBeNull();
   });
 
   it('deduplicates concurrent hydration and does not reread an empty transcript', async () => {

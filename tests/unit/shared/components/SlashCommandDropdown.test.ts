@@ -4,6 +4,7 @@ import type { ProviderCommandDropdownConfig } from '@/core/providers/commands/Pr
 import { normalizeProviderCommandDiscoveryItems } from '@/core/providers/commands/ProviderCommandDiscoveryResult';
 import { ProviderCommandDiscoveryStore } from '@/core/providers/commands/ProviderCommandDiscoveryStore';
 import type { ProviderCommandEntry } from '@/core/providers/commands/ProviderCommandEntry';
+import { registerAccessibleTextbox } from '@/shared/components/AccessibleTextbox';
 import {
   SlashCommandDropdown,
   type SlashCommandDropdownCallbacks,
@@ -17,6 +18,7 @@ jest.mock('@/core/commands/builtInCommands', () => ({
 }));
 
 function createMockInput(): any {
+  const attributes = new Map<string, string>();
   return {
     value: '',
     selectionStart: 0,
@@ -24,6 +26,9 @@ function createMockInput(): any {
     focus: jest.fn(),
     addEventListener: jest.fn(),
     removeEventListener: jest.fn(),
+    setAttribute: jest.fn((name: string, value: string) => attributes.set(name, value)),
+    getAttribute: (name: string) => attributes.get(name) ?? null,
+    removeAttribute: jest.fn((name: string) => attributes.delete(name)),
   };
 }
 
@@ -37,13 +42,13 @@ function createMockCallbacks(overrides: Partial<SlashCommandDropdownCallbacks> =
 
 function getRenderedItems(containerEl: any): { name: string; description: string }[] {
   const dropdownEl = containerEl.children.find(
-    (c: any) => c.hasClass('claudian-slash-dropdown')
+    (c: any) => c.hasClass('codian-slash-dropdown')
   );
   if (!dropdownEl) return [];
-  const items = dropdownEl.querySelectorAll('.claudian-slash-item');
+  const items = dropdownEl.querySelectorAll('.codian-slash-item');
   return items.map((item: any) => {
-    const nameSpan = item.children.find((c: any) => c.hasClass('claudian-slash-name'));
-    const descDiv = item.children.find((c: any) => c.hasClass('claudian-slash-desc'));
+    const nameSpan = item.children.find((c: any) => c.hasClass('codian-slash-name'));
+    const descDiv = item.children.find((c: any) => c.hasClass('codian-slash-desc'));
     return {
       name: nameSpan?.textContent?.replace(/^\//, '') ?? '',
       description: descDiv?.textContent ?? '',
@@ -121,6 +126,50 @@ describe('SlashCommandDropdown', () => {
       expect(dropdownWithHidden).toBeInstanceOf(SlashCommandDropdown);
       dropdownWithHidden.destroy();
     });
+  });
+
+  it('exposes command suggestions as a named listbox without changing keyboard selection', () => {
+    inputEl.value = '/';
+    inputEl.selectionStart = 1;
+    dropdown.handleInputChange();
+
+    const listbox = containerEl.children.find(
+      (child: any) => child.hasClass('codian-slash-dropdown')
+    );
+    expect(listbox.getAttribute('role')).toBe('listbox');
+    expect(listbox.getAttribute('aria-label')).toBe('Input suggestions');
+
+    const options = listbox.querySelectorAll('.codian-slash-item');
+    expect(options[0].getAttribute('role')).toBe('option');
+    expect(options[0].getAttribute('aria-selected')).toBe('true');
+    expect(options[1].getAttribute('aria-selected')).toBe('false');
+
+    dropdown.handleKeydown({ key: 'ArrowDown', preventDefault: jest.fn() } as unknown as KeyboardEvent);
+    expect(options[0].getAttribute('aria-selected')).toBe('false');
+    expect(options[1].getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('links the active command option to the visible textbox and releases the relation on close', () => {
+    const visibleTextbox = createMockEl('div');
+    const unregister = registerAccessibleTextbox(inputEl, () => visibleTextbox);
+    inputEl.value = '/';
+    inputEl.selectionStart = 1;
+    dropdown.handleInputChange();
+
+    const listbox = containerEl.children.find((child: any) => child.hasClass('codian-slash-dropdown'));
+    const options = listbox.querySelectorAll('.codian-slash-item');
+    expect(visibleTextbox.getAttribute('aria-controls')).toBe(listbox.getAttribute('id'));
+    expect(visibleTextbox.getAttribute('aria-activedescendant')).toBe(options[0].getAttribute('id'));
+    expect(visibleTextbox.getAttribute('aria-autocomplete')).toBe('list');
+
+    dropdown.handleKeydown({ key: 'ArrowDown', preventDefault: jest.fn() } as unknown as KeyboardEvent);
+    expect(visibleTextbox.getAttribute('aria-activedescendant')).toBe(options[1].getAttribute('id'));
+
+    dropdown.hide();
+    expect(visibleTextbox.getAttribute('aria-controls')).toBeNull();
+    expect(visibleTextbox.getAttribute('aria-activedescendant')).toBeNull();
+    expect(visibleTextbox.getAttribute('aria-autocomplete')).toBeNull();
+    unregister();
   });
 
   it('can exclude chat-action built-ins while retaining provider entries', async () => {

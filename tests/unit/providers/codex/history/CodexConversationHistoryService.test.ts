@@ -1,3 +1,5 @@
+import type * as zlibType from 'node:zlib';
+
 import type * as fsType from 'fs';
 import type * as osType from 'os';
 import type * as pathType from 'path';
@@ -5,6 +7,9 @@ import type * as pathType from 'path';
 const fs = jest.requireActual<typeof fsType>('fs');
 const os = jest.requireActual<typeof osType>('os');
 const path = jest.requireActual<typeof pathType>('path');
+
+
+import { testDate } from '@test/helpers/testClock';
 
 import type { Conversation } from '@/core/types';
 import { CodexConversationHistoryService } from '@/providers/codex/history/CodexConversationHistoryService';
@@ -14,7 +19,7 @@ describe('CodexConversationHistoryService', () => {
   let tempHome: string;
 
   beforeEach(() => {
-    tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'claudian-codex-home-'));
+    tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'codian-codex-home-'));
     homeDirSpy = jest.spyOn(os, 'homedir').mockReturnValue(tempHome);
   });
 
@@ -22,6 +27,41 @@ describe('CodexConversationHistoryService', () => {
     homeDirSpy.mockRestore();
     fs.rmSync(tempHome, { recursive: true, force: true });
   });
+
+  it.each(['file://vault/path', 'file:///vault/100%notes'])(
+    'preserves replay around a failed command with unsupported directory URL %s', async workdir => {
+      const sessions = path.join(tempHome, '.codex', 'sessions');
+      fs.mkdirSync(sessions, { recursive: true });
+      const sessionFilePath = path.join(sessions, 'rollout-thread.jsonl');
+      const records = [
+        { type: 'session_meta', payload: { id: 'thread' } },
+        { type: 'event_msg', payload: { type: 'task_started', turn_id: 'turn' } },
+        { type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Inspect the vault' }] } },
+        { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', call_id: 'bad-directory', arguments: JSON.stringify({ cmd: 'pwd', workdir }) } },
+        { type: 'response_item', payload: { type: 'function_call_output', call_id: 'bad-directory', output: 'Error: Cannot run command: working directory does not exist' } },
+        { type: 'response_item', payload: { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'The requested directory was unavailable.' }] } },
+        { type: 'event_msg', payload: { type: 'task_complete', turn_id: 'turn' } },
+      ];
+      fs.writeFileSync(sessionFilePath, records.map((record, seconds) => JSON.stringify({
+        timestamp: testDate({ seconds }).toISOString(), ...record,
+      })).join('\n'));
+
+      const conversation: Conversation = {
+        id: 'conversation', sessionId: 'thread', messages: [],
+        providerId: 'codex', title: 'Imported conversation',
+        createdAt: testDate().getTime(), updatedAt: testDate({ seconds: 6 }).getTime(),
+        providerState: { threadId: 'thread', sessionFilePath, transcriptRootPath: sessions },
+      };
+      await new CodexConversationHistoryService().hydrateConversationHistory(conversation, null);
+
+      expect(conversation.messages.map(message => message.content)).toEqual(expect.arrayContaining([
+        'Inspect the vault', 'The requested directory was unavailable.',
+      ]));
+      expect(conversation.messages.flatMap(message => message.toolCalls ?? [])).toContainEqual(expect.objectContaining({
+        id: 'bad-directory', name: 'Bash', result: 'Error: Cannot run command: working directory does not exist',
+      }));
+    },
+  );
 
   it('hydrates history by resolving the transcript path from thread id', async () => {
     const threadId = 'thread-123';
@@ -144,7 +184,145 @@ describe('CodexConversationHistoryService', () => {
     });
   });
 
+  it('recovers orphaned conversations missing threadId and sessionId by matching createdAt to rollout file', async () => {
+    const threadId = '01a0ebbe-514a-7213-b418-f534ecdd41ff';
+    const createdAt = new Date('2026-09-29T05:58:33.472Z').getTime();
+    const date = new Date(createdAt);
+    const sessionsDir = path.join(
+      tempHome,
+      '.codex',
+      'sessions',
+      String(date.getUTCFullYear()),
+      String(date.getUTCMonth() + 1).padStart(2, '0'),
+      String(date.getUTCDate()).padStart(2, '0'),
+    );
+    fs.mkdirSync(sessionsDir, { recursive: true });
+
+    const transcriptPath = path.join(
+      sessionsDir,
+      `rollout-2026-09-29T05-58-33-${threadId}.jsonl`,
+    );
+
+    fs.writeFileSync(
+      transcriptPath,
+      [
+        JSON.stringify({
+          timestamp: '2026-09-29T05:58:34.000Z',
+          type: 'response_item',
+          payload: {
+            type: 'message',
+            role: 'user',
+            content: [{ type: 'input_text', text: '如何进行射频线圈仿真' }],
+          },
+        }),
+        JSON.stringify({
+          timestamp: '2026-09-29T05:58:35.000Z',
+          type: 'response_item',
+          payload: {
+            type: 'message',
+            role: 'assistant',
+            content: [{ type: 'output_text', text: '仿真步骤如下：' }],
+          },
+        }),
+      ].join('\n'),
+      'utf-8',
+    );
+
+    const conversation: Conversation = {
+      id: 'conv-orphaned',
+      providerId: 'codex',
+      title: '如何进行射频线圈仿真',
+      createdAt,
+      updatedAt: createdAt + 1000,
+      sessionId: null,
+      messages: [],
+    };
+
+    const service = new CodexConversationHistoryService();
+    await service.hydrateConversationHistory(conversation, null);
+
+    expect(conversation.messages).toHaveLength(2);
+    expect(conversation.messages[0]).toMatchObject({
+      role: 'user',
+      content: '如何进行射频线圈仿真',
+    });
+    expect(conversation.providerState).toEqual(expect.objectContaining({
+      threadId,
+      sessionFilePath: transcriptPath,
+    }));
+  });
+
+  it('recovers and decompresses .jsonl.zst rollout transcripts for orphaned conversations', async () => {
+    const zlib = jest.requireActual<typeof zlibType>('node:zlib');
+    if (typeof zlib.zstdCompressSync !== 'function') return;
+
+    const threadId = '01a0ebbe-9999-7213-b418-f534ecdd41ff';
+    const createdAt = new Date('2026-09-29T05:58:33.472Z').getTime();
+    const date = new Date(createdAt);
+    const sessionsDir = path.join(
+      tempHome,
+      '.codex',
+      'sessions',
+      String(date.getUTCFullYear()),
+      String(date.getUTCMonth() + 1).padStart(2, '0'),
+      String(date.getUTCDate()).padStart(2, '0'),
+    );
+    fs.mkdirSync(sessionsDir, { recursive: true });
+
+    const transcriptPath = path.join(
+      sessionsDir,
+      `rollout-2026-09-29T05-58-33-${threadId}.jsonl.zst`,
+    );
+
+    const raw = [
+      JSON.stringify({
+        timestamp: '2026-09-29T05:58:34.000Z',
+        type: 'response_item',
+        payload: {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text: 'Zstd compressed query' }],
+        },
+      }),
+      JSON.stringify({
+        timestamp: '2026-09-29T05:58:35.000Z',
+        type: 'response_item',
+        payload: {
+          type: 'message',
+          role: 'assistant',
+          content: [{ type: 'output_text', text: 'Zstd compressed response' }],
+        },
+      }),
+    ].join('\n');
+
+    fs.writeFileSync(transcriptPath, zlib.zstdCompressSync(Buffer.from(raw, 'utf-8')));
+
+    const conversation: Conversation = {
+      id: 'conv-orphaned-zst',
+      providerId: 'codex',
+      title: 'Zstd Query',
+      createdAt,
+      updatedAt: createdAt + 1000,
+      sessionId: null,
+      messages: [],
+    };
+
+    const service = new CodexConversationHistoryService();
+    await service.hydrateConversationHistory(conversation, null);
+
+    expect(conversation.messages).toHaveLength(2);
+    expect(conversation.messages[0]).toMatchObject({
+      role: 'user',
+      content: 'Zstd compressed query',
+    });
+    expect(conversation.providerState).toEqual(expect.objectContaining({
+      threadId,
+      sessionFilePath: transcriptPath,
+    }));
+  });
+
   it('hydrates by searching transcriptRootPath when sessionFilePath is missing', async () => {
+
     const threadId = 'thread-rooted';
     const sessionsDir = path.join(tempHome, 'custom-codex-root', 'sessions', '2026', '03', '27');
     fs.mkdirSync(sessionsDir, { recursive: true });
@@ -781,4 +959,35 @@ describe('CodexConversationHistoryService', () => {
       content: 'Second prompt',
     });
   });
+
+  it.each(['normal', 'pending fork', 'established fork'])(
+    'rejects %s hydration when a transcript exists but cannot be read',
+    async (mode) => {
+      const sessions = path.join(tempHome, '.codex', 'sessions');
+      fs.mkdirSync(sessions, { recursive: true });
+      // A directory opens like a file but fails to read, standing in for oversized or unreadable transcripts.
+      const unreadable = path.join(sessions, 'rollout-unreadable.jsonl');
+      fs.mkdirSync(unreadable, { recursive: true });
+      const readable = path.join(sessions, 'rollout-fork.jsonl');
+      fs.writeFileSync(readable, [
+        { type: 'event_msg', payload: { type: 'task_started', turn_id: 'turn' } },
+        { type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Hello' }] } },
+      ].map((record, seconds) => JSON.stringify({ timestamp: `2026-03-27T00:00:0${seconds}.000Z`, ...record })).join('\n'));
+      const forkSource = { sessionId: 'source', resumeAt: 'turn' };
+      const providerState = mode === 'normal'
+        ? { threadId: 'thread', sessionFilePath: unreadable }
+        : mode === 'pending fork'
+          ? { forkSource, forkSourceSessionFilePath: unreadable }
+          : { threadId: 'fork', sessionFilePath: readable, forkSource, forkSourceSessionFilePath: unreadable };
+      const conversation: Conversation = {
+        id: 'unreadable', providerId: 'codex', title: 'Unreadable',
+        createdAt: Date.now(), updatedAt: Date.now(),
+        sessionId: mode === 'pending fork' ? null : (providerState.threadId as string | null),
+        providerState, messages: [],
+      };
+
+      await expect(new CodexConversationHistoryService().hydrateConversationHistory(conversation, null))
+        .rejects.toMatchObject({ code: 'EISDIR' });
+    },
+  );
 });

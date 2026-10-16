@@ -4,6 +4,7 @@ import {
   getActionPattern,
   matchesRulePattern,
 } from '../../../../src/core/security/ApprovalManager';
+import { setLocale } from '../../../../src/i18n/i18n';
 
 describe('getActionPattern', () => {
   it('extracts command from Bash tool input', () => {
@@ -148,5 +149,25 @@ describe('matchesRulePattern', () => {
 
   it('still matches when no rule pattern and action is null', () => {
     expect(matchesRulePattern('Read', null, undefined)).toBe(true);
+  });
+
+  it.each([
+    ['Bash', { command: 'git status' }, '运行命令：git status'],
+    ['Read', { file_path: '/file.md' }, '读取文件：/file.md'],
+    ['Write', { file_path: '/file.md' }, '写入文件：/file.md'],
+    ['Edit', { file_path: '/file.md' }, '编辑文件：/file.md'],
+    ['Glob', { pattern: '*.md' }, '搜索匹配的文件：*.md'],
+    ['Grep', { pattern: 'TODO' }, '搜索匹配的内容：TODO'],
+    ['Read', {}, '读取文件：（未知）'],
+    ['Custom', { text: 'Native content' }, 'Custom: {"text":"Native content"}'],
+  ])('localizes %s descriptions without changing action patterns', (tool, input, expected) => {
+    const pattern = getActionPattern(tool, input);
+    setLocale('zh-CN');
+    try {
+      expect(getActionDescription(tool, input)).toBe(expected);
+      expect(getActionPattern(tool, input)).toBe(pattern);
+    } finally {
+      setLocale('en');
+    }
   });
 });

@@ -1,10 +1,11 @@
 import { existsSync } from 'fs';
-import * as fs from 'fs/promises';
 import * as path from 'path';
+
+import { forEachJSONLLine } from '@/utils/jsonlFile';
+import { createSubagentFinalResultCollector } from '@/utils/subagentJsonl';
 
 import type { ProviderHistoryPathContext } from '../../../core/providers/types';
 import type { ToolCallInfo } from '../../../core/types';
-import { extractFinalResultFromSubagentJsonl } from '../../../utils/subagentJsonl';
 import { extractToolResultContent } from '../sdk/toolResultContent';
 import type { SDKNativeMessage } from './sdkHistoryTypes';
 import {
@@ -217,17 +218,16 @@ export async function loadSubagentToolCalls(
       return [];
     }
 
-    const content = await fs.readFile(subagentFilePath, 'utf-8');
-    const lines = content.split('\n').filter(line => line.trim());
     const events: SubagentToolEvent[] = [];
     const seen = new Set<string>();
 
-    for (const line of lines) {
+    await forEachJSONLLine(subagentFilePath, line => {
+      if (!line.trim()) return;
       let raw: unknown;
       try {
         raw = JSON.parse(line);
       } catch {
-        continue;
+        return;
       }
 
       for (const event of parseSubagentEvents(raw)) {
@@ -238,7 +238,7 @@ export async function loadSubagentToolCalls(
         seen.add(key);
         events.push(event);
       }
-    }
+    });
 
     if (events.length === 0) {
       return [];
@@ -273,8 +273,9 @@ export async function loadSubagentFinalResult(
       return null;
     }
 
-    const content = await fs.readFile(subagentFilePath, 'utf-8');
-    return extractFinalResultFromSubagentJsonl(content);
+    const collector = createSubagentFinalResultCollector();
+    await forEachJSONLLine(subagentFilePath, collector.addLine);
+    return collector.result();
   } catch {
     return null;
   }

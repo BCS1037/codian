@@ -10,7 +10,7 @@ import {
 } from '../../../../src/providers/opencode/history/OpencodeHistoryStore';
 
 describe('mapOpencodeMessages', () => {
-  it('maps stored OpenCode messages into Claudian chat messages', () => {
+  it('maps stored OpenCode messages into Codian chat messages', () => {
     const messages = mapOpencodeMessages([
       {
         info: {
@@ -85,6 +85,7 @@ describe('mapOpencodeMessages', () => {
           input: { file_path: 'notes/today.md' },
           name: 'Read',
           result: 'read ok',
+          resultFormat: 'plain',
           status: 'completed',
         }],
       },
@@ -400,7 +401,7 @@ describe('loadOpencodeSessionMessages', () => {
   let tmpRoot: string;
 
   beforeEach(() => {
-    tmpRoot = mkdtempSync(path.join(os.tmpdir(), 'claudian-opencode-history-'));
+    tmpRoot = mkdtempSync(path.join(os.tmpdir(), 'codian-opencode-history-'));
   });
 
   afterEach(() => {
@@ -492,5 +493,23 @@ describe('loadOpencodeSessionMessages', () => {
     } finally {
       db.close();
     }
+  });
+
+  it('returns backend details when native history cannot be read', async () => {
+    const dbPath = path.join(tmpRoot, 'opencode-broken.db');
+    const db = new DatabaseSync(dbPath);
+    db.close();
+
+    const [diagnostic] = await loadOpencodeSessionMessages(
+      'session-read-failure',
+      { databasePath: dbPath },
+    );
+
+    expect(diagnostic).toMatchObject({
+      id: 'opencode-hydration-error-session-session-read-failure',
+      role: 'assistant',
+    });
+    expect(diagnostic.content).toContain('Could not read OpenCode session rows from SQLite.');
+    expect(diagnostic.content).toContain('Obsidian SQLite: Error: no such table: message');
   });
 });

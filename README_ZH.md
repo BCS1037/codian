@@ -75,15 +75,26 @@ npm run build
 
 ## ❓ 常见问题排查 (FAQ)
 
-### 1. 提示 "CLI not detected" 无法找到本地 CLI 命令？
+### 1. 新发布的模型为什么没有出现在 Codian？
+
+Codian 的模型选项来自各 Provider 当前提供的模型目录和配置。模型已经公开发布或 API 已能调用，不代表 Codian 连接的 CLI 会报告它。模型目录可能受 CLI 版本、账号和运行环境影响。
+
+1. 按需更新 Provider CLI 或应用，并确认 Codian 使用的同一套安装和账号能看到这个模型。
+2. 打开 Obsidian **设置 → Codian → 提供商**，选中对应 Provider，核对 CLI 路径、环境变量、登录状态和连接配置是否指向正确的安装与账号。
+3. 在 **模型 → 浏览模型** 中点击 **发现模型** 或 **刷新**，重新请求当前模型目录。
+4. 勾选该模型，将它加入 Codian 对话的模型菜单。已有对话不会自动切换模型；要使用新模型，可在当前对话中切换，或新建对话后选择它。
+
+刷新后仍未出现，说明该 Provider 连接尚未把模型报告给 Codian。检查 CLI 版本、登录和配置。不要手动修改已安装的 `main.js` 或其他插件构建文件来添加模型；插件更新会覆盖这些修改，手改构建文件也不受支持。
+
+### 2. 提示 "CLI not detected" 无法找到本地 CLI 命令？
 macOS 图形界面应用（通过 Finder 或 Dock 启动）默认不会加载终端 Shell（如 `~/.zshrc` 或 `~/.bash_profile`）中设置的环境变量。
 - **解决方法**：前往 Codian **设置** -> **提供商** -> 选择对应的 Provider（如 Claude、Codex、Kimi 等）-> 在 **连接** 选项卡下的 **CLI 路径** 中，直接填入该 CLI 在你本机上的绝对路径（例如 `/usr/local/bin/claude` 或 `/opt/homebrew/bin/codex`）。
 
-### 2. Kimi Code CLI 提示初始化错误？
+### 3. Kimi Code CLI 提示初始化错误？
 Kimi Code CLI 在使用前需要在终端完成首次认证。
 - **解决方法**：打开终端运行 `kimi` 命令，按照提示完成登录与模型配置。配置完成后，Codian 即可正常识别并开启 ACP 会话。
 
-### 3. 为什么插件文件夹是 `codianz`，但在 Obsidian 里显示叫 `Codian`？
+### 4. 为什么插件文件夹是 `codianz`，但在 Obsidian 里显示叫 `Codian`？
 `codianz` 是提交给 Obsidian 社区插件市场的内部唯一标识（Plugin ID），而 **Codian** 是在界面上呈现给用户的显示名称。安装时请务必保证插件文件夹名称为 `codianz`。
 
 ---

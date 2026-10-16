@@ -7,7 +7,7 @@ const COMPACTION_CANCELED_STDERR_PATTERN =
   /^<local-command-stderr>\s*Error:\s*Compaction canceled\.?\s*<\/local-command-stderr>$/i;
 
 const INTERRUPT_INDICATOR_HTML =
-  '<span class="claudian-interrupted">Interrupted</span> <span class="claudian-interrupted-hint">· What should Codian do instead?</span>';
+  '<span class="codian-interrupted">Interrupted</span> <span class="codian-interrupted-hint">· What should Codian do instead?</span>';
 
 const LEGACY_INTERRUPT_INDICATOR_HTML =
   '<span class="claudian-interrupted">Interrupted</span> <span class="claudian-interrupted-hint">· What should Claudian do instead?</span>';

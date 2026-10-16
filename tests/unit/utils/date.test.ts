@@ -17,12 +17,21 @@ describe('getTodayDate', () => {
     expect(result).toContain(String(now.getFullYear()));
   });
 
-  it('ISO portion matches current date', () => {
-    const result = getTodayDate();
-    const isoMatch = result.match(/\((\d{4}-\d{2}-\d{2})\)/);
-    expect(isoMatch).not.toBeNull();
-    const today = new Date().toISOString().split('T')[0];
-    expect(isoMatch![1]).toBe(today);
+  it.each([0, 23])('uses the local calendar day in both portions at %i:30', hour => {
+    const now = new Date(2026, 2, 27, hour, 30, 0, 0);
+    jest.useFakeTimers().setSystemTime(now.getTime());
+    try {
+      const result = getTodayDate();
+      const isoMatch = result.match(/\((\d{4}-\d{2}-\d{2})\)/);
+      expect(isoMatch).not.toBeNull();
+      const localDate = new Intl.DateTimeFormat('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+      expect(isoMatch![1]).toBe(localDate);
+      expect(result).toContain(now.toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      }));
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
 

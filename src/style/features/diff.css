@@ -1,19 +1,19 @@
 /* Write/Edit Diff Block - Subagent style */
-.claudian-write-edit-block {
+.codian-write-edit-block {
   margin: 4px 0;
   background: transparent;
   overflow: hidden;
 }
 
-.claudian-text-block+.claudian-write-edit-block {
+.codian-text-block+.codian-write-edit-block {
   margin-top: 8px;
 }
 
-.claudian-write-edit-block+.claudian-text-block {
+.codian-write-edit-block+.codian-text-block {
   margin-top: 8px;
 }
 
-.claudian-write-edit-header {
+.codian-write-edit-header {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -24,20 +24,20 @@
   overflow: hidden;
 }
 
-.claudian-write-edit-icon {
+.codian-write-edit-icon {
   width: 16px;
   height: 16px;
   color: var(--text-accent);
   flex-shrink: 0;
 }
 
-.claudian-write-edit-icon svg {
+.codian-write-edit-icon svg {
   width: 16px;
   height: 16px;
 }
 
 /* Two-part header: name (fixed) + summary (flexible) */
-.claudian-write-edit-name {
+.codian-write-edit-name {
   font-family: var(--font-monospace);
   font-size: 13px;
   font-weight: 400;
@@ -46,7 +46,7 @@
   flex-shrink: 0;
 }
 
-.claudian-write-edit-summary {
+.codian-write-edit-summary {
   font-family: var(--font-monospace);
   font-size: 13px;
   color: var(--text-muted);
@@ -57,57 +57,57 @@
   min-width: 0;
 }
 
-.claudian-write-edit-stats {
+.codian-write-edit-stats {
   font-family: var(--font-monospace);
   font-size: 11px;
   flex-shrink: 0;
 }
 
-.claudian-write-edit-stats .added {
+.codian-write-edit-stats .added {
   color: var(--color-green);
 }
 
-.claudian-write-edit-stats .removed {
+.codian-write-edit-stats .removed {
   color: var(--color-red);
   margin-left: 4px;
 }
 
-.claudian-write-edit-status {
+.codian-write-edit-status {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
 }
 
 /* Hide empty status on successful completion so stats align to right edge */
-.claudian-write-edit-block.done .claudian-write-edit-status:empty {
+.codian-write-edit-block.done .codian-write-edit-status:empty {
   display: none;
 }
 
-.claudian-write-edit-status svg {
+.codian-write-edit-status svg {
   width: 16px;
   height: 16px;
 }
 
-.claudian-write-edit-status.status-completed {
+.codian-write-edit-status.status-completed {
   color: var(--color-green);
 }
 
-.claudian-write-edit-status.status-error,
-.claudian-write-edit-status.status-blocked {
+.codian-write-edit-status.status-error,
+.codian-write-edit-status.status-blocked {
   color: var(--color-red);
 }
 
-.claudian-write-edit-content {
+.codian-write-edit-content {
   padding: 0;
   background: transparent;
   overflow: hidden;
 }
 
-.claudian-write-edit-diff-row {
+.codian-write-edit-diff-row {
   display: flex;
 }
 
-.claudian-write-edit-diff {
+.codian-write-edit-diff {
   flex: 1;
   font-family: var(--font-monospace);
   font-size: 12px;
@@ -118,31 +118,31 @@
   overflow-x: auto;
 }
 
-.claudian-write-edit-loading,
-.claudian-write-edit-binary,
-.claudian-write-edit-error,
-.claudian-write-edit-done-text {
+.codian-write-edit-loading,
+.codian-write-edit-binary,
+.codian-write-edit-error,
+.codian-write-edit-done-text {
   font-family: var(--font-monospace);
   font-size: 12px;
   color: var(--text-muted);
 }
 
-.claudian-write-edit-error {
+.codian-write-edit-error {
   color: var(--color-red);
 }
 
 /* Diff line styling */
-.claudian-diff-hunk {
+.codian-diff-hunk {
   margin-bottom: 4px;
 }
 
-.claudian-diff-line {
+.codian-diff-line {
   display: flex;
   white-space: pre-wrap;
   word-break: break-all;
 }
 
-.claudian-diff-prefix {
+.codian-diff-prefix {
   flex-shrink: 0;
   width: 16px;
   text-align: center;
@@ -150,36 +150,36 @@
   user-select: none;
 }
 
-.claudian-diff-text {
+.codian-diff-text {
   flex: 1;
   min-width: 0;
 }
 
 /* Diff colors - NO strikethrough for Write/Edit blocks */
-.claudian-diff-equal {
+.codian-diff-equal {
   color: var(--text-muted);
 }
 
-.claudian-diff-delete {
+.codian-diff-delete {
   background: rgba(255, 80, 80, 0.25);
   color: var(--text-normal);
 }
 
-.claudian-diff-delete .claudian-diff-prefix {
+.codian-diff-delete .codian-diff-prefix {
   color: var(--color-red);
 }
 
-.claudian-diff-insert {
+.codian-diff-insert {
   background: rgba(80, 200, 80, 0.25);
   color: var(--text-normal);
 }
 
-.claudian-diff-insert .claudian-diff-prefix {
+.codian-diff-insert .codian-diff-prefix {
   color: var(--color-green);
 }
 
 /* Hunk separator */
-.claudian-diff-separator {
+.codian-diff-separator {
   color: var(--text-muted);
   text-align: center;
   padding: 4px 0;
@@ -190,7 +190,7 @@
   font-size: 11px;
 }
 
-.claudian-diff-no-changes {
+.codian-diff-no-changes {
   color: var(--text-muted);
   font-style: italic;
   padding: 8px;

@@ -1,6 +1,6 @@
 /* Context usage meter (inline in toolbar) */
 
-.claudian-context-meter {
+.codian-context-meter {
   position: relative;
   display: flex;
   align-items: center;
@@ -10,7 +10,7 @@
 }
 
 /* Custom tooltip */
-.claudian-context-meter::after {
+.codian-context-meter::after {
   content: attr(data-tooltip);
   position: absolute;
   bottom: 100%;
@@ -31,12 +31,12 @@
   z-index: 100;
 }
 
-.claudian-context-meter:hover::after {
+.codian-context-meter:hover::after {
   opacity: 1;
   visibility: visible;
 }
 
-.claudian-context-meter-gauge {
+.codian-context-meter-gauge {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -44,33 +44,33 @@
   height: 24px;
 }
 
-.claudian-context-meter-gauge svg {
+.codian-context-meter-gauge svg {
   width: 16px;
   height: 16px;
 }
 
-.claudian-meter-bg {
+.codian-meter-bg {
   stroke: var(--background-modifier-border);
 }
 
-.claudian-meter-fill {
-  stroke: var(--claudian-brand);
+.codian-meter-fill {
+  stroke: var(--codian-brand);
   transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
 }
 
-.claudian-context-meter-percent {
+.codian-context-meter-percent {
   font-size: 11px;
-  color: var(--claudian-brand);
+  color: var(--codian-brand);
   min-width: 24px;
   text-align: end;
   transition: color 0.3s ease;
 }
 
 /* Warning state (> 80%) - pale red */
-.claudian-context-meter.warning .claudian-meter-fill {
+.codian-context-meter.warning .codian-meter-fill {
   stroke: #E57373;
 }
 
-.claudian-context-meter.warning .claudian-context-meter-percent {
+.codian-context-meter.warning .codian-context-meter-percent {
   color: #E57373;
 }

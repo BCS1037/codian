@@ -1,5 +1,6 @@
 {
   "common": {
+    "inputSuggestions": "輸入建議",
     "save": "保存",
     "cancel": "取消",
     "delete": "刪除",
@@ -22,7 +23,9 @@
     "rewind": "回退",
     "enable": "啟用",
     "disable": "禁用",
-    "legacyPluginDataMigrated": "已從舊版 Codian 外掛遷移設定。使用 Codian 前，請停用舊外掛「codian」。"
+    "legacyPluginDataMigrated": "已從舊版 Codian 外掛遷移設定。使用 Codian 前，請停用舊外掛「codian」。",
+    "retry": "重試",
+    "none": "無"
   },
   "chat": {
     "drop": {
@@ -32,6 +35,8 @@
     },
     "providerRetry": "Claude API 正在重試（第 {attempt}/{maxRetries} 次；原因：{reason}）。",
     "providerWorkspaceInitializationTimeout": "Provider {provider} 初始化在 {seconds} 秒後逾時。請重試分頁切換。",
+    "deletedConversationResetFailed": "無法重設已刪除的對話。尚未傳送的內容已還原。",
+    "resizeConversations": "調整對話清單寬度",
     "historySearch": {
       "placeholder": "搜尋對話",
       "noMatches": "沒有相符的對話",
@@ -44,6 +49,12 @@
       "archive": "封存",
       "unarchive": "取消封存",
       "pinned": "已置頂",
+      "markUnread": "標記為未讀",
+      "markRead": "標記為已讀",
+      "unread": "未讀",
+      "needsInput": "需要你的操作",
+      "stoppedWithError": "因錯誤停止",
+      "running": "執行中",
       "archived": "已封存",
       "updateFailed": "更新對話索引失敗"
     },
@@ -100,9 +111,335 @@
       "notReady": "Codian 聊天尚未準備就緒。",
       "failed": "無法將檔案加入 Codian。"
     },
-    "selectionToolbar": { "add": "加入聊天", "copy": "複製", "limit": "已達選取限制", "selectedReply": "已選 AI 回覆" },
-    "navigation": { "jumpToPrompt": "跳至提問 {index}" },
-    "welcomeOrb": { "solving": "正在解題" }
+    "selectionToolbar": {
+      "add": "加入聊天",
+      "copy": "複製",
+      "limit": "已達選取限制",
+      "selectedReply": "已選 AI 回覆"
+    },
+    "navigation": {
+      "jumpToPrompt": "跳至提問 {index}",
+      "scrollToTop": "捲動至頂端",
+      "previousMessage": "上一則訊息",
+      "directory": "對話目錄",
+      "nextMessage": "下一則訊息",
+      "scrollToBottom": "捲動至底端",
+      "emptyDirectory": "此對話中尚無使用者提示詞"
+    },
+    "branchNavigation": {
+      "previous": "上一個分支",
+      "next": "下一個分支",
+      "position": "{position} / {count}",
+      "failed": "無法切換對話分支：{error}",
+      "recoveryRequired": "Pi 分支切換失敗，可能需要復原工作階段：{error}",
+      "saveFailed": "分支已切換，但無法儲存對話狀態：{error}",
+      "unavailable": "該分支已無法使用。",
+      "unsupported": "此 Provider 不支援分支導覽。",
+      "runtimeUnavailable": "Pi 執行階段無法使用。"
+    },
+    "welcomeOrb": {
+      "solving": "正在解題"
+    },
+    "promptSuggestionHint": "按 Tab 接受",
+    "selectAvailableModel": "請先選擇可用的模型再傳送。",
+    "selectAvailableTitleModel": "請在 Codian 設定中選擇可用的標題產生模型。",
+    "quote": {
+      "buttonLabel": "引用"
+    },
+    "codeBlock": {
+      "copyAriaLabel": "複製 {language} 程式碼",
+      "copied": "已複製！"
+    },
+    "sideChat": {
+      "title": "側邊對話",
+      "collapse": "收合",
+      "fullHeight": "全高顯示",
+      "discard": "捨棄",
+      "statusPreparing": "準備中",
+      "statusQueued": "{count} 則排隊中",
+      "statusWorking": "處理中",
+      "statusError": "需要處理",
+      "statusActionRequired": "需要輸入",
+      "placeholder": "在側邊對話中繼續提問",
+      "composerLabel": "側邊對話訊息",
+      "needsPrompt": "請在 /side 後輸入提示詞以開始側邊對話。",
+      "unsupportedProvider": "此提供者不支援側邊對話。",
+      "unavailableBusy": "側邊對話需要一則已完成的回覆。請等待目前回合結束。",
+      "unavailableNoCheckpoint": "請先在此對話中完成一次回覆，再開始側邊對話。",
+      "unavailableNoSession": "無法解析此對話的提供者工作階段。",
+      "alreadyExists": "此對話已有側邊對話。請先捨棄後再新建。",
+      "nestedUnavailable": "側邊對話中無法再開啟側邊對話。請先收合回到主對話。",
+      "mainOnlyCommand": "/{command} 僅能在主對話中使用。",
+      "startFailed": "側邊對話啟動失敗：{error}",
+      "queued": "已加入側聊佇列。",
+      "busySide": "側邊對話仍在回覆，請稍候。"
+    },
+    "zen": {
+      "regionLabel": "Codian 聊天",
+      "showHistory": "顯示對話",
+      "move": "移動聊天面板",
+      "working": "處理中…",
+      "thinking": "思考中…",
+      "interrupted": "已中斷",
+      "workedFor": "工作了 {duration}",
+      "workedForResult": "工作了 {duration} · {result}",
+      "actionRequired": "需要你的輸入",
+      "error": "錯誤：{message}",
+      "toolRunning": "{tool} · 執行中",
+      "toolCompleted": "{tool} · 已完成",
+      "toolFailed": "{tool} · 失敗",
+      "toolBlocked": "{tool} · 已封鎖"
+    },
+    "composer": {
+      "placeholder": "請求修改、@提及檔案、執行 /命令",
+      "message": "訊息",
+      "dropImage": "將圖片拖到這裡",
+      "moreContext": "顯示另外 {count} 項上下文",
+      "showLess": "收合",
+      "moreItems": "+{count} 項"
+    },
+    "worked": "已完成工作",
+    "taskNotification": "任務通知",
+    "copyMessage": "複製訊息",
+    "renderFailed": "訊息內容呈現失敗。",
+    "interruptedHint": "· 你希望 Codian 改做什麼？",
+    "sessions": {
+      "empty": "尚無對話",
+      "noMatch": "沒有符合的工作階段",
+      "resume": "繼續對話",
+      "loading": "正在載入對話…",
+      "current": "目前的工作階段",
+      "loadFailed": "載入對話失敗"
+    },
+    "linkedContent": {
+      "label": "關聯內容：",
+      "choices": "關聯內容選項",
+      "noMatch": "沒有符合的檔案或資料夾",
+      "missing": "內容遺失",
+      "path": "關聯內容：{path}",
+      "missingPath": "關聯內容：{path}。內容遺失",
+      "noContent": "無關聯內容",
+      "missingNotice": "關聯內容遺失：{path}",
+      "openFailed": "開啟關聯內容失敗：{error}"
+    },
+    "questions": {
+      "title": "問題",
+      "submit": "提交",
+      "review": "檢查你的回答",
+      "ready": "準備提交回答了嗎？",
+      "sending": "正在傳送…",
+      "submitAnswers": "提交回答",
+      "notAnswered": "未回答",
+      "customAnswer": "輸入你的回答…",
+      "secret": "輸入私密內容…",
+      "editAnswer": "修改「{question}」的回答",
+      "waiting": "等待回答…",
+      "noOptions": "未記錄選項",
+      "sendFailed": "無法傳送回答，請重試。",
+      "answerBelow": "請在下方的問題面板中回答。",
+      "expired": "問題已過期。",
+      "notSent": "回答未傳送，請重試。",
+      "unsupportedReply": "此問題無法接受該回答。",
+      "uncertainDelivery": "無法確認回答是否送達。為避免重複傳送，未將其重新加入佇列。",
+      "differentConversation": "此問題屬於另一段對話。",
+      "sideUnavailable": "此側邊對話已無法使用。"
+    },
+    "tools": {
+      "calls": "工具呼叫",
+      "output": "輸出",
+      "noResult": "無結果",
+      "noMatches": "找不到符合項目",
+      "tasksUpdated": "任務已更新",
+      "noChanges": "無變更",
+      "moreLines": "…還有 {count} 行",
+      "moreCharacters": "…還有 {count} 個字元",
+      "running": "執行中…",
+      "noOutput": "無輸出",
+      "status": {
+        "running": "狀態：執行中",
+        "completed": "狀態：已完成",
+        "error": "狀態：錯誤",
+        "cancelled": "狀態：已取消",
+        "blocked": "狀態：已阻擋"
+      },
+      "inProgress": "狀態：進行中",
+      "writing": "正在寫入…",
+      "done": "已完成",
+      "errorResult": "錯誤",
+      "tasks": "任務",
+      "taskProgress": "任務 {completed}/{total}",
+      "taskProgressLabel": "任務（{completed}/{total}）",
+      "changes": "變更：+{added} -{removed}",
+      "fileDeleted": "檔案已刪除",
+      "noTextDiff": "沒有可用的文字差異",
+      "patch": "修補檔",
+      "files": "{count} 個檔案",
+      "file": "檔案",
+      "enteringPlan": "正在進入規劃模式",
+      "planComplete": "規劃完成",
+      "messageAgent": "向代理傳送訊息",
+      "continueAgent": "繼續代理任務",
+      "listAgents": "列出代理",
+      "interruptAgent": "中斷代理",
+      "allAgents": "所有代理",
+      "commandPlaceholder": "命令",
+      "filesPlaceholder": "檔案",
+      "patternPlaceholder": "比對模式",
+      "toolsPlaceholder": "工具",
+      "agentCount": "{count} 個代理",
+      "agentCountPlural": "{count} 個代理",
+      "listDestinations": "列出目標",
+      "messageSession": "向工作階段傳送訊息",
+      "stopSession": "停止工作階段",
+      "readSession": "讀取工作階段"
+    },
+    "citations": {
+      "memoryUsed": "引用的記憶",
+      "source": "{count} 個來源",
+      "sources": "{count} 個來源"
+    },
+    "web": {
+      "findInPage": "在頁面中尋找",
+      "openPage": "開啟頁面",
+      "urlUnavailable": "網址無法使用",
+      "clickLink": "點擊連結 {id}",
+      "pattern": "比對模式：{pattern}",
+      "query": "搜尋詞：{query}",
+      "altQuery": "備選搜尋詞：{query}",
+      "search": "搜尋網頁",
+      "moreQueries": "…還有 {count} 個搜尋詞",
+      "clickInPage": "在 {url} 中點擊連結 {id}",
+      "open": "開啟 {url}",
+      "find": "尋找「{pattern}」",
+      "inPage": "在 {url} 中{action}",
+      "operations": "{count} 個網頁操作",
+      "searchTerm": "搜尋"
+    },
+    "permissionMode": {
+      "label": "權限模式",
+      "current": "權限模式：{mode}",
+      "changeFailed": "切換權限模式失敗",
+      "claude": {
+        "auto": "自動",
+        "manual": "手動",
+        "acceptEdits": "接受編輯",
+        "yolo": "YOLO",
+        "autoDesc": "由 Claude 決定是否授權",
+        "manualDesc": "修改前一律詢問",
+        "acceptEditsDesc": "自動接受所有檔案編輯",
+        "yoloDesc": "無須詢問，允許所有操作"
+      },
+      "codex": {
+        "autoReview": "代我審批",
+        "normal": "請求審批",
+        "yolo": "完整存取",
+        "autoReviewDesc": "自動審核額外存取權限。",
+        "readOnlyDesc": "編輯或連網前詢問。",
+        "normalDesc": "額外存取前詢問。",
+        "yoloDesc": "不限制檔案和網路存取。"
+      }
+    },
+    "thinking": {
+      "active": "思考中，已用時 {seconds} 秒…",
+      "completed": "思考了 {seconds} 秒",
+      "label": "思考過程"
+    },
+    "suggestions": {
+      "loading": "正在載入…",
+      "noMatches": "無符合項目",
+      "loadFailed": "無法載入建議",
+      "retryHint": "再次輸入以重試",
+      "providerLoading": "正在載入供應商命令…",
+      "providerRetry": "重新尋找供應商命令"
+    },
+    "approval": {
+      "title": "需要授權",
+      "question": "允許此操作嗎？",
+      "deny": "拒絕",
+      "allowOnce": "允許一次",
+      "alwaysAllow": "一律允許",
+      "mcpRequest": "MCP 請求",
+      "mcpServer": "MCP 伺服器： {server}",
+      "decline": "拒絕",
+      "allow": "允許",
+      "cancelRequest": "取消此請求。",
+      "declineRequest": "拒絕此請求。",
+      "acceptRequest": "接受此請求。",
+      "fileChange": "檔案修改",
+      "fileChangeReason": "檔案修改：{reason}",
+      "permissionRequest": "權限請求",
+      "permissionReason": "權限請求：{reason}",
+      "networkAccess": "允許透過 {protocol} 存取 {host}",
+      "execute": "執行：{command}",
+      "executeCommand": "執行命令",
+      "allowSimilar": "允許類似命令",
+      "execPolicy": "核准並儲存執行策略變更。",
+      "host": "主機",
+      "allowHost": "在此工作階段中允許 {host}",
+      "denyHost": "在此工作階段中拒絕 {host}",
+      "allowRule": "對 {host} 套用允許規則。",
+      "denyRule": "對 {host} 套用拒絕規則。",
+      "details": "{tool} 授權詳情",
+      "unexpectedSelection": "非預期的授權選項：「{value}」",
+      "runCommand": "執行命令：{pattern}",
+      "readFile": "讀取檔案：{pattern}",
+      "writeFile": "寫入檔案：{pattern}",
+      "editFile": "編輯檔案：{pattern}",
+      "searchFiles": "搜尋符合的檔案：{pattern}",
+      "searchContent": "搜尋符合的內容：{pattern}",
+      "unknownPattern": "（未知）",
+      "deepseekRequest": "DeepSeek 請求授權。"
+    },
+    "disclosure": {
+      "expand": "{label} - 點擊展開",
+      "collapse": "{label} - 點擊收合"
+    },
+    "removeItem": "移除{item}",
+    "agent": "代理：{agent}",
+    "images": {
+      "unsupportedProvider": "此供應商不支援圖片附件。",
+      "tooLarge": "圖片超過 {size} 的大小限制。",
+      "unsupportedType": "不支援的圖片格式。",
+      "attachFailed": "新增圖片附件失敗。",
+      "label": "圖片",
+      "numbered": "圖片 {number}",
+      "attachment": "圖片附件：{name} · {size}",
+      "fileNotFound": "{message}（檔案不存在）",
+      "permissionDenied": "{message}（無存取權限）",
+      "preview": "圖片預覽：{name}",
+      "closePreview": "關閉圖片預覽"
+    },
+    "pi": {
+      "extension": "Pi 擴充功能",
+      "notification": "Pi 擴充功能通知。"
+    },
+    "sessionMessage": {
+      "undelivered": "無法傳遞來自 {senders} 的訊息。",
+      "fromLabel": "來自工作階段："
+    },
+    "sessionTools": {
+      "noSessions": "沒有工作階段",
+      "thisSession": "此工作階段",
+      "truncated": "還有更多工作階段未顯示",
+      "recipient": "接收者",
+      "model": "模型",
+      "reasoning": "推理",
+      "message": "訊息",
+      "openSession": "開啟工作階段 {sessionId}",
+      "openProviderSession": "開啟 {provider} 工作階段 {sessionId}",
+      "sessionMissing": "該工作階段已不存在。",
+      "openFailed": "無法開啟工作階段：{message}",
+      "openUnavailable": "無法從這裡開啟工作階段。",
+      "providersIncluded": "已包含可用的提供者和模型",
+      "newSession": "新工作階段",
+      "session": "工作階段",
+      "turns": "輪次",
+      "turnRange": "{from}–{to}，共 {total}",
+      "noTurns": "尚無",
+      "mode": "傳遞方式",
+      "modeSteer": "插入進行中的輪次",
+      "modeInterrupt": "中斷目前工作"
+    }
   },
   "settings": {
     "title": "Codian 設定",
@@ -114,7 +451,8 @@
       "workspace": "工作區",
       "about": "關於",
       "environment": "環境變數",
-      "pro": "Pro"
+      "pro": "Pro",
+      "skills": "技能"
     },
     "display": "顯示",
     "conversations": "對話",
@@ -123,7 +461,17 @@
     "setup": "連線",
     "models": "模型",
     "experimental": "實驗性功能",
-    "about": { "slogan": "致力於探索解決問題的極簡方式", "followWeike": "關注維客", "feedback": "有問題歡迎提交 issue，或關注微信公眾號「維客筆記」回饋", "feedbackPrefix": "有問題歡迎提交 ", "feedbackBetweenLinks": "，或關注微信公眾號「", "feedbackSuffix": "」回饋", "sponsor": "贊助維客", "sponsorDescription": "如果這個外掛幫助了你，歡迎贊助維客持續開發與維護：", "afdian": "愛發電" },
+    "about": {
+      "slogan": "致力於探索解決問題的極簡方式",
+      "followWeike": "關注維客",
+      "feedback": "有問題歡迎提交 issue，或關注微信公眾號「維客筆記」回饋",
+      "feedbackPrefix": "有問題歡迎提交 ",
+      "feedbackBetweenLinks": "，或關注微信公眾號「",
+      "feedbackSuffix": "」回饋",
+      "sponsor": "贊助維客",
+      "sponsorDescription": "如果這個外掛幫助了你，歡迎贊助維客持續開發與維護：",
+      "afdian": "愛發電"
+    },
     "userName": {
       "name": "Codian 應該如何稱呼您？",
       "desc": "用於個人化問候的使用者名稱（留空使用通用問候）"
@@ -152,7 +500,9 @@
     "titleModel": {
       "name": "標題生成模型",
       "desc": "用於自動生成對話標題的模型。",
-      "auto": "自動 (Haiku)"
+      "auto": "自動 (Haiku)",
+      "select": "選擇模型",
+      "unavailableWarning": "自動標題已暫停。請選擇一個可用的標題模型。"
     },
     "navMappings": {
       "name": "Vim 風格導航映射",
@@ -207,6 +557,39 @@
     "slashCommands": {
       "name": "命令與技能",
       "desc": "管理儲存在 .claude/commands/ 和 .claude/skills/ 中的 Vault 級命令與技能。由 /名稱 觸發。"
+    },
+    "skillMigration": {
+      "name": "Claude 技能移轉預覽",
+      "desc": "檢視 Claude 原生技能，並將選取的有效技能套件移轉至共享技能目錄。既有目標與含連結的套件會略過；來源套件保持不變。",
+      "previewButton": "檢視並移轉",
+      "modalTitle": "Claude 技能移轉",
+      "loading": "正在掃描技能資料夾…",
+      "empty": "找不到 Claude 技能或命令。",
+      "failed": "無法建立預覽。",
+      "status": {
+        "reviewRequired": "技能格式有效，仍需檢視移轉規則",
+        "conversionPolicyRequired": "命令轉換規則尚待檢視",
+        "symlinkNotInspected": "符號連結，未檢查目標",
+        "missingSkillMarkdown": "缺少 SKILL.md",
+        "invalidSkill": "技能中繼資料無效",
+        "unreadable": "無法讀取來源",
+        "unsupportedEntry": "不支援的項目，已保留"
+      },
+      "target": {
+        "absent": "沒有同名目標",
+        "entry": "存在同名目標",
+        "symlink": "目標是連結，未檢查",
+        "ambiguous": "存在多個同名目標",
+        "unknown": "無法檢查目標"
+      },
+      "diagnostics": "無法檢查的項目",
+      "additionalEntries": "套件中的其他項目：",
+      "diagnostic": "詳情：",
+      "selectInstruction": "選取目標目錄為空的有效技能套件。移轉會完整複製套件並保留 Claude 來源。",
+      "applySelected": "移轉所選技能",
+      "migrationSucceeded": "已移轉：",
+      "migrationFailed": "移轉失敗：",
+      "stalePreview": "預覽已過期。請重新整理並檢查技能套件後再試。"
     },
     "hiddenSlashCommands": {
       "name": "隱藏命令與技能",
@@ -315,14 +698,21 @@
         "save": "保存",
         "update": "更新",
         "cancel": "取消"
-      }
+      },
+      "saveCurrent": "將當前環境保存為片段",
+      "insert": "插入",
+      "insertFailed": "無法插入片段",
+      "deleteConfirm": "要刪除環境變數片段「{name}」嗎？",
+      "deleteFailed": "無法刪除片段"
     },
     "customModelOverrides": {
       "name": "自訂模型覆寫",
       "desc": "為自訂模型設定模型選擇器別名和上下文視窗大小。"
     },
     "customModelAliases": {
-      "placeholder": "別名"
+      "placeholder": "別名",
+      "ariaLabel": "{model} 的別名",
+      "ariaDescription": "顯示在模型選擇器中的自訂標籤。留空則使用預設值。"
     },
     "customContextLimits": {
       "name": "自訂上下文限制",
@@ -376,8 +766,13 @@
       "descUnix": "貼上 \"which claude\" 的輸出 - 適用於原生安裝和 npm/pnpm/yarn 安裝。",
       "validation": {
         "notExist": "路徑不存在",
-        "isDirectory": "路徑是目錄，不是檔案"
-      }
+        "isDirectory": "路徑是目錄，不是檔案",
+        "mustBeAbsolute": "路徑必須是絕對路徑",
+        "notFile": "路徑必須指向檔案",
+        "notAccessible": "無法存取路徑",
+        "notExecutable": "路徑必須可執行"
+      },
+      "genericName": "CLI 路徑"
     },
     "language": {
       "name": "語言",
@@ -386,7 +781,9 @@
     "providerEnablement": {
       "name": "啟用 {provider}",
       "desc": "讓已啟用的 {provider} 模型可用於新對話。停用後，現有工作階段仍會保留。",
-      "atLeastOne": "必須至少保留一個已啟用的提供者。"
+      "atLeastOne": "必須至少保留一個已啟用的提供者。",
+      "lastProviderWarning": "至少需要啟用一個提供者，Codian 才能正常運作。",
+      "noModelsWarning": "未啟用任何 {provider} 模型。請前往下方的「模型」區段並至少啟用一個模型。"
     },
     "codex": {
       "installationMethod": {
@@ -455,6 +852,21 @@
       "enableProvider": {
         "name": "啟用 Codex 提供者",
         "desc": "啟用後，Codex 模型會出現在新對話的模型選擇器中。現有 Codex 工作階段會保留。"
+      },
+      "responseStyle": {
+        "name": "回覆風格",
+        "desc": "選擇支援此功能的模型中 Codex 的溝通風格。",
+        "pragmatic": "務實",
+        "friendly": "友善",
+        "neutral": "中性"
+      },
+      "responseVerbosity": {
+        "name": "回覆詳細程度",
+        "desc": "選擇支援此功能的模型的回覆詳細程度。預設使用 Codex 設定。",
+        "default": "預設",
+        "low": "低",
+        "medium": "中",
+        "high": "高"
       }
     },
     "agentSkills": {
@@ -486,13 +898,16 @@
         "descriptionPlaceholder": "Reviews code for correctness and maintainability",
         "instructions": "Instructions",
         "instructionsDesc": "Required SKILL.md instructions",
-        "instructionsPlaceholder": "Review the supplied code and report actionable findings..."
+        "instructionsPlaceholder": "Review the supplied code and report actionable findings...",
+        "titleFix": "修復技能"
       },
       "delete": {
         "title": "Delete Shared Skill",
         "description": "The entire skill folder, including scripts, references, and assets, will be moved to trash.",
         "confirm": "Move to trash"
-      }
+      },
+      "fix": "修復",
+      "fixed": "已修復技能「{name}」。"
     },
     "codexSkills": {
       "modal": {
@@ -663,6 +1078,7 @@
     },
     "providerCatalog": {
       "empty": "尚未探索到 {provider} 模型。選擇「探索模型」進行載入。",
+      "opencodeEmpty": "尚未探索到 OpenCode 模型。執行 `opencode auth login` 登入 OpenCode Zen 或其他提供者，再按「探索模型」。",
       "failed": "無法載入 {provider} 模型目錄。請檢查 CLI 路徑和登入狀態後重試。",
       "loading": "正在載入 {provider} 模型目錄...",
       "discoveryFailed": "{provider} 模型探索失敗：{message}"
@@ -688,11 +1104,23 @@
       "subagents": "子代理",
       "subagentsDesc": "管理 .opencode/agent/ 和舊路徑 .opencode/agents/ 中的 Vault 子代理。新項目會顯示在 @提及選單中。",
       "environmentVariables": "環境變數",
-      "environmentVariablesDesc": "傳遞給 OpenCode 的額外環境變數。預設啟用 `OPENCODE_ENABLE_EXA=1`。"
+      "environmentVariablesDesc": "傳遞給 OpenCode 的額外環境變數。預設啟用 `OPENCODE_ENABLE_EXA=1`。",
+      "environment": {
+        "name": "OpenCode 環境變數",
+        "desc": "傳遞給 OpenCode 的額外環境變數。"
+      },
+      "migrationNotice": {
+        "text": "Codian 現已支援 OpenCode v2。OpenCode v1 的支援將於 2026 年 10 月 30 日結束。",
+        "link": "遷移至 OpenCode v2"
+      }
     },
     "pi": {
       "environmentVariables": "Pi 環境變數",
-      "environmentVariablesDesc": "僅傳遞給 Pi 的環境變數。"
+      "environmentVariablesDesc": "僅傳遞給 Pi 的環境變數。",
+      "environment": {
+        "name": "Pi 環境變數",
+        "desc": "僅傳遞給 Pi 的環境變數。"
+      }
     },
     "livePreviewComposer": {
       "name": "輸入框即時預覽",
@@ -703,6 +1131,17 @@
       "enableProvider": {
         "name": "啟用 Claude 提供者",
         "desc": "啟用後，Claude 模型會出現在新對話的模型選擇器中。現有 Claude 工作階段會保留。"
+      },
+      "promptSuggestions": {
+        "name": "提示詞建議",
+        "desc": "在空白輸入框中顯示 Claude 預測的下一條提示詞。每則建議都會在每輪對話後額外發出一次 Claude 請求，可能更快耗盡用量額度。"
+      },
+      "configuration": "組態",
+      "responseStyle": {
+        "name": "回覆風格",
+        "desc": "Claude Code 回覆所用的輸出風格，包括自訂風格。「Claude Code 設定」沿用你的 Claude Code 配置。重新整理模型或開始聊天時會更新清單。",
+        "default": "預設",
+        "inherit": "Claude Code 設定"
       }
     },
     "claudeServices": {
@@ -749,6 +1188,204 @@
         "defaultModel": "必須填寫預設模型 ID。",
         "lightModel": "必須填寫輕量模型 ID。"
       }
+    },
+    "providerSettings": {
+      "unavailable": "無法使用提供者設定。",
+      "loadFailed": "無法載入提供者設定：{message}"
+    },
+    "responses": "回覆",
+    "codexSandbox": {
+      "name": "沙盒",
+      "desc": "代我審批 和 請求審批 模式下的檔案存取權限。唯讀模式會在每次編輯前請求確認；完整存取 會忽略此設定。"
+    },
+    "sharedEnvironment": {
+      "name": "共用環境",
+      "desc": "與提供者無關、所有提供者共用的執行階段變數。用於 PATH、Proxy、憑證和暫存目錄變數。"
+    },
+    "enableDualPane": {
+      "name": "啟用雙欄模式",
+      "desc": "當檢視寬度至少為 600 像素時，自動在聊天旁顯示工作階段管理器。"
+    },
+    "restoreTabsOnStartup": {
+      "name": "啟動時還原分頁",
+      "desc": "單欄模式下重新開啟所有分頁，雙欄模式下僅重新開啟上次使用的分頁。"
+    },
+    "sessionAutoArchiveAfter": {
+      "name": "自動封存不活躍的工作階段",
+      "desc": "封存在所選期間內沒有活動的未釘選工作階段。已開啟和正在執行的工作階段會被略過。",
+      "multiSelectHint": "按住 Option 鍵（Windows 和 Linux 上為 Alt 鍵）點選工作階段可多選，然後按右鍵即可釘選或封存。",
+      "off": "關閉",
+      "days7": "7 天後",
+      "days14": "14 天後",
+      "days30": "30 天後"
+    },
+    "dualPaneSide": {
+      "name": "雙欄位置",
+      "desc": "選擇工作階段管理器顯示在聊天的哪一側。",
+      "left": "左側",
+      "right": "右側"
+    },
+    "showMessageTimestamps": {
+      "name": "顯示訊息時間戳",
+      "desc": "在聊天串中顯示每則訊息的本機傳送或到達時間。"
+    },
+    "enableZenMode": {
+      "name": "啟用禪模式",
+      "desc": "側邊欄隱藏時，保持顯示精簡的聊天介面。"
+    },
+    "cliInstallation": {
+      "disclosure": "{name} 安裝",
+      "description": "此電腦的選用 CLI 路徑。留空以自動偵測。",
+      "checking": "正在偵測 CLI…",
+      "versionUnavailable": "版本未知",
+      "notFound": "未找到",
+      "custom": "自訂路徑",
+      "auto": "自動偵測",
+      "checkFailed": "無法偵測 CLI",
+      "saveFailed": "無法儲存路徑，請重試。"
+    },
+    "modelPicker": {
+      "name": "顯示的模型",
+      "desc": "選擇在聊天選擇器中可用的模型。拖曳即可調整順序；提供者會將第一個目前可用的模型作為預設模型。至少選擇一個模型才能使用此提供者。",
+      "browse": "瀏覽模型",
+      "filterLabel": "篩選 {provider} 模型",
+      "searchPlaceholder": "依模型、提供者或 ID 篩選...",
+      "providerFilterLabel": "篩選模型提供者",
+      "allProviders": "所有提供者（{count}）",
+      "discover": "探索",
+      "visible": "顯示: ",
+      "ofDiscovered": " / 已探索到 {count} 個",
+      "oneProvider": " | 1 個提供者",
+      "manyProviders": " | {count} 個提供者",
+      "loadingModels": "正在載入模型...",
+      "loading": "正在載入...",
+      "available": "{count} 個可用",
+      "noneDiscovered": "尚未探索到任何模型",
+      "selected": "已選取（{count}）",
+      "clearAllLabel": "清除所有已選取的 {provider} 模型",
+      "reorderLabel": "調整 {model} 的順序；拖曳或使用上、下方向鍵",
+      "default": "預設",
+      "unavailable": "無法使用",
+      "aliasLabel": "別名（選用）",
+      "removeLabel": "移除 {model}",
+      "noMatch": "沒有符合篩選條件的模型。",
+      "emptyCatalog": "{provider} 未回報任何模型。請檢查設定並點擊「探索」。",
+      "loadingCatalog": "正在載入 {provider} 模型…",
+      "stale": "{provider} 模型目錄已過時。點擊「探索」以重新整理。"
+    },
+    "grok": {
+      "environment": {
+        "name": "Grok Build 環境變數",
+        "desc": "僅傳遞給 Grok Build 的環境變數。自訂模型的密鑰保留在此提供者範圍內，並在原生設定中透過 env_key 參照。"
+      }
+    },
+    "deepseek": {
+      "installation": {
+        "desc": "自動模式優先使用 dsh，其次偵測 macOS 或 Windows 上的 Desktop。兩者都已安裝時，輸入 Desktop 的 .app 路徑或 Windows 安裝資料夾即可選擇它。請先開啟 Desktop 完成初始設定。",
+        "desktop": "使用你的原生 Desktop 設定檔。",
+        "web": "使用你的原生 Web 設定檔。"
+      },
+      "preset": "預設集",
+      "codeMode": {
+        "name": "啟用程式碼模式",
+        "desc": "從每個對話的下一輪開始生效，包括既有對話。在直接工具之外加入原生 run_code。"
+      },
+      "presetPlugins": {
+        "name": "附加預設外掛",
+        "desc": "進階。附加到 Codian 聊天預設的原生 dsh 外掛列 YAML 清單（dsh 格式），每列需有自己的 \"id\" 與 \"name\"。這些列不能取代 Codian 自己的列。儲存會重新啟動 DeepSeek Harness，並停止進行中的回合。Codian 沒有介面支援的外掛（例如計畫模式）可能無法正常運作。"
+      },
+      "presetPreview": "預設預覽",
+      "environment": {
+        "name": "DeepSeek Harness 環境變數",
+        "desc": "僅傳遞給 DeepSeek Harness 的環境變數。使用所選的原生 Web 或 Desktop 設定檔、憑證、模型與 MCP 伺服器。"
+      }
+    },
+    "skills": {
+      "subTabs": {
+        "claude": "Claude Code",
+        "shared": "其他供應商"
+      },
+      "claudeHelp": ".claude/skills/ 中的 Claude Code 技能與 .claude/commands/ 中的指令。",
+      "sharedHelp": ".agents/skills/ 中供 Codex、OpenCode、Pi、Grok Build 與 DeepSeek Harness 使用的共用技能。",
+      "status": {
+        "error": "無法讀取技能資料夾:{message}"
+      },
+      "synced": "已同步",
+      "actions": {
+        "sync": "同步",
+        "resync": "重新同步"
+      },
+      "commands": {
+        "title": "Claude Code 指令",
+        "hint": "指令僅在 Claude Code 中可用。建議將其轉換為技能。",
+        "badge": "指令",
+        "empty": ".claude/commands 中沒有指令。",
+        "convert": "轉換為技能",
+        "editTitle": "編輯指令",
+        "convertTitle": "將指令轉換為技能",
+        "nameDesc": ".claude/commands 下不含 .md 的路徑;巢狀指令使用 /",
+        "descriptionDesc": "顯示在指令選單中的選用描述",
+        "updated": "已更新指令「{name}」。",
+        "converted": "已將指令轉換為技能「{name}」。",
+        "deleted": "已將指令「{name}」移至垃圾桶。",
+        "deleteTitle": "刪除指令",
+        "deleteDescription": "指令檔案將移至垃圾桶。",
+        "collisionFailed": "名為「{name}」的指令已存在。"
+      },
+      "droppedFrontmatterWarning": "儲存後僅保留名稱與描述。以下鍵將被移除,供應商的行為可能改變:{keys}",
+      "hidden": {
+        "name": "隱藏的指令與技能",
+        "desc": "在所有供應商的指令選單中隱藏指令與技能。輸入不含前導斜線的確切名稱,每行一個(Pi 技能使用 skill:名稱)。",
+        "placeholder": "commit\ncompact\nskill:review"
+      },
+      "sync": {
+        "title": "同步技能",
+        "repairTitle": "修復技能連結",
+        "loading": "正在檢查技能資料夾...",
+        "intro": "同步會把 Claude Code 的技能與指令合併到 .agents/skills,並將 .claude/skills 連結到那裡。",
+        "pros": {
+          "oneList": "所有供應商共用一個列表。",
+          "newSkills": "新技能在所有地方可用。"
+        },
+        "cons": {
+          "dropped": "僅保留名稱與描述;供應商專屬的設定會被移除,行為可能改變。",
+          "claudeSyntax": "僅 Claude Code 支援的語法在其他供應商中無效:{names}"
+        },
+        "attentionTitle": "需要處理",
+        "nothingNeedsAttention": "沒有需要處理的項目。",
+        "nameField": "名稱",
+        "descriptionField": "描述",
+        "ready": "已就緒",
+        "problems": {
+          "name": "名稱無效。請使用小寫字母、數字與連字號。",
+          "description": "缺少描述。",
+          "instructions": "沒有指示。請在檔案中補上後重新同步。",
+          "unreadable": "無法讀取其 frontmatter。請修正檔案後重新同步。",
+          "sharedConflict": "名為「{name}」的共用技能已存在。",
+          "itemConflict": "另一個項目也叫「{name}」。"
+        },
+        "options": {
+          "fix": "修正",
+          "replace": "取代共用技能",
+          "discard": "捨棄(移至垃圾桶)",
+          "keep": "保留為指令"
+        },
+        "continue": "繼續",
+        "confirmTitle": "以連結取代 .claude/skills?",
+        "confirmBody": ".claude/skills 將被取代為指向 .agents/skills 的連結。此動作無法復原。",
+        "repairBody": ".claude/skills 將被取代為指向 .agents/skills 的連結。它目前指向的資料夾不會被修改。",
+        "linkBody": "將 .claude/skills 建立為指向 .agents/skills 的連結,讓 Claude Code 使用共用技能。不會移動任何檔案。",
+        "linkWithItemsBody": "指令將變成技能,接著 .claude/skills 被建立為指向 .agents/skills 的連結。此動作無法復原。",
+        "devicesWarning": "此儲存庫在多台裝置間同步?連結可能不會同步,請在每台裝置上執行同步。",
+        "confirm": "同步並連結",
+        "partial": "同步在建立連結前停止。請修正以下項目後重新同步。",
+        "failed": "同步失敗:{message}",
+        "summary": "已移動 {moved},已轉換 {converted},已移至垃圾桶 {trashed},已移除 {unlinked} 個連結。"
+      }
+    },
+    "pluginRenderedFenceLanguages": {
+      "name": "由外掛渲染的程式碼區塊語言",
+      "desc": "每行一個程式碼區塊語言，交給在筆記中渲染它的外掛（例如 vega-lite）。在回覆完成後渲染。其他程式碼區塊一律以程式碼顯示。"
     }
   }
 }

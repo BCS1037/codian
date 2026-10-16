@@ -25,7 +25,10 @@ import {
   extractToolProviderPayload,
   normalizeToolProviderPayload,
 } from '../../../core/tools/toolProviderPayload';
-import { extractToolResultContent } from '../../../core/tools/toolResultContent';
+import {
+  extractToolResultContent,
+  extractToolResultFormat,
+} from '../../../core/tools/toolResultContent';
 import type {
   ChatMessage,
   StreamChunk,
@@ -43,6 +46,10 @@ import { extractDiffData } from '../../../utils/diff';
 import { hasStreamingMathDelimiters } from '../../../utils/markdownMath';
 import { getVaultPath, normalizePathForVault } from '../../../utils/path';
 import type { FeatureHost } from '../../FeatureHost';
+import {
+  getPluginFenceLanguageSet,
+  hasDeferredDiagramFence,
+} from '../rendering/DisplayOnlyCodeFences';
 import type { MessageRenderer, RenderContentOptions } from '../rendering/MessageRenderer';
 import { resolveSubagentAdapter } from '../rendering/subagentAdapterResolution';
 import {
@@ -350,13 +357,13 @@ export class StreamController {
         // If already rendered, update the header name + summary
         const toolEl = rendererRebuilt ? null : state.toolCallElements.get(chunk.id);
         if (toolEl) {
-          const nameEl = toolEl.querySelector('.claudian-tool-name')
-            ?? toolEl.querySelector('.claudian-write-edit-name');
+          const nameEl = toolEl.querySelector('.codian-tool-name')
+            ?? toolEl.querySelector('.codian-write-edit-name');
           if (nameEl) {
             nameEl.setText(getToolName(existingToolCall.name, existingToolCall.input));
           }
-          const summaryEl = toolEl.querySelector('.claudian-tool-summary')
-            ?? toolEl.querySelector('.claudian-write-edit-summary');
+          const summaryEl = toolEl.querySelector('.codian-tool-summary')
+            ?? toolEl.querySelector('.codian-write-edit-summary');
           if (summaryEl) {
             summaryEl.setText(getToolSummary(existingToolCall.name, existingToolCall.input));
           }
@@ -511,9 +518,16 @@ export class StreamController {
   }
 
   private getStreamingRenderOptions(content: string): RenderContentOptions | undefined {
-    return this.shouldDeferMathRendering() && hasStreamingMathDelimiters(content)
-      ? { deferMath: true }
-      : undefined;
+    const deferMath = this.shouldDeferMathRendering() && hasStreamingMathDelimiters(content);
+    const deferDiagrams = hasDeferredDiagramFence(
+      content,
+      getPluginFenceLanguageSet(this.deps.plugin.settings.pluginRenderedFenceLanguages),
+    );
+    if (!deferMath && !deferDiagrams) return undefined;
+    return {
+      ...(deferMath ? { deferMath: true } : {}),
+      ...(deferDiagrams ? { deferDiagrams: true } : {}),
+    };
   }
 
   private capturePlanFilePath(input: Record<string, unknown>): void {
@@ -1001,6 +1015,8 @@ export class StreamController {
         existingToolCall.status = 'completed';
       }
       existingToolCall.result = normalizedContent;
+      existingToolCall.resultFormat = extractToolResultFormat(chunk.toolUseResult)
+        ?? existingToolCall.resultFormat;
 
       if (existingToolCall.name === TOOL_ASK_USER_QUESTION) {
         const answers =
@@ -1049,7 +1065,7 @@ export class StreamController {
     this.hideThinkingIndicator();
 
     if (!state.currentTextEl) {
-      state.currentTextEl = state.currentContentEl.createDiv({ cls: 'claudian-text-block' });
+      state.currentTextEl = state.currentContentEl.createDiv({ cls: 'codian-text-block' });
       state.currentTextContent = '';
     }
 
@@ -1066,8 +1082,7 @@ export class StreamController {
 
     if (
       textEl
-      && this.shouldDeferMathRendering()
-      && hasStreamingMathDelimiters(content)
+      && this.getStreamingRenderOptions(content)
     ) {
       this.textRenderCoordinator.request({ el: textEl, content });
     }
@@ -1694,17 +1709,17 @@ export class StreamController {
       if (!state.currentContentEl || state.thinkingEl || state.currentThinkingState) return;
 
       const cls = overrideCls
-        ? `claudian-thinking ${overrideCls}`
-        : 'claudian-thinking';
+        ? `codian-thinking ${overrideCls}`
+        : 'codian-thinking';
       state.thinkingEl = state.currentContentEl.createDiv({ cls });
       state.thinkingEl.createSpan({
-        cls: 'claudian-thinking-status',
+        cls: 'codian-thinking-status',
         text: this.formatThinkingIndicatorStatus(statusText),
       });
       state.thinkingEl.dataset.thinkingStatus = statusText;
 
       // Create timer span with initial value
-      const timerSpan = state.thinkingEl.createSpan({ cls: 'claudian-thinking-hint' });
+      const timerSpan = state.thinkingEl.createSpan({ cls: 'codian-thinking-hint' });
       const updateTimer = () => {
         if (!state.responseStartTime) return;
         // Check if element is still connected to DOM (prevents orphaned interval updates)
@@ -1735,7 +1750,7 @@ export class StreamController {
     if (!state.thinkingEl) return;
 
     state.thinkingEl.dataset.thinkingStatus = status;
-    const statusEl = state.thinkingEl.querySelector('.claudian-thinking-status');
+    const statusEl = state.thinkingEl.querySelector('.codian-thinking-status');
     statusEl?.setText(this.formatThinkingIndicatorStatus(status));
   }
 
@@ -1773,8 +1788,8 @@ export class StreamController {
     const { state } = this.deps;
     if (!state.currentContentEl) return;
     this.hideThinkingIndicator();
-    const el = state.currentContentEl.createDiv({ cls: 'claudian-compact-boundary' });
-    el.createSpan({ cls: 'claudian-compact-boundary-label', text: 'Conversation compacted' });
+    const el = state.currentContentEl.createDiv({ cls: 'codian-compact-boundary' });
+    el.createSpan({ cls: 'codian-compact-boundary-label', text: 'Conversation compacted' });
   }
 
   // ============================================
