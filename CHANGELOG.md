@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.1 — 2026-10-17
+
+- **Dual-Pane Tab Visibility**: Enabled the chat tab bar in wide dual-pane mode, providing direct visual access, switching, and management for up to 5 concurrent tabs right above the composer.
+- **Session List & Open Tab Badging**: Redesigned session history items into compact, single-line rows; prioritized active and open tabs at the top of the sidebar with distinct pill badges (`[Tab 1]`～`[Tab 5]`) and quick tab-close buttons.
+- **Hover Actions & Inline Rename**: Optimized conversation list interactions with smooth hover action reveals, localized close-tab tooltips across all 10 locales, and seamless inline title renaming without layout shift.
+
 ## 1.4.0 — 2026-10-16
 
 - **Inline Edit**: Streamlined the composer into a compact card with diff statistics, status indicators, and keyboard shortcuts.

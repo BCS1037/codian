@@ -79,22 +79,23 @@ describe('CodianView tab controls', () => {
     expect(newTabButtonEl.getAttribute('aria-hidden')).toBeNull();
   });
 
-  it('hides tab-only controls while the wide session layout is active', () => {
+  it('keeps tab controls available while the wide session layout is active', () => {
     const { newTabButtonEl, view } = createViewHarness({ canCreateTab: true, tabCount: 3 });
     view.dualPaneLayout = { isWide: true };
 
     view.refreshTabControls();
 
-    expect(view.tabBarContainerEl.hasClass('codian-hidden')).toBe(true);
-    expect(newTabButtonEl.hasClass('codian-hidden')).toBe(true);
-    expect(newTabButtonEl.getAttribute('aria-hidden')).toBe('true');
+    expect(view.tabBarContainerEl.hasClass('codian-hidden')).toBe(false);
+    expect(newTabButtonEl.hasClass('codian-hidden')).toBe(false);
+    expect(newTabButtonEl.getAttribute('aria-hidden')).toBeNull();
   });
 
-  it('renders the current conversation list in wide layout and wires selection actions', async () => {
+  it('renders the current conversation list in wide layout and wires selection and close actions', async () => {
     const sidebar = createMockEl();
     const renderHistoryDropdown = jest.fn();
     const openConversation = jest.fn();
     const openConversationInNewTab = jest.fn();
+    const closeTab = jest.fn();
     const view = Object.create(CodianView.prototype) as any;
     view.dualPaneLayout = { isWide: true };
     view.wideSessionSidebarEl = sidebar;
@@ -102,9 +103,13 @@ describe('CodianView tab controls', () => {
       getActiveTab: jest.fn().mockReturnValue({
         controllers: { conversationController: { renderHistoryDropdown } },
       }),
+      getAllTabs: jest.fn().mockReturnValue([
+        { id: 'tab-c', conversationId: 'conversation-c' },
+      ]),
     };
     view.openHistoryConversation = openConversation;
     view.openHistoryConversationInNewTab = openConversationInNewTab;
+    view.handleTabClose = closeTab;
     view.getHistoryConversationStatus = jest.fn().mockReturnValue({ openState: 'closed', isRunning: false });
 
     view.renderWideSessionSidebar();
@@ -113,8 +118,10 @@ describe('CodianView tab controls', () => {
     expect(container).toBe(sidebar);
     await options.onSelectConversation('conversation-a');
     await options.onOpenConversationInNewTab('conversation-b', false);
+    options.onCloseConversationTab?.('conversation-c');
     expect(openConversation).toHaveBeenCalledWith('conversation-a');
     expect(openConversationInNewTab).toHaveBeenCalledWith('conversation-b', false);
+    expect(closeTab).toHaveBeenCalledWith('tab-c');
     expect(options.getConversationStatus('conversation-c')).toEqual({ openState: 'closed', isRunning: false });
   });
 

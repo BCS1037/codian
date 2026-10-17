@@ -3,7 +3,7 @@ import { Menu, Notice, setIcon } from 'obsidian';
 import type { TitleGenerationService } from '../../../core/providers/types';
 import type { ChatRuntime } from '../../../core/runtime/ChatRuntime';
 import type { ChatRewindConflict, ChatRewindMode } from '../../../core/runtime/types';
-import { type ChatMessage, compareConversationIndexOrder, type Conversation } from '../../../core/types';
+import { type ChatMessage, type Conversation } from '../../../core/types';
 import { t } from '../../../i18n/i18n';
 import { confirm } from '../../../shared/modals/ConfirmModal';
 import { getUserDisplayText } from '../../../utils/context';
@@ -112,6 +112,7 @@ function historyStatusIndicator(status: HistoryConversationStatus): HistoryStatu
 type HistoryRenderOptions = {
   onSelectConversation: (id: string) => Promise<void>;
   onOpenConversationInNewTab?: (id: string, activate?: boolean) => Promise<void>;
+  onCloseConversationTab?: (id: string) => void | Promise<void>;
   getConversationOpenState?: (id: string) => HistoryConversationOpenState;
   getConversationStatus?: (id: string) => HistoryConversationStatus;
   onRerender: () => void;
@@ -906,11 +907,52 @@ export class ConversationController {
     this.renderHistoryFilters(dropdownHeader, options.onRerender);
 
     const list = container.createDiv({ cls: 'codian-history-list' });
-    const allConversations = [...plugin.getConversationList()].sort(compareConversationIndexOrder);
-    const indexedConversations = allConversations.filter(conversation => (
+    const statusCache = new Map<string, HistoryConversationStatus>();
+    const getStatus = (id: string): HistoryConversationStatus => {
+      let s = statusCache.get(id);
+      if (!s) {
+        const fallback: HistoryConversationOpenState =
+          id === state.currentConversationId ? 'current' : 'closed';
+        s = this.getHistoryConversationStatus(id, fallback, options);
+        statusCache.set(id, s);
+      }
+      return s;
+    };
+
+    const allConversations = [...plugin.getConversationList()];
+    const filteredConversations = allConversations.filter(conversation => (
       this.historyFilter === 'all'
       || (this.historyFilter === 'archived' ? conversation.archived === true : conversation.archived !== true)
     ));
+    const indexedConversations = filteredConversations.sort((a, b) => {
+      const pinnedDiff = Number(b.pinned === true) - Number(a.pinned === true);
+      if (pinnedDiff !== 0) return pinnedDiff;
+
+      const statusA = getStatus(a.id);
+      const statusB = getStatus(b.id);
+      const isOpenA = statusA.openState === 'current' || statusA.openState === 'open';
+      const isOpenB = statusB.openState === 'current' || statusB.openState === 'open';
+
+      if (isOpenA !== isOpenB) {
+        return isOpenA ? -1 : 1;
+      }
+
+      if (isOpenA && isOpenB) {
+        const tabA = typeof statusA.tabIndex === 'number'
+          ? statusA.tabIndex
+          : (statusA.openState === 'current' ? 0 : Infinity);
+        const tabB = typeof statusB.tabIndex === 'number'
+          ? statusB.tabIndex
+          : (statusB.openState === 'current' ? 0 : Infinity);
+        if (tabA !== tabB && (tabA !== Infinity || tabB !== Infinity)) {
+          return tabA - tabB;
+        }
+      }
+
+      const timeA = a.lastResponseAt ?? a.updatedAt ?? a.createdAt;
+      const timeB = b.lastResponseAt ?? b.updatedAt ?? b.createdAt;
+      return timeB - timeA;
+    });
     let presentation: ConversationBrowserListPresentation = {
       conversations: indexedConversations,
       emptyText: 'No conversations',
@@ -962,14 +1004,10 @@ export class ConversationController {
     const pageSize = Math.max(1, options.pageSize ?? DEFAULT_HISTORY_PAGE_SIZE);
     const visibleCount = Math.max(pageSize, options.visibleCount ?? pageSize);
     const visibleConversations = conversations.slice(0, visibleCount);
-    const conversationStatuses = new Map(visibleConversations.map(conversation => {
-      const fallbackOpenState: HistoryConversationOpenState =
-        conversation.id === state.currentConversationId ? 'current' : 'closed';
-      return [
-        conversation.id,
-        this.getHistoryConversationStatus(conversation.id, fallbackOpenState, options),
-      ] as const;
-    }));
+    const conversationStatuses = new Map(visibleConversations.map(conversation => [
+      conversation.id,
+      getStatus(conversation.id),
+    ] as const));
     for (const conv of visibleConversations) {
       if (options.signal?.aborted) return;
       const conversationStatus = conversationStatuses.get(conv.id)!;
@@ -1017,12 +1055,27 @@ export class ConversationController {
       }
 
       const content = item.createDiv({ cls: 'codian-history-item-content' });
+      if (openState === 'current' || openState === 'open') {
+        const tabNumber = typeof conversationStatus.tabIndex === 'number'
+          ? conversationStatus.tabIndex
+          : null;
+        const tabPill = content.createSpan({
+          cls: [
+            'codian-history-tab-pill',
+            isCurrent ? 'is-active' : 'is-open',
+          ].join(' '),
+          text: tabNumber !== null ? `Tab ${tabNumber}` : (isCurrent ? 'Current' : 'Tab'),
+        });
+        tabPill.setAttribute(
+          'aria-label',
+          isCurrent ? `Current tab ${tabNumber ?? ''}`.trim() : `Open in tab ${tabNumber ?? ''}`.trim(),
+        );
+      }
       const titleEl = content.createDiv({ cls: 'codian-history-item-title' });
       presentation.renderTitle(titleEl, conv);
       if (conv.pinned) {
         const pinEl = titleEl.createSpan({
           cls: 'codian-history-item-pin',
-          text: ` ${t('chat.historySearch.pinned')}`,
         });
         setIcon(pinEl, 'pin');
         pinEl.setAttribute('aria-label', t('chat.historySearch.pinned'));
@@ -1127,6 +1180,24 @@ export class ConversationController {
               'Failed to load conversation',
             ),
             'Failed to load conversation',
+          );
+        });
+      }
+
+      if (openState !== 'closed' && options.onCloseConversationTab) {
+        const closeTabBtn = actions.createEl('button', {
+          cls: 'codian-action-btn codian-close-tab-btn',
+        });
+        setIcon(closeTabBtn, 'x');
+        closeTabBtn.setAttribute('aria-label', t('chat.historySearch.closeTab'));
+        closeTabBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          runConversationAction(
+            () => this.runHistoryAction(
+              () => options.onCloseConversationTab?.(conv.id) ?? Promise.resolve(),
+              'Failed to close tab',
+            ),
+            'Failed to close tab',
           );
         });
       }
@@ -1333,6 +1404,18 @@ export class ConversationController {
       }
     }
 
+    if (openState !== 'closed' && options.onCloseConversationTab) {
+      menu.addItem((menuItem) => menuItem
+        .setTitle(t('chat.historySearch.closeTab'))
+        .setIcon('x')
+        .onClick(() => {
+          void this.runHistoryAction(
+            () => options.onCloseConversationTab?.(conversationId) ?? Promise.resolve(),
+            'Failed to close tab',
+          );
+        }));
+    }
+
     menu.addItem((menuItem) => menuItem
       .setTitle(t(pinned ? 'chat.historySearch.unpin' : 'chat.historySearch.pin'))
       .onClick(() => {
@@ -1455,6 +1538,7 @@ export class ConversationController {
     const titleEl = item.querySelector('.codian-history-item-title') as HTMLElement;
     if (!titleEl) return;
 
+    item.classList.add('is-renaming');
     const input = item.createEl('input');
     input.type = 'text';
     input.className = 'codian-rename-input';
@@ -1466,6 +1550,7 @@ export class ConversationController {
 
     let isFinishing = false;
     const cancelRename = () => {
+      item.classList.remove('is-renaming');
       input.value = currentTitle;
       input.blur();
     };
@@ -1473,6 +1558,7 @@ export class ConversationController {
     const finishRename = async () => {
       if (isFinishing) return;
       isFinishing = true;
+      item.classList.remove('is-renaming');
       const newTitle = input.value.trim();
       if (!newTitle || newTitle === currentTitle) {
         isFinishing = false;

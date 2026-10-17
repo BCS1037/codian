@@ -56,7 +56,8 @@
       "stoppedWithError": "Mit einem Fehler beendet",
       "running": "Läuft",
       "archived": "Archiviert",
-      "updateFailed": "Unterhaltungsindex konnte nicht aktualisiert werden"
+      "updateFailed": "Unterhaltungsindex konnte nicht aktualisiert werden",
+      "closeTab": "Tab schließen"
     },
     "rewind": {
       "confirmMessage": "Zu diesem Punkt zurückspulen? Dateiänderungen nach dieser Nachricht können überschrieben oder entfernt werden. Dies kann nicht rückgängig gemacht werden.",

@@ -56,7 +56,8 @@
       "stoppedWithError": "Arrêté avec une erreur",
       "running": "En cours",
       "archived": "Archivée",
-      "updateFailed": "Impossible de mettre à jour l’index des conversations"
+      "updateFailed": "Impossible de mettre à jour l’index des conversations",
+      "closeTab": "Fermer l'onglet"
     },
     "rewind": {
       "confirmMessage": "Rembobiner jusqu'à ce point ? Les modifications de fichiers postérieures à ce message peuvent être écrasées ou supprimées. Cette action est irréversible.",

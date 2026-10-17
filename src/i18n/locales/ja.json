@@ -56,7 +56,8 @@
       "stoppedWithError": "エラーで停止しました",
       "running": "実行中",
       "archived": "アーカイブ済み",
-      "updateFailed": "会話インデックスの更新に失敗しました"
+      "updateFailed": "会話インデックスの更新に失敗しました",
+      "closeTab": "タブを閉じる"
     },
     "rewind": {
       "confirmMessage": "この時点に巻き戻しますか？このメッセージ以降のファイル変更は上書きまたは削除される可能性があります。この操作は元に戻せません。",
