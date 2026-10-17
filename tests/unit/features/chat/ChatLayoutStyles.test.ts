@@ -53,4 +53,21 @@ describe('chat layout styles', () => {
     expect(unreadDotRule).toContain('inset-inline-end: 2px;');
     expect(unreadDotRule).toContain('transform: translateY(-50%);');
   });
+
+  it('compacts conversation list items into single-line rows and reveals actions on hover', () => {
+    expect(historyCss).toMatch(/\.codian-history-item-actions\s*\{[^}]*display:\s*none;/);
+    expect(historyCss).toMatch(/\.codian-history-item:hover\s+\.codian-history-item-actions[^{]*\{[^}]*display:\s*flex;/);
+    expect(historyCss).toMatch(/\.codian-history-item:hover\s+\.codian-history-item-date[^{]*\{[^}]*display:\s*none;/);
+    expect(historyCss).toMatch(/\.codian-history-item-content\s*\{[\s\S]*?display:\s*flex;[\s\S]*?justify-content:\s*space-between;/);
+    expect(historyCss).toMatch(/\.codian-history-item-date\s*\{[\s\S]*?white-space:\s*nowrap;/);
+    expect(historyCss).toMatch(/\.codian-history-item-icon\s*\{[\s\S]*?display:\s*none;/);
+    expect(historyCss).toMatch(/\.codian-history-item\.running\s+\.codian-history-item-icon[\s\S]*?\{[\s\S]*?display:\s*flex;/);
+  });
+
+  it('styles open tab pill badges distinctly for active and open states', () => {
+    expect(historyCss).toMatch(/\.codian-history-tab-pill\s*\{[\s\S]*?border-radius:\s*999px;/);
+    expect(historyCss).toMatch(/\.codian-history-tab-pill\.is-active\s*\{[\s\S]*?background:\s*var\(--interactive-accent\);/);
+    expect(historyCss).toMatch(/\.codian-history-tab-pill\.is-open\s*\{[\s\S]*?color:\s*var\(--text-muted\);/);
+    expect(historyCss).toMatch(/\.codian-close-tab-btn:hover\s*\{[\s\S]*?color:\s*var\(--color-red\);/);
+  });
 });

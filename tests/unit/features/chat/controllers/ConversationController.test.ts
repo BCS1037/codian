@@ -1466,6 +1466,70 @@ describe('ConversationController', () => {
         expect(openItem.querySelector('.codian-open-new-tab-btn')).toBeNull();
       });
 
+      it('should render a close-tab button for open conversations and trigger callback', async () => {
+        const container = createMockEl();
+        const onCloseConversationTab = jest.fn();
+
+        deps.state.currentConversationId = 'conv-1';
+        (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
+          { id: 'conv-1', title: 'Current', createdAt: 1000, lastResponseAt: 2000 },
+          { id: 'conv-2', title: 'Open in tab 2', createdAt: 2000, lastResponseAt: 1000 },
+        ]);
+
+        controller.renderHistoryDropdown(container, {
+          onSelectConversation: jest.fn(),
+          onCloseConversationTab,
+          getConversationStatus: (id) => id === 'conv-2'
+            ? { openState: 'open', isRunning: false, location: 'current-view', tabIndex: 2 }
+            : { openState: 'current', isRunning: false, location: 'current-view', tabIndex: 1 },
+        });
+
+        const list = container.children[1];
+        const openItem = list.children[1];
+        const closeBtn = openItem.querySelector('.codian-close-tab-btn');
+        expect(closeBtn).toBeTruthy();
+
+        const clickHandlers = closeBtn?._eventListeners?.get('click');
+        expect(clickHandlers).toBeDefined();
+        await clickHandlers![0]({ stopPropagation: jest.fn() });
+        expect(onCloseConversationTab).toHaveBeenCalledWith('conv-2');
+      });
+
+      it('should prioritize open tabs above closed conversations regardless of timestamp', () => {
+        const container = createMockEl();
+
+        deps.state.currentConversationId = 'conv-active';
+        (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
+          { id: 'conv-closed-recent', title: 'Recent Closed', createdAt: 5000, lastResponseAt: 5000 },
+          { id: 'conv-tab-1', title: 'Old Tab 1', createdAt: 1000, lastResponseAt: 1000 },
+          { id: 'conv-active', title: 'Active Tab 2', createdAt: 2000, lastResponseAt: 2000 },
+          { id: 'conv-closed-old', title: 'Old Closed', createdAt: 500, lastResponseAt: 500 },
+        ]);
+
+        controller.renderHistoryDropdown(container, {
+          onSelectConversation: jest.fn(),
+          getConversationStatus: (id) => {
+            if (id === 'conv-tab-1') return { openState: 'open', isRunning: false, tabIndex: 1 };
+            if (id === 'conv-active') return { openState: 'current', isRunning: false, tabIndex: 2 };
+            return { openState: 'closed', isRunning: false };
+          },
+        });
+
+        const list = container.children[1];
+        const ids = list.children.map((c: any) => c.getAttribute('data-conversation-id'));
+        expect(ids).toEqual(['conv-tab-1', 'conv-active', 'conv-closed-recent', 'conv-closed-old']);
+
+        const tab1Pill = list.children[0].querySelector('.codian-history-tab-pill');
+        const tab2Pill = list.children[1].querySelector('.codian-history-tab-pill');
+        const closedPill = list.children[2].querySelector('.codian-history-tab-pill');
+
+        expect(tab1Pill?.textContent).toBe('Tab 1');
+        expect(tab1Pill?.hasClass('is-open')).toBe(true);
+        expect(tab2Pill?.textContent).toBe('Tab 2');
+        expect(tab2Pill?.hasClass('is-active')).toBe(true);
+        expect(closedPill).toBeNull();
+      });
+
       it('should open a conversation in a new tab on modifier click when supported', async () => {
         const container = createMockEl();
         const onSelectConversation = jest.fn();

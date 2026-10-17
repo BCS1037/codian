@@ -56,7 +56,8 @@
       "stoppedWithError": "Stopped with an error",
       "running": "Running",
       "archived": "Archived",
-      "updateFailed": "Failed to update conversation index"
+      "updateFailed": "Failed to update conversation index",
+      "closeTab": "Close tab"
     },
     "rewind": {
       "confirmMessage": "Rewind to this point? File changes after this message may be overwritten or removed. This cannot be undone.",

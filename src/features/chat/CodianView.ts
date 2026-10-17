@@ -571,8 +571,7 @@ export class CodianView extends ItemView {
     if (!this.tabBarContainerEl || !this.tabManager) return;
 
     const tabCount = this.tabManager.getTabCount();
-    const isWide = this.dualPaneLayout?.isWide ?? false;
-    const showTabBar = !isWide && tabCount >= 2;
+    const showTabBar = tabCount >= 2;
 
     this.tabBarContainerEl.toggleClass('codian-hidden', !showTabBar);
 
@@ -582,7 +581,7 @@ export class CodianView extends ItemView {
   private updateNewTabButtonVisibility(): void {
     if (!this.newTabButtonEl || !this.tabManager) return;
 
-    const canCreateTab = !this.dualPaneLayout?.isWide && this.tabManager.canCreateTab();
+    const canCreateTab = this.tabManager.canCreateTab();
     this.newTabButtonEl.toggleClass('codian-hidden', !canCreateTab);
     if (canCreateTab) {
       this.newTabButtonEl.removeAttribute('aria-disabled');
@@ -688,6 +687,12 @@ export class CodianView extends ItemView {
     controller.renderHistoryDropdown(container, {
       onSelectConversation: id => this.openHistoryConversation(id),
       onOpenConversationInNewTab: (id, activate) => this.openHistoryConversationInNewTab(id, activate),
+      onCloseConversationTab: id => {
+        const tab = this.tabManager?.getAllTabs().find(t => t.conversationId === id);
+        if (tab) {
+          void this.handleTabClose(tab.id);
+        }
+      },
       getConversationStatus: id => this.getHistoryConversationStatus(id),
       signal: abortController.signal,
     });
@@ -717,6 +722,12 @@ export class CodianView extends ItemView {
           onSelectConversation: (id) => this.openHistoryConversation(id),
           onOpenConversationInNewTab: (id, activate) =>
             this.openHistoryConversationInNewTab(id, activate),
+          onCloseConversationTab: (id) => {
+            const tab = this.tabManager?.getAllTabs().find(t => t.conversationId === id);
+            if (tab) {
+              void this.handleTabClose(tab.id);
+            }
+          },
           getConversationStatus: (id) => this.getHistoryConversationStatus(id),
           signal: abortController.signal,
         });

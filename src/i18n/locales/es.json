@@ -56,7 +56,8 @@
       "stoppedWithError": "Detenido con un error",
       "running": "En ejecución",
       "archived": "Archivada",
-      "updateFailed": "No se pudo actualizar el índice de conversaciones"
+      "updateFailed": "No se pudo actualizar el índice de conversaciones",
+      "closeTab": "Cerrar pestaña"
     },
     "rewind": {
       "confirmMessage": "¿Rebobinar a este punto? Los cambios de archivos posteriores a este mensaje podrían sobrescribirse o eliminarse. Esta acción no se puede deshacer.",

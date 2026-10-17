@@ -56,7 +56,8 @@
       "stoppedWithError": "因错误停止",
       "running": "运行中",
       "archived": "已归档",
-      "updateFailed": "更新会话索引失败"
+      "updateFailed": "更新会话索引失败",
+      "closeTab": "关闭标签页"
     },
     "rewind": {
       "confirmMessage": "回退到此处？此消息之后的文件更改可能被覆盖或删除。此操作无法撤销。",

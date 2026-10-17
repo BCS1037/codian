@@ -56,7 +56,8 @@
       "stoppedWithError": "Parou com erro",
       "running": "Em execução",
       "archived": "Arquivada",
-      "updateFailed": "Falha ao atualizar o índice de conversas"
+      "updateFailed": "Falha ao atualizar o índice de conversas",
+      "closeTab": "Fechar aba"
     },
     "rewind": {
       "confirmMessage": "Retroceder até este ponto? As alterações de arquivos após esta mensagem podem ser sobrescritas ou removidas. Esta ação não pode ser desfeita.",
