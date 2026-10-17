@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.1 — 2026-10-17
+
+- **Streamlined Conversation Menu**: Cleaned up redundant commands in the conversation "More options" (`...`) dropdown and right-click context menus:
+  - Removed redundant **Pin** and **Archive** items since dedicated action buttons are already directly accessible on hover within the conversation list.
+  - Removed redundant **Switch to session** item since clicking the conversation row directly activates the tab.
+  - Removed **Close tab** item to keep the context menu lightweight and focused on essential session actions (Rename, Mark as unread/read, Open in new tab, and Delete).
+
 ## 1.5.0 — 2026-10-17
 
 - **Configurable Tab Limit Overflow**: Added a new setting to choose how Codian handles opening conversations beyond the maximum tab limit:
