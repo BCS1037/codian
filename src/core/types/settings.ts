@@ -70,6 +70,16 @@ export const CHAT_NAVIGATION_MODES = [
 /** Visual presentation used for navigating messages in a chat tab. */
 export type ChatNavigationMode = typeof CHAT_NAVIGATION_MODES[number];
 
+export const TAB_LIMIT_BEHAVIORS = [
+  'lru',
+  'in-place',
+  'temporary',
+  'strict',
+] as const;
+
+/** How Codian handles opening conversations or new tabs when the tab limit is reached. */
+export type TabLimitBehavior = typeof TAB_LIMIT_BEHAVIORS[number];
+
 /** Result from instruction refinement agent query. */
 export interface InstructionRefineResult {
   success: boolean;
@@ -150,6 +160,7 @@ export interface CodianSettings {
 
   // UI preferences
   maxTabs: number;
+  tabLimitBehavior: TabLimitBehavior;
   enableAutoScroll: boolean;
   deferMathRenderingDuringStreaming: boolean;
   /** Fence languages dispatched to registered plugin code block processors in chat. */

@@ -57,7 +57,14 @@
       "running": "실행 중",
       "archived": "보관됨",
       "updateFailed": "대화 색인을 업데이트하지 못했습니다",
-      "closeTab": "탭 닫기"
+      "closeTab": "탭 닫기",
+      "moreOptions": "더 많은 옵션",
+      "rename": "이름 바꾸기",
+      "delete": "삭제",
+      "openInNewTab": "새 탭에서 열기",
+      "openInBackgroundTab": "백그라운드 탭에서 열기",
+      "switchToSession": "열린 세션으로 전환",
+      "regenerateTitle": "제목 재생성"
     },
     "rewind": {
       "confirmMessage": "이 시점으로 되감으시겠습니까? 이 메시지 이후의 파일 변경 사항이 덮어쓰이거나 삭제될 수 있습니다. 이 작업은 실행 취소할 수 없습니다.",
@@ -94,6 +101,9 @@
       "errorNoActiveTab": "활성 탭이 없습니다",
       "commandNoMessages": "포크할 수 없습니다: 대화에 메시지가 없습니다",
       "commandNoAssistantUuid": "포크할 수 없습니다: 식별자가 있는 어시스턴트 응답이 없습니다"
+    },
+    "tabs": {
+      "allTabsBusy": "모든 탭이 현재 활성 작업으로 사용 중입니다"
     },
     "bangBash": {
       "placeholder": "> bash 명령 실행...",
@@ -740,6 +750,14 @@
       "name": "최대 채팅 탭 수",
       "desc": "동시에 열 수 있는 최대 채팅 탭 수(3-10). 각 탭은 별도의 Claude 세션을 사용합니다.",
       "warning": "5개 탭을 초과하면 성능 및 메모리 사용량에 영향을 줄 수 있습니다."
+    },
+    "tabLimitBehavior": {
+      "name": "탭 한도 초과 시 동작",
+      "desc": "최대 탭 수에 도달했을 때 대화 열기 또는 새 탭 생성을 처리하는 방식입니다.",
+      "lru": "가장 오래된 유휴 탭 자동 교체",
+      "inPlace": "현재 활성 탭 슬롯 재사용",
+      "temporary": "임시 탭 허용 (권장)",
+      "strict": "새 탭 엄격히 차단"
     },
     "enableAutoScroll": {
       "name": "스트리밍 중 자동 스크롤",

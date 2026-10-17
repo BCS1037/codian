@@ -57,7 +57,14 @@
       "running": "Running",
       "archived": "Archived",
       "updateFailed": "Failed to update conversation index",
-      "closeTab": "Close tab"
+      "closeTab": "Close tab",
+      "moreOptions": "More options",
+      "rename": "Rename",
+      "delete": "Delete",
+      "openInNewTab": "Open in new tab",
+      "openInBackgroundTab": "Open in background tab",
+      "switchToSession": "Switch to open session",
+      "regenerateTitle": "Regenerate title"
     },
     "rewind": {
       "confirmMessage": "Rewind to this point? File changes after this message may be overwritten or removed. This cannot be undone.",
@@ -94,6 +101,9 @@
       "errorNoActiveTab": "No active tab",
       "commandNoMessages": "Cannot fork: no messages in conversation",
       "commandNoAssistantUuid": "Cannot fork: no assistant response with identifiers"
+    },
+    "tabs": {
+      "allTabsBusy": "All tabs are currently busy with active tasks"
     },
     "bangBash": {
       "placeholder": "> Run a bash command...",
@@ -740,6 +750,14 @@
       "name": "Maximum chat tabs",
       "desc": "Maximum number of concurrent chat tabs (3-10). Each tab uses a separate Claude session.",
       "warning": "More than 5 tabs may impact performance and memory usage."
+    },
+    "tabLimitBehavior": {
+      "name": "Tab limit overflow behavior",
+      "desc": "How to handle opening conversations or new tabs when the maximum tab limit is reached.",
+      "lru": "Auto-evict oldest idle tab",
+      "inPlace": "Reuse active tab slot",
+      "temporary": "Allow temporary tab (Recommended)",
+      "strict": "Strictly prevent new tabs"
     },
     "enableAutoScroll": {
       "name": "Auto-scroll during streaming",

@@ -57,7 +57,14 @@
       "running": "运行中",
       "archived": "已归档",
       "updateFailed": "更新会话索引失败",
-      "closeTab": "关闭标签页"
+      "closeTab": "关闭标签页",
+      "moreOptions": "更多选项",
+      "rename": "重命名",
+      "delete": "删除",
+      "openInNewTab": "在新标签页打开",
+      "openInBackgroundTab": "在后台标签页打开",
+      "switchToSession": "切换到该会话",
+      "regenerateTitle": "重新生成标题"
     },
     "rewind": {
       "confirmMessage": "回退到此处？此消息之后的文件更改可能被覆盖或删除。此操作无法撤销。",
@@ -94,6 +101,9 @@
       "errorNoActiveTab": "没有活动标签页",
       "commandNoMessages": "无法分叉：对话中没有消息",
       "commandNoAssistantUuid": "无法分叉：没有带标识符的助手回复"
+    },
+    "tabs": {
+      "allTabsBusy": "所有标签页当前都在忙碌执行任务"
     },
     "bangBash": {
       "placeholder": "> 运行命令...",
@@ -740,6 +750,14 @@
       "name": "最大聊天标签数",
       "desc": "同时开启的最大聊天标签数（3-10）。每个标签使用独立的 Claude 会话。",
       "warning": "超过 5 个标签可能会影响性能和内存使用。"
+    },
+    "tabLimitBehavior": {
+      "name": "标签页超限策略",
+      "desc": "达到最大标签页数量时，如何处理打开会话或新建标签页。",
+      "lru": "自动轮转最久空闲标签页",
+      "inPlace": "就地复用当前标签页",
+      "temporary": "允许临时标签页（推荐）",
+      "strict": "严格拦截新标签页"
     },
     "enableAutoScroll": {
       "name": "流式传输时自动滚动",

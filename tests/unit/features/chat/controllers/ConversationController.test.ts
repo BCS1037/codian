@@ -14,6 +14,22 @@ jest.mock('@/shared/modals/ConfirmModal', () => ({
 
 const mockNotice = Notice as jest.Mock;
 
+interface MockMenuItemRecord {
+  title: string;
+  icon?: string;
+  clickHandler?: () => any;
+}
+
+interface MockMenuInstance {
+  items: MockMenuItemRecord[];
+}
+
+const getMenuInstances = (): MockMenuInstance[] => (Menu as any).instances;
+const getLastMenu = (): MockMenuInstance => {
+  const instances = getMenuInstances();
+  return instances[instances.length - 1];
+};
+
 function createMockDeps(overrides: Partial<ConversationControllerDeps> = {}): ConversationControllerDeps {
   const state = new ChatState();
   const inputEl = { value: '', focus: jest.fn() } as unknown as HTMLTextAreaElement;
@@ -919,7 +935,7 @@ describe('ConversationController', () => {
         expect(loadingEl).toBeTruthy();
       });
 
-      it('should show regenerate button for failed title generation', () => {
+      it('should show more, pin, and archive buttons for history row', () => {
         (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
           { id: 'conv-1', title: 'Fallback Title', createdAt: 1000, lastResponseAt: 1000, titleGenerationStatus: 'failed' },
         ]);
@@ -930,8 +946,11 @@ describe('ConversationController', () => {
         const item = list.children[0];
         const actions = item.querySelector('.codian-history-item-actions');
         expect(actions).toBeTruthy();
-        // regenerate, rename, delete, pin, and archive buttons
-        expect(actions!.children.length).toBe(5);
+        // more, pin, and archive buttons
+        expect(actions!.children.length).toBe(3);
+        expect(item.querySelector('.codian-more-btn')).toBeTruthy();
+        expect(item.querySelector('.codian-pin-btn')).toBeTruthy();
+        expect(item.querySelector('.codian-archive-btn')).toBeTruthy();
       });
 
       it('should not show select click handler on current conversation', () => {
@@ -980,12 +999,14 @@ describe('ConversationController', () => {
 
         const list = dropdown.children[1];
         const item = list.children[0];
-        const deleteBtn = item.querySelector('.codian-delete-btn');
-        expect(deleteBtn).toBeTruthy();
+        const moreBtn = item.querySelector('.codian-more-btn');
+        expect(moreBtn).toBeTruthy();
 
-        const clickHandlers = deleteBtn!._eventListeners?.get('click');
-        expect(clickHandlers).toBeDefined();
-        await clickHandlers![0]({ stopPropagation: jest.fn() });
+        moreBtn!._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+        const menu = getLastMenu();
+        const deleteItem = menu.items.find(i => i.title === 'Delete');
+        expect(deleteItem).toBeDefined();
+        await deleteItem!.clickHandler?.();
 
         expect(deps.plugin.deleteConversation).not.toHaveBeenCalled();
       });
@@ -1433,19 +1454,21 @@ describe('ConversationController', () => {
 
         const list = container.children[1];
         const closedItem = list.children[1];
-        const openInNewTabBtn = closedItem.querySelector('.codian-open-new-tab-btn');
-        const clickHandlers = openInNewTabBtn?._eventListeners?.get('click');
+        const moreBtn = closedItem.querySelector('.codian-more-btn');
+        expect(moreBtn).toBeTruthy();
 
-        expect(openInNewTabBtn).toBeTruthy();
-        expect(clickHandlers).toBeDefined();
+        moreBtn!._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+        const menu = getLastMenu();
+        const openInNewTabItem = menu.items.find(i => i.title === 'Open in new tab');
+        expect(openInNewTabItem).toBeDefined();
 
-        await clickHandlers![0]({ stopPropagation: jest.fn() });
+        await openInNewTabItem!.clickHandler?.();
 
         expect(onOpenConversationInNewTab).toHaveBeenCalledWith('conv-2', true);
         expect(onSelectConversation).not.toHaveBeenCalled();
       });
 
-      it('should not render a new-tab button for already-open conversations', () => {
+      it('should not render new-tab action in context menu for already-open conversations', () => {
         const container = createMockEl();
 
         deps.state.currentConversationId = 'conv-1';
@@ -1462,11 +1485,15 @@ describe('ConversationController', () => {
 
         const list = container.children[1];
         const openItem = list.children[1];
+        const moreBtn = openItem.querySelector('.codian-more-btn');
+        expect(moreBtn).toBeTruthy();
 
-        expect(openItem.querySelector('.codian-open-new-tab-btn')).toBeNull();
+        moreBtn!._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+        const menu = getLastMenu();
+        expect(menu.items.some(i => i.title === 'Open in new tab')).toBe(false);
       });
 
-      it('should render a close-tab button for open conversations and trigger callback', async () => {
+      it('should trigger close-tab callback from context menu for open conversations', async () => {
         const container = createMockEl();
         const onCloseConversationTab = jest.fn();
 
@@ -1486,12 +1513,15 @@ describe('ConversationController', () => {
 
         const list = container.children[1];
         const openItem = list.children[1];
-        const closeBtn = openItem.querySelector('.codian-close-tab-btn');
-        expect(closeBtn).toBeTruthy();
+        const moreBtn = openItem.querySelector('.codian-more-btn');
+        expect(moreBtn).toBeTruthy();
 
-        const clickHandlers = closeBtn?._eventListeners?.get('click');
-        expect(clickHandlers).toBeDefined();
-        await clickHandlers![0]({ stopPropagation: jest.fn() });
+        moreBtn!._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+        const menu = getLastMenu();
+        const closeItem = menu.items.find(i => i.title === 'Close tab');
+        expect(closeItem).toBeDefined();
+
+        await closeItem!.clickHandler?.();
         expect(onCloseConversationTab).toHaveBeenCalledWith('conv-2');
       });
 
@@ -1626,10 +1656,10 @@ describe('ConversationController', () => {
         expect(menu.items.map(item => item.title)).toEqual([
           'Open in new tab',
           'Open in background tab',
-          'Pin',
-          'Mark as unread',
-          'Archive',
           'Rename',
+          'Mark as unread',
+          'Pin',
+          'Archive',
           'Delete',
         ]);
       });
@@ -1660,10 +1690,10 @@ describe('ConversationController', () => {
         const menu = (Menu as typeof Menu & { instances: Array<{ items: Array<{ title: string }> }> }).instances[0];
         expect(menu.items.map(item => item.title)).toEqual([
           'Switch to open session',
-          'Pin',
-          'Mark as unread',
-          'Archive',
           'Rename',
+          'Mark as unread',
+          'Pin',
+          'Archive',
           'Delete',
         ]);
       });
@@ -1688,10 +1718,10 @@ describe('ConversationController', () => {
 
         const menu = (Menu as typeof Menu & { instances: Array<{ items: Array<{ title: string }> }> }).instances[0];
         expect(menu.items.map(item => item.title)).toEqual([
-          'Pin',
-          'Mark as unread',
-          'Archive',
           'Rename',
+          'Mark as unread',
+          'Pin',
+          'Archive',
           'Delete',
         ]);
       });
@@ -1825,10 +1855,10 @@ describe('ConversationController', () => {
         const menu = (Menu as typeof Menu & { instances: Array<{ items: Array<{ title: string }> }> }).instances[0];
         expect(menu.items.map(item => item.title)).toEqual([
           'Switch to open session',
-          'Pin',
-          'Mark as unread',
-          'Archive',
           'Rename',
+          'Mark as unread',
+          'Pin',
+          'Archive',
           'Delete',
         ]);
       });
@@ -2014,7 +2044,7 @@ describe('ConversationController', () => {
       expect(deps.plugin.switchConversation).toHaveBeenCalledWith('conv-2');
     });
 
-    it('should call regenerateTitle when clicking regenerate button on failed item', async () => {
+    it('should call regenerateTitle when clicking regenerate in context menu for failed item', async () => {
       const mockTitleService = {
         generateTitle: jest.fn().mockResolvedValue(undefined),
         cancel: jest.fn(),
@@ -2029,11 +2059,8 @@ describe('ConversationController', () => {
 
       const list = dropdown.children[1];
       const item = list.children[0];
-      const actions = item.querySelector('.codian-history-item-actions');
-      // First child is the regenerate button
-      const regenerateBtn = actions!.children[0];
-      const clickHandlers = regenerateBtn._eventListeners?.get('click');
-      expect(clickHandlers).toBeDefined();
+      const moreBtn = item.querySelector('.codian-more-btn');
+      expect(moreBtn).toBeTruthy();
 
       (deps.plugin.getConversationById as jest.Mock).mockResolvedValue({
         id: 'conv-1',
@@ -2041,14 +2068,20 @@ describe('ConversationController', () => {
         messages: [{ role: 'user', content: 'Hello' }],
       });
 
-      await clickHandlers![0]({ stopPropagation: jest.fn() });
+      moreBtn._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+      const menu = getLastMenu();
+      const regenItem = menu.items.find(i => i.title === 'Regenerate title');
+      expect(regenItem).toBeDefined();
+      expect(regenItem?.icon).toBe('refresh-cw');
+
+      await regenItem!.clickHandler?.();
 
       expect(deps.plugin.updateConversation).toHaveBeenCalledWith('conv-1', {
         titleGenerationStatus: 'pending',
       });
     });
 
-    it('should invoke rename handler when clicking rename button', () => {
+    it('should render more options button that opens context menu with icons', () => {
       (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
         { id: 'conv-1', title: 'Test Title', createdAt: 1000, lastResponseAt: 1000 },
       ]);
@@ -2057,13 +2090,32 @@ describe('ConversationController', () => {
 
       const list = dropdown.children[1];
       const item = list.children[0];
-      const actions = item.querySelector('.codian-history-item-actions');
-      expect(actions).toBeTruthy();
-      // For non-failed items: rename is children[0], delete is children[1]
-      const rBtn = actions!.children[0];
-      expect(rBtn).toBeTruthy();
-      const clickHandlers = rBtn._eventListeners?.get('click');
-      expect(clickHandlers).toBeDefined();
+      const moreBtn = item.querySelector('.codian-more-btn');
+      expect(moreBtn).toBeTruthy();
+      expect(moreBtn.getAttribute('aria-label')).toBe('More options');
+
+      moreBtn._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+      const menu = getLastMenu();
+      expect(menu.items.map(i => ({ title: i.title, icon: i.icon }))).toEqual([
+        { title: 'Rename', icon: 'pencil' },
+        { title: 'Mark as unread', icon: 'flag' },
+        { title: 'Pin', icon: 'pin' },
+        { title: 'Archive', icon: 'archive' },
+        { title: 'Delete', icon: 'trash-2' },
+      ]);
+    });
+
+    it('should invoke rename handler when clicking rename in context menu', () => {
+      (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
+        { id: 'conv-1', title: 'Test Title', createdAt: 1000, lastResponseAt: 1000 },
+      ]);
+
+      controller.updateHistoryDropdown();
+
+      const list = dropdown.children[1];
+      const item = list.children[0];
+      const moreBtn = item.querySelector('.codian-more-btn');
+      expect(moreBtn).toBeTruthy();
 
       const mockInput = createMockEl();
       (mockInput as any).type = '';
@@ -2080,7 +2132,12 @@ describe('ConversationController', () => {
       }
 
       try {
-        clickHandlers![0]({ stopPropagation: jest.fn() });
+        moreBtn._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+        const menu = getLastMenu();
+        const renameItem = menu.items.find(i => i.title === 'Rename');
+        expect(renameItem).toBeDefined();
+
+        renameItem!.clickHandler?.();
 
         expect(createInput).toHaveBeenCalledWith('input');
         expect((mockInput as any).value).toBe('Test Title');
@@ -2101,9 +2158,15 @@ describe('ConversationController', () => {
       controller.renderHistoryDropdown(container, { onSelectConversation: jest.fn() });
       const initialRenderCount = renderHistoryDropdown.mock.calls.length;
       const item = container.children[1].children[0];
-      const renameButton = item.querySelector('.codian-history-item-actions')!.children[0];
+      const moreBtn = item.querySelector('.codian-more-btn');
+      expect(moreBtn).toBeTruthy();
+
       item.querySelector('.codian-history-item-title')!.replaceWith = jest.fn();
-      renameButton._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+      moreBtn._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+      const menu = getLastMenu();
+      const renameItem = menu.items.find(i => i.title === 'Rename');
+      expect(renameItem).toBeDefined();
+      renameItem!.clickHandler?.();
 
       const input = item.querySelector('.codian-rename-input')!;
       (input as any).value = 'Renamed';
@@ -2126,9 +2189,15 @@ describe('ConversationController', () => {
       controller.renderHistoryDropdown(container, { onSelectConversation: jest.fn() });
       const initialRenderCount = renderHistoryDropdown.mock.calls.length;
       const item = container.children[1].children[0];
-      const renameButton = item.querySelector('.codian-history-item-actions')!.children[0];
+      const moreBtn = item.querySelector('.codian-more-btn');
+      expect(moreBtn).toBeTruthy();
+
       item.querySelector('.codian-history-item-title')!.replaceWith = jest.fn();
-      renameButton._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+      moreBtn._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+      const menu = getLastMenu();
+      const renameItem = menu.items.find(i => i.title === 'Rename');
+      expect(renameItem).toBeDefined();
+      renameItem!.clickHandler?.();
 
       const input = item.querySelector('.codian-rename-input')!;
       (input as any).value = '   ';
@@ -2147,9 +2216,15 @@ describe('ConversationController', () => {
 
       controller.updateHistoryDropdown();
       const item = dropdown.children[1].children[0];
-      const renameButton = item.querySelector('.codian-history-item-actions')!.children[0];
+      const moreBtn = item.querySelector('.codian-more-btn');
+      expect(moreBtn).toBeTruthy();
+
       item.querySelector('.codian-history-item-title')!.replaceWith = jest.fn();
-      renameButton._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+      moreBtn._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+      const menu = getLastMenu();
+      const renameItem = menu.items.find(i => i.title === 'Rename');
+      expect(renameItem).toBeDefined();
+      renameItem!.clickHandler?.();
 
       const input = item.querySelector('.codian-rename-input')!;
       (input as any).value = 'Discarded';
@@ -2173,13 +2248,15 @@ describe('ConversationController', () => {
 
       const list = dropdown.children[1];
       const item = list.children[0];
-      const deleteBtn = item.querySelector('.codian-delete-btn');
-      expect(deleteBtn).toBeTruthy();
+      const moreBtn = item.querySelector('.codian-more-btn');
+      expect(moreBtn).toBeTruthy();
 
-      const clickHandlers = deleteBtn!._eventListeners?.get('click');
-      expect(clickHandlers).toBeDefined();
+      moreBtn._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+      const menu = getLastMenu();
+      const deleteItem = menu.items.find(i => i.title === 'Delete');
+      expect(deleteItem).toBeDefined();
 
-      await clickHandlers![0]({ stopPropagation: jest.fn() });
+      await deleteItem!.clickHandler?.();
 
       expect(deps.plugin.deleteConversation).toHaveBeenCalledWith('conv-1');
     });
@@ -2196,10 +2273,15 @@ describe('ConversationController', () => {
 
       const list = dropdown.children[1];
       const otherItem = list.children[1]; // conv-2
-      const deleteBtn = otherItem.querySelector('.codian-delete-btn');
-      const clickHandlers = deleteBtn!._eventListeners?.get('click');
+      const moreBtn = otherItem.querySelector('.codian-more-btn');
+      expect(moreBtn).toBeTruthy();
 
-      await clickHandlers![0]({ stopPropagation: jest.fn() });
+      moreBtn._eventListeners?.get('click')?.[0]({ stopPropagation: jest.fn() });
+      const menu = getLastMenu();
+      const deleteItem = menu.items.find(i => i.title === 'Delete');
+      expect(deleteItem).toBeDefined();
+
+      await deleteItem!.clickHandler?.();
 
       expect(deps.plugin.deleteConversation).toHaveBeenCalledWith('conv-2');
       // Should not have called switchConversation (which is used in loadActive path)

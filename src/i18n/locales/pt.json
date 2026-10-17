@@ -57,7 +57,14 @@
       "running": "Em execução",
       "archived": "Arquivada",
       "updateFailed": "Falha ao atualizar o índice de conversas",
-      "closeTab": "Fechar aba"
+      "closeTab": "Fechar aba",
+      "moreOptions": "Mais opções",
+      "rename": "Renomear",
+      "delete": "Excluir",
+      "openInNewTab": "Abrir em nova aba",
+      "openInBackgroundTab": "Abrir em aba em segundo plano",
+      "switchToSession": "Alternar para sessão aberta",
+      "regenerateTitle": "Regenerar título"
     },
     "rewind": {
       "confirmMessage": "Retroceder até este ponto? As alterações de arquivos após esta mensagem podem ser sobrescritas ou removidas. Esta ação não pode ser desfeita.",
@@ -94,6 +101,9 @@
       "errorNoActiveTab": "Nenhuma aba ativa",
       "commandNoMessages": "Não é possível bifurcar: não há mensagens na conversa",
       "commandNoAssistantUuid": "Não é possível bifurcar: não há resposta do assistente com identificadores"
+    },
+    "tabs": {
+      "allTabsBusy": "Todas as abas estão ocupadas com tarefas ativas no momento"
     },
     "bangBash": {
       "placeholder": "> Executar um comando bash...",
@@ -740,6 +750,14 @@
       "name": "Máximo de abas de chat",
       "desc": "Número máximo de abas de chat simultâneas (3-10). Cada aba usa uma sessão Claude separada.",
       "warning": "Mais de 5 abas pode afetar o desempenho e o uso de memória."
+    },
+    "tabLimitBehavior": {
+      "name": "Comportamento ao atingir limite de abas",
+      "desc": "Como lidar com a abertura de conversas ou novas abas quando o limite máximo é atingido.",
+      "lru": "Substituir automaticamente a aba inativa mais antiga",
+      "inPlace": "Reutilizar espaço da aba ativa",
+      "temporary": "Permitir aba temporária (Recomendado)",
+      "strict": "Bloquear estritamente novas abas"
     },
     "enableAutoScroll": {
       "name": "Rolagem automática durante streaming",

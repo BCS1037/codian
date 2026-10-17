@@ -57,7 +57,14 @@
       "running": "En ejecución",
       "archived": "Archivada",
       "updateFailed": "No se pudo actualizar el índice de conversaciones",
-      "closeTab": "Cerrar pestaña"
+      "closeTab": "Cerrar pestaña",
+      "moreOptions": "Más opciones",
+      "rename": "Renombrar",
+      "delete": "Eliminar",
+      "openInNewTab": "Abrir en nueva pestaña",
+      "openInBackgroundTab": "Abrir en pestaña en segundo plano",
+      "switchToSession": "Cambiar a sesión abierta",
+      "regenerateTitle": "Regenerar título"
     },
     "rewind": {
       "confirmMessage": "¿Rebobinar a este punto? Los cambios de archivos posteriores a este mensaje podrían sobrescribirse o eliminarse. Esta acción no se puede deshacer.",
@@ -94,6 +101,9 @@
       "errorNoActiveTab": "No hay ninguna pestaña activa",
       "commandNoMessages": "No se puede bifurcar: no hay mensajes en la conversación",
       "commandNoAssistantUuid": "No se puede bifurcar: no hay respuesta del asistente con identificadores"
+    },
+    "tabs": {
+      "allTabsBusy": "Todas las pestañas están ocupadas con tareas activas actualmente"
     },
     "bangBash": {
       "placeholder": "> Ejecuta un comando bash...",
@@ -740,6 +750,14 @@
       "name": "Máximo de pestañas de chat",
       "desc": "Número máximo de pestañas de chat simultáneas (3-10). Cada pestaña usa una sesión de Claude separada.",
       "warning": "Más de 5 pestañas puede afectar el rendimiento y el uso de memoria."
+    },
+    "tabLimitBehavior": {
+      "name": "Comportamiento al superar el límite de pestañas",
+      "desc": "Cómo gestionar la apertura de conversaciones o nuevas pestañas al alcanzar el límite máximo.",
+      "lru": "Desalojar pestaña inactiva más antigua",
+      "inPlace": "Reutilizar espacio de pestaña activa",
+      "temporary": "Permitir pestaña temporal (Recomendado)",
+      "strict": "Impedir estrictamente nuevas pestañas"
     },
     "enableAutoScroll": {
       "name": "Desplazamiento automático durante streaming",

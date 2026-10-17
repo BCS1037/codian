@@ -16,7 +16,7 @@ import type {
 import type { AgentSkillListResult } from '../../core/skills/AgentSkill';
 import { AgentSkillRepository } from '../../core/skills/AgentSkillRepository';
 import { DiscoveredAgentSkillRepository } from '../../core/skills/DiscoveredAgentSkillRepository';
-import type { ChatNavigationMode, ChatViewPlacement } from '../../core/types/settings';
+import type { ChatNavigationMode, ChatViewPlacement, TabLimitBehavior } from '../../core/types/settings';
 import { getAvailableLocales, getLocaleDisplayName, t } from '../../i18n/i18n';
 import { syncLocaleWithObsidian } from '../../i18n/obsidianLocale';
 import type { TranslationKey } from '../../i18n/types';
@@ -737,6 +737,26 @@ export class CodianSettingTab extends PluginSettingTab {
         });
       updateMaxTabsWarning(this.plugin.settings.maxTabs ?? 3);
     });
+
+    new Setting(container)
+      .setName(t('settings.tabLimitBehavior.name'))
+      .setDesc(t('settings.tabLimitBehavior.desc'))
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption('temporary', t('settings.tabLimitBehavior.temporary'))
+          .addOption('lru', t('settings.tabLimitBehavior.lru'))
+          .addOption('in-place', t('settings.tabLimitBehavior.inPlace'))
+          .addOption('strict', t('settings.tabLimitBehavior.strict'))
+          .setValue(this.plugin.settings.tabLimitBehavior ?? 'temporary')
+          .onChange(async (value) => {
+            await this.plugin.mutateSettings((settings) => {
+              settings.tabLimitBehavior = value as TabLimitBehavior;
+            });
+            for (const view of this.plugin.getAllViews()) {
+              view.refreshTabControls();
+            }
+          });
+      });
 
     new Setting(container)
       .setName(t('settings.chatViewPlacement.name'))

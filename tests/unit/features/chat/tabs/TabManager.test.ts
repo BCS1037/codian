@@ -3140,6 +3140,7 @@ describe('TabManager - openConversation Current Tab Path', () => {
   });
 
   it('should not open in current tab if at max tabs and preferNewTab is true', async () => {
+    plugin.settings.tabLimitBehavior = 'in-place';
     for (let i = 0; i < DEFAULT_MAX_TABS - 1; i++) {
       await manager.createTab();
     }
@@ -4064,5 +4065,162 @@ describe('TabManager - buildForkTitle', () => {
 
     const updateCall = mockUpdateConversation.mock.calls[0][1];
     expect(updateCall.title).toBe('Fork: My Chat (#1) 4');
+  });
+});
+
+describe('TabManager - tabLimitBehavior overflow strategies', () => {
+  it('finds oldest idle non-active tab as LRU eviction candidate', async () => {
+    jest.clearAllMocks();
+    const plugin = createMockPlugin({ settings: { maxTabs: 3, tabLimitBehavior: 'lru' } });
+    let counter = 0;
+    mockCreateTab.mockImplementation(() => {
+      counter++;
+      return createMockTabData({ id: `tab-${counter}`, conversationId: `conv-${counter}` });
+    });
+
+    const manager = new TabManager(
+      plugin,
+      createMockMcpManager(),
+      createMockEl(),
+      createMockView(),
+    );
+
+    await manager.createTab('conv-1');
+    await manager.createTab('conv-2');
+    await manager.createTab('conv-3');
+    await manager.switchToTab('tab-3');
+
+    const candidate = manager.findLruEvictionCandidate();
+    expect(candidate).not.toBeNull();
+    expect(candidate?.id).toBe('tab-1');
+  });
+
+  it('skips busy tabs when finding LRU eviction candidate', async () => {
+    jest.clearAllMocks();
+    const plugin = createMockPlugin({ settings: { maxTabs: 3, tabLimitBehavior: 'lru' } });
+    const tab1 = createMockTabData({ id: 'tab-1', conversationId: 'conv-1' });
+    tab1.state.isStreaming = true;
+    const tab2 = createMockTabData({ id: 'tab-2', conversationId: 'conv-2' });
+    const tab3 = createMockTabData({ id: 'tab-3', conversationId: 'conv-3' });
+
+    let count = 0;
+    mockCreateTab.mockImplementation(() => {
+      count++;
+      if (count === 1) return tab1;
+      if (count === 2) return tab2;
+      return tab3;
+    });
+
+    const manager = new TabManager(
+      plugin,
+      createMockMcpManager(),
+      createMockEl(),
+      createMockView(),
+    );
+
+    await manager.createTab('conv-1');
+    await manager.createTab('conv-2');
+    await manager.createTab('conv-3');
+    await manager.switchToTab('tab-3');
+
+    const candidate = manager.findLruEvictionCandidate();
+    expect(candidate).not.toBeNull();
+    expect(candidate?.id).toBe('tab-2');
+  });
+
+  it('evicts LRU candidate and opens conversation under lru behavior', async () => {
+    jest.clearAllMocks();
+    const plugin = createMockPlugin({ settings: { maxTabs: 3, tabLimitBehavior: 'lru' } });
+    let counter = 0;
+    mockCreateTab.mockImplementation(() => {
+      counter++;
+      return createMockTabData({ id: `tab-${counter}`, conversationId: `conv-${counter}` });
+    });
+
+    const manager = new TabManager(
+      plugin,
+      createMockMcpManager(),
+      createMockEl(),
+      createMockView(),
+    );
+
+    await manager.createTab('conv-1');
+    await manager.createTab('conv-2');
+    await manager.createTab('conv-3');
+    await manager.switchToTab('tab-3');
+    expect(manager.getTabCount()).toBe(3);
+
+    await manager.openConversation('conv-4', { preferNewTab: true, activate: true });
+
+    expect(mockDestroyTab).toHaveBeenCalled();
+    expect(mockCreateTab).toHaveBeenCalledTimes(4);
+  });
+
+  it('reuses active tab slot under in-place behavior', async () => {
+    jest.clearAllMocks();
+    const plugin = createMockPlugin({ settings: { maxTabs: 3, tabLimitBehavior: 'in-place' } });
+    let counter = 0;
+    mockCreateTab.mockImplementation(() => {
+      counter++;
+      return createMockTabData({ id: `tab-${counter}`, conversationId: `conv-${counter}` });
+    });
+
+    const manager = new TabManager(
+      plugin,
+      createMockMcpManager(),
+      createMockEl(),
+      createMockView(),
+    );
+
+    await manager.createTab('conv-1');
+    await manager.createTab('conv-2');
+    await manager.createTab('conv-3');
+    await manager.switchToTab('tab-3');
+    expect(manager.getTabCount()).toBe(3);
+
+    const activeTab = manager.getActiveTab();
+    expect(activeTab).not.toBeNull();
+    const controller = activeTab!.controllers.conversationController;
+    expect(controller).not.toBeNull();
+    const switchToSpy = jest.spyOn(controller!, 'switchTo');
+
+    await manager.openConversation('conv-4', { preferNewTab: true, activate: true });
+
+    expect(mockCreateTab).toHaveBeenCalledTimes(3);
+    expect(switchToSpy).toHaveBeenCalledWith('conv-4');
+  });
+
+  it('reuses active or blank tab slot under temporary behavior when at capacity', async () => {
+    jest.clearAllMocks();
+    const plugin = createMockPlugin({ settings: { maxTabs: 3, tabLimitBehavior: 'temporary' } });
+    let counter = 0;
+    mockCreateTab.mockImplementation(() => {
+      counter++;
+      return createMockTabData({ id: `tab-${counter}`, conversationId: `conv-${counter}` });
+    });
+
+    const manager = new TabManager(
+      plugin,
+      createMockMcpManager(),
+      createMockEl(),
+      createMockView(),
+    );
+
+    await manager.createTab('conv-1');
+    await manager.createTab('conv-2');
+    await manager.createTab('conv-3');
+    await manager.switchToTab('tab-3');
+    expect(manager.getTabCount()).toBe(3);
+
+    const activeTab = manager.getActiveTab();
+    expect(activeTab).not.toBeNull();
+    const controller = activeTab!.controllers.conversationController;
+    expect(controller).not.toBeNull();
+    const switchToSpy = jest.spyOn(controller!, 'switchTo');
+
+    await manager.openConversation('conv-4', { preferNewTab: true, activate: true });
+
+    expect(mockCreateTab).toHaveBeenCalledTimes(3);
+    expect(switchToSpy).toHaveBeenCalledWith('conv-4');
   });
 });

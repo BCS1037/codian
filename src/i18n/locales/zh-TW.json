@@ -57,7 +57,14 @@
       "running": "執行中",
       "archived": "已封存",
       "updateFailed": "更新對話索引失敗",
-      "closeTab": "關閉分頁"
+      "closeTab": "關閉分頁",
+      "moreOptions": "更多選項",
+      "rename": "重新命名",
+      "delete": "刪除",
+      "openInNewTab": "在新分頁開啟",
+      "openInBackgroundTab": "在後台分頁開啟",
+      "switchToSession": "切換至該會話",
+      "regenerateTitle": "重新產生標題"
     },
     "rewind": {
       "confirmMessage": "回退到此處？此訊息之後的檔案變更可能被覆寫或刪除。此操作無法復原。",
@@ -94,6 +101,9 @@
       "errorNoActiveTab": "沒有使用中的分頁",
       "commandNoMessages": "無法分叉：對話中沒有訊息",
       "commandNoAssistantUuid": "無法分叉：沒有帶識別碼的助手回覆"
+    },
+    "tabs": {
+      "allTabsBusy": "所有分頁當前都在忙碌執行任務"
     },
     "bangBash": {
       "placeholder": "> 執行 bash 指令...",
@@ -738,8 +748,16 @@
     },
     "maxTabs": {
       "name": "最大聊天標籤數",
-      "desc": "同時開啟的最大聊天標籤數（3-10）。每個標籤使用獨立的 Claude 對話。",
+      "desc": "同時開啟的最大聊天標籤数（3-10）。每個標籤使用獨立的 Claude 對話。",
       "warning": "超過 5 個標籤可能會影響效能和記憶體使用。"
+    },
+    "tabLimitBehavior": {
+      "name": "分頁超限策略",
+      "desc": "達到最大分頁數量時，如何處理開啟對話或新增分頁。",
+      "lru": "自動輪替最久閒置分頁",
+      "inPlace": "就地複用當前分頁",
+      "temporary": "允許臨時分頁（推薦）",
+      "strict": "嚴格攔截新分頁"
     },
     "enableAutoScroll": {
       "name": "串流傳輸時自動捲動",

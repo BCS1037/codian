@@ -57,7 +57,14 @@
       "running": "Läuft",
       "archived": "Archiviert",
       "updateFailed": "Unterhaltungsindex konnte nicht aktualisiert werden",
-      "closeTab": "Tab schließen"
+      "closeTab": "Tab schließen",
+      "moreOptions": "Weitere Optionen",
+      "rename": "Umbenennen",
+      "delete": "Löschen",
+      "openInNewTab": "In neuem Tab öffnen",
+      "openInBackgroundTab": "Im Hintergrund-Tab öffnen",
+      "switchToSession": "Zu geöffneter Sitzung wechseln",
+      "regenerateTitle": "Titel neu generieren"
     },
     "rewind": {
       "confirmMessage": "Zu diesem Punkt zurückspulen? Dateiänderungen nach dieser Nachricht können überschrieben oder entfernt werden. Dies kann nicht rückgängig gemacht werden.",
@@ -94,6 +101,9 @@
       "errorNoActiveTab": "Kein aktiver Tab",
       "commandNoMessages": "Verzweigung nicht möglich: keine Nachrichten in der Konversation",
       "commandNoAssistantUuid": "Verzweigung nicht möglich: keine Assistentenantwort mit Kennungen"
+    },
+    "tabs": {
+      "allTabsBusy": "Alle Tabs sind derzeit mit aktiven Aufgaben beschäftigt"
     },
     "bangBash": {
       "placeholder": "> Einen Bash-Befehl ausführen...",
@@ -740,6 +750,14 @@
       "name": "Maximale Chat-Tabs",
       "desc": "Maximale Anzahl gleichzeitiger Chat-Tabs (3-10). Jeder Tab verwendet eine separate Claude-Sitzung.",
       "warning": "Mehr als 5 Tabs können Leistung und Speichernutzung beeinträchtigen."
+    },
+    "tabLimitBehavior": {
+      "name": "Verhalten bei Tab-Limit-Überschreitung",
+      "desc": "Wie das Öffnen von Konversationen oder neuen Tabs bei Erreichen des Tab-Limits gehandhabt wird.",
+      "lru": "Ältesten inaktiven Tab automatisch verdrängen",
+      "inPlace": "Aktiven Tab-Slot wiederverwenden",
+      "temporary": "Temporären Tab erlauben (Empfohlen)",
+      "strict": "Neue Tabs strikt verhindern"
     },
     "enableAutoScroll": {
       "name": "Automatisches Scrollen während Streaming",
