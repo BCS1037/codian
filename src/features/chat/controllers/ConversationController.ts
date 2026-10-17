@@ -1139,7 +1139,6 @@ export class ConversationController {
           conv.id,
           conv.title,
           isCurrent,
-          conv.pinned === true,
           conv.archived === true,
           options,
           e,
@@ -1169,7 +1168,6 @@ export class ConversationController {
           conv.id,
           conv.title,
           isCurrent,
-          conv.pinned === true,
           conv.archived === true,
           options,
           e,
@@ -1317,7 +1315,6 @@ export class ConversationController {
     conversationId: string,
     title: string,
     isCurrent: boolean,
-    pinned: boolean,
     archived: boolean,
     options: HistoryRenderOptions,
     event: MouseEvent,
@@ -1340,47 +1337,23 @@ export class ConversationController {
         }));
     }
 
-    if (openState !== 'current') {
-      if (openState === 'closed' && options.onOpenConversationInNewTab) {
-        menu.addItem((menuItem) => menuItem
-          .setTitle(t('chat.historySearch.openInNewTab'))
-          .setIcon('square-plus')
-          .onClick(() => {
-            void this.runHistoryAction(
-              () => options.onOpenConversationInNewTab?.(conversationId, true),
-              'Failed to load conversation',
-            );
-          }));
-        menu.addItem((menuItem) => menuItem
-          .setTitle(t('chat.historySearch.openInBackgroundTab'))
-          .setIcon('plus')
-          .onClick(() => {
-            void this.runHistoryAction(
-              () => options.onOpenConversationInNewTab?.(conversationId, false),
-              'Failed to load conversation',
-            );
-          }));
-      } else if (openState === 'open') {
-        menu.addItem((menuItem) => menuItem
-          .setTitle(t('chat.historySearch.switchToSession'))
-          .setIcon('arrow-right')
-          .onClick(() => {
-            void this.runHistoryAction(
-              () => options.onSelectConversation(conversationId),
-              'Failed to load conversation',
-            );
-          }));
-      }
-    }
-
-    if (openState !== 'closed' && options.onCloseConversationTab) {
+    if (openState === 'closed' && options.onOpenConversationInNewTab) {
       menu.addItem((menuItem) => menuItem
-        .setTitle(t('chat.historySearch.closeTab'))
-        .setIcon('x')
+        .setTitle(t('chat.historySearch.openInNewTab'))
+        .setIcon('square-plus')
         .onClick(() => {
           void this.runHistoryAction(
-            () => options.onCloseConversationTab?.(conversationId) ?? Promise.resolve(),
-            'Failed to close tab',
+            () => options.onOpenConversationInNewTab?.(conversationId, true),
+            'Failed to load conversation',
+          );
+        }));
+      menu.addItem((menuItem) => menuItem
+        .setTitle(t('chat.historySearch.openInBackgroundTab'))
+        .setIcon('plus')
+        .onClick(() => {
+          void this.runHistoryAction(
+            () => options.onOpenConversationInNewTab?.(conversationId, false),
+            'Failed to load conversation',
           );
         }));
     }
@@ -1417,26 +1390,6 @@ export class ConversationController {
           }));
       }
     }
-
-    menu.addItem((menuItem) => menuItem
-      .setTitle(t(pinned ? 'chat.historySearch.unpin' : 'chat.historySearch.pin'))
-      .setIcon(pinned ? 'pin-off' : 'pin')
-      .onClick(() => {
-        void this.runHistoryAction(
-          () => this.updateHistoryIndexFlag(conversationId, 'pinned', !pinned, options),
-          t('chat.historySearch.updateFailed'),
-        );
-      }));
-
-    menu.addItem((menuItem) => menuItem
-      .setTitle(t(archived ? 'chat.historySearch.unarchive' : 'chat.historySearch.archive'))
-      .setIcon(archived ? 'archive-restore' : 'archive')
-      .onClick(() => {
-        void this.runHistoryAction(
-          () => this.updateHistoryIndexFlag(conversationId, 'archived', !archived, options),
-          t('chat.historySearch.updateFailed'),
-        );
-      }));
 
     menu.addItem((menuItem) => menuItem
       .setTitle(t('chat.historySearch.delete'))

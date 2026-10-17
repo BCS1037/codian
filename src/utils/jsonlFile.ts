@@ -34,16 +34,18 @@ export async function forEachJSONLLine(
     highWaterMark: JSONL_READ_CHUNK_BYTES,
   });
 
+  if (!rawStream) return;
+
   let decompressor: Transform | null = null;
 
   if (isZst) {
     if (typeof zlib.createZstdDecompress !== 'function') {
-      rawStream.destroy();
+      rawStream?.destroy();
       throw new Error('Zstandard decompression is not supported in this runtime environment.');
     }
     decompressor = zlib.createZstdDecompress();
     rawStream.on('error', err => decompressor?.destroy(err));
-    decompressor.on('error', err => rawStream.destroy(err));
+    decompressor.on('error', err => rawStream?.destroy(err));
   }
 
   const input = decompressor
@@ -55,7 +57,7 @@ export async function forEachJSONLLine(
     window.clearTimeout(timer);
     timer = window.setTimeout(() => {
       const err = new Error('Timed out reading JSONL history.');
-      rawStream.destroy(err);
+      rawStream?.destroy(err);
       decompressor?.destroy(err);
     }, idleTimeoutMs);
   };
@@ -74,7 +76,7 @@ export async function forEachJSONLLine(
     if (lines.bufferedLength > 0) accept(lines.take());
   } finally {
     window.clearTimeout(timer);
-    rawStream.destroy();
+    rawStream?.destroy();
     decompressor?.destroy();
   }
 }
