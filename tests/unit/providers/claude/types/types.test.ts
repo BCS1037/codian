@@ -78,6 +78,10 @@ describe('types.ts', () => {
     it('should use conversation rail navigation by default', () => {
       expect(DEFAULT_SETTINGS.chatNavigationMode).toBe('conversation-rail');
     });
+
+    it('should use temporary tab limit behavior by default', () => {
+      expect(DEFAULT_SETTINGS.tabLimitBehavior).toBe('temporary');
+    });
   });
 
   describe('CodianSettings type', () => {
@@ -109,6 +113,7 @@ describe('types.ts', () => {
         claudeCliPathsByHost: {},
         loadUserClaudeSettings: false,
         maxTabs: 3,
+        tabLimitBehavior: 'lru',
         enableChrome: false,
         enableBangBash: false,
         enableAutoScroll: true,
@@ -164,6 +169,7 @@ describe('types.ts', () => {
         claudeCliPathsByHost: {},
         loadUserClaudeSettings: false,
         maxTabs: 3,
+        tabLimitBehavior: 'lru',
         enableChrome: false,
         enableBangBash: false,
         enableAutoScroll: true,
@@ -220,6 +226,7 @@ describe('types.ts', () => {
         claudeCliPathsByHost: {},
         loadUserClaudeSettings: false,
         maxTabs: 5,
+        tabLimitBehavior: 'lru',
         enableChrome: false,
         enableBangBash: false,
         enableAutoScroll: false,

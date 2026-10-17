@@ -138,6 +138,7 @@ export class TabManager implements TabManagerInterface {
 
   private tabs: Map<TabId, TabData> = new Map();
   private activeTabId: TabId | null = null;
+  private lastAccessedAt: Map<TabId, number> = new Map();
   private callbacks: TabManagerCallbacks;
   private providerCommandWarmups = new Map<TabId, ProviderCommandWarmupEntry>();
   private providerCommandCache = new Map<TabId, ProviderCommandCacheEntry>();
@@ -286,6 +287,7 @@ export class TabManager implements TabManagerInterface {
       wireTabInputEvents(tab, this.plugin);
 
       this.tabs.set(tab.id, tab);
+      this.lastAccessedAt.set(tab.id, Date.now());
       this.pendingTabCreations -= 1;
       reservationHeld = false;
       this.callbacks.onTabCreated?.(tab);
@@ -374,6 +376,7 @@ export class TabManager implements TabManagerInterface {
 
       // Activate new tab
       this.activeTabId = tabId;
+      this.lastAccessedAt.set(tabId, Date.now());
       activateTab(tab);
       this.callbacks.onActiveTabChanged?.(previousTabId, tabId);
 
@@ -506,6 +509,7 @@ export class TabManager implements TabManagerInterface {
     this.providerCommandCache.delete(tabId);
     this.tabCommandContextRevisions.delete(tabId);
     this.tabs.delete(tabId);
+    this.lastAccessedAt.delete(tabId);
     this.callbacks.onTabClosed?.(tabId);
 
     // If we closed the active tab, switch to another
@@ -634,6 +638,39 @@ export class TabManager implements TabManagerInterface {
     return this.tabs.size < this.getMaxTabs();
   }
 
+  /**
+   * Finds the least recently used idle tab as a candidate for LRU eviction.
+   * Never selects tabs with active session work (streaming, rewinding, background work, etc.).
+   * Prefers non-active tabs.
+   */
+  findLruEvictionCandidate(excludedTabIds?: Set<TabId> | TabId[]): TabData | null {
+    const excluded = new Set(
+      Array.isArray(excludedTabIds)
+        ? excludedTabIds
+        : (excludedTabIds ? Array.from(excludedTabIds) : [])
+    );
+
+    const eligibleTabs: TabData[] = [];
+    for (const tab of this.tabs.values()) {
+      if (excluded.has(tab.id)) continue;
+      if (hasActiveSessionWork(tab)) continue;
+      eligibleTabs.push(tab);
+    }
+
+    if (eligibleTabs.length === 0) return null;
+
+    const nonActive = eligibleTabs.filter(tab => tab.id !== this.activeTabId);
+    const pool = nonActive.length > 0 ? nonActive : eligibleTabs;
+
+    pool.sort((a, b) => {
+      const timeA = this.lastAccessedAt.get(a.id) ?? 0;
+      const timeB = this.lastAccessedAt.get(b.id) ?? 0;
+      return timeA - timeB;
+    });
+
+    return pool[0] ?? null;
+  }
+
   // ============================================
   // Tab Bar Data
   // ============================================
@@ -727,17 +764,78 @@ export class TabManager implements TabManagerInterface {
     }
 
     // Open in current tab or new tab
-    if (preferNewTab && this.canCreateTab()) {
-      await this.createTab(conversationId, undefined, { activate });
-    } else {
-      // Open in current tab
-      // Note: Don't set tab.conversationId here - the onConversationIdChanged callback
-      // will sync it after successful switch. Setting it before switchTo() would cause
-      // incorrect tab metadata if switchTo() returns early (streaming/switching/creating).
-      const activeTab = this.getActiveTab();
-      if (activeTab) {
-        await activeTab.controllers.conversationController?.switchTo(conversationId);
+    if (preferNewTab) {
+      if (this.canCreateTab()) {
+        await this.createTab(conversationId, undefined, { activate });
+        return;
       }
+
+      const behavior = this.plugin.settings.tabLimitBehavior ?? 'temporary';
+
+      if (behavior === 'lru') {
+        const blankTab = Array.from(this.tabs.values()).find(
+          tab => !tab.conversationId && tab.state.messages.length === 0,
+        );
+        if (blankTab) {
+          await this.switchToTab(blankTab.id);
+          await blankTab.controllers.conversationController?.switchTo(conversationId);
+          return;
+        }
+
+        const candidate = this.findLruEvictionCandidate();
+        if (candidate) {
+          await this.closeTab(candidate.id);
+          await this.createTab(conversationId, undefined, { activate });
+          return;
+        }
+
+        const activeTab = this.getActiveTab();
+        if (activeTab && !hasActiveSessionWork(activeTab)) {
+          await activeTab.controllers.conversationController?.switchTo(conversationId);
+          return;
+        }
+
+        new Notice(t('chat.tabs.allTabsBusy'));
+        return;
+      }
+
+      if (behavior === 'in-place' || behavior === 'temporary') {
+        const activeTab = this.getActiveTab();
+        if (activeTab && !hasActiveSessionWork(activeTab)) {
+          await activeTab.controllers.conversationController?.switchTo(conversationId);
+          return;
+        }
+        const idleTab = Array.from(this.tabs.values()).find(tab => !hasActiveSessionWork(tab));
+        if (idleTab) {
+          await this.switchToTab(idleTab.id);
+          await idleTab.controllers.conversationController?.switchTo(conversationId);
+          return;
+        }
+        new Notice(t('chat.tabs.allTabsBusy'));
+        return;
+      }
+
+      // behavior === 'strict'
+      const blankTab = Array.from(this.tabs.values()).find(
+        tab => !tab.conversationId && tab.state.messages.length === 0,
+      );
+      if (blankTab) {
+        await this.switchToTab(blankTab.id);
+        await blankTab.controllers.conversationController?.switchTo(conversationId);
+        return;
+      }
+      const maxTabs = this.getMaxTabs();
+      new Notice(`Maximum ${maxTabs} tabs allowed`);
+      return;
+    }
+
+    // Open in current tab
+    // Note: Don't set tab.conversationId here - the onConversationIdChanged callback
+    // will sync it after successful switch. Setting it before switchTo() would cause
+    // incorrect tab metadata if switchTo() returns early (streaming/switching/creating).
+    const activeTab = this.getActiveTab();
+    if (activeTab) {
+      await activeTab.controllers.conversationController?.switchTo(conversationId);
     }
   }
 
@@ -1521,6 +1619,7 @@ export class TabManager implements TabManagerInterface {
     }
 
     this.tabs.clear();
+    this.lastAccessedAt.clear();
     this.providerCommandWarmups.clear();
     this.providerCommandCache.clear();
     this.tabCommandContextRevisions.clear();

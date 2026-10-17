@@ -57,7 +57,14 @@
       "running": "En cours",
       "archived": "Archivée",
       "updateFailed": "Impossible de mettre à jour l’index des conversations",
-      "closeTab": "Fermer l'onglet"
+      "closeTab": "Fermer l'onglet",
+      "moreOptions": "Plus d'options",
+      "rename": "Renommer",
+      "delete": "Supprimer",
+      "openInNewTab": "Ouvrir dans un nouvel onglet",
+      "openInBackgroundTab": "Ouvrir dans un onglet en arrière-plan",
+      "switchToSession": "Basculer vers la session ouverte",
+      "regenerateTitle": "Régénérer le titre"
     },
     "rewind": {
       "confirmMessage": "Rembobiner jusqu'à ce point ? Les modifications de fichiers postérieures à ce message peuvent être écrasées ou supprimées. Cette action est irréversible.",
@@ -94,6 +101,9 @@
       "errorNoActiveTab": "Aucun onglet actif",
       "commandNoMessages": "Impossible de bifurquer : aucun message dans la conversation",
       "commandNoAssistantUuid": "Impossible de bifurquer : aucune réponse de l’assistant avec des identifiants"
+    },
+    "tabs": {
+      "allTabsBusy": "Tous les onglets sont actuellement occupés par des tâches actives"
     },
     "bangBash": {
       "placeholder": "> Exécuter une commande bash...",
@@ -740,6 +750,14 @@
       "name": "Maximum d'onglets de chat",
       "desc": "Nombre maximum d'onglets de chat simultanés (3-10). Chaque onglet utilise une session Claude séparée.",
       "warning": "Plus de 5 onglets peut affecter les performances et l'utilisation de la mémoire."
+    },
+    "tabLimitBehavior": {
+      "name": "Comportement en cas de dépassement de la limite d'onglets",
+      "desc": "Comment gérer l'ouverture de conversations ou de nouveaux onglets lorsque la limite est atteinte.",
+      "lru": "Remplacer automatiquement l'onglet inactif le plus ancien",
+      "inPlace": "Réutiliser l'emplacement de l'onglet actif",
+      "temporary": "Autoriser un onglet temporaire (Recommandé)",
+      "strict": "Empêcher strictement de nouveaux onglets"
     },
     "enableAutoScroll": {
       "name": "Défilement automatique pendant le streaming",

@@ -9,6 +9,8 @@ const MockScope = Scope as typeof Scope & { instances: Scope[] };
 function createViewHarness(options: {
   canCreateTab: boolean;
   tabCount?: number;
+  tabLimitBehavior?: any;
+  candidate?: any;
 }): {
   newTabButtonEl: ReturnType<typeof createMockEl>;
   view: any;
@@ -17,11 +19,14 @@ function createViewHarness(options: {
   const view = Object.create(CodianView.prototype) as any;
 
   view.plugin = {
-    settings: {},
+    settings: {
+      tabLimitBehavior: options.tabLimitBehavior ?? 'strict',
+    },
   };
   view.tabManager = {
     canCreateTab: jest.fn().mockReturnValue(options.canCreateTab),
     getTabCount: jest.fn().mockReturnValue(options.tabCount ?? 1),
+    findLruEvictionCandidate: jest.fn().mockReturnValue(options.candidate ?? null),
   };
   view.tabBarContainerEl = createMockEl();
   view.logoEl = createMockEl();
@@ -58,6 +63,34 @@ describe('CodianView tab controls', () => {
 
   it('hides the new-tab button when the tab manager is at capacity', () => {
     const { newTabButtonEl, view } = createViewHarness({ canCreateTab: false });
+
+    view.refreshTabControls();
+
+    expect(newTabButtonEl.hasClass('codian-hidden')).toBe(true);
+    expect(newTabButtonEl.getAttribute('aria-disabled')).toBe('true');
+    expect(newTabButtonEl.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('shows the new-tab button when at capacity in lru mode with an eviction candidate', () => {
+    const { newTabButtonEl, view } = createViewHarness({
+      canCreateTab: false,
+      tabLimitBehavior: 'lru',
+      candidate: { id: 'tab-1' },
+    });
+
+    view.refreshTabControls();
+
+    expect(newTabButtonEl.hasClass('codian-hidden')).toBe(false);
+    expect(newTabButtonEl.getAttribute('aria-disabled')).toBeNull();
+    expect(newTabButtonEl.getAttribute('aria-hidden')).toBeNull();
+  });
+
+  it('hides the new-tab button when at capacity in lru mode if all tabs are busy', () => {
+    const { newTabButtonEl, view } = createViewHarness({
+      canCreateTab: false,
+      tabLimitBehavior: 'lru',
+      candidate: null,
+    });
 
     view.refreshTabControls();
 
@@ -207,11 +240,11 @@ describe('CodianView tab controls', () => {
     expect(openConversation).toHaveBeenCalledWith('conversation-new', { preferNewTab: true, activate: false });
   });
 
-  it('keeps current tab and unsent input when wide-layout tab limit blocks a history selection', async () => {
+  it('keeps current tab and unsent input when wide-layout tab limit blocks a history selection in strict mode', async () => {
     const openConversation = jest.fn();
     const view = Object.create(CodianView.prototype) as any;
     view.dualPaneLayout = { isWide: true };
-    view.plugin = { settings: { maxTabs: 3 }, findConversationAcrossViews: jest.fn().mockReturnValue(null) };
+    view.plugin = { settings: { maxTabs: 3, tabLimitBehavior: 'strict' }, findConversationAcrossViews: jest.fn().mockReturnValue(null) };
     view.tabManager = {
       getAllTabs: () => [],
       openConversation,
@@ -221,6 +254,88 @@ describe('CodianView tab controls', () => {
     await view.openHistoryConversationInLayout('conversation-new', true);
 
     expect(openConversation).not.toHaveBeenCalled();
+  });
+
+  it('delegates to openConversation when wide-layout tab limit is reached but behavior is lru', async () => {
+    const openConversation = jest.fn().mockResolvedValue(undefined);
+    const view = Object.create(CodianView.prototype) as any;
+    view.dualPaneLayout = { isWide: true };
+    view.plugin = { settings: { maxTabs: 3, tabLimitBehavior: 'lru' }, findConversationAcrossViews: jest.fn().mockReturnValue(null) };
+    view.tabManager = {
+      getAllTabs: () => [],
+      openConversation,
+      canCreateTab: () => false,
+    };
+
+    await view.openHistoryConversationInLayout('conversation-new', true);
+
+    expect(openConversation).toHaveBeenCalledWith('conversation-new', { preferNewTab: true, activate: true });
+  });
+
+  it('delegates to openConversation when wide-layout tab limit is reached and behavior is temporary', async () => {
+    const openConversation = jest.fn().mockResolvedValue(undefined);
+    const view = Object.create(CodianView.prototype) as any;
+    view.dualPaneLayout = { isWide: true };
+    view.plugin = { settings: { maxTabs: 3, tabLimitBehavior: 'temporary' }, findConversationAcrossViews: jest.fn().mockReturnValue(null) };
+    view.tabManager = {
+      getAllTabs: () => [],
+      openConversation,
+      canCreateTab: () => false,
+    };
+
+    await view.openHistoryConversationInLayout('conversation-new', true);
+
+    expect(openConversation).toHaveBeenCalledWith('conversation-new', { preferNewTab: true, activate: true });
+  });
+
+  it('reuses active tab in wide layout when at tab limit with temporary behavior', async () => {
+    const focus = jest.fn();
+    const activeTab = {
+      conversationId: 'conv-old',
+      state: { messages: [{ role: 'user', content: 'hi' }] },
+      dom: { inputEl: { focus } },
+    };
+    const createNewConversation = jest.fn().mockResolvedValue(undefined);
+    const updateTabBarVisibility = jest.fn();
+
+    const view = Object.create(CodianView.prototype) as any;
+    view.dualPaneLayout = { isWide: true };
+    view.plugin = { settings: { maxTabs: 3, tabLimitBehavior: 'temporary' } };
+    view.tabManager = {
+      canCreateTab: () => false,
+      getActiveTab: () => activeTab,
+      createNewConversation,
+    };
+    view.updateTabBarVisibility = updateTabBarVisibility;
+
+    await view.startNewConversationForLayout();
+
+    expect(createNewConversation).toHaveBeenCalled();
+    expect(focus).toHaveBeenCalled();
+    expect(updateTabBarVisibility).toHaveBeenCalled();
+  });
+
+  it('evicts LRU tab candidate when createNewTab is invoked at tab limit with lru behavior', async () => {
+    const candidate = { id: 'tab-old' };
+    const closeTab = jest.fn().mockResolvedValue(true);
+    const createTab = jest.fn().mockResolvedValue({ id: 'tab-new' });
+    const updateTabBarVisibility = jest.fn();
+
+    const view = Object.create(CodianView.prototype) as any;
+    view.plugin = { settings: { maxTabs: 3, tabLimitBehavior: 'lru' } };
+    view.tabManager = {
+      canCreateTab: () => false,
+      findLruEvictionCandidate: () => candidate,
+      closeTab,
+      createTab,
+    };
+    view.updateTabBarVisibility = updateTabBarVisibility;
+
+    await view.createNewTab();
+
+    expect(closeTab).toHaveBeenCalledWith('tab-old');
+    expect(createTab).toHaveBeenCalledWith(null, undefined, { activate: true });
+    expect(updateTabBarVisibility).toHaveBeenCalled();
   });
 
   it('keeps tab controls in the view-owned input row', () => {

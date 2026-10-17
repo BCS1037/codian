@@ -24,6 +24,7 @@ import type { HistoryConversationStatus } from './controllers/ConversationContro
 import { DualPaneLayout } from './DualPaneLayout';
 import { MentionCacheCoordinator } from './services/MentionCacheCoordinator';
 import { TabStatePersistenceCoordinator } from './services/TabStatePersistenceCoordinator';
+import { hasActiveSessionWork } from './tabs/SessionRuntimePool';
 import {
   getTabProviderId,
   onProviderAvailabilityChanged,
@@ -539,7 +540,31 @@ export class CodianView extends ItemView {
   }
 
   async createNewTab(): Promise<void> {
-    const tab = await this.tabManager?.createTab();
+    const manager = this.tabManager;
+    if (!manager) return;
+
+    const behavior = this.plugin.settings.tabLimitBehavior ?? 'temporary';
+    if (!manager.canCreateTab()) {
+      if (behavior === 'lru') {
+        const candidate = manager.findLruEvictionCandidate();
+        if (candidate) {
+          await manager.closeTab(candidate.id);
+          const tab = await manager.createTab(null, undefined, { activate: true });
+          if (tab) {
+            this.updateTabBarVisibility();
+            return;
+          }
+        }
+        new Notice(t('chat.tabs.allTabsBusy'));
+        this.updateTabBarVisibility();
+        return;
+      }
+      const maxTabs = this.plugin.settings.maxTabs ?? 3;
+      new Notice(`Maximum ${maxTabs} tabs allowed`);
+      this.updateTabBarVisibility();
+      return;
+    }
+    const tab = await manager.createTab();
     if (!tab) {
       const maxTabs = this.plugin.settings.maxTabs ?? 3;
       new Notice(`Maximum ${maxTabs} tabs allowed`);
@@ -581,7 +606,9 @@ export class CodianView extends ItemView {
   private updateNewTabButtonVisibility(): void {
     if (!this.newTabButtonEl || !this.tabManager) return;
 
-    const canCreateTab = this.tabManager.canCreateTab();
+    const behavior = this.plugin.settings.tabLimitBehavior ?? 'temporary';
+    const canCreateTab = this.tabManager.canCreateTab()
+      || (behavior === 'lru' && Boolean(this.tabManager.findLruEvictionCandidate?.()));
     this.newTabButtonEl.toggleClass('codian-hidden', !canCreateTab);
     if (canCreateTab) {
       this.newTabButtonEl.removeAttribute('aria-disabled');
@@ -595,17 +622,29 @@ export class CodianView extends ItemView {
 
   /** Wide New starts a separate session so the selected conversation remains untouched. */
   private async startNewConversationForLayout(): Promise<void> {
+    const manager = this.tabManager;
+    if (!manager) return;
+
     if (!this.dualPaneLayout?.isWide) {
-      await this.tabManager?.createNewConversation();
+      await manager.createNewConversation();
       this.updateHistoryDropdown();
       return;
     }
 
-    const activeTab = this.tabManager?.getActiveTab();
+    const activeTab = manager.getActiveTab();
     if (activeTab && !activeTab.conversationId && activeTab.state.messages.length === 0) {
       activeTab.dom.inputEl.focus();
       return;
     }
+
+    const behavior = this.plugin.settings.tabLimitBehavior ?? 'temporary';
+    if (!manager.canCreateTab() && (behavior === 'in-place' || behavior === 'temporary') && activeTab && !hasActiveSessionWork(activeTab)) {
+      await manager.createNewConversation();
+      activeTab.dom.inputEl.focus();
+      this.updateTabBarVisibility();
+      return;
+    }
+
     await this.createNewTab();
   }
 
@@ -779,7 +818,8 @@ export class CodianView extends ItemView {
 
     const hasDetachedSession = this.plugin.sessionRuntimePool?.hasConversation(conversationId) ?? false;
     const hasSessionElsewhere = !!this.plugin.findConversationAcrossViews(conversationId);
-    if (!manager.canCreateTab() && !hasDetachedSession && !hasSessionElsewhere) {
+    const behavior = this.plugin.settings.tabLimitBehavior ?? 'temporary';
+    if (behavior === 'strict' && !manager.canCreateTab() && !hasDetachedSession && !hasSessionElsewhere) {
       const blankTab = manager.getAllTabs().find(tab => !tab.conversationId && tab.state.messages.length === 0);
       if (blankTab) {
         await manager.switchToTab(blankTab.id);

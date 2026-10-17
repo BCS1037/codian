@@ -57,7 +57,14 @@
       "running": "実行中",
       "archived": "アーカイブ済み",
       "updateFailed": "会話インデックスの更新に失敗しました",
-      "closeTab": "タブを閉じる"
+      "closeTab": "タブを閉じる",
+      "moreOptions": "その他のオプション",
+      "rename": "名前を変更",
+      "delete": "削除",
+      "openInNewTab": "新しいタブで開く",
+      "openInBackgroundTab": "バックグラウンドタブで開く",
+      "switchToSession": "開いているセッションに切り替え",
+      "regenerateTitle": "タイトルを再生成"
     },
     "rewind": {
       "confirmMessage": "この時点に巻き戻しますか？このメッセージ以降のファイル変更は上書きまたは削除される可能性があります。この操作は元に戻せません。",
@@ -94,6 +101,9 @@
       "errorNoActiveTab": "アクティブなタブがありません",
       "commandNoMessages": "フォークできません: 会話にメッセージがありません",
       "commandNoAssistantUuid": "フォークできません: 識別子付きのアシスタント応答がありません"
+    },
+    "tabs": {
+      "allTabsBusy": "すべてのタブで現在タスクが実行中です"
     },
     "bangBash": {
       "placeholder": "> bash コマンドを実行...",
@@ -740,6 +750,14 @@
       "name": "最大チャットタブ数",
       "desc": "同時に開ける最大チャットタブ数（3-10）。各タブは個別の Claude セッションを使用します。",
       "warning": "5 タブを超えるとパフォーマンスやメモリ使用量に影響する可能性があります。"
+    },
+    "tabLimitBehavior": {
+      "name": "タブ上限超過時の動作",
+      "desc": "最大タブ数に達したときの会話の表示や新規タブ作成の処理方法。",
+      "lru": "最も古いアイドル状態のタブを自動入替",
+      "inPlace": "現在のアクティブタブ枠を再利用",
+      "temporary": "一時タブを許可（推奨）",
+      "strict": "新しいタブを厳密に制限"
     },
     "enableAutoScroll": {
       "name": "ストリーミング中の自動スクロール",

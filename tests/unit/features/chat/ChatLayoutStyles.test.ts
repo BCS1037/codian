@@ -70,4 +70,11 @@ describe('chat layout styles', () => {
     expect(historyCss).toMatch(/\.codian-history-tab-pill\.is-open\s*\{[\s\S]*?color:\s*var\(--text-muted\);/);
     expect(historyCss).toMatch(/\.codian-close-tab-btn:hover\s*\{[\s\S]*?color:\s*var\(--color-red\);/);
   });
+
+  it('keeps open tabs and unselected items transparent so only active item shows persistent accent', () => {
+    expect(historyCss).toMatch(/\.codian-history-item\.open\s*\{[\s\S]*?background:\s*transparent;/);
+    expect(historyCss).toMatch(/\.codian-history-item\.open\s*\{[\s\S]*?border-inline-start-color:\s*transparent;/);
+    expect(historyCss).toMatch(/\.codian-history-item\.keyboard-selected\s*\{[\s\S]*?background:\s*transparent;/);
+    expect(historyCss).toMatch(/\.codian-history-item\.active\s*\{[\s\S]*?border-inline-start-color:\s*var\(--interactive-accent\);/);
+  });
 });

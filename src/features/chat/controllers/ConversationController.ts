@@ -1143,84 +1143,37 @@ export class ConversationController {
           conv.archived === true,
           options,
           e,
+          conv.titleGenerationStatus,
         );
       });
 
       const actions = item.createDiv({ cls: 'codian-history-item-actions' });
 
-      // Show regenerate button if title generation failed, or loading indicator if pending
+      // Show loading indicator if pending
       if (conv.titleGenerationStatus === 'pending') {
         const loadingEl = actions.createEl('span', { cls: 'codian-action-btn codian-action-loading' });
         setIcon(loadingEl, 'loader-2');
         loadingEl.setAttribute('aria-label', 'Generating title...');
-      } else if (conv.titleGenerationStatus === 'failed') {
-        const regenerateBtn = actions.createEl('button', { cls: 'codian-action-btn' });
-        setIcon(regenerateBtn, 'refresh-cw');
-        regenerateBtn.setAttribute('aria-label', 'Regenerate title');
-        regenerateBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          runConversationAction(
-            () => this.regenerateTitle(conv.id),
-            'Failed to regenerate response',
-          );
-        });
       }
 
-      if (openState === 'closed' && options.onOpenConversationInNewTab) {
-        const openInNewTabBtn = actions.createEl('button', {
-          cls: 'codian-action-btn codian-open-new-tab-btn',
-        });
-        setIcon(openInNewTabBtn, 'square-plus');
-        openInNewTabBtn.setAttribute('aria-label', 'Open in new tab');
-        openInNewTabBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          runConversationAction(
-            () => this.runHistoryAction(
-              () => options.onOpenConversationInNewTab?.(conv.id, true),
-              'Failed to load conversation',
-            ),
-            'Failed to load conversation',
-          );
-        });
-      }
-
-      if (openState !== 'closed' && options.onCloseConversationTab) {
-        const closeTabBtn = actions.createEl('button', {
-          cls: 'codian-action-btn codian-close-tab-btn',
-        });
-        setIcon(closeTabBtn, 'x');
-        closeTabBtn.setAttribute('aria-label', t('chat.historySearch.closeTab'));
-        closeTabBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          runConversationAction(
-            () => this.runHistoryAction(
-              () => options.onCloseConversationTab?.(conv.id) ?? Promise.resolve(),
-              'Failed to close tab',
-            ),
-            'Failed to close tab',
-          );
-        });
-      }
-
-      const renameBtn = actions.createEl('button', { cls: 'codian-action-btn' });
-      setIcon(renameBtn, 'pencil');
-      renameBtn.setAttribute('aria-label', 'Rename');
-      renameBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.showRenameInput(item, conv.id, conv.title, options);
+      const moreBtn = actions.createEl('button', {
+        cls: 'codian-action-btn codian-more-btn',
+        attr: { type: 'button' },
       });
-
-      const deleteBtn = actions.createEl('button', { cls: 'codian-action-btn codian-delete-btn' });
-      setIcon(deleteBtn, 'trash-2');
-      deleteBtn.setAttribute('aria-label', 'Delete');
-      deleteBtn.addEventListener('click', (e) => {
+      setIcon(moreBtn, 'more-vertical');
+      moreBtn.setAttribute('aria-label', t('chat.historySearch.moreOptions'));
+      moreBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        runConversationAction(
-          () => this.runHistoryAction(
-            () => this.deleteHistoryConversation(conv.id, options),
-            'Failed to delete conversation',
-          ),
-          'Failed to delete conversation',
+        this.showHistoryContextMenu(
+          item,
+          conv.id,
+          conv.title,
+          isCurrent,
+          conv.pinned === true,
+          conv.archived === true,
+          options,
+          e,
+          conv.titleGenerationStatus,
         );
       });
 
@@ -1368,16 +1321,30 @@ export class ConversationController {
     archived: boolean,
     options: HistoryRenderOptions,
     event: MouseEvent,
+    titleGenerationStatus?: 'pending' | 'success' | 'failed',
   ): void {
     const menu = new Menu();
     const fallbackOpenState: HistoryConversationOpenState = isCurrent ? 'current' : 'closed';
     const status = this.getHistoryConversationStatus(conversationId, fallbackOpenState, options);
     const { openState } = status;
 
+    if (titleGenerationStatus === 'failed') {
+      menu.addItem((menuItem) => menuItem
+        .setTitle(t('chat.historySearch.regenerateTitle'))
+        .setIcon('refresh-cw')
+        .onClick(() => {
+          void runConversationAction(
+            () => this.regenerateTitle(conversationId),
+            'Failed to regenerate response',
+          );
+        }));
+    }
+
     if (openState !== 'current') {
       if (openState === 'closed' && options.onOpenConversationInNewTab) {
         menu.addItem((menuItem) => menuItem
-          .setTitle('Open in new tab')
+          .setTitle(t('chat.historySearch.openInNewTab'))
+          .setIcon('square-plus')
           .onClick(() => {
             void this.runHistoryAction(
               () => options.onOpenConversationInNewTab?.(conversationId, true),
@@ -1385,7 +1352,8 @@ export class ConversationController {
             );
           }));
         menu.addItem((menuItem) => menuItem
-          .setTitle('Open in background tab')
+          .setTitle(t('chat.historySearch.openInBackgroundTab'))
+          .setIcon('plus')
           .onClick(() => {
             void this.runHistoryAction(
               () => options.onOpenConversationInNewTab?.(conversationId, false),
@@ -1394,7 +1362,8 @@ export class ConversationController {
           }));
       } else if (openState === 'open') {
         menu.addItem((menuItem) => menuItem
-          .setTitle('Switch to open session')
+          .setTitle(t('chat.historySearch.switchToSession'))
+          .setIcon('arrow-right')
           .onClick(() => {
             void this.runHistoryAction(
               () => options.onSelectConversation(conversationId),
@@ -1417,19 +1386,19 @@ export class ConversationController {
     }
 
     menu.addItem((menuItem) => menuItem
-      .setTitle(t(pinned ? 'chat.historySearch.unpin' : 'chat.historySearch.pin'))
+      .setTitle(t('chat.historySearch.rename'))
+      .setIcon('pencil')
       .onClick(() => {
-        void this.runHistoryAction(
-          () => this.updateHistoryIndexFlag(conversationId, 'pinned', !pinned, options),
-          t('chat.historySearch.updateFailed'),
-        );
+        this.showRenameInput(item, conversationId, title, options);
       }));
+
     if (!archived) {
       const isCompletedReview = status.attention?.kind === 'review'
         && status.attention.outcome === 'completed';
       if (isCompletedReview) {
         menu.addItem((menuItem) => menuItem
           .setTitle(t('chat.historySearch.markRead'))
+          .setIcon('check')
           .onClick(() => {
             this.deps.plugin.setConversationAttention(conversationId, null);
             options.onRerender();
@@ -1437,6 +1406,7 @@ export class ConversationController {
       } else if (status.attention == null && !status.isRunning) {
         menu.addItem((menuItem) => menuItem
           .setTitle(t('chat.historySearch.markUnread'))
+          .setIcon('flag')
           .onClick(() => {
             this.deps.plugin.setConversationAttention(conversationId, {
               kind: 'review',
@@ -1447,8 +1417,20 @@ export class ConversationController {
           }));
       }
     }
+
+    menu.addItem((menuItem) => menuItem
+      .setTitle(t(pinned ? 'chat.historySearch.unpin' : 'chat.historySearch.pin'))
+      .setIcon(pinned ? 'pin-off' : 'pin')
+      .onClick(() => {
+        void this.runHistoryAction(
+          () => this.updateHistoryIndexFlag(conversationId, 'pinned', !pinned, options),
+          t('chat.historySearch.updateFailed'),
+        );
+      }));
+
     menu.addItem((menuItem) => menuItem
       .setTitle(t(archived ? 'chat.historySearch.unarchive' : 'chat.historySearch.archive'))
+      .setIcon(archived ? 'archive-restore' : 'archive')
       .onClick(() => {
         void this.runHistoryAction(
           () => this.updateHistoryIndexFlag(conversationId, 'archived', !archived, options),
@@ -1457,12 +1439,8 @@ export class ConversationController {
       }));
 
     menu.addItem((menuItem) => menuItem
-      .setTitle('Rename')
-      .onClick(() => {
-        this.showRenameInput(item, conversationId, title, options);
-      }));
-    menu.addItem((menuItem) => menuItem
-      .setTitle('Delete')
+      .setTitle(t('chat.historySearch.delete'))
+      .setIcon('trash-2')
       .onClick(() => {
         void this.runHistoryAction(
           () => this.deleteHistoryConversation(conversationId, options),

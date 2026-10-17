@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.0 — 2026-10-17
+
+- **Configurable Tab Limit Overflow**: Added a new setting to choose how Codian handles opening conversations beyond the maximum tab limit:
+  - **Temporary Tab (Default)**: Opens the conversation in a temporary preview tab replacing the current tab without closing it in history. Interacting or sending a message promotes it to a permanent tab (evicting the oldest non-current tab if needed).
+  - **Auto-Close Oldest**: Automatically closes the least recently used tab and opens the new conversation seamlessly.
+  - **Strict Limit**: Preserves the strict limit notice and prevents opening more tabs than configured.
+- **Clean Session History Styling**: Refined the conversation history list by removing redundant gray card backgrounds and red left lines from open tabs and pinned items. Rows stay clean and transparent by default, reserving the active accent styling exclusively for the current conversation.
+- **Dependency Updates**: Upgraded `@anthropic-ai/claude-agent-sdk` to 0.3.296 and updated development dependencies.
+
 ## 1.4.1 — 2026-10-17
 
 - **Dual-Pane Tab Visibility**: Enabled the chat tab bar in wide dual-pane mode, providing direct visual access, switching, and management for up to 5 concurrent tabs right above the composer.

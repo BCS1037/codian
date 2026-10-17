@@ -48,6 +48,7 @@ export const DEFAULT_CODIAN_SETTINGS: CodianSettings = {
   lastCustomModel: '',
 
   maxTabs: 3,
+  tabLimitBehavior: 'temporary',
   enableAutoScroll: true,
   deferMathRenderingDuringStreaming: true,
   pluginRenderedFenceLanguages: [],
