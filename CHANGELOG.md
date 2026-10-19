@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.1 — 2026-10-19
+
+- **Community Plugin Compliance & Review Hardening**:
+  - Synchronized `bun.lock` with latest dependencies to ensure seamless dependency resolution in review and installation environments.
+  - Replaced native `createEl('span')` and `createEl('div')` invocations with Obsidian's recommended DOM helpers (`createSpan` and `createDiv`).
+  - Strengthened strict typing in composer live-preview input bridge, replacing `any` casts with `EdgeRowNavigableElement`.
+  - Refactored conversation history and renaming styles to eliminate `:has()` selectors and `!important` declarations, adhering to Obsidian performance guidelines.
+
 ## 1.6.0 — 2026-10-19
 
 - **DeepSeek Provider Integration**: Added first-class support for the DeepSeek Provider:

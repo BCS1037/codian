@@ -8,6 +8,10 @@ export interface LivePreviewInputBridgeOptions {
   onOpenReference?: (reference: VaultContextReference) => void;
 }
 
+interface EdgeRowNavigableElement extends HTMLTextAreaElement {
+  isCaretOnEdgeRow?: (direction: 'up' | 'down') => boolean | null;
+}
+
 export class LivePreviewInputBridge {
   readonly composer: LivePreviewComposer;
 
@@ -51,7 +55,7 @@ export class LivePreviewInputBridge {
     hostEl.classList.add('codian-live-preview-host');
     sourceEl.addEventListener('input', this.handleSourceInput);
     this.composer.contentDOM.addEventListener('paste', this.handleComposerPaste);
-    (sourceEl as any).isCaretOnEdgeRow = (direction: 'up' | 'down') => this.composer.isCaretOnEdgeRow(direction);
+    (sourceEl as EdgeRowNavigableElement).isCaretOnEdgeRow = (direction: 'up' | 'down') => this.composer.isCaretOnEdgeRow(direction);
     sourceEl.focus = () => {
       this.syncFromSource();
       this.composer.focus();
@@ -64,7 +68,7 @@ export class LivePreviewInputBridge {
 
   destroy(): void {
     this.unregisterAccessibleTextbox();
-    delete (this.sourceEl as any).isCaretOnEdgeRow;
+    delete (this.sourceEl as EdgeRowNavigableElement).isCaretOnEdgeRow;
     this.sourceEl.removeEventListener('input', this.handleSourceInput);
     this.composer.contentDOM.removeEventListener('paste', this.handleComposerPaste);
     this.sourceEl.focus = this.originalFocus;

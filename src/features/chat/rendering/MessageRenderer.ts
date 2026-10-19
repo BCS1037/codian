@@ -841,7 +841,7 @@ export class MessageRenderer {
         if (pre.parentElement?.classList.contains('codian-code-wrapper')) return;
 
         // Create wrapper
-        const wrapper = createEl('div', { cls: 'codian-code-wrapper' });
+        const wrapper = createDiv({ cls: 'codian-code-wrapper' });
         pre.parentElement?.insertBefore(wrapper, pre);
         wrapper.appendChild(pre);
 

@@ -273,7 +273,7 @@
   flex-wrap: nowrap;
 }
 
-.codian-history-item-content:has(.codian-history-item-preview) {
+.codian-history-item-content.has-preview {
   flex-wrap: wrap;
 }
 
@@ -371,7 +371,7 @@
   color: var(--text-normal);
 }
 
-.codian-history-item:has(.codian-history-tab-pill) .codian-history-item-date {
+.codian-history-item.has-tab-pill .codian-history-item-date {
   display: none;
 }
 
@@ -402,14 +402,16 @@
   display: none;
 }
 
-.codian-history-item.is-renaming .codian-history-item-actions,
-.codian-history-item:has(.codian-rename-input) .codian-history-item-actions {
-  display: none !important;
+.codian-history-item.is-renaming:hover .codian-history-item-actions,
+.codian-history-item.is-renaming:focus-within .codian-history-item-actions,
+.codian-history-item.is-renaming .codian-history-item-actions {
+  display: none;
 }
 
-.codian-history-item.is-renaming .codian-history-item-date,
-.codian-history-item:has(.codian-rename-input) .codian-history-item-date {
-  display: none !important;
+.codian-history-item.is-renaming:hover .codian-history-item-date,
+.codian-history-item.is-renaming:focus-within .codian-history-item-date,
+.codian-history-item.is-renaming .codian-history-item-date {
+  display: none;
 }
 
 .codian-action-btn {

@@ -155,7 +155,7 @@ export function renderProviderModelPicker(
     selectedEl.toggleClass('codian-hidden', false);
     const modelsById = new Map(state.models.map(model => [model.id, model] as const));
     const headerEl = selectedEl.createDiv({ cls: 'codian-provider-model-picker-selected-header' });
-    headerEl.createEl('span', {
+    headerEl.createSpan({
       cls: 'codian-provider-model-picker-selected-label',
       text: t('settings.providerModels.selected', { count: state.selectedIds.length }),
     });
@@ -190,22 +190,22 @@ export function renderProviderModelPicker(
       const infoEl = rowEl.createDiv({ cls: 'codian-provider-model-picker-selected-info' });
       const titleEl = infoEl.createDiv({ cls: 'codian-provider-model-picker-selected-title' });
       if (model.providerLabel) {
-        titleEl.createEl('span', {
+        titleEl.createSpan({
           cls: 'codian-provider-model-picker-selected-badge',
           text: model.providerLabel,
         });
       }
-      titleEl.createEl('span', {
+      titleEl.createSpan({
         cls: 'codian-provider-model-picker-selected-name',
         text: model.name,
       });
       if (model.isAvailable === false && model.unavailableMessage) {
-        infoEl.createEl('div', {
+        infoEl.createDiv({
           cls: 'codian-provider-model-picker-selected-unavailable',
           text: model.unavailableMessage,
         });
       }
-      infoEl.createEl('div', {
+      infoEl.createDiv({
         cls: 'codian-provider-model-picker-selected-id',
         text: model.id,
       });
@@ -380,7 +380,7 @@ export function renderProviderModelPicker(
 
       const textEl = rowEl.createDiv({ cls: 'codian-provider-model-picker-row-text' });
       const headerEl = textEl.createDiv({ cls: 'codian-provider-model-picker-row-header' });
-      headerEl.createEl('span', {
+      headerEl.createSpan({
         cls: 'codian-provider-model-picker-row-name',
         text: model.name,
       });
@@ -388,7 +388,7 @@ export function renderProviderModelPicker(
         ? 'Unavailable'
         : model.catalogBadge ?? model.providerLabel;
       if (badgeLabel) {
-        const badgeEl = headerEl.createEl('span', {
+        const badgeEl = headerEl.createSpan({
           cls: 'codian-provider-model-picker-row-badge',
           text: badgeLabel,
         });
