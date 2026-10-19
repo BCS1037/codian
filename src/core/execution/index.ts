@@ -1,2 +1,107 @@
-export * from './ProviderExecutionRequest';
-export * from './ProviderSessionToolPort';
+export { ExecutionEventQueue } from './ExecutionEventQueue';
+export {
+  type PendingInteraction,
+  PendingInteractionLedger,
+} from './PendingInteractionLedger';
+export {
+  type ProviderExecutionBackend,
+  type ProviderNativePersistence,
+  type ProviderNativeResumeSeed,
+  type ProviderSessionConfig,
+  type ProviderSessionLifecycle,
+} from './ProviderExecutionBackend';
+export {
+  type ProviderAssistantMessageStartedEvent,
+  type ProviderAsyncSubagentCompletedEvent,
+  type ProviderBackgroundEventScope,
+  type ProviderBackgroundOutputEvent,
+  type ProviderBackgroundTurnCompletedEvent,
+  type ProviderBackgroundTurnStartedEvent,
+  type ProviderCancelledEvent,
+  type ProviderCitationsEvent,
+  type ProviderCommandsChangedEvent,
+  type ProviderContextCompactedEvent,
+  type ProviderExecutionErrorCategory,
+  type ProviderExecutionErrorEvent,
+  type ProviderExecutionEvent,
+  type ProviderExecutionEventScope,
+  type ProviderNoticeEvent,
+  type ProviderPermissionModeChangedEvent,
+  type ProviderRequestedEventScope,
+  type ProviderRequestedExecutionEvent,
+  type ProviderSessionErrorEvent,
+  type ProviderSessionEvent,
+  type ProviderSessionEventScope,
+  type ProviderSessionStateChangedEvent,
+  type ProviderSubagentProgressEvent,
+  type ProviderSubagentUpdatedEvent,
+  type ProviderTaskNotificationEvent,
+  type ProviderTextDeltaEvent,
+  type ProviderThinkingDeltaEvent,
+  type ProviderToolCompletedEvent,
+  type ProviderToolOutputEvent,
+  type ProviderToolStartedEvent,
+  type ProviderTurnCompletedEvent,
+  type ProviderTurnCompletionReason,
+  type ProviderTurnEventScope,
+  type ProviderTurnStartedEvent,
+  type ProviderUsageUpdatedEvent,
+  type ProviderUserMessageStartedEvent,
+  type ToolExecutionScope,
+  type WithoutEventScope,
+} from './ProviderExecutionEvent';
+export {
+  type ProviderExecutionConfiguration,
+  type ProviderExecutionContext,
+  type ProviderExecutionInputBlock,
+  type ProviderExecutionRequest,
+  type ProviderLinkedContentContext,
+  type ProviderSystemInstructions,
+  type ProviderToolPolicy,
+} from './ProviderExecutionRequest';
+export {
+  type ProviderExecutionRun,
+  type ProviderExecutionSession,
+} from './ProviderExecutionSession';
+export {
+  type ProviderApprovalDecisionOption,
+  type ProviderApprovalInteractionRequest,
+  type ProviderApprovalInteractionResponse,
+  type ProviderInteractionDismissReason,
+  type ProviderInteractionIdentity,
+  type ProviderInteractionPort,
+  type ProviderQuestionInteractionRequest,
+  type ProviderQuestionInteractionResponse,
+} from './ProviderInteractionPort';
+export {
+  type ProviderSessionInvalidation,
+  type ProviderSessionInvalidationReason,
+  type ProviderSessionSnapshot,
+  type ProviderSessionStatus,
+} from './ProviderSessionSnapshot';
+export {
+  isSessionToolPolicyAllowed,
+  type ProviderSessionToolPort,
+} from './ProviderSessionToolPort';
+export {
+  type RequestedRunCancelSource,
+  RequestedRunChannel,
+  type RequestedRunChannelOptions,
+  type RequestedRunEvent,
+  type RequestedRunTerminalEvent,
+} from './RequestedRunChannel';
+export {
+  type ChatRewindConflict,
+  type ChatRewindMode,
+  type ChatRewindPreview,
+  type ChatRewindResult,
+  type ChatRewindSessionStrategy,
+  isRewindableExecutionSession,
+  isSteerableExecutionSession,
+  type RewindableExecutionSession,
+  type SteerableExecutionSession,
+} from './RewindableExecutionSession';
+export {
+  SessionSnapshotState,
+  type SessionSnapshotStateOptions,
+} from './SessionSnapshotState';

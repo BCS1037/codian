@@ -5,6 +5,7 @@ import type { ChatRuntime } from '../runtime/ChatRuntime';
 import type { VaultFileAdapter } from '../storage/VaultFileAdapter';
 import type {
   AgentDefinition,
+  ChatMessage,
   Conversation,
   InstructionRefineResult,
   ManagedMcpServer,
@@ -21,6 +22,7 @@ import type { ProviderVaultEntryRepository } from './commands/ProviderVaultEntry
 import type { ProviderHost } from './ProviderHost';
 
 export type { ProviderId } from '../types/provider';
+export type { ProviderCommandDiscoveryResult } from './commands/ProviderCommandDiscoveryResult';
 
 export interface ProviderCapabilities {
   providerId: ProviderId;
@@ -271,6 +273,42 @@ export interface ProviderPermissionModeToggleConfig {
   activeLabel: string;
   planValue?: string;
   planLabel?: string;
+}
+
+export interface ProviderPermissionModePolicy {
+  readonly values: readonly string[];
+  readonly fallbackValue: string;
+  readonly defaultValue?: string;
+  migrateValue?(value: string, settings: Record<string, unknown>): string | undefined;
+}
+
+export interface ProviderPermissionModeOption extends ProviderUIOption {
+  bypassesApprovals?: boolean;
+}
+
+export interface ProviderServiceTierPolicy {
+  inactiveValue: string;
+  inactiveLabel: string;
+  activeValue: string;
+  activeLabel: string;
+  isActive: boolean;
+  description?: string;
+}
+
+export type ProviderHistoryInput = Conversation;
+
+export interface ProviderHistoryUpdate {
+  messages?: ChatMessage[];
+  providerState?: Record<string, unknown>;
+}
+
+export interface ProviderSessionArchiveChange {
+  conversation: ProviderHistoryInput;
+  isArchived: boolean;
+}
+
+export interface ProviderSessionArchive {
+  setSessionsArchived(changes: readonly ProviderSessionArchiveChange[]): Promise<void>;
 }
 
 /** Compact service-tier toggle descriptor for providers that expose a fast/standard toolbar control. */

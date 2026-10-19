@@ -27,12 +27,25 @@ export interface ImageAttachment {
   source: 'file' | 'paste' | 'drop';
 }
 
+export interface CitationEntry {
+  path: string;
+  lineStart: number;
+  lineEnd: number;
+  note: string;
+}
+
+export interface CitationGroup {
+  kind: 'memory';
+  entries: CitationEntry[];
+}
+
 /** Content block for preserving streaming order in messages. */
 export type ContentBlock =
   | { type: 'text'; content: string }
   | { type: 'tool_use'; toolId: string }
   | { type: 'thinking'; content: string; durationSeconds?: number }
   | { type: 'subagent'; subagentId: string; mode?: SubagentMode }
+  | { type: 'citations'; citations: CitationGroup }
   | { type: 'context_compacted' }
   | { type: 'task_notification'; content: string };
 
@@ -75,6 +88,7 @@ export interface ChatMessage {
     position: number;
     previousMessageId?: string;
   };
+  turnStats?: TurnStats;
 }
 
 /** Persisted conversation with messages and session state. */
@@ -265,4 +279,9 @@ export interface UsageInfo {
   contextWindowIsAuthoritative?: boolean;
   contextTokens: number;
   percentage: number;
+}
+
+export interface TurnStats {
+  outputTokens: number;
+  durationMs: number;
 }

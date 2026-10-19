@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.6.0 — 2026-10-19
+
+- **DeepSeek Provider Integration**: Added first-class support for the DeepSeek Provider:
+  - DeepSeek reasoning and chat models with configurable reasoning effort and token settings.
+  - Native permission modes with granular access control (`Workspace write` and `Full access`).
+  - Integrated DeepSeek auxiliary services for inline edits, title generation, instruction refinement, and custom command/skill scanning.
+  - Dedicated DeepSeek configuration panel in settings with secure credential handling and connection diagnostics.
+- **Responsive Chat Toolbar & Compact Brain Icon**:
+  - Dynamically collapses the model selector into a clean brain icon button when the sidebar or chat pane width is constrained.
+  - Prevents toolbar wrapping and misalignments when long model names are displayed, keeping model selection, file context, and permission toggles cleanly aligned on a single row.
+  - Full model name remains easily accessible via hover tooltip and interactive dropdown selection.
+
 ## 1.5.1 — 2026-10-17
 
 - **Streamlined Conversation Menu**: Cleaned up redundant commands in the conversation "More options" (`...`) dropdown and right-click context menus:

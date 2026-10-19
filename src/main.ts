@@ -828,6 +828,7 @@ export default class CodianPlugin extends Plugin {
     }
 
     await ProviderWorkspaceRegistry.getIfInitialized('codex')?.commandCatalog?.refresh();
+    await ProviderWorkspaceRegistry.getIfInitialized('deepseek')?.commandCatalog?.refresh();
   }
 
   async mutateSettingsConditionally(

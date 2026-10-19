@@ -163,6 +163,9 @@ const copyToObsidian = {
 const context = await esbuild.context({
   entryPoints: ['src/main.ts'],
   bundle: true,
+  alias: {
+    ws: path.resolve('node_modules/ws/index.js'),
+  },
   plugins: [patchSdkImportMeta, patchRendererUnsafeUnref, copyToObsidian],
   external: [
     'obsidian',
