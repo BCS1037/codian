@@ -132,6 +132,7 @@ class SearchConversationBrowserSession implements ConversationBrowserSession {
       },
       renderPreview: (container, conversation) => {
         if (normalizedQuery.length === 0 || !conversation.preview) return;
+        container.classList.add('has-preview');
         const preview = container.createDiv({ cls: 'codian-history-item-preview' });
         renderMatch(preview, conversation.preview, normalizedQuery);
       },

@@ -1056,6 +1056,7 @@ export class ConversationController {
 
       const content = item.createDiv({ cls: 'codian-history-item-content' });
       if (openState === 'current' || openState === 'open') {
+        item.classList.add('has-tab-pill');
         const tabNumber = typeof conversationStatus.tabIndex === 'number'
           ? conversationStatus.tabIndex
           : null;
@@ -1150,7 +1151,7 @@ export class ConversationController {
 
       // Show loading indicator if pending
       if (conv.titleGenerationStatus === 'pending') {
-        const loadingEl = actions.createEl('span', { cls: 'codian-action-btn codian-action-loading' });
+        const loadingEl = actions.createSpan({ cls: 'codian-action-btn codian-action-loading' });
         setIcon(loadingEl, 'loader-2');
         loadingEl.setAttribute('aria-label', 'Generating title...');
       }
