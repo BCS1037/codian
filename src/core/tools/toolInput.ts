@@ -55,6 +55,8 @@ function normalizeAnswersObject(value: unknown): AskUserAnswers | undefined {
   return Object.keys(answers).length > 0 ? answers : undefined;
 }
 
+export const normalizeResolvedAnswers = normalizeAnswersObject;
+
 function parseAnswersFromJsonObject(resultText: string): AskUserAnswers | undefined {
   const start = resultText.indexOf('{');
   const end = resultText.lastIndexOf('}');

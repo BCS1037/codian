@@ -75,6 +75,7 @@ test('current repository satisfies provider inventory', () => {
   assert.deepEqual(report.providers.map(provider => provider.id), [
     'claude',
     'codex',
+    'deepseek',
     'grok',
     'opencode',
     'kimi',

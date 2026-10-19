@@ -3,12 +3,13 @@ import {
   TEST_CODEX_MODEL_LABEL,
 } from '@test/helpers/codexModels';
 import { createMockEl } from '@test/helpers/mockElement';
-import { Notice } from 'obsidian';
+import { Notice, setIcon } from 'obsidian';
 
 import type { UsageInfo } from '@/core/types';
 import {
   ContextUsageMeter,
   createInputToolbar,
+  InputToolbarLayoutController,
   McpServerSelector,
   ModelSelector,
   ModeSelector,
@@ -208,6 +209,44 @@ describe('ModelSelector', () => {
     const label = btn?.querySelector('.codian-model-label');
     expect(label).not.toBeNull();
     expect(label?.textContent).toBe('Sonnet (high)');
+  });
+
+  it('should render a brain icon element inside the model button', () => {
+    const btn = parentEl.querySelector('.codian-model-btn');
+    expect(btn).not.toBeNull();
+    const icon = btn?.querySelector('.codian-model-icon');
+    expect(icon).not.toBeNull();
+    expect(setIcon).toHaveBeenCalledWith(icon, 'brain');
+  });
+
+  it('should set title and aria-label attributes to model label on model button', () => {
+    const btn = parentEl.querySelector('.codian-model-btn');
+    expect(btn?.getAttribute('title')).toBe('Sonnet (high)');
+    expect(btn?.getAttribute('aria-label')).toBe('Sonnet (high)');
+  });
+
+  it('should toggle dropdown visibility when model button is clicked', () => {
+    const btn = parentEl.querySelector('.codian-model-btn');
+    const dropdown = parentEl.querySelector('.codian-model-dropdown');
+    expect(dropdown?.hasClass('visible')).toBe(false);
+
+    btn?.click();
+    expect(dropdown?.hasClass('visible')).toBe(true);
+
+    btn?.click();
+    expect(dropdown?.hasClass('visible')).toBe(false);
+  });
+
+  it('should dismiss dropdown when clicking outside', () => {
+    const btn = parentEl.querySelector('.codian-model-btn');
+    const dropdown = parentEl.querySelector('.codian-model-dropdown');
+
+    btn?.click();
+    expect(dropdown?.hasClass('visible')).toBe(true);
+
+    const outsideEl = createMockEl('div');
+    parentEl.ownerDocument.dispatchEvent({ type: 'click', target: outsideEl });
+    expect(dropdown?.hasClass('visible')).toBe(false);
   });
 
   it('should render effort as a model submenu', () => {
@@ -1230,6 +1269,42 @@ describe('McpServerSelector - toggle and badges', () => {
   });
 });
 
+describe('InputToolbarLayoutController', () => {
+  it('should toggle compact class when items wrap across rows', () => {
+    const toolbarEl = createMockEl('div');
+    toolbarEl.getBoundingClientRect = () => ({ top: 0, left: 0, width: 250, height: 60, right: 250, bottom: 60, x: 0, y: 0, toJSON() {} });
+
+    const child1 = toolbarEl.createDiv({ cls: 'codian-model-selector' });
+    child1.getBoundingClientRect = () => ({ top: 0, left: 0, width: 120, height: 24, right: 120, bottom: 24, x: 0, y: 0, toJSON() {} });
+
+    const child2 = toolbarEl.createDiv({ cls: 'codian-permission-toggle' });
+    child2.getBoundingClientRect = () => ({ top: 36, left: 0, width: 120, height: 24, right: 120, bottom: 60, x: 0, y: 0, toJSON() {} });
+
+    const controller = new InputToolbarLayoutController(toolbarEl);
+    controller.updateLayout();
+
+    expect(toolbarEl.hasClass('codian-input-toolbar--compact')).toBe(true);
+    controller.destroy();
+  });
+
+  it('should not add compact class when items fit on a single row', () => {
+    const toolbarEl = createMockEl('div');
+    toolbarEl.getBoundingClientRect = () => ({ top: 0, left: 0, width: 500, height: 32, right: 500, bottom: 32, x: 0, y: 0, toJSON() {} });
+
+    const child1 = toolbarEl.createDiv({ cls: 'codian-model-selector' });
+    child1.getBoundingClientRect = () => ({ top: 4, left: 0, width: 120, height: 24, right: 120, bottom: 28, x: 0, y: 0, toJSON() {} });
+
+    const child2 = toolbarEl.createDiv({ cls: 'codian-permission-toggle' });
+    child2.getBoundingClientRect = () => ({ top: 4, left: 200, width: 120, height: 24, right: 320, bottom: 28, x: 0, y: 0, toJSON() {} });
+
+    const controller = new InputToolbarLayoutController(toolbarEl);
+    controller.updateLayout();
+
+    expect(toolbarEl.hasClass('codian-input-toolbar--compact')).toBe(false);
+    controller.destroy();
+  });
+});
+
 describe('createInputToolbar', () => {
   it('should return all toolbar components', () => {
     const parentEl = createMockEl();
@@ -1243,6 +1318,7 @@ describe('createInputToolbar', () => {
     expect(toolbar.mcpServerSelector).toBeInstanceOf(McpServerSelector);
     expect(toolbar.permissionToggle).toBeInstanceOf(PermissionToggle);
     expect(toolbar.serviceTierToggle).toBeInstanceOf(ServiceTierToggle);
+    expect(toolbar.layoutController).toBeInstanceOf(InputToolbarLayoutController);
   });
 
   it('should place the mode selector after the permission toggle in toolbar order', () => {

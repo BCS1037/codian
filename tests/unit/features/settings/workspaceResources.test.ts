@@ -65,14 +65,14 @@ describe('workspace resource aggregation', () => {
 
   it('lists shared agent skills for every provider that supports them', async () => {
     const rows = await loadWorkspaceResources(
-      ['claude', 'codex', 'grok', 'kimi', 'opencode', 'pi'],
+      ['claude', 'codex', 'deepseek', 'grok', 'kimi', 'opencode', 'pi'],
       'skills',
       { loadSharedSkills: async () => makeSharedSkills() },
     );
 
     expect(rows).toEqual([expect.objectContaining({
       name: 'shared-skill',
-      providerIds: ['codex', 'grok', 'opencode', 'pi'],
+      providerIds: ['codex', 'deepseek', 'grok', 'opencode', 'pi'],
       source: '.agents/skills/shared-skill/SKILL.md',
       status: 'available',
     })]);

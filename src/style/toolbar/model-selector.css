@@ -12,10 +12,46 @@
   cursor: pointer;
   color: var(--codian-brand);
   font-size: 12px;
+  transition: background 0.15s ease, color 0.15s ease;
+  user-select: none;
+}
+
+.codian-model-btn:hover {
+  background: var(--background-modifier-hover);
+}
+
+.codian-model-icon {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.codian-model-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 .codian-model-label {
   font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Compact toolbar mode (narrow container) */
+.codian-input-toolbar--compact .codian-model-icon {
+  display: flex;
+}
+
+.codian-input-toolbar--compact .codian-model-label {
+  display: none;
+}
+
+.codian-input-toolbar--compact .codian-model-btn {
+  padding: 4px;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
 }
 
 .codian-model-chevron {
@@ -42,13 +78,15 @@
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   width: max-content;
+  max-width: min(320px, 90vw);
   padding: 4px;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.15s ease, visibility 0.15s ease;
 }
 
-.codian-model-selector:hover .codian-model-dropdown {
+.codian-model-selector:hover .codian-model-dropdown,
+.codian-model-dropdown.visible {
   opacity: 1;
   visibility: visible;
 }

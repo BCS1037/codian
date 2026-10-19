@@ -63,6 +63,22 @@ export interface ScriptToolCallItem {
   error?: string;
 }
 
+export interface ToolResultDiff {
+  filePath?: string;
+  diffLines: DiffLine[];
+  stats: DiffStats;
+}
+
+export interface ToolResultDetails {
+  resultFormat?: 'plain';
+  diff?: ToolResultDiff;
+  webSearchResults?: WebSearchResultItem[];
+  webSearchSummary?: string;
+  resultImages?: ToolResultImage[];
+  scriptToolCalls?: ScriptToolCallItem[];
+  resolvedAnswers?: AskUserAnswers;
+}
+
 /** Tool call tracking with status and result. */
 export interface ToolCallInfo {
   id: string;
@@ -122,6 +138,8 @@ export type AsyncSubagentStatus =
 
 /** Subagent (Agent tool) tracking for sync and async modes. */
 export interface SubagentInfo {
+  /** Session events own this state independently of the parent tool result. */
+  lifecycleSource?: 'session';
   id: string;
   description: string;
   prompt?: string;
@@ -135,4 +153,15 @@ export interface SubagentInfo {
   outputToolId?: string;
   startedAt?: number;
   completedAt?: number;
+}
+
+export interface SubagentProgress {
+  /** Tool call that spawned the subagent. */
+  toolCallId: string;
+  /** One-line description of what the subagent is doing now. */
+  summary?: string;
+  lastToolName?: string;
+  toolUses?: number;
+  totalTokens?: number;
+  durationMs?: number;
 }

@@ -78,6 +78,11 @@ export class ModelSelector {
       this.updateDisplay();
       this.renderOptions();
     });
+    this.container.ownerDocument.addEventListener('click', (e) => {
+      if (!this.container.contains(e.target as Node)) {
+        this.dropdownEl?.classList.remove('visible');
+      }
+    });
   }
 
   private getAvailableModels() {
@@ -126,6 +131,12 @@ export class ModelSelector {
     this.container.empty();
 
     this.buttonEl = this.container.createDiv({ cls: 'codian-model-btn' });
+    this.buttonEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.updateDisplay();
+      this.renderOptions();
+      this.dropdownEl?.classList.toggle('visible');
+    });
     this.updateDisplay();
 
     this.dropdownEl = this.container.createDiv({ cls: 'codian-model-dropdown' });
@@ -142,8 +153,15 @@ export class ModelSelector {
 
     this.buttonEl.empty();
 
+    const iconEl = this.buttonEl.createSpan({ cls: 'codian-model-icon' });
+    setIcon(iconEl, 'brain');
+
     const labelEl = this.buttonEl.createSpan({ cls: 'codian-model-label' });
-    labelEl.setText(displayModel ? this.getDisplayLabel(displayModel) : 'Unknown');
+    const labelText = displayModel ? this.getDisplayLabel(displayModel) : 'Unknown';
+    labelEl.setText(labelText);
+
+    this.buttonEl.setAttribute('aria-label', labelText);
+    this.buttonEl.setAttribute('title', labelText);
   }
 
   renderOptions() {
@@ -197,6 +215,7 @@ export class ModelSelector {
 
       option.addEventListener('click', (e) => {
         e.stopPropagation();
+        this.dropdownEl?.classList.remove('visible');
         runToolbarAction(async () => {
           await this.callbacks.onModelChange(model.value);
           this.updateDisplay();
@@ -228,6 +247,7 @@ export class ModelSelector {
       }
       effortEl.addEventListener('click', (event) => {
         event.stopPropagation();
+        this.dropdownEl?.classList.remove('visible');
         runToolbarAction(async () => {
           await this.callbacks.onModelChange(model.value);
           await this.callbacks.onEffortLevelChange(effort.value);
@@ -1333,16 +1353,18 @@ export class ContextUsageMeter {
 }
 
 const TOOLBAR_COMPACT_CLASS = 'codian-input-toolbar--compact';
-const ROW_CENTER_TOLERANCE = 1;
+const ROW_CENTER_TOLERANCE = 2;
 
 /** Keeps required controls visible when a narrow sidebar wraps the toolbar. */
 export class InputToolbarLayoutController {
+  private lastWidth = -1;
   private mutationObserver: MutationObserver | null = null;
   private pendingLayout: ScheduledAnimationFrame | null = null;
   private resizeObserver: ResizeObserver | null = null;
 
   constructor(private readonly toolbarEl: HTMLElement) {
     this.observeLayoutChanges();
+    this.updateLayout();
     this.scheduleLayout();
   }
 
@@ -1353,6 +1375,15 @@ export class InputToolbarLayoutController {
     }
     this.resizeObserver?.disconnect();
     this.mutationObserver?.disconnect();
+  }
+
+  updateLayout(): void {
+    const currentWidth = Math.round(this.toolbarEl.getBoundingClientRect().width);
+    if (currentWidth > 0) {
+      this.lastWidth = currentWidth;
+    }
+    this.toolbarEl.classList.remove(TOOLBAR_COMPACT_CLASS);
+    this.toolbarEl.classList.toggle(TOOLBAR_COMPACT_CLASS, this.hasWrappedItems());
   }
 
   private hasWrappedItems(): boolean {
@@ -1369,7 +1400,16 @@ export class InputToolbarLayoutController {
     const ownerWindow = this.toolbarEl.ownerDocument.defaultView;
     const ResizeObserverConstructor = ownerWindow?.ResizeObserver;
     if (typeof ResizeObserverConstructor === 'function') {
-      this.resizeObserver = new ResizeObserverConstructor(() => this.scheduleLayout());
+      this.resizeObserver = new ResizeObserverConstructor((entries) => {
+        const entry = entries[0];
+        const currentWidth = entry
+          ? Math.round(entry.contentRect.width)
+          : Math.round(this.toolbarEl.getBoundingClientRect().width);
+        if (currentWidth !== this.lastWidth) {
+          this.lastWidth = currentWidth;
+          this.scheduleLayout();
+        }
+      });
       this.resizeObserver.observe(this.toolbarEl);
     }
     const MutationObserverConstructor = ownerWindow?.MutationObserver;
@@ -1383,8 +1423,7 @@ export class InputToolbarLayoutController {
     if (this.pendingLayout !== null) cancelScheduledAnimationFrame(this.pendingLayout);
     this.pendingLayout = scheduleAnimationFrame(() => {
       this.pendingLayout = null;
-      this.toolbarEl.classList.remove(TOOLBAR_COMPACT_CLASS);
-      this.toolbarEl.classList.toggle(TOOLBAR_COMPACT_CLASS, this.hasWrappedItems());
+      this.updateLayout();
     }, this.toolbarEl.ownerDocument.defaultView);
   }
 }

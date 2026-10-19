@@ -56,6 +56,7 @@ export interface MockElement {
     body?: any;
     addEventListener?: (event: string, handler: (...args: any[]) => void) => void;
     removeEventListener?: (event: string, handler: (...args: any[]) => void) => void;
+    dispatchEvent?: (eventOrType: string | { type: string; [key: string]: any }, extraArg?: any) => void;
     createElement: (tagName: string) => MockElement;
     createElementNS: (namespace: string, tagName: string) => MockElement;
     getSelection?: () => Selection | null;
@@ -91,7 +92,7 @@ const DISPLAY_CLASSES = new Set([
   ...Object.keys(CLASS_DISPLAY),
 ]);
 
-export function createMockEl(tag = 'div'): any {
+export function createMockEl(tag = 'div', inheritedDoc?: any): any {
   const children: MockElement[] = [];
   const classes = new Set<string>();
   const attributes = new Map<string, string>();
@@ -165,7 +166,8 @@ export function createMockEl(tag = 'div'): any {
   };
 
   const currentDocument = (): any => (globalThis as any).document;
-  const ownerDocument = {
+  const docEventListeners = new Map<string, Array<(...args: any[]) => void>>();
+  const ownerDocument = inheritedDoc ?? {
     defaultView,
     get activeElement() {
       return currentDocument()?.activeElement ?? null;
@@ -174,10 +176,31 @@ export function createMockEl(tag = 'div'): any {
       return currentDocument()?.body;
     },
     addEventListener(event: string, handler: (...args: any[]) => void) {
-      currentDocument()?.addEventListener?.(event, handler);
+      if (currentDocument()?.addEventListener) {
+        currentDocument().addEventListener(event, handler);
+      } else {
+        const handlers = docEventListeners.get(event) || [];
+        handlers.push(handler);
+        docEventListeners.set(event, handlers);
+      }
     },
     removeEventListener(event: string, handler: (...args: any[]) => void) {
-      currentDocument()?.removeEventListener?.(event, handler);
+      if (currentDocument()?.removeEventListener) {
+        currentDocument().removeEventListener(event, handler);
+      } else {
+        const handlers = docEventListeners.get(event) || [];
+        const idx = handlers.indexOf(handler);
+        if (idx !== -1) handlers.splice(idx, 1);
+      }
+    },
+    dispatchEvent(eventOrType: string | { type: string; [key: string]: any }, extraArg?: any) {
+      if (currentDocument()?.dispatchEvent) {
+        currentDocument().dispatchEvent(eventOrType);
+      } else {
+        const type = typeof eventOrType === 'string' ? eventOrType : eventOrType.type;
+        const handlers = docEventListeners.get(type) || [];
+        handlers.forEach(h => h(typeof eventOrType === 'string' ? extraArg : eventOrType));
+      }
     },
     createElement: (tagName: string) => currentDocument()?.createElement?.(tagName) ?? createMockEl(tagName),
     createElementNS: (namespace: string, tagName: string) =>
@@ -242,21 +265,21 @@ export function createMockEl(tag = 'div'): any {
     getClasses: () => Array.from(classes),
 
     createDiv(opts?: { cls?: string; text?: string }) {
-      const child = createMockEl('div');
+      const child = createMockEl('div', ownerDocument);
       if (opts?.cls) child.addClass(opts.cls);
       if (opts?.text) child.textContent = opts.text;
       children.push(child);
       return child;
     },
     createSpan(opts?: { cls?: string; text?: string }) {
-      const child = createMockEl('span');
+      const child = createMockEl('span', ownerDocument);
       if (opts?.cls) child.addClass(opts.cls);
       if (opts?.text) child.textContent = opts.text;
       children.push(child);
       return child;
     },
     createEl(tagName: string, opts?: { cls?: string; text?: string; attr?: Record<string, string> }) {
-      const child = createMockEl(tagName);
+      const child = createMockEl(tagName, ownerDocument);
       if (opts?.cls) child.addClass(opts.cls);
       if (opts?.text) child.textContent = opts.text;
       if (opts?.attr) {
@@ -268,7 +291,7 @@ export function createMockEl(tag = 'div'): any {
       return child;
     },
     createSvg(tagName: string, opts?: { cls?: string; text?: string; attr?: Record<string, string> }) {
-      const child = createMockEl(tagName);
+      const child = createMockEl(tagName, ownerDocument);
       if (opts?.cls) child.addClass(opts.cls);
       if (opts?.text) child.textContent = opts.text;
       if (opts?.attr) {

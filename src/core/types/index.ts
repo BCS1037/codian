@@ -1,6 +1,8 @@
 // Chat types
 export {
   type ChatMessage,
+  type CitationEntry,
+  type CitationGroup,
   type ContentBlock,
   type Conversation,
   type ConversationMeta,
@@ -9,11 +11,13 @@ export {
   type ImageMediaType,
   type SessionMetadata,
   type StreamChunk,
+  type TurnStats,
   type UsageInfo,
   VIEW_TYPE_CODIAN,
 } from './chat';
 export { compareConversationIndexOrder, isCanonicalUserMessage } from './chat';
 export { type ProviderId } from './provider';
+export { createTurnStats, isTokenCount } from './turnStats';
 
 // Settings and command types
 export {
@@ -45,12 +49,18 @@ export {
   type ExitPlanModeCallback,
   type ExitPlanModeDecision,
   type ExitPlanModePresentationOptions,
+  type ScriptToolCallItem,
   type SubagentInfo,
   type SubagentMode,
+  type SubagentProgress,
   type ToolCallInfo,
   type ToolDiffData,
   type ToolProviderPayload,
+  type ToolResultDetails,
+  type ToolResultDiff,
   type ToolResultFormat,
+  type ToolResultImage,
+  type WebSearchResultItem,
 } from './tools';
 
 // Agent types
