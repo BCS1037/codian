@@ -87,7 +87,7 @@ export async function createCodexWorkspaceServices(
     refreshModelCatalog: async context => modelCatalogCoordinator.refreshModelCatalog(context),
     prepareSettings: async () => {
       await Promise.all([
-        mcpCatalog.loadServers(),
+        mcpCatalog.ensureLoaded(),
         agentMentionProvider.loadAgents(),
       ]);
     },

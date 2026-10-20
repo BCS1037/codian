@@ -200,11 +200,18 @@ export class MarkdownView {
 }
 
 export class Setting {
+  settingEl: any = { addClass: jest.fn(), removeClass: jest.fn() };
   constructor(containerEl: any) {}
   setName = jest.fn().mockReturnThis();
   setDesc = jest.fn().mockReturnThis();
+  setClass = jest.fn().mockReturnThis();
+  setHeading = jest.fn().mockReturnThis();
   addToggle = jest.fn().mockReturnThis();
   addTextArea = jest.fn().mockReturnThis();
+  addDropdown = jest.fn().mockReturnThis();
+  addButton = jest.fn().mockReturnThis();
+  addText = jest.fn().mockReturnThis();
+  addSlider = jest.fn().mockReturnThis();
 }
 
 export class SecretComponent {

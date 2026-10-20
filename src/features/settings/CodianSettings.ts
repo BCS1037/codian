@@ -274,6 +274,46 @@ export class CodianSettingTab extends PluginSettingTab {
     const tabBar = containerEl.createDiv({ cls: 'codian-settings-tabs' });
     const tabButtons = new Map<SettingsTabId, HTMLButtonElement>();
     const tabContents = new Map<SettingsTabId, HTMLDivElement>();
+    const renderedTabIds = new Set<SettingsTabId>();
+
+    const renderTab = (id: SettingsTabId): void => {
+      if (renderedTabIds.has(id)) return;
+      const content = tabContents.get(id);
+      if (!content) return;
+      renderedTabIds.add(id);
+      switch (id) {
+        case 'general':
+          this.renderGeneralTab(content);
+          break;
+        case 'providers':
+          void this.renderProvidersTab(content, registeredProviderIds, displayGeneration, () => {
+            renderedTabIds.delete('providers');
+            renderTab('providers');
+          });
+          break;
+        case 'workspace':
+          void this.renderWorkspaceTab(content, registeredProviderIds, displayGeneration);
+          break;
+        case 'about':
+          this.renderAboutTab(content);
+          break;
+        default:
+          break;
+      }
+    };
+
+    const activateTab = (id: SettingsTabId): void => {
+      this.activeTab = id;
+      for (const [tabId, btn] of tabButtons) {
+        const active = tabId === id;
+        btn.toggleClass('codian-settings-tab--active', active);
+        btn.setAttribute('aria-selected', String(active));
+      }
+      for (const [tabId, content] of tabContents) {
+        content.toggleClass('codian-settings-tab-content--active', tabId === id);
+      }
+      renderTab(id);
+    };
 
     for (const id of tabIds) {
       const label = this.getTabLabel(id);
@@ -283,11 +323,11 @@ export class CodianSettingTab extends PluginSettingTab {
         attr: {
           role: 'tab',
           'aria-selected': String(id === this.activeTab),
+          'data-tab-id': id,
         },
       });
       button.addEventListener('click', () => {
-        this.activeTab = id;
-        this.display();
+        activateTab(id);
       });
       tabButtons.set(id, button);
     }
@@ -296,66 +336,32 @@ export class CodianSettingTab extends PluginSettingTab {
     for (const id of tabIds) {
       const content = containerEl.createDiv({
         cls: `codian-settings-tab-content${id === this.activeTab ? ' codian-settings-tab-content--active' : ''}`,
+        attr: {
+          'data-tab-content': id,
+        },
       });
       tabContents.set(id, content);
     }
 
-    const activeContent = tabContents.get(this.activeTab);
-    if (!activeContent) return;
-    switch (this.activeTab) {
-      case 'general':
-        this.renderGeneralTab(activeContent);
-        break;
-      case 'providers':
-        void this.renderProvidersTab(activeContent, registeredProviderIds, displayGeneration);
-        break;
-      case 'workspace':
-        void this.renderWorkspaceTab(activeContent, registeredProviderIds, displayGeneration);
-        break;
-      case 'about':
-        this.renderAboutTab(activeContent);
-        break;
-      default:
-        break;
-    }
+    renderTab(this.activeTab);
   }
 
-  private async prepareProviderSettings(
-    container: HTMLElement,
+  private async ensureProvidersInitialized(
     providerIds: readonly ProviderId[],
-    displayGeneration: number,
-    prepare = true,
-  ): Promise<boolean> {
-    container.empty();
-    container.createDiv({
-      cls: 'codian-settings-provider-loading',
-      text: t('settings.settingsHub.loadingResources'),
-    });
-    try {
-      await Promise.all(providerIds.map(async providerId => {
-        await ProviderWorkspaceRegistry.ensureInitialized(
-          this.plugin.providerHost,
-          providerId,
-          'settings-tab',
-        );
-        if (prepare) {
-          await ProviderWorkspaceRegistry.prepareSettings(providerId);
+  ): Promise<void> {
+    await Promise.all(
+      providerIds.map(async (providerId) => {
+        try {
+          await ProviderWorkspaceRegistry.ensureInitialized(
+            this.plugin.providerHost,
+            providerId,
+            'settings-tab',
+          );
+        } catch {
+          // Keep resilient if a single provider fails to initialize
         }
-      }));
-      if (displayGeneration !== this.displayGeneration) return false;
-      container.empty();
-      return true;
-    } catch (error) {
-      if (displayGeneration !== this.displayGeneration) return false;
-      container.empty();
-      container.createDiv({
-        cls: 'codian-setting-validation codian-setting-validation-error',
-        text: `Could not load provider settings: ${
-          error instanceof Error ? error.message : 'Unknown error'
-        }`,
-      });
-      return false;
-    }
+      }),
+    );
   }
 
   private getTabLabel(id: SettingsTabId): string {
@@ -407,10 +413,12 @@ export class CodianSettingTab extends PluginSettingTab {
     providerIds: readonly ProviderId[],
     selectedProviderId: ProviderId,
     onSelect: (providerId: ProviderId) => void,
-  ): Promise<void> {
+    onProvidersChanged?: () => void,
+  ): Promise<{ updateSelected(providerId: ProviderId): void }> {
     const picker = container.createDiv({ cls: 'codian-settings-provider-grid' });
     const settingsBag = this.plugin.settings as unknown as Record<string, unknown>;
     const defaultProviderId = ProviderRegistry.resolveDefaultChatProviderId(settingsBag);
+    const cardMap = new Map<ProviderId, HTMLElement>();
 
     for (const providerId of providerIds) {
       const enabled = ProviderRegistry.isEnabled(providerId, settingsBag);
@@ -427,6 +435,7 @@ export class CodianSettingTab extends PluginSettingTab {
           'aria-pressed': String(providerId === selectedProviderId),
         },
       });
+      cardMap.set(providerId, card);
       const header = card.createDiv({ cls: 'codian-settings-provider-card-header' });
       const identity = header.createDiv({ cls: 'codian-settings-provider-card-identity' });
       identity.createSpan({
@@ -469,7 +478,11 @@ export class CodianSettingTab extends PluginSettingTab {
             );
             await ProviderWorkspaceRegistry.refreshModelCatalog(providerId);
           }
-          this.display();
+          if (onProvidersChanged) {
+            onProvidersChanged();
+          } else {
+            this.display();
+          }
         })();
       });
       const metadata = card.createDiv({ cls: 'codian-settings-provider-card-meta' });
@@ -481,6 +494,16 @@ export class CodianSettingTab extends PluginSettingTab {
         onSelect(providerId);
       });
     }
+
+    return {
+      updateSelected: (newSelectedId: ProviderId) => {
+        for (const [id, card] of cardMap) {
+          const active = id === newSelectedId;
+          card.toggleClass('codian-settings-provider-card--active', active);
+          card.setAttribute('aria-pressed', String(active));
+        }
+      },
+    };
   }
 
   private renderProviderSettingsSection(
@@ -502,18 +525,11 @@ export class CodianSettingTab extends PluginSettingTab {
     container: HTMLElement,
     providerIds: readonly ProviderId[],
     displayGeneration: number,
+    onProvidersChanged?: () => void,
   ): Promise<void> {
-    if (!await this.prepareProviderSettings(
-      container,
-      providerIds,
-      displayGeneration,
-      false,
-    )) return;
-    if (!await this.prepareProviderSettings(
-      container,
-      [this.activeProviderId],
-      displayGeneration,
-    )) return;
+    container.empty();
+    await this.ensureProvidersInitialized(providerIds);
+    if (displayGeneration !== this.displayGeneration) return;
     const defaultProviderSetting = new Setting(container)
       .setName(t('settings.settingsHub.defaultProvider'))
       .setDesc(t('settings.defaultChatProvider.desc'))
@@ -533,25 +549,45 @@ export class CodianSettingTab extends PluginSettingTab {
             for (const view of this.plugin.getAllViews()) {
               view.refreshModelSelector();
             }
-            this.display();
+            if (onProvidersChanged) {
+              onProvidersChanged();
+            } else {
+              this.display();
+            }
           });
       });
     defaultProviderSetting.settingEl.addClass('codian-settings-default-provider');
 
-    await this.renderProviderPicker(container, providerIds, this.activeProviderId, (providerId) => {
-      this.activeProviderId = providerId;
-      this.display();
-    });
+    const details = container.createDiv({ cls: 'codian-settings-provider-details' });
+    const updateDetails = async (providerId: ProviderId): Promise<void> => {
+      details.empty();
+      new Setting(details)
+        .setName(t('settings.settingsHub.providerDetails').replace(
+          '{provider}',
+          ProviderRegistry.getProviderDisplayName(providerId),
+        ))
+        .setHeading();
+      await ProviderWorkspaceRegistry.prepareSettings(providerId);
+      if (displayGeneration !== this.displayGeneration || this.activeProviderId !== providerId) return;
+      this.renderProviderSettingsSection(details, providerId, 'provider');
+    };
+
+    const pickerControl = await this.renderProviderPicker(
+      container,
+      providerIds,
+      this.activeProviderId,
+      (providerId) => {
+        if (this.activeProviderId === providerId) return;
+        this.activeProviderId = providerId;
+        pickerControl.updateSelected(providerId);
+        void updateDetails(providerId);
+      },
+      onProvidersChanged,
+    );
     if (displayGeneration !== this.displayGeneration) return;
 
-    const details = container.createDiv({ cls: 'codian-settings-provider-details' });
-    new Setting(details)
-      .setName(t('settings.settingsHub.providerDetails').replace(
-        '{provider}',
-        ProviderRegistry.getProviderDisplayName(this.activeProviderId),
-      ))
-      .setHeading();
-    this.renderProviderSettingsSection(details, this.activeProviderId, 'provider');
+    container.appendChild(details);
+    void updateDetails(this.activeProviderId);
   }
 
   private async renderWorkspaceTab(
@@ -559,41 +595,12 @@ export class CodianSettingTab extends PluginSettingTab {
     providerIds: readonly ProviderId[],
     displayGeneration: number,
   ): Promise<void> {
-    if (!await this.prepareProviderSettings(
-      container,
-      providerIds,
-      displayGeneration,
-    )) return;
-    const supportingProviderIds = providerIds.filter(providerId => (
-      ProviderWorkspaceRegistry.supportsSettingsSection(providerId, this.activeWorkspaceSection)
-    ));
-    const sectionNav = container.createDiv({ cls: 'codian-settings-segmented-nav' });
-    for (const section of WORKSPACE_SETTINGS_SECTIONS) {
-      const button = sectionNav.createEl('button', {
-        cls: section === this.activeWorkspaceSection ? 'is-active' : '',
-        text: t(`settings.settingsHub.workspaceSections.${section}`),
-        attr: {
-          type: 'button',
-          'aria-pressed': String(section === this.activeWorkspaceSection),
-        },
-      });
-      button.addEventListener('click', () => {
-        this.activeWorkspaceSection = section;
-        this.display();
-      });
-    }
+    container.empty();
+    await this.ensureProvidersInitialized(providerIds);
+    if (displayGeneration !== this.displayGeneration) return;
 
-    if (supportingProviderIds.length === 0) {
-      this.renderProviderSettingsSection(
-        container,
-        this.activeWorkspaceProviderId,
-        this.activeWorkspaceSection,
-      );
-      return;
-    }
-    if (!supportingProviderIds.includes(this.activeWorkspaceProviderId)) {
-      this.activeWorkspaceProviderId = supportingProviderIds[0];
-    }
+    const sectionNav = container.createDiv({ cls: 'codian-settings-segmented-nav' });
+    const sectionButtons = new Map<WorkspaceSettingsSection, HTMLElement>();
 
     const toolbar = container.createDiv({ cls: 'codian-settings-resource-toolbar' });
     const actions = toolbar.createDiv({ cls: 'codian-settings-resource-actions' });
@@ -605,30 +612,24 @@ export class CodianSettingTab extends PluginSettingTab {
         'aria-label': t('settings.settingsHub.searchResources'),
       },
     });
+    const refreshButton = actions.createEl('button', {
+      cls: 'codian-settings-resource-refresh-btn',
+      text: t('common.refresh'),
+      attr: {
+        type: 'button',
+        'aria-label': t('common.refresh'),
+      },
+    });
     const manageButton = actions.createEl('button', {
       cls: 'mod-cta',
       text: t('settings.settingsHub.newResource'),
       attr: { type: 'button' },
     });
-    manageButton.addEventListener('click', () => {
-      new WorkspaceSettingsModal(
-        this.app,
-        t('settings.settingsHub.manageResources').replace(
-          '{section}',
-          t(`settings.settingsHub.workspaceSections.${this.activeWorkspaceSection}`),
-        ),
-        supportingProviderIds,
-        this.activeWorkspaceProviderId,
-        (target, providerId) => this.renderProviderSettingsSection(
-          target,
-          providerId,
-          this.activeWorkspaceSection,
-        ),
-      ).open();
-    });
+
+    const hintEl = container.createDiv({ cls: 'codian-settings-resource-hint codian-hidden' });
+    hintEl.setText(t('settings.settingsHub.mcpCacheHint'));
 
     const list = container.createDiv({ cls: 'codian-settings-resource-list' });
-    list.setText(t('settings.settingsHub.loadingResources'));
     let resources: WorkspaceResourceRow[] = [];
     const renderRows = (): void => this.renderWorkspaceResourceRows(
       list,
@@ -636,13 +637,113 @@ export class CodianSettingTab extends PluginSettingTab {
       search.value,
     );
     search.addEventListener('input', renderRows);
-    void loadWorkspaceResources(providerIds, this.activeWorkspaceSection, {
-      loadSharedSkills: () => this.loadDiscoveredAgentSkills(),
-    }).then((loaded) => {
-      if (!list.isConnected) return;
-      resources = loaded;
-      renderRows();
+
+    let isRefreshing = false;
+    refreshButton.addEventListener('click', async () => {
+      if (isRefreshing) return;
+      isRefreshing = true;
+      refreshButton.setAttribute('disabled', 'true');
+      refreshButton.setText(t('settings.settingsHub.loadingResources'));
+      list.empty();
+      list.setText(t('settings.settingsHub.loadingResources'));
+
+      try {
+        const loaded = await loadWorkspaceResources(providerIds, this.activeWorkspaceSection, {
+          loadSharedSkills: () => this.loadDiscoveredAgentSkills(),
+          forceRefresh: true,
+        });
+        if (list.isConnected) {
+          resources = loaded;
+          renderRows();
+        }
+        new Notice(t('settings.settingsHub.resourcesRefreshed'));
+      } catch (error) {
+        new Notice(`Failed to refresh: ${error instanceof Error ? error.message : String(error)}`);
+      } finally {
+        isRefreshing = false;
+        refreshButton.removeAttribute('disabled');
+        refreshButton.setText(t('common.refresh'));
+      }
     });
+
+    const updateSection = (section: WorkspaceSettingsSection): void => {
+      const supportingProviderIds = providerIds.filter(providerId => (
+        ProviderWorkspaceRegistry.supportsSettingsSection(providerId, section)
+      ));
+
+      if (supportingProviderIds.length === 0) {
+        toolbar.addClass('codian-hidden');
+        hintEl.addClass('codian-hidden');
+        list.empty();
+        this.renderProviderSettingsSection(
+          list,
+          this.activeWorkspaceProviderId,
+          section,
+        );
+        return;
+      }
+
+      toolbar.removeClass('codian-hidden');
+      if (section === 'mcp') {
+        hintEl.removeClass('codian-hidden');
+      } else {
+        hintEl.addClass('codian-hidden');
+      }
+      if (!supportingProviderIds.includes(this.activeWorkspaceProviderId)) {
+        this.activeWorkspaceProviderId = supportingProviderIds[0];
+      }
+
+      manageButton.onclick = () => {
+        new WorkspaceSettingsModal(
+          this.app,
+          t('settings.settingsHub.manageResources').replace(
+            '{section}',
+            t(`settings.settingsHub.workspaceSections.${section}`),
+          ),
+          supportingProviderIds,
+          this.activeWorkspaceProviderId,
+          (target, providerId) => this.renderProviderSettingsSection(
+            target,
+            providerId,
+            section,
+          ),
+        ).open();
+      };
+
+      list.setText(t('settings.settingsHub.loadingResources'));
+      search.value = '';
+      void loadWorkspaceResources(providerIds, section, {
+        loadSharedSkills: () => this.loadDiscoveredAgentSkills(),
+      }).then((loaded) => {
+        if (!list.isConnected || this.activeWorkspaceSection !== section) return;
+        resources = loaded;
+        renderRows();
+      });
+    };
+
+    for (const section of WORKSPACE_SETTINGS_SECTIONS) {
+      const button = sectionNav.createEl('button', {
+        cls: section === this.activeWorkspaceSection ? 'is-active' : '',
+        text: t(`settings.settingsHub.workspaceSections.${section}`),
+        attr: {
+          type: 'button',
+          'aria-pressed': String(section === this.activeWorkspaceSection),
+        },
+      });
+      button.addEventListener('click', () => {
+        if (this.activeWorkspaceSection === section) return;
+        this.activeWorkspaceSection = section;
+        for (const [s, btn] of sectionButtons) {
+          const active = s === section;
+          btn.toggleClass('is-active', active);
+          btn.setAttribute('aria-pressed', String(active));
+        }
+        updateSection(section);
+      });
+      sectionButtons.set(section, button);
+    }
+
+    updateSection(this.activeWorkspaceSection);
   }
 
   private loadDiscoveredAgentSkills(): Promise<AgentSkillListResult> {

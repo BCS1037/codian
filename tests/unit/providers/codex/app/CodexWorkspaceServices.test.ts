@@ -145,6 +145,10 @@ describe('CodexWorkspaceServices', () => {
     const services = await createCodexWorkspaceServices(plugin, {} as any, homeAccess);
     await services.prepareSettings?.();
 
+    expect(homeAccess.readMcpConfig).toHaveBeenCalledTimes(1);
+    await services.prepareSettings?.();
+    expect(homeAccess.readMcpConfig).toHaveBeenCalledTimes(1);
+
     expect(services.mcpSourcePath).toBe(
       'codex mcp list --json (fallback: ~/.codex/config.toml)',
     );

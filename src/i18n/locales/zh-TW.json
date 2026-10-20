@@ -1021,6 +1021,8 @@
       "newResource": "新增",
       "manageResources": "管理 {section}",
       "loadingResources": "正在載入資源…",
+      "resourcesRefreshed": "工作區資源已重新整理。",
+      "mcpCacheHint": "MCP 伺服器清單已快取在記憶體中以確保順暢切換。若在外部終端機修改了設定，可點擊「重新整理」同步。",
       "noResources": "沒有符合的工作區資源。",
       "resourceColumns": {
         "name": "名稱",

@@ -1021,6 +1021,8 @@
       "newResource": "Novo",
       "manageResources": "Gerenciar {section}",
       "loadingResources": "Carregando recursos…",
+      "resourcesRefreshed": "Recursos do espaço de trabalho atualizados.",
+      "mcpCacheHint": "Os servidores MCP são armazenados em cache para navegação rápida. Clique em Atualizar para sincronizar alterações externas.",
       "noResources": "Nenhum recurso correspondente.",
       "resourceColumns": {
         "name": "Nome",
