@@ -1,5 +1,12 @@
 export type HiddenProviderCommands = Record<string, string[]>;
 
+/** Inline edit's own model; reasoning is omitted to follow the provider's saved effort. */
+export interface StoredInlineEditModelSelection {
+  providerId: string;
+  model: string;
+  reasoning?: string;
+}
+
 export interface ApprovalSelectionDecision {
   type: 'select-option';
   value: string;
@@ -146,6 +153,8 @@ export interface CodianSettings {
   // Provider selection
   defaultChatProviderId?: string; // ProviderId — default for initial blank tabs
   settingsProvider: string;  // ProviderId — which provider's model/effort/budget is projected to top-level fields
+  /** Null or undefined starts inline edits from the active chat selection. */
+  inlineEditModel?: StoredInlineEditModelSelection | null;
   savedProviderModel: Partial<Record<string, string>>;
   savedProviderEffort: Partial<Record<string, string>>;
   savedProviderServiceTier: Partial<Record<string, string>>;

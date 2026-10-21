@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.7.0 — 2026-10-21
+
+- **Multi-Provider Inline Edit & Model Selection**:
+  - Expanded the inline edit composer to support all enabled providers (Codex, DeepSeek, Grok, OpenCode, Pi, Claude), grouping models cleanly under their respective provider with official logos.
+  - Dynamically initializes and switches the active provider's `InlineEditService` when selecting a model from a different provider, updating theme accents and slash commands in real time.
+  - Automatically resolves inline edit defaults from the active conversation or draft tab, and persists user choices to `inlineEditModel` settings.
+- **Discrete Reasoning Effort Controls**:
+  - Replaced continuous sliders with Codian's sidebar-consistent discrete reasoning effort options (`Low`, `Medium`, `High`, `Max`).
+  - Added an effort flyout submenu (`›`) on each adaptive reasoning model in the model dropdown for one-step model and effort selection.
+  - Displayed a dedicated `ThinkingSelector` gear menu beside the model button, enabling fast effort level adjustments on the fly.
+- **Shared Architecture & Robustness**:
+  - Unified toolbar components into canonical shared `ModelSelector` and `ThinkingSelector` modules, eliminating redundant code across chat toolbars and inline editors.
+  - Resolved CodeMirror floating dropdown containment clipping using CSS custom properties via `setCssProps`.
+
 ## 1.6.2 — 2026-10-21
 
 - **Instant Settings Tab Switching & Navigation**:

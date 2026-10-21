@@ -49,14 +49,17 @@
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 4px;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
   padding: 4px;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.15s ease, visibility 0.15s ease;
 }
 
-/* Expand on hover */
-.codian-thinking-gears:hover .codian-thinking-options {
+/* Expand on hover or when opened */
+.codian-thinking-gears:hover .codian-thinking-options,
+.codian-thinking-options.visible {
   opacity: 1;
   visibility: visible;
 }

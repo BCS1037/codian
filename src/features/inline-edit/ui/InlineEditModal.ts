@@ -7,14 +7,25 @@ import { Notice } from 'obsidian';
 import { getHiddenProviderCommandSet } from '../../../core/providers/commands/hiddenCommands';
 import { normalizeProviderCommandDiscoveryItems } from '../../../core/providers/commands/ProviderCommandDiscoveryResult';
 import { ProviderCommandDiscoveryStore } from '../../../core/providers/commands/ProviderCommandDiscoveryStore';
-import { resolveConversationModel } from '../../../core/providers/conversationModel';
+import {
+  getProviderSettingsSnapshotWithModel,
+  resolveConversationModel,
+} from '../../../core/providers/conversationModel';
+import {
+  getAllEnabledProviderModelOptions,
+  getEnabledProviderForModel,
+} from '../../../core/providers/modelRouting';
 import { ProviderRegistry } from '../../../core/providers/ProviderRegistry';
 import { ProviderWorkspaceRegistry } from '../../../core/providers/ProviderWorkspaceRegistry';
 import { DEFAULT_CHAT_PROVIDER_ID, type InlineEditMode, type InlineEditService, type ProviderId } from '../../../core/providers/types';
+import type { StoredInlineEditModelSelection } from '../../../core/types/settings';
 import { hideSelectionHighlight, showSelectionHighlight } from '../../../shared/components/SelectionHighlight';
 import { SlashCommandDropdown } from '../../../shared/components/SlashCommandDropdown';
 import { MentionDropdownController } from '../../../shared/mention/MentionDropdownController';
 import { VaultMentionDataProvider } from '../../../shared/mention/VaultMentionDataProvider';
+import { ModelSelector } from '../../../shared/toolbar/ModelSelector';
+import { ThinkingSelector } from '../../../shared/toolbar/ThinkingSelector';
+import type { ModelPickerCallbacks, ModelPickerSettings } from '../../../shared/toolbar/types';
 import {
   createExternalContextLookupGetter,
   findBestMentionLookupMatch,
@@ -80,6 +91,9 @@ class InputWidget extends WidgetType {
   }
   toDOM(): HTMLElement {
     return this.controller.createInputDOM();
+  }
+  destroy(dom: HTMLElement): void {
+    this.controller.destroyInputDOM(dom);
   }
   eq(): boolean {
     return false;
@@ -189,23 +203,60 @@ interface InlineEditSourceSnapshot {
 
 interface InlineEditProviderContext {
   modelOverride?: string;
+  reasoningOverride?: string;
   providerId: ProviderId;
 }
 
+/** The saved inline default, while its provider is enabled and still offers its model and effort. */
+function resolveSavedInlineEditModel(plugin: InlineEditHost): InlineEditProviderContext | null {
+  const saved = plugin.settings?.inlineEditModel;
+  if (!saved
+    || !ProviderRegistry.getRegisteredProviderIds().includes(saved.providerId)
+    || !ProviderRegistry.isEnabled(saved.providerId, plugin.settings)) {
+    return null;
+  }
+  const settings = getProviderSettingsSnapshotWithModel({ ...plugin.settings }, saved.providerId);
+  const uiConfig = ProviderRegistry.getChatUIConfig(saved.providerId);
+  const envVars = typeof plugin.getActiveEnvironmentVariables === 'function'
+    ? plugin.getActiveEnvironmentVariables(saved.providerId)
+    : '';
+  const offered = uiConfig.getModelOptions({
+    ...settings,
+    environmentVariables: envVars,
+  }).some(option => option.value === saved.model);
+  if (!offered) return null;
+  const reasoningOffered = uiConfig.getReasoningOptions(saved.model, settings)
+    .some(option => option.value === saved.reasoning);
+  return {
+    modelOverride: saved.model,
+    reasoningOverride: reasoningOffered ? saved.reasoning : undefined,
+    providerId: saved.providerId,
+  };
+}
+
 function resolveInlineEditProviderContext(plugin: InlineEditHost): InlineEditProviderContext {
+  const saved = resolveSavedInlineEditModel(plugin);
+  if (saved) return saved;
   const activeView = typeof plugin.getView === 'function' ? plugin.getView() : null;
   const activeTab = activeView?.getActiveTab();
   const conversation = activeTab?.conversationId
     ? plugin.getConversationSync(activeTab.conversationId)
     : null;
+  const activeDraftProvider = activeTab?.draftModel && plugin.settings
+    ? getEnabledProviderForModel(activeTab.draftModel, plugin.settings)
+    : undefined;
   const providerId = conversation?.providerId
     ?? activeTab?.service?.providerId
+    ?? activeDraftProvider
     ?? activeTab?.providerId
+    ?? (plugin.settings?.defaultChatProvider as ProviderId)
     ?? DEFAULT_CHAT_PROVIDER_ID;
   const modelOverride = conversation
     ? resolveConversationModel(plugin.settings, providerId, conversation).model
     : activeTab?.service?.providerId === providerId
     ? activeTab.service.getAuxiliaryModel?.()
+    : activeTab?.draftModel && activeDraftProvider === providerId
+    ? activeTab.draftModel
     : activeTab?.providerId === providerId
     ? activeTab.draftModel
     : null;
@@ -287,6 +338,7 @@ export class InlineEditModal {
 export class InlineEditSession {
   private inputEl: HTMLInputElement | null = null;
   private spinnerEl: HTMLElement | null = null;
+  private modelToolbarEl: HTMLElement | null = null;
   private agentReplyEl: HTMLElement | null = null;
   private containerEl: HTMLElement | null = null;
   private editedText: string | null = null;
@@ -310,6 +362,17 @@ export class InlineEditSession {
   private sourceSnapshot: InlineEditSourceSnapshot | null = null;
   private settled = false;
   private generation = 0;
+  private generating = false;
+
+  private modelOverride: string | undefined;
+  private reasoningOverride: string | undefined;
+  private inputResources: {
+    container: HTMLElement;
+    modelSelector: ModelSelector;
+    thinkingSelector: ThinkingSelector;
+    menuLayer: HTMLElement;
+    dispose(): void;
+  } | null = null;
 
   constructor(
     private app: App,
@@ -318,7 +381,7 @@ export class InlineEditSession {
     private editor: Editor,
     editContext: InlineEditContext,
     private notePath: string,
-    private getExternalContexts: () => string[],
+    private getExternalContexts: () => string[] = () => [],
     private resolve: (result: { decision: InlineEditDecision; editedText?: string }) => void,
     providerContext?: InlineEditProviderContext,
   ) {
@@ -328,7 +391,10 @@ export class InlineEditSession {
       plugin.providerHost,
       providerId,
     );
-    this.inlineEditService.setModelOverride?.(resolvedProviderContext.modelOverride);
+    this.modelOverride = resolvedProviderContext.modelOverride;
+    this.reasoningOverride = resolvedProviderContext.reasoningOverride;
+    this.inlineEditService.setModelOverride?.(this.modelOverride);
+    this.inlineEditService.setReasoningOverride?.(this.reasoningOverride);
     this.resolvedProviderId = providerId;
     this.mentionDataProvider = new VaultMentionDataProvider(this.app, {
       onFileLoadError: () => {
@@ -446,7 +512,20 @@ export class InlineEditSession {
     this.editorView.dom.addEventListener('keyup', this.selectionListener);
   }
 
+  destroyInputDOM(container: HTMLElement): void {
+    if (this.inputResources?.container !== container) return;
+    this.inputResources.dispose();
+    this.inputResources = null;
+    this.agentReplyRenderVersion += 1;
+    this.inputEl = null;
+    this.spinnerEl = null;
+    this.modelToolbarEl = null;
+    this.agentReplyEl = null;
+    if (this.containerEl === container) this.containerEl = null;
+  }
+
   createInputDOM(): HTMLElement {
+    if (this.inputResources) this.destroyInputDOM(this.inputResources.container);
     const ownerDocument = this.getOwnerDocument();
     const container = createDiv({
       cls: 'codian-inline-input-container',
@@ -460,7 +539,7 @@ export class InlineEditSession {
 
     const inputWrap = cardEl.createDiv({ cls: 'codian-inline-input-wrap' });
 
-    this.inputEl = inputWrap.createEl('input', {
+    const inputEl = inputWrap.createEl('input', {
       cls: 'codian-inline-input',
       type: 'text',
       attr: {
@@ -468,30 +547,19 @@ export class InlineEditSession {
         spellcheck: 'false',
       },
     });
+    this.inputEl = inputEl;
 
     this.spinnerEl = inputWrap.createDiv({ cls: 'codian-inline-spinner codian-hidden' });
+    this.modelToolbarEl = inputWrap.createDiv({ cls: 'codian-input-toolbar codian-inline-model-toolbar' });
+    const menuLayer = ownerDocument.body.createDiv({
+      cls: 'codian-inline-menu-layer',
+      attr: { 'data-provider': this.resolvedProviderId },
+    });
+    const modelSelector = new ModelSelector(this.modelToolbarEl, this.modelPickerCallbacks(), menuLayer);
+    const thinkingSelector = new ThinkingSelector(this.modelToolbarEl, this.modelPickerCallbacks(), menuLayer);
+    this.showGenerating(this.generating);
 
-    const inlineCatalog = ProviderWorkspaceRegistry.getCommandCatalog(this.resolvedProviderId);
-    this.slashCommandDropdown = new SlashCommandDropdown(
-      ownerDocument.body,
-      this.inputEl,
-      {
-        onSelect: () => {},
-        onHide: () => {},
-      },
-      {
-        fixed: true,
-        hiddenCommands: getHiddenProviderCommandSet(this.plugin.settings, this.resolvedProviderId),
-        ...(inlineCatalog ? {
-          providerConfig: inlineCatalog.getDropdownConfig(),
-          providerDiscovery: new ProviderCommandDiscoveryStore(async () =>
-            normalizeProviderCommandDiscoveryItems(
-              await inlineCatalog.listDropdownEntries({ includeBuiltIns: false }),
-            ),
-          ),
-        } : {}),
-      }
-    );
+    this.setupSlashCommandDropdown();
 
     this.mentionDropdown = new MentionDropdownController(
       ownerDocument.body,
@@ -514,8 +582,181 @@ export class InlineEditSession {
     this.inputEl.addEventListener('keydown', (e) => this.handleKeydown(e));
     this.inputEl.addEventListener('input', () => this.mentionDropdown?.handleInputChange());
 
-    window.setTimeout(() => this.inputEl?.focus(), 50);
+    const focusTimer = window.setTimeout(() => {
+      const active = ownerDocument.activeElement;
+      if (active && (container.contains(active) || menuLayer.contains(active))) return;
+      this.inputEl?.focus();
+    }, 50);
+
+    this.inputResources = {
+      container,
+      modelSelector,
+      thinkingSelector,
+      menuLayer,
+      dispose: () => {
+        window.clearTimeout(focusTimer);
+        modelSelector.destroy();
+        thinkingSelector.destroy();
+        menuLayer.remove();
+        this.slashCommandDropdown?.destroy();
+        this.slashCommandDropdown = null;
+        this.mentionDropdown?.destroy();
+        this.mentionDropdown = null;
+      },
+    };
+
     return container;
+  }
+
+  private setupSlashCommandDropdown(): void {
+    this.slashCommandDropdown?.destroy();
+    if (!this.inputEl) return;
+    const ownerDocument = this.getOwnerDocument();
+    const inlineCatalog = ProviderWorkspaceRegistry.getCommandCatalog(this.resolvedProviderId);
+    this.slashCommandDropdown = new SlashCommandDropdown(
+      ownerDocument.body,
+      this.inputEl,
+      {
+        onSelect: () => {},
+        onHide: () => {},
+      },
+      {
+        fixed: true,
+        hiddenCommands: getHiddenProviderCommandSet(this.plugin.settings, this.resolvedProviderId),
+        ...(inlineCatalog ? {
+          providerConfig: inlineCatalog.getDropdownConfig(),
+          providerDiscovery: new ProviderCommandDiscoveryStore(async () =>
+            normalizeProviderCommandDiscoveryItems(
+              await inlineCatalog.listDropdownEntries({ includeBuiltIns: false }),
+            ),
+          ),
+        } : {}),
+      }
+    );
+  }
+
+  private async switchProvider(newProviderId: ProviderId): Promise<void> {
+    if (this.resolvedProviderId === newProviderId) return;
+
+    try {
+      await ProviderWorkspaceRegistry.ensureInitialized(
+        this.plugin.providerHost,
+        newProviderId,
+        'inline-edit',
+      );
+    } catch {
+      new Notice(`Failed to initialize ${ProviderRegistry.getProviderDisplayName(newProviderId)} provider.`);
+      return;
+    }
+
+    this.inlineEditService.cancel();
+    this.inlineEditService.resetConversation();
+    this.isConversing = false;
+
+    this.resolvedProviderId = newProviderId;
+    this.inlineEditService = ProviderRegistry.createInlineEditService(
+      this.plugin.providerHost,
+      newProviderId,
+    );
+    if (this.containerEl) {
+      this.containerEl.setAttribute('data-provider', newProviderId);
+    }
+    if (this.inputResources?.menuLayer) {
+      this.inputResources.menuLayer.setAttribute('data-provider', newProviderId);
+    }
+
+    this.setupSlashCommandDropdown();
+  }
+
+  private modelPickerCallbacks(): ModelPickerCallbacks {
+    return {
+      getSettings: () => this.getModelPickerSettings(),
+      getAvailableModels: () => getAllEnabledProviderModelOptions(
+        this.plugin.settings,
+        (providerId) => typeof this.plugin.getActiveEnvironmentVariables === 'function'
+          ? this.plugin.getActiveEnvironmentVariables(providerId)
+          : '',
+      ),
+      onModelChange: async (model, providerId) => {
+        const targetProviderId = providerId
+          ?? getEnabledProviderForModel(model, this.plugin.settings, this.resolvedProviderId);
+
+        if (targetProviderId !== this.resolvedProviderId) {
+          await this.switchProvider(targetProviderId);
+        }
+
+        this.modelOverride = model;
+        const settings = this.getModelPickerSettings();
+        const offered = ProviderRegistry.getChatUIConfig(this.resolvedProviderId)
+          .getReasoningOptions(settings.model, settings)
+          .some(option => option.value === this.reasoningOverride);
+        if (!offered) {
+          this.reasoningOverride = undefined;
+        }
+
+        this.inlineEditService.setModelOverride?.(this.modelOverride);
+        this.inlineEditService.setReasoningOverride?.(this.reasoningOverride);
+
+        this.inputResources?.modelSelector.updateDisplay();
+        this.inputResources?.thinkingSelector.updateDisplay();
+        await this.saveInlineEditDefault();
+      },
+      onEffortLevelChange: async (effort) => {
+        this.reasoningOverride = effort;
+        this.inlineEditService.setReasoningOverride?.(this.reasoningOverride);
+        this.inputResources?.modelSelector.updateDisplay();
+        this.inputResources?.thinkingSelector.updateDisplay();
+        await this.saveInlineEditDefault();
+      },
+    };
+  }
+
+  private async saveInlineEditDefault(): Promise<void> {
+    const { model, reasoning } = this.getModelPickerSettings();
+    if (!model) return;
+    const selection: StoredInlineEditModelSelection = {
+      providerId: this.resolvedProviderId,
+      model,
+      ...(reasoning ? { reasoning } : {}),
+    };
+    if (typeof this.plugin.mutateSettings === 'function') {
+      await this.plugin.mutateSettings((settings) => {
+        settings.inlineEditModel = selection;
+      });
+    } else if (this.plugin.settings) {
+      this.plugin.settings.inlineEditModel = selection;
+    }
+  }
+
+  private getModelPickerSettings(): ModelPickerSettings {
+    const snapshot = getProviderSettingsSnapshotWithModel(
+      { ...this.plugin.settings },
+      this.resolvedProviderId,
+      this.modelOverride,
+    );
+    const model = typeof snapshot.model === 'string' && snapshot.model
+      ? snapshot.model
+      : (this.modelOverride || '');
+    const offersReasoning = ProviderRegistry.getChatUIConfig(this.resolvedProviderId)
+      .getReasoningOptions(model, snapshot).length > 0;
+    const reasoning = this.reasoningOverride
+      ?? (typeof snapshot.effortLevel === 'string' ? snapshot.effortLevel : null);
+    return {
+      ...snapshot,
+      providerId: this.resolvedProviderId,
+      model,
+      reasoning: offersReasoning && reasoning ? reasoning : null,
+    };
+  }
+
+  private showGenerating(generating: boolean): void {
+    if (this.inputEl) this.inputEl.disabled = generating;
+    if (generating) {
+      this.inputResources?.modelSelector.close();
+      this.inputResources?.thinkingSelector.close();
+    }
+    this.spinnerEl?.toggleClass('codian-hidden', !generating);
+    this.modelToolbarEl?.toggleClass('codian-hidden', generating);
   }
 
   createDiffPreviewDOM(diffOps: DiffOp[]): HTMLElement {
@@ -619,8 +860,12 @@ export class InlineEditSession {
 
     this.removeSelectionListeners();
 
-    this.inputEl.disabled = true;
-    this.spinnerEl.removeClass('codian-hidden');
+    this.generating = true;
+    this.showGenerating(true);
+
+    const { model, reasoning } = this.getModelPickerSettings();
+    this.inlineEditService.setModelOverride?.(model || undefined);
+    this.inlineEditService.setReasoningOverride?.(reasoning || undefined);
 
     const contextFiles = this.resolveContextFilesFromMessage(userMessage);
 
@@ -657,7 +902,8 @@ export class InlineEditSession {
       return;
     } finally {
       if (this.isGenerationActive(generation)) {
-        this.spinnerEl?.addClass('codian-hidden');
+        this.generating = false;
+        this.showGenerating(false);
       }
     }
 
@@ -846,12 +1092,16 @@ export class InlineEditSession {
 
   private cleanup(options?: { keepSelectionHighlight?: boolean }) {
     this.generation += 1;
+    this.generating = false;
     this.inlineEditService.cancel();
     this.inlineEditService.resetConversation();
     this.isConversing = false;
     this.removeSelectionListeners();
     this.releaseKeyHandler?.();
     this.releaseKeyHandler = null;
+    if (this.inputResources) {
+      this.destroyInputDOM(this.inputResources.container);
+    }
     this.slashCommandDropdown?.destroy();
     this.slashCommandDropdown = null;
 

@@ -21,6 +21,7 @@ import {
   type EnvSnippet,
   type HiddenProviderCommands,
   type ProviderConfigMap,
+  type StoredInlineEditModelSelection,
 } from '../../core/types/settings';
 import { DEFAULT_CODIAN_SETTINGS } from './defaultSettings';
 
@@ -206,6 +207,22 @@ function normalizeModelAliases(value: unknown): Record<string, string> {
   return result;
 }
 
+function normalizeStoredInlineEditModelSelection(
+  value: unknown,
+): StoredInlineEditModelSelection | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const candidate = value as Record<string, unknown>;
+  const providerId = typeof candidate.providerId === 'string' ? candidate.providerId.trim() : '';
+  const model = typeof candidate.model === 'string' ? candidate.model.trim() : '';
+  if (!providerId || !model || !ProviderRegistry.getRegisteredProviderIds().includes(providerId)) {
+    return null;
+  }
+  const reasoning = typeof candidate.reasoning === 'string' ? candidate.reasoning.trim() : '';
+  return reasoning ? { providerId, model, reasoning } : { providerId, model };
+}
+
 function normalizeEnvSnippets(value: unknown): EnvSnippet[] {
   if (!Array.isArray(value)) {
     return [];
@@ -286,6 +303,7 @@ export class CodianSettingsStorage {
     );
     const envSnippets = normalizeEnvSnippets(stored.envSnippets);
     const customModelAliases = normalizeModelAliases(stored.customModelAliases);
+    const inlineEditModel = normalizeStoredInlineEditModelSelection(stored.inlineEditModel);
     const {
       changed: didStripRuntimeProviderConfig,
       providerConfigs,
@@ -308,6 +326,7 @@ export class CodianSettingsStorage {
       sharedEnvironmentVariables: getSharedEnvironmentVariables(legacyProviderSettings),
       envSnippets,
       customModelAliases,
+      inlineEditModel,
       hiddenProviderCommands,
       providerConfigs,
       chatViewPlacement,
@@ -348,6 +367,10 @@ export class CodianSettingsStorage {
       || (
         'customModelAliases' in stored
         && JSON.stringify(customModelAliases) !== JSON.stringify(stored.customModelAliases ?? {})
+      )
+      || (
+        'inlineEditModel' in stored
+        && JSON.stringify(inlineEditModel) !== JSON.stringify(stored.inlineEditModel ?? null)
       )
       || didNormalizeProviderSettings
       || didStripRuntimeProviderConfig

@@ -21,15 +21,15 @@
 }
 
 .codian-model-icon {
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
 .codian-model-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 .codian-model-label {
@@ -79,6 +79,8 @@
   z-index: 1000;
   width: max-content;
   max-width: min(320px, 90vw);
+  max-height: min(420px, 60vh);
+  overflow-y: auto;
   padding: 4px;
   opacity: 0;
   visibility: hidden;
@@ -165,6 +167,12 @@
 .codian-model-option-with-effort:hover .codian-model-effort-options {
   opacity: 1;
   visibility: visible;
+}
+
+.codian-model-dropdown.align-right .codian-model-effort-options {
+  left: auto;
+  right: 100%;
+  box-shadow: -2px -2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .codian-model-effort-options:hover {

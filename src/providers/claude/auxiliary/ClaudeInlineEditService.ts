@@ -51,6 +51,7 @@ export class InlineEditService {
   private plugin: ProviderHost;
   private abortController: AbortController | null = null;
   private modelOverride: string | undefined;
+  private reasoningOverride: string | undefined;
   private sessionId: string | null = null;
 
   constructor(plugin: ProviderHost) {
@@ -58,16 +59,25 @@ export class InlineEditService {
   }
 
   private getScopedSettings(): Record<string, unknown> {
-    return getProviderSettingsSnapshotWithModel(
+    const snapshot = getProviderSettingsSnapshotWithModel(
       this.plugin.settings,
       'claude',
       this.modelOverride,
     );
+    if (this.reasoningOverride) {
+      snapshot.effortLevel = this.reasoningOverride;
+    }
+    return snapshot;
   }
 
   setModelOverride(model?: string): void {
     const trimmed = model?.trim();
     this.modelOverride = trimmed ? trimmed : undefined;
+  }
+
+  setReasoningOverride(reasoning?: string): void {
+    const trimmed = reasoning?.trim();
+    this.reasoningOverride = trimmed ? trimmed : undefined;
   }
 
   resetConversation(): void {

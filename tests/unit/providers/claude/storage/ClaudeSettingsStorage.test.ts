@@ -691,6 +691,53 @@ describe('CodianSettingsStorage', () => {
       });
     });
 
+    it('normalizes and loads inlineEditModel settings', async () => {
+      mockAdapter.exists.mockResolvedValue(true);
+      mockAdapter.read.mockResolvedValue(JSON.stringify({
+        inlineEditModel: {
+          providerId: 'claude',
+          model: 'claude-3-5-sonnet',
+          reasoning: 'high',
+        },
+      }));
+
+      const result = await storage.load();
+      expect(result.inlineEditModel).toEqual({
+        providerId: 'claude',
+        model: 'claude-3-5-sonnet',
+        reasoning: 'high',
+      });
+    });
+
+    it('normalizes inlineEditModel without reasoning', async () => {
+      mockAdapter.exists.mockResolvedValue(true);
+      mockAdapter.read.mockResolvedValue(JSON.stringify({
+        inlineEditModel: {
+          providerId: 'codex',
+          model: 'gpt-5.4-mini',
+        },
+      }));
+
+      const result = await storage.load();
+      expect(result.inlineEditModel).toEqual({
+        providerId: 'codex',
+        model: 'gpt-5.4-mini',
+      });
+    });
+
+    it('normalizes invalid inlineEditModel to null', async () => {
+      mockAdapter.exists.mockResolvedValue(true);
+      mockAdapter.read.mockResolvedValue(JSON.stringify({
+        inlineEditModel: {
+          providerId: 'unknown-provider',
+          model: '',
+        },
+      }));
+
+      const result = await storage.load();
+      expect(result.inlineEditModel).toBeNull();
+    });
+
     it('should throw on JSON parse error', async () => {
       mockAdapter.exists.mockResolvedValue(true);
       mockAdapter.read.mockResolvedValue('invalid json');
@@ -797,6 +844,26 @@ describe('CodianSettingsStorage', () => {
       updateCodexProviderSettings(reloaded, { discoveredModels: TEST_CODEX_CATALOG as any });
       expect(getCodexProviderSettings(reloaded).modelAliases).toEqual({
         'gpt-5.5': 'Primary',
+      });
+    });
+
+    it('persists inlineEditModel selection when saved', async () => {
+      const settings = {
+        ...DEFAULT_SETTINGS,
+        inlineEditModel: {
+          providerId: 'claude',
+          model: 'claude-3-5-sonnet',
+          reasoning: 'medium',
+        },
+      };
+
+      await storage.save(settings);
+
+      const writtenContent = JSON.parse(mockAdapter.write.mock.calls[0][1]);
+      expect(writtenContent.inlineEditModel).toEqual({
+        providerId: 'claude',
+        model: 'claude-3-5-sonnet',
+        reasoning: 'medium',
       });
     });
 

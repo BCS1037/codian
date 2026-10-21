@@ -7,7 +7,7 @@ describe('inline-edit.css', () => {
   let styles: HTMLStyleElement[] = [];
 
   beforeEach(() => {
-    styles = ['base/variables.css', 'features/inline-edit.css'].map((file) => {
+    styles = ['base/variables.css', 'toolbar/model-selector.css', 'features/inline-edit.css'].map((file) => {
       const style = document.createElement('style');
       style.textContent = readFileSync(path.resolve('src/style', file), 'utf8');
       document.head.appendChild(style);
@@ -59,5 +59,21 @@ describe('inline-edit.css', () => {
     const composer = window.getComputedStyle(document.querySelector('.codian-inline-input-container')!);
 
     expect(parseFloat(composer.marginBottom || '0') + parseFloat(composer.paddingBottom || '0')).toBeGreaterThanOrEqual(8);
+  });
+
+  it('renders inline model toolbar flush without chip container padding', () => {
+    document.body.innerHTML = '<div class="codian-input-toolbar codian-inline-model-toolbar"></div>';
+    const toolbar = window.getComputedStyle(document.querySelector('.codian-inline-model-toolbar')!);
+
+    expect(toolbar.paddingTop).toBe('0px');
+    expect(toolbar.paddingBottom).toBe('0px');
+  });
+
+  it('positions floating menu layer dropdowns fixed to escape containment clipping', () => {
+    document.body.innerHTML = '<div class="codian-inline-menu-layer"><div class="codian-model-dropdown"></div></div>';
+    const dropdown = window.getComputedStyle(document.querySelector('.codian-inline-menu-layer .codian-model-dropdown')!);
+
+    expect(dropdown.position).toBe('fixed');
+    expect(dropdown.zIndex).toBe('1000');
   });
 });

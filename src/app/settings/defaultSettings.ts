@@ -38,6 +38,7 @@ export const DEFAULT_CODIAN_SETTINGS: CodianSettings = {
 
   defaultChatProviderId: '',
   settingsProvider: 'claude',
+  inlineEditModel: null,
   savedProviderModel: {},
   savedProviderEffort: {},
   savedProviderServiceTier: {},

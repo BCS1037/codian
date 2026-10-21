@@ -2,7 +2,11 @@ import '@/providers';
 
 import { TEST_CODEX_MODEL } from '@test/helpers/codexModels';
 
-import { getEnabledProviderForModel, getProviderForModel } from '@/core/providers/modelRouting';
+import {
+  getAllEnabledProviderModelOptions,
+  getEnabledProviderForModel,
+  getProviderForModel,
+} from '@/core/providers/modelRouting';
 
 describe('getProviderForModel', () => {
   it('routes Claude default models to claude', () => {
@@ -83,5 +87,56 @@ describe('getProviderForModel', () => {
 
     expect(getProviderForModel(TEST_CODEX_MODEL, settings)).toBe('codex');
     expect(getEnabledProviderForModel(TEST_CODEX_MODEL, settings)).toBe('claude');
+  });
+});
+
+describe('getAllEnabledProviderModelOptions', () => {
+  it('returns grouped model options with provider icons across enabled providers', () => {
+    const settings = {
+      defaultChatProvider: 'claude',
+      providerConfigs: {
+        claude: {
+          enabled: true,
+          customModels: 'claude-3-5-sonnet',
+        },
+        codex: {
+          enabled: true,
+          visibleModels: ['gpt-4o'],
+        },
+      },
+    };
+
+    const options = getAllEnabledProviderModelOptions(settings as any);
+    expect(options.length).toBeGreaterThan(0);
+
+    const claudeOption = options.find(opt => opt.providerId === 'claude');
+    expect(claudeOption).toBeDefined();
+    expect(claudeOption?.group).toBe('Claude');
+    expect(claudeOption?.providerIcon).toBeDefined();
+
+    const codexOption = options.find(opt => opt.providerId === 'codex');
+    expect(codexOption).toBeDefined();
+    expect(codexOption?.group).toBe('Codex');
+    expect(codexOption?.providerIcon).toBeDefined();
+  });
+
+  it('excludes disabled providers from model options', () => {
+    const settings = {
+      defaultChatProvider: 'claude',
+      providerConfigs: {
+        claude: {
+          enabled: true,
+          customModels: 'claude-3-5-sonnet',
+        },
+        codex: {
+          enabled: false,
+          visibleModels: ['gpt-4o'],
+        },
+      },
+    };
+
+    const options = getAllEnabledProviderModelOptions(settings as any);
+    expect(options.some(opt => opt.providerId === 'codex')).toBe(false);
+    expect(options.some(opt => opt.providerId === 'claude')).toBe(true);
   });
 });

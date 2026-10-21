@@ -30,6 +30,7 @@ export {
   type KeyboardNavigationSettings,
   type PermissionMode,
   type SlashCommand,
+  type StoredInlineEditModelSelection,
 } from './settings';
 
 // Diff types
