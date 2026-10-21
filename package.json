@@ -63,7 +63,7 @@
     "@codemirror/commands": "6.10.4",
     "@codemirror/state": "^6.5.0",
     "@codemirror/view": "^6.38.6",
-    "@modelcontextprotocol/sdk": "~1.31.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "smol-toml": "^1.9.0",
     "tslib": "^2.8.1",
     "ws": "8.21.2",
