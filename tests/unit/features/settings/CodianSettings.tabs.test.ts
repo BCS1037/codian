@@ -3,13 +3,19 @@ import '@/providers';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { Notice } from 'obsidian';
+
+import { ProviderWorkspaceRegistry } from '@/core/providers/ProviderWorkspaceRegistry';
 import {
+  CodianSettingTab,
   getOrderedProviderIds,
   getProviderCardMetadata,
   getProviderCardModelState,
   getSettingsTabIds,
 } from '@/features/settings/CodianSettings';
 import { setLocale } from '@/i18n/i18n';
+
+import { createMockEl } from '../../../helpers/mockElement';
 
 describe('settings tab order', () => {
   it('groups provider-owned settings under shared top-level categories', () => {
@@ -138,5 +144,185 @@ describe('settings provider layout', () => {
     expect(gridRule).toContain('minmax(180px, 1fr)');
     expect(cardRule).toContain('min-height: 92px;');
     expect(cardRule).toContain('padding: 12px;');
+  });
+
+  it('switches tabs by toggling active classes without destroying rendered DOM', () => {
+    const plugin = {
+      storage: { getAdapter: () => ({ exists: jest.fn(), read: jest.fn() }) },
+      notifyAgentSkillsChanged: jest.fn(),
+      settings: {},
+      providerHost: {},
+      getAllViews: () => [],
+    };
+    const tab = new CodianSettingTab({} as any, plugin as any);
+    tab.containerEl = createMockEl('div');
+    tab.display();
+
+    const buttons = tab.containerEl.querySelectorAll('.codian-settings-tab');
+    const contents = tab.containerEl.querySelectorAll('.codian-settings-tab-content');
+    expect(buttons.length).toBe(4);
+    expect(contents.length).toBe(4);
+
+    // Initial state: general tab active
+    expect(buttons[0].classList.contains('codian-settings-tab--active')).toBe(true);
+    expect(contents[0].classList.contains('codian-settings-tab-content--active')).toBe(true);
+
+    // Click 'About' tab (index 3)
+    const emptySpy = jest.spyOn(tab.containerEl, 'empty');
+    (buttons[3] as HTMLElement).click();
+
+    expect(buttons[3].classList.contains('codian-settings-tab--active')).toBe(true);
+    expect(contents[3].classList.contains('codian-settings-tab-content--active')).toBe(true);
+    expect(buttons[0].classList.contains('codian-settings-tab--active')).toBe(false);
+    expect(contents[0].classList.contains('codian-settings-tab-content--active')).toBe(false);
+
+    // Should NOT have emptied containerEl
+    expect(emptySpy).not.toHaveBeenCalled();
+
+    // Click back to 'General' tab
+    (buttons[0] as HTMLElement).click();
+    expect(buttons[0].classList.contains('codian-settings-tab--active')).toBe(true);
+    expect(contents[0].classList.contains('codian-settings-tab-content--active')).toBe(true);
+    expect(emptySpy).not.toHaveBeenCalled();
+  });
+
+  it('selects provider card in providers tab without re-rendering outer tabs or grid', async () => {
+    jest.spyOn(ProviderWorkspaceRegistry, 'ensureInitialized').mockResolvedValue(undefined);
+    jest.spyOn(ProviderWorkspaceRegistry, 'prepareSettings').mockResolvedValue(undefined);
+
+    const plugin = {
+      storage: { getAdapter: () => ({ exists: jest.fn(), read: jest.fn() }) },
+      notifyAgentSkillsChanged: jest.fn(),
+      settings: {
+        providerConfigs: {},
+      },
+      providerHost: {
+        app: {},
+        settings: { providerConfigs: {} },
+        storage: { getAdapter: () => ({ exists: jest.fn(), read: jest.fn() }) },
+      },
+      getAllViews: () => [],
+      getConversationList: () => [],
+      getConversationById: () => null,
+    };
+    const tab = new CodianSettingTab({} as any, plugin as any);
+    tab.containerEl = createMockEl('div');
+    tab.display();
+
+    // Switch to providers tab
+    const buttons = tab.containerEl.querySelectorAll('.codian-settings-tab');
+    (buttons[1] as HTMLElement).click();
+
+    // Wait for async renderProvidersTab to resolve
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const providerCards = tab.containerEl.querySelectorAll('.codian-settings-provider-card');
+    expect(providerCards.length).toBeGreaterThan(1);
+
+    // Click second provider card
+    const emptySpy = jest.spyOn(tab.containerEl, 'empty');
+    (providerCards[1] as HTMLElement).click();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Outer container was not wiped
+    expect(emptySpy).not.toHaveBeenCalled();
+    // Second card becomes active, first card is not active
+    expect(providerCards[1].classList.contains('codian-settings-provider-card--active')).toBe(true);
+    expect(providerCards[0].classList.contains('codian-settings-provider-card--active')).toBe(false);
+  });
+
+  it('switches workspace sections without re-rendering outer container or toolbar', async () => {
+    jest.spyOn(ProviderWorkspaceRegistry, 'ensureInitialized').mockResolvedValue(undefined);
+    jest.spyOn(ProviderWorkspaceRegistry, 'prepareSettings').mockResolvedValue(undefined);
+
+    const plugin = {
+      storage: { getAdapter: () => ({ exists: jest.fn(), read: jest.fn() }) },
+      notifyAgentSkillsChanged: jest.fn(),
+      settings: {},
+      providerHost: {
+        app: {},
+        settings: {},
+        storage: { getAdapter: () => ({ exists: jest.fn(), read: jest.fn() }) },
+      },
+      getAllViews: () => [],
+      getConversationList: () => [],
+      getConversationById: () => null,
+    };
+    const tab = new CodianSettingTab({} as any, plugin as any);
+    tab.containerEl = createMockEl('div');
+    tab.display();
+
+    // Switch to workspace tab
+    const buttons = tab.containerEl.querySelectorAll('.codian-settings-tab');
+    (buttons[2] as HTMLElement).click();
+
+    // Wait for async renderWorkspaceTab to finish
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const nav = tab.containerEl.querySelector('.codian-settings-segmented-nav');
+    expect(nav).not.toBeNull();
+    const sectionButtons = nav?.children ?? [];
+    expect(sectionButtons.length).toBe(4);
+
+    const emptySpy = jest.spyOn(tab.containerEl, 'empty');
+    // Click 'Agents' section (index 1)
+    (sectionButtons[1] as HTMLElement).click();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(emptySpy).not.toHaveBeenCalled();
+    expect(sectionButtons[1].classList.contains('is-active')).toBe(true);
+    expect(sectionButtons[0].classList.contains('is-active')).toBe(false);
+  });
+
+  it('displays refresh button and hint in workspace MCP section, and triggers forceRefresh', async () => {
+    jest.spyOn(ProviderWorkspaceRegistry, 'ensureInitialized').mockResolvedValue(undefined);
+    jest.spyOn(ProviderWorkspaceRegistry, 'prepareSettings').mockResolvedValue(undefined);
+    jest.spyOn(ProviderWorkspaceRegistry, 'supportsSettingsSection').mockReturnValue(true);
+
+    const plugin = {
+      storage: { getAdapter: () => ({ exists: jest.fn(), read: jest.fn() }) },
+      notifyAgentSkillsChanged: jest.fn(),
+      settings: {},
+      providerHost: {
+        app: {},
+        settings: {},
+        storage: { getAdapter: () => ({ exists: jest.fn(), read: jest.fn() }) },
+      },
+      getAllViews: () => [],
+      getConversationList: () => [],
+      getConversationById: () => null,
+    };
+    const tab = new CodianSettingTab({} as any, plugin as any);
+    tab.containerEl = createMockEl('div');
+    tab.display();
+
+    // Switch to workspace tab
+    const buttons = tab.containerEl.querySelectorAll('.codian-settings-tab');
+    (buttons[2] as HTMLElement).click();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Refresh button should exist
+    const refreshBtn = tab.containerEl.querySelector('.codian-settings-resource-refresh-btn');
+    expect(refreshBtn).not.toBeNull();
+
+    const hintEl = tab.containerEl.querySelector('.codian-settings-resource-hint');
+    expect(hintEl).not.toBeNull();
+    // Default section is skills, hint should be hidden
+    expect(hintEl?.classList.contains('codian-hidden')).toBe(true);
+
+    // Switch to MCP section (index 2)
+    const nav = tab.containerEl.querySelector('.codian-settings-segmented-nav');
+    const sectionButtons = nav?.children ?? [];
+    (sectionButtons[2] as HTMLElement).click();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // In MCP section, hint should be visible
+    expect(hintEl?.classList.contains('codian-hidden')).toBe(false);
+
+    // Click refresh button
+    (refreshBtn as HTMLElement).click();
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    expect(Notice).toHaveBeenCalled();
   });
 });

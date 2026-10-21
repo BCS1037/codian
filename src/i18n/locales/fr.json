@@ -1021,6 +1021,8 @@
       "newResource": "Nouveau",
       "manageResources": "Gérer {section}",
       "loadingResources": "Chargement des ressources…",
+      "resourcesRefreshed": "Ressources de l'espace de travail actualisées.",
+      "mcpCacheHint": "Les serveurs MCP sont mis en cache pour une navigation fluide. Cliquez sur Actualiser pour synchroniser les modifications externes.",
       "noResources": "Aucune ressource correspondante.",
       "resourceColumns": {
         "name": "Nom",

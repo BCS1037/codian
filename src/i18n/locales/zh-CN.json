@@ -1021,6 +1021,8 @@
       "newResource": "新建",
       "manageResources": "管理 {section}",
       "loadingResources": "正在加载资源…",
+      "resourcesRefreshed": "工作区资源已刷新。",
+      "mcpCacheHint": "MCP 服务列表已缓存在内存中以保障流畅切换。若在外部终端修改了配置，可点击「刷新」同步。",
       "noResources": "没有匹配的工作区资源。",
       "resourceColumns": {
         "name": "名称",

@@ -1021,6 +1021,8 @@
       "newResource": "New",
       "manageResources": "Manage {section}",
       "loadingResources": "Loading resources…",
+      "resourcesRefreshed": "Workspace resources refreshed.",
+      "mcpCacheHint": "MCP servers are cached for fast navigation. Click Refresh to sync external changes from CLI.",
       "noResources": "No matching workspace resources.",
       "resourceColumns": {
         "name": "Name",

@@ -1021,6 +1021,8 @@
       "newResource": "新規",
       "manageResources": "{section} を管理",
       "loadingResources": "リソースを読み込み中…",
+      "resourcesRefreshed": "ワークスペースリソースを更新しました。",
+      "mcpCacheHint": "MCP サーバー一覧は高速な切り替えのためキャッシュされています。外部で変更した場合は「更新」をクリックして同期してください。",
       "noResources": "一致するワークスペースリソースがありません。",
       "resourceColumns": {
         "name": "名前",

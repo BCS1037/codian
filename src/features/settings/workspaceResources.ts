@@ -21,6 +21,7 @@ export interface WorkspaceResourceRow {
 
 export interface WorkspaceResourceLoadOptions {
   loadSharedSkills?: () => Promise<AgentSkillListResult>;
+  forceRefresh?: boolean;
 }
 
 function fallbackCommandSource(entry: ProviderCommandEntry): string {
@@ -126,7 +127,22 @@ function loadAgentResources(providerIds: readonly ProviderId[]): WorkspaceResour
   });
 }
 
-function loadMcpResources(providerIds: readonly ProviderId[]): WorkspaceResourceRow[] {
+async function loadMcpResources(
+  providerIds: readonly ProviderId[],
+  forceRefresh = false,
+): Promise<WorkspaceResourceRow[]> {
+  await Promise.all(providerIds.map(async (providerId) => {
+    try {
+      const services = ProviderWorkspaceRegistry.getServices(providerId);
+      if (forceRefresh && services?.mcpCatalog) {
+        await services.mcpCatalog.loadServers();
+      } else {
+        await ProviderWorkspaceRegistry.prepareSettings(providerId);
+      }
+    } catch {
+      // Ignore failure for individual providers
+    }
+  }));
   return providerIds.flatMap((providerId) => {
     const services = ProviderWorkspaceRegistry.getServices(providerId);
     const catalog = services?.mcpCatalog;
@@ -147,6 +163,16 @@ export async function loadWorkspaceResources(
   section: WorkspaceResourceSection,
   options: WorkspaceResourceLoadOptions = {},
 ): Promise<WorkspaceResourceRow[]> {
+  if (options.forceRefresh && section === 'agents') {
+    await Promise.all(providerIds.map(async (providerId) => {
+      try {
+        await ProviderWorkspaceRegistry.getServices(providerId)?.refreshAgentMentions?.();
+      } catch {
+        // Ignore failure
+      }
+    }));
+  }
+
   const rows = section === 'skills'
     ? [
       ...await loadCommandResources(providerIds, section),
@@ -156,6 +182,6 @@ export async function loadWorkspaceResources(
       ? await loadCommandResources(providerIds, section)
     : section === 'agents'
       ? loadAgentResources(providerIds)
-      : loadMcpResources(providerIds);
+      : await loadMcpResources(providerIds, options.forceRefresh);
   return mergeRows(rows, providerIds);
 }

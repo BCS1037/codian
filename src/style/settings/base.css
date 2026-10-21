@@ -345,6 +345,13 @@
   width: 240px;
 }
 
+.codian-settings-resource-hint {
+  margin: -10px 0 14px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: var(--line-height-tight);
+}
+
 .codian-settings-resource-list {
   display: grid;
   gap: 10px;

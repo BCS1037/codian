@@ -1021,6 +1021,8 @@
       "newResource": "새로 만들기",
       "manageResources": "{section} 관리",
       "loadingResources": "리소스 불러오는 중…",
+      "resourcesRefreshed": "워크스페이스 리소스를 새로 고쳤습니다.",
+      "mcpCacheHint": "빠른 전환을 위해 MCP 서버 목록이 캐시됩니다. 외부에서 설정을 변경한 경우 '새로고침'을 클릭하여 동기화하세요.",
       "noResources": "일치하는 작업 공간 리소스가 없습니다.",
       "resourceColumns": {
         "name": "이름",

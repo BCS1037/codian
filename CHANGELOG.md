@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.6.2 — 2026-10-21
+
+- **Instant Settings Tab Switching & Navigation**:
+  - Retained rendered tab DOM in memory across switches between General, Providers, Workspace, and About tabs, completely eliminating repeated full-page "Loading resources…" delays and UI flickering.
+  - Memoized MCP server catalogs in memory for Codex and Claude, preventing repetitive 5+ second external CLI executions during routine settings navigation.
+  - Refactored provider cards and workspace segmented tabs to update active states and detail sections incrementally without destroying parent containers.
+- **Workspace Resource Refresh & Sync**:
+  - Added a dedicated **Refresh** button in the Workspace capabilities toolbar to synchronize external additions or modifications made via CLI or configuration files on demand.
+  - Added an informative hint in the MCP section clarifying that server lists are cached in memory and can be refreshed manually when external configuration changes occur.
+  - Added full localization for refresh actions and hints across all 10 supported locales.
+
 ## 1.6.1 — 2026-10-19
 
 - **Community Plugin Compliance & Review Hardening**:

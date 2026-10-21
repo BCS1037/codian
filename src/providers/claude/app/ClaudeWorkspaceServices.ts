@@ -91,7 +91,7 @@ export async function createClaudeWorkspaceServices(
     },
     prepareSettings: async () => {
       await Promise.all([
-        mcpManager.loadServers(),
+        mcpManager.ensureLoaded(),
         pluginManager.loadPlugins(),
       ]);
       await agentManager.loadAgents();

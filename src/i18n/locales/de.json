@@ -1021,6 +1021,8 @@
       "newResource": "Neu",
       "manageResources": "{section} verwalten",
       "loadingResources": "Ressourcen werden geladen…",
+      "resourcesRefreshed": "Workspace-Ressourcen aktualisiert.",
+      "mcpCacheHint": "MCP-Server sind für schnelles Wechseln zwischengespeichert. Klicken Sie auf Aktualisieren, um externe Änderungen zu synchronisieren.",
       "noResources": "Keine passenden Arbeitsbereichsressourcen.",
       "resourceColumns": {
         "name": "Name",
