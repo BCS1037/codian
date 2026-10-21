@@ -15,12 +15,18 @@ export class QueryBackedInlineEditService implements InlineEditService {
   private abortController: AbortController | null = null;
   private hasConversation = false;
   private modelOverride: string | undefined;
+  private reasoningOverride: string | undefined;
 
   constructor(private readonly runner: AuxQueryRunner) {}
 
   setModelOverride(model?: string): void {
     const trimmed = model?.trim();
     this.modelOverride = trimmed ? trimmed : undefined;
+  }
+
+  setReasoningOverride(reasoning?: string): void {
+    const trimmed = reasoning?.trim();
+    this.reasoningOverride = trimmed ? trimmed : undefined;
   }
 
   resetConversation(): void {
@@ -57,6 +63,7 @@ export class QueryBackedInlineEditService implements InlineEditService {
       const text = await this.runner.query({
         abortController: this.abortController,
         model: this.modelOverride,
+        reasoning: this.reasoningOverride,
         systemPrompt: getInlineEditSystemPrompt(),
       }, prompt);
       this.hasConversation = true;

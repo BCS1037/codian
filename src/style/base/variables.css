@@ -1,7 +1,13 @@
 /* Brand & semantic color tokens */
-.codian-container {
+.codian-container,
+.codian-settings,
+.codian-inline-input-container,
+.codian-inline-menu-layer {
   --codian-brand: #D97757;
   --codian-brand-rgb: 217, 119, 87;
+  --codian-provider-logo: var(--codian-brand-claude);
+  --codian-brand-neutral: #fff;
+  --codian-brand-neutral-rgb: 255, 255, 255;
   --codian-brand-claude: #D97757;
   --codian-brand-claude-rgb: 217, 119, 87;
   --codian-brand-codex: #d0d0d0;
@@ -17,10 +23,29 @@
   --codian-error: #dc3545;
   --codian-error-rgb: 220, 53, 69;
   --codian-compact: #5bc0de;
+
+  /* Tick on the current choice in toolbar menus. */
+  --codian-selection-check: #86efac;
 }
 
 body.theme-light .codian-container {
-  --codian-brand-codex: #000000;
+  --codian-brand-neutral: #000;
+  --codian-brand-neutral-rgb: 0, 0, 0;
+  --codian-brand-codex: #000;
+  --codian-brand-codex-rgb: 0, 0, 0;
+  --codian-brand-opencode: #707070;
+  --codian-brand-opencode-rgb: 112, 112, 112;
+  --codian-brand-pi: #000000;
+  --codian-brand-pi-rgb: 0, 0, 0;
+  --codian-brand-grok: #000000;
+  --codian-brand-grok-rgb: 0, 0, 0;
+}
+
+body.theme-light .codian-inline-input-container,
+body.theme-light .codian-inline-menu-layer {
+  --codian-brand-neutral: #000;
+  --codian-brand-neutral-rgb: 0, 0, 0;
+  --codian-brand-codex: #000;
   --codian-brand-codex-rgb: 0, 0, 0;
   --codian-brand-opencode: #707070;
   --codian-brand-opencode-rgb: 112, 112, 112;
@@ -34,29 +59,77 @@ body.theme-light .codian-container {
 .codian-container[data-provider="claude"] {
   --codian-brand: var(--codian-brand-claude);
   --codian-brand-rgb: var(--codian-brand-claude-rgb);
+  --codian-provider-logo: var(--codian-brand-claude);
+}
+
+.codian-inline-input-container[data-provider="claude"],
+.codian-inline-menu-layer[data-provider="claude"] {
+  --codian-brand: var(--codian-brand-claude);
+  --codian-brand-rgb: var(--codian-brand-claude-rgb);
+  --codian-provider-logo: var(--codian-brand-claude);
 }
 
 .codian-container[data-provider="codex"] {
   --codian-brand: var(--codian-brand-codex);
   --codian-brand-rgb: var(--codian-brand-codex-rgb);
+  --codian-provider-logo: var(--codian-brand-codex);
+}
+
+.codian-inline-input-container[data-provider="codex"],
+.codian-inline-menu-layer[data-provider="codex"] {
+  --codian-brand: var(--codian-brand-codex);
+  --codian-brand-rgb: var(--codian-brand-codex-rgb);
+  --codian-provider-logo: var(--codian-brand-codex);
 }
 
 .codian-container[data-provider="opencode"] {
   --codian-brand: var(--codian-brand-opencode);
   --codian-brand-rgb: var(--codian-brand-opencode-rgb);
+  --codian-provider-logo: var(--codian-brand-opencode);
+}
+
+.codian-inline-input-container[data-provider="opencode"],
+.codian-inline-menu-layer[data-provider="opencode"] {
+  --codian-brand: var(--codian-brand-opencode);
+  --codian-brand-rgb: var(--codian-brand-opencode-rgb);
+  --codian-provider-logo: var(--codian-brand-opencode);
 }
 
 .codian-container[data-provider="pi"] {
   --codian-brand: var(--codian-brand-pi);
   --codian-brand-rgb: var(--codian-brand-pi-rgb);
+  --codian-provider-logo: var(--codian-brand-pi);
+}
+
+.codian-inline-input-container[data-provider="pi"],
+.codian-inline-menu-layer[data-provider="pi"] {
+  --codian-brand: var(--codian-brand-pi);
+  --codian-brand-rgb: var(--codian-brand-pi-rgb);
+  --codian-provider-logo: var(--codian-brand-pi);
 }
 
 .codian-container[data-provider="grok"] {
   --codian-brand: var(--codian-brand-grok);
   --codian-brand-rgb: var(--codian-brand-grok-rgb);
+  --codian-provider-logo: var(--codian-brand-grok);
+}
+
+.codian-inline-input-container[data-provider="grok"],
+.codian-inline-menu-layer[data-provider="grok"] {
+  --codian-brand: var(--codian-brand-grok);
+  --codian-brand-rgb: var(--codian-brand-grok-rgb);
+  --codian-provider-logo: var(--codian-brand-grok);
 }
 
 .codian-container[data-provider="deepseek"] {
   --codian-brand: var(--codian-brand-deepseek);
   --codian-brand-rgb: var(--codian-brand-deepseek-rgb);
+  --codian-provider-logo: var(--codian-brand-deepseek);
+}
+
+.codian-inline-input-container[data-provider="deepseek"],
+.codian-inline-menu-layer[data-provider="deepseek"] {
+  --codian-brand: var(--codian-brand-deepseek);
+  --codian-brand-rgb: var(--codian-brand-deepseek-rgb);
+  --codian-provider-logo: var(--codian-brand-deepseek);
 }

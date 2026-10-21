@@ -1,8 +1,11 @@
+import '@/providers';
+
 import { Text } from '@codemirror/state';
 import { createMockEl } from '@test/helpers/mockElement';
 import { Notice } from 'obsidian';
 
 import { ProviderRegistry } from '@/core/providers/ProviderRegistry';
+import { ProviderWorkspaceRegistry } from '@/core/providers/ProviderWorkspaceRegistry';
 import { InlineEditSession } from '@/features/inline-edit/ui/InlineEditModal';
 
 jest.mock('@/shared/components/SelectionHighlight', () => ({
@@ -41,12 +44,24 @@ function createSession() {
     editText: jest.fn(),
     resetConversation: jest.fn(),
     setModelOverride: jest.fn(),
+    setReasoningOverride: jest.fn(),
   };
   jest.spyOn(ProviderRegistry, 'createInlineEditService').mockReturnValue(service as any);
   const resolve = jest.fn();
   const plugin: any = {
     providerHost: {},
-    settings: { hiddenProviderCommands: {} },
+    settings: {
+      hiddenProviderCommands: {},
+      providerConfigs: {
+        claude: {
+          model: 'claude-3-5-sonnet',
+          effortLevel: 'medium',
+        },
+      },
+    },
+    mutateSettings: jest.fn(async (mutator: (s: any) => void) => {
+      mutator(plugin.settings);
+    }),
     getView: jest.fn(() => null),
   };
   const app: any = {
@@ -202,16 +217,153 @@ describe('InlineEditSession', () => {
     expect(acceptBtn.querySelector('.codian-inline-preview-key')?.textContent).toBe('↵');
   });
 
-  it('renders single-row composer card with data-provider', () => {
+  it('renders single-row composer card with data-provider and Codian selectors', () => {
     const { session } = createSession();
     const dom = session.createInputDOM();
 
     expect(dom.classList.contains('codian-inline-input-container')).toBe(true);
     expect(dom.getAttribute('data-provider')).toBe('claude');
     const cardEl = dom.querySelector('.codian-inline-composer');
-    expect(cardEl).toBeDefined();
-    expect(cardEl?.querySelector('.codian-inline-input-wrap')).toBeDefined();
-    expect(cardEl?.querySelector('input.codian-inline-input')).toBeDefined();
-    expect(cardEl?.querySelector('.codian-inline-spinner')).toBeDefined();
+    expect(cardEl).not.toBeNull();
+    expect(cardEl?.querySelector('.codian-inline-input-wrap')).not.toBeNull();
+    expect(cardEl?.querySelector('input.codian-inline-input')).not.toBeNull();
+    expect(cardEl?.querySelector('.codian-inline-spinner')).not.toBeNull();
+    expect(cardEl?.querySelector('.codian-inline-model-toolbar')).not.toBeNull();
+    expect(cardEl?.querySelector('.codian-model-selector')).not.toBeNull();
+    expect(cardEl?.querySelector('.codian-thinking-selector')).not.toBeNull();
+  });
+
+  it('persists model and reasoning selection when changed via callbacks', async () => {
+    const { session } = createSession();
+    session.createInputDOM();
+    const callbacks = (session as any).modelPickerCallbacks();
+
+    await callbacks.onModelChange('haiku');
+    expect((session as any).plugin.mutateSettings).toHaveBeenCalled();
+    expect((session as any).plugin.settings.inlineEditModel).toEqual({
+      providerId: 'claude',
+      model: 'haiku',
+      reasoning: 'high',
+    });
+
+    await callbacks.onEffortLevelChange('low');
+    expect((session as any).plugin.settings.inlineEditModel).toEqual({
+      providerId: 'claude',
+      model: 'haiku',
+      reasoning: 'low',
+    });
+  });
+
+  it('switches provider and inlineEditService when selecting model from another provider', async () => {
+    jest.spyOn(ProviderWorkspaceRegistry, 'ensureInitialized').mockResolvedValue(undefined as any);
+    const { session } = createSession();
+    const dom = session.createInputDOM();
+    const callbacks = (session as any).modelPickerCallbacks();
+
+    // Select a model belonging to another provider (e.g. codex)
+    await callbacks.onModelChange('gpt-4o', 'codex');
+
+    expect(ProviderWorkspaceRegistry.ensureInitialized).toHaveBeenCalledWith(
+      (session as any).plugin.providerHost,
+      'codex',
+      'inline-edit',
+    );
+    expect(dom.getAttribute('data-provider')).toBe('codex');
+    expect((session as any).resolvedProviderId).toBe('codex');
+    expect((session as any).plugin.settings.inlineEditModel).toEqual({
+      providerId: 'codex',
+      model: 'gpt-4o',
+      reasoning: 'high',
+    });
+  });
+
+  it('forwards model and reasoning overrides to inlineEditService during generate', async () => {
+    const { service, session } = createSession();
+    session.createInputDOM();
+    const callbacks = (session as any).modelPickerCallbacks();
+    await callbacks.onModelChange('sonnet');
+    await callbacks.onEffortLevelChange('low');
+
+    const result = createDeferred<{ success: true; editedText: string }>();
+    service.editText.mockReturnValue(result.promise);
+    (session as any).inputEl.value = 'refactor function';
+
+    const generation = (session as any).generate();
+    expect(service.setModelOverride).toHaveBeenCalledWith('sonnet');
+    expect(service.setReasoningOverride).toHaveBeenCalledWith('low');
+
+    result.resolve({ success: true, editedText: 'world' });
+    await generation;
+  });
+
+  it('cleans up floating menu layer and input resources on cleanup', () => {
+    const { session } = createSession();
+    const dom = session.createInputDOM();
+    expect(dom).toBeDefined();
+    const ownerDocument = (session as any).getOwnerDocument();
+    const menuLayer = ownerDocument.body.querySelector('.codian-inline-menu-layer');
+    expect(menuLayer).toBeDefined();
+
+    session.reject();
+    expect((session as any).inputResources).toBeNull();
+  });
+
+  it('initializes with saved inlineEditModel defaults from plugin settings', () => {
+    const sourceDoc = Text.of(['hello']);
+    const editorView: any = {
+      dispatch: jest.fn(),
+      dom: createMockEl(),
+      focus: jest.fn(),
+      state: { doc: sourceDoc },
+    };
+    const editor = {
+      getCursor: jest.fn(() => ({ line: 0, ch: 0 })),
+      getSelection: jest.fn(() => 'hello'),
+      replaceRange: jest.fn(),
+    };
+    const service = {
+      cancel: jest.fn(),
+      continueConversation: jest.fn(),
+      editText: jest.fn(),
+      resetConversation: jest.fn(),
+      setModelOverride: jest.fn(),
+      setReasoningOverride: jest.fn(),
+    };
+    jest.spyOn(ProviderRegistry, 'createInlineEditService').mockReturnValue(service as any);
+    const plugin: any = {
+      providerHost: {},
+      settings: {
+        hiddenProviderCommands: {},
+        inlineEditModel: {
+          providerId: 'claude',
+          model: 'haiku',
+          reasoning: 'low',
+        },
+        providerConfigs: {
+          claude: {
+            model: 'sonnet',
+          },
+        },
+      },
+      mutateSettings: jest.fn(),
+      getView: jest.fn(() => null),
+    };
+    const app: any = {
+      metadataCache: {},
+      vault: { getMarkdownFiles: jest.fn(() => []) },
+    };
+    new InlineEditSession(
+      app,
+      plugin,
+      editorView,
+      editor as any,
+      { mode: 'selection', selectedText: 'hello' },
+      'note.md',
+      () => [],
+      jest.fn(),
+    );
+
+    expect(service.setModelOverride).toHaveBeenCalledWith('haiku');
+    expect(service.setReasoningOverride).toHaveBeenCalledWith('low');
   });
 });

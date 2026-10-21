@@ -20,6 +20,7 @@ import { createCodexRuntimeContext } from './CodexRuntimeContext';
 export interface CodexAuxQueryConfig {
   systemPrompt: string;
   model?: string;
+  reasoning?: string;
   abortController?: AbortController;
   onTextChunk?: (accumulatedText: string) => void;
 }
@@ -121,6 +122,7 @@ export class CodexAuxQueryRunner {
       threadId: this.threadId,
       input: [{ type: 'text', text: prompt }],
       model: config.model ? toCodexRuntimeModelId(config.model) : undefined,
+      effort: config.reasoning,
     });
     turnId = turnResult.turn.id;
 

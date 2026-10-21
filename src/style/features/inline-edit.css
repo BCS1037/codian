@@ -79,7 +79,7 @@
   color: var(--text-muted);
 }
 
-/* While a request runs, the spinner takes place at the row's end. */
+/* While a request runs, the spinner takes the model chip's place at the row's end. */
 .codian-inline-spinner {
   flex: none;
   width: 14px;
@@ -90,6 +90,24 @@
   border-radius: 50%;
   box-sizing: border-box;
   animation: codian-spin 0.8s linear infinite;
+}
+
+.codian-input-toolbar.codian-inline-model-toolbar {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.codian-inline-menu-layer .codian-model-dropdown,
+.codian-inline-menu-layer .codian-thinking-options {
+  position: fixed;
+  z-index: 1000;
+  left: auto;
+  top: auto;
+  bottom: var(--codian-fixed-dropdown-bottom, auto);
+  right: var(--codian-fixed-dropdown-right, auto);
 }
 
 /* Clarifying question: the card's first section, above the reply row. */

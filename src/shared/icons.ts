@@ -9,8 +9,20 @@ const MCP_ICON_PATHS = [
   'M14.485 4.703a.823.823 0 000-1.18.863.863 0 00-1.204 0l-7.119 6.982a4.115 4.115 0 000 5.9 4.314 4.314 0 006.016 0l7.12-6.982a.823.823 0 000-1.18.863.863 0 00-1.204 0l-7.119 6.982a2.588 2.588 0 01-3.61 0 2.47 2.47 0 010-3.54l7.12-6.982z',
 ];
 
-function createSvgElement(parent: Node, tagName: keyof SVGElementTagNameMap): SVGElement {
-  return parent.createSvg(tagName);
+function createSvgElement(parent: Node | null | undefined, tagName: keyof SVGElementTagNameMap): SVGElement {
+  if (parent && typeof (parent as Node & { createSvg?: (tag: string) => SVGElement }).createSvg === 'function') {
+    return (parent as Node & { createSvg: (tag: string) => SVGElement }).createSvg(tagName);
+  }
+  if (parent && typeof (parent as Node & { createEl?: (tag: string) => HTMLElement }).createEl === 'function') {
+    return (parent as unknown as { createEl: (tag: string) => HTMLElement }).createEl(tagName) as unknown as SVGElement;
+  }
+  const fallback = typeof createDiv === 'function' ? createDiv() : null;
+  if (fallback && typeof fallback.createSvg === 'function') {
+    const element = fallback.createSvg(tagName);
+    parent?.appendChild?.(element);
+    return element;
+  }
+  throw new Error(`Cannot create SVG element ${tagName}`);
 }
 
 export function appendMcpIcon(container: HTMLElement): void {
@@ -139,9 +151,12 @@ export function createProviderIconSvg(
   icon: ProviderIconSvg,
   options: CreateProviderIconSvgOptions = {},
 ): SVGElement {
-  // Document.createSvg appends to the document root; build the icon in a detached fragment first.
-  const fragment = createFragment();
-  const svg = createSvgElement(fragment, 'svg');
+  // Document.createSvg appends to the document root; build the icon in a detached container first.
+  const fragment = typeof createFragment === 'function' ? createFragment() : null;
+  const detachedContainer = (fragment && typeof (fragment as Node & { createSvg?: unknown }).createSvg === 'function')
+    ? fragment
+    : (typeof createDiv === 'function' ? createDiv() : null);
+  const svg = createSvgElement(detachedContainer, 'svg');
   svg.setAttribute('viewBox', icon.viewBox);
   svg.setAttribute('fill', 'none');
   svg.setAttribute('aria-hidden', 'true');

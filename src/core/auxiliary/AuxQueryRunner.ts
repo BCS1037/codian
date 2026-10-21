@@ -1,6 +1,7 @@
 export interface AuxQueryConfig {
   systemPrompt: string;
   model?: string;
+  reasoning?: string;
   abortController?: AbortController;
   onTextChunk?: (accumulatedText: string) => void;
 }

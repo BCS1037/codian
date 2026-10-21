@@ -230,6 +230,8 @@ export interface ProviderUIOption {
   group?: string;
   /** Per-option icon override (e.g. when mixing providers in a single dropdown). */
   providerIcon?: ProviderIconSvg;
+  /** Per-option provider ID override (e.g. for brand styling). */
+  providerId?: string;
 }
 
 export interface ProviderPathIconSvg {
@@ -760,6 +762,7 @@ export interface InlineEditResult {
 
 export interface InlineEditService {
   setModelOverride?(model?: string): void;
+  setReasoningOverride?(reasoning?: string): void;
   resetConversation(): void;
   editText(request: InlineEditRequest): Promise<InlineEditResult>;
   continueConversation(message: string, contextFiles?: string[]): Promise<InlineEditResult>;
